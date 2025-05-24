@@ -1,5 +1,9 @@
 # Git & GitHub CLI Quick Reference Guide
 
+Either this or the `khive mcp github` are fine forn interacting with github, use
+what you prefer and can confidently use, just do not ever use MCP directly in
+roo code
+
 ## 1. Initial Setup & Local Environment Checks
 
 - **Check Status & Branch:**
@@ -154,9 +158,3 @@
 | View Issue / PR                 | `gh issue view <id>`, `gh pr view <id>`                         |
 | Delete Local Branch             | `git branch -d <branch>`                                        |
 | Delete Remote Branch (Optional) | `git push origin --delete <branch>`                             |
-
----
-
-**Remember:** Always run local validation before committing/pushing. Keep
-commits atomic and use Conventional Commit messages. Clean up branches after
-merging. Use the CLI!

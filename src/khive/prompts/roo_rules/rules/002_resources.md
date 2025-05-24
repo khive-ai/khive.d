@@ -17,7 +17,12 @@ khive info          # Search and consult
 khive reader        # Read documents
 khive new-doc       # Create from templates
 khive clean         # Branch cleanup
+khive mcp call github create_issue --title "..." --body "..."   # khive mcp service (includes github mcp)
 ```
+
+if you want to use the mcp service, you should check what"s available by running
+`khive mcp list`, `khive mcp tools <server>` and `khive mcp status <server>`.
+With `khive mcp call` you can call any tool available on the MCP server.
 
 ### 2️⃣ **Standard CLI** (When Khive Doesn't Have It)
 
@@ -34,15 +39,9 @@ uv run pytest       # Run Python tests
 ### 3️⃣ **Controlled MCP** (Emergency Only - Logged & Audited)
 
 Khive MCP needs to be configured under `.khive/mcps/config.json` file, same as
-any other MCP client configuration.
-
-```bash
-# ❌ NEVER DO THIS:
-mcp: github.create_issue
-
-# ✅ ONLY THIS (when CLI fails):
-khive mcp call github create_issue --title "..." --body "..."
-```
+any other MCP client configuration. **PLEASE NEVER USE MCP DIRECTLY VIA ROO
+CODE** Get the parameteter info and use the agent-native `khive mcp xxx`
+command.
 
 ## Common Workflows - CLI Only
 
