@@ -12,17 +12,16 @@ from khive.services.reader.parts import (
     DocumentInfo,
     ReaderAction,
     ReaderListDirParams,
+    ReaderListDirResponseContent,
     ReaderOpenParams,
     ReaderOpenResponseContent,
     ReaderReadParams,
     ReaderRequest,
     ReaderResponse,
-    ReaderListDirResponseContent,
 )
 from khive.services.reader.utils import calculate_text_tokens, dir_to_files
 from khive.types import Service
 from khive.utils import is_package_installed
-
 
 _HAS_DOCLING = is_package_installed("docling")
 
@@ -171,7 +170,7 @@ class ReaderServiceGroup(Service):
                 error=f"Unsupported file format: {params.path_or_url}. Docling supports: {', '.join(DOCLING_SUPPORTED_FORMATS)}",
                 content=ReaderOpenResponseContent(doc_info=None),
             )
-            
+
         try:
             text = self._open_with_docling(params.path_or_url)
         except Exception as e:
@@ -213,7 +212,7 @@ class ReaderServiceGroup(Service):
 
         # Convert to string representation for storage
         files_str = "\n".join([str(f) for f in files_list])
-        
+
         hash_ = int(str(abs(hash(params.directory)))[:6])
         while f"DIR_{hash_}" in self.documents_index["ids"]:
             hash_ += 256
@@ -226,9 +225,7 @@ class ReaderServiceGroup(Service):
         # Return the files directly in the response
         return ReaderResponse(
             success=True,
-            content=ReaderListDirResponseContent(
-                files=[str(f) for f in files_list]
-            ),
+            content=ReaderListDirResponseContent(files=[str(f) for f in files_list]),
         )
 
     async def _read_doc(self, params: ReaderReadParams) -> ReaderResponse:
@@ -238,7 +235,7 @@ class ReaderServiceGroup(Service):
                 success=False,
                 error=f"Document with ID {params.doc_id} not found.",
             )
-        
+
         file_path = self.cache_dir / f"{doc['doc_id']}.txt"
         length = doc["length"]
 
@@ -254,7 +251,7 @@ class ReaderServiceGroup(Service):
                 )
 
             # Read the file content asynchronously
-            async with aiofiles.open(file_path, mode="r", encoding="utf-8") as f:
+            async with aiofiles.open(file_path, encoding="utf-8") as f:
                 # If we need the whole file
                 if s == 0 and e == length:
                     content = await f.read()
@@ -318,6 +315,4 @@ def _compatible_with_docling(path_or_url: str) -> bool:
             extension = path.suffix.lower()
             is_supported_file = extension in DOCLING_SUPPORTED_FORMATS
 
-    if not is_url and not is_supported_file:
-        return False
-    return True
+    return not (not is_url and not is_supported_file)

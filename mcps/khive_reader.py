@@ -20,9 +20,9 @@ from khive.services.reader.reader_service import ReaderServiceGroup
 
 instructions = """
 Khive Reader is a multi-purpose service for reading external information.
-It extracts, parses data and stores it in the tool's cache. It supports 
+It extracts, parses data and stores it in the tool's cache. It supports
 text-based files, PDF, DOCX, HTML, IMAGES, and more. You can also provide
-a URL to a webpage, and the tool will extract the text content from that 
+a URL to a webpage, and the tool will extract the text content from that
 page. for example: `https://arxiv.org/abs/2301.00001.pdf`
 """
 
@@ -112,7 +112,7 @@ async def read(
 async def list_dir(
     directory: str,
     recursive: bool | None = False,
-    file_types: list[str] = None,
+    file_types: list[str] | None = None,
     start_offset: int | None = None,
     end_offset: int | None = None,
 ):

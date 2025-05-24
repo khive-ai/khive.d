@@ -488,49 +488,48 @@ def check_and_run_custom_script(
                 result["custom_script_stderr"] = proc.stderr.strip()
 
             return result
-        else:
-            # Script failed - provide detailed error information
-            if not config.json_output:
-                error_msg(
-                    f"Custom script failed with exit code {proc.returncode}",
-                    console=True,
+        # Script failed - provide detailed error information
+        if not config.json_output:
+            error_msg(
+                f"Custom script failed with exit code {proc.returncode}",
+                console=True,
+            )
+
+            # Show the command that was executed
+            print(f"Command: {' '.join(cmd)}", file=sys.stderr)
+            print(f"Working directory: {config.project_root}", file=sys.stderr)
+
+            # Always show stdout if there was any (shows progress before failure)
+            if proc.stdout.strip():
+                print("\n--- Script Output (stdout) ---", file=sys.stderr)
+                print(proc.stdout.strip(), file=sys.stderr)
+
+            # Always show stderr if there was any (shows the actual error)
+            if proc.stderr.strip():
+                print("\n--- Error Output (stderr) ---", file=sys.stderr)
+                print(proc.stderr.strip(), file=sys.stderr)
+            else:
+                print("\n--- No error output captured ---", file=sys.stderr)
+                print(
+                    "The script may have failed silently or the error was sent to a different stream.",
+                    file=sys.stderr,
                 )
 
-                # Show the command that was executed
-                print(f"Command: {' '.join(cmd)}", file=sys.stderr)
-                print(f"Working directory: {config.project_root}", file=sys.stderr)
+        result = {
+            "status": "failure",
+            "message": f"Custom script failed with exit code {proc.returncode}",
+            "stacks_processed": [],
+            "custom_script": str(custom_script_path),
+            "exit_code": proc.returncode,
+            "command": " ".join(cmd),
+            "working_directory": str(config.project_root),
+        }
 
-                # Always show stdout if there was any (shows progress before failure)
-                if proc.stdout.strip():
-                    print("\n--- Script Output (stdout) ---", file=sys.stderr)
-                    print(proc.stdout.strip(), file=sys.stderr)
+        if config.json_output:
+            result["custom_script_stdout"] = proc.stdout.strip()
+            result["custom_script_stderr"] = proc.stderr.strip()
 
-                # Always show stderr if there was any (shows the actual error)
-                if proc.stderr.strip():
-                    print("\n--- Error Output (stderr) ---", file=sys.stderr)
-                    print(proc.stderr.strip(), file=sys.stderr)
-                else:
-                    print("\n--- No error output captured ---", file=sys.stderr)
-                    print(
-                        "The script may have failed silently or the error was sent to a different stream.",
-                        file=sys.stderr,
-                    )
-
-            result = {
-                "status": "failure",
-                "message": f"Custom script failed with exit code {proc.returncode}",
-                "stacks_processed": [],
-                "custom_script": str(custom_script_path),
-                "exit_code": proc.returncode,
-                "command": " ".join(cmd),
-                "working_directory": str(config.project_root),
-            }
-
-            if config.json_output:
-                result["custom_script_stdout"] = proc.stdout.strip()
-                result["custom_script_stderr"] = proc.stderr.strip()
-
-            return result
+        return result
 
     except subprocess.TimeoutExpired as e:
         error_msg(

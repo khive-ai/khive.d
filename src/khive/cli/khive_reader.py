@@ -24,6 +24,7 @@ Errors go to stderr and a non-zero exit code.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -107,27 +108,6 @@ async def _handle_request_and_print(req_dict: dict[str, Any]) -> None:
 
         req = ReaderRequest(action=action, params=params_model)
         res: ReaderResponse = await reader_service.handle_request(req)
-
-def _handle_request_and_print(req_dict: dict[str, Any]) -> None:
-    """Validate, call ReaderService, persist cache if needed, pretty-print JSON."""
-    try:
-        # Construct the request with the correct nested params structure
-        action = req_dict.pop("action")  # Extract action
-        params_model = None
-        if action == ReaderAction.OPEN:
-            params_model = ReaderOpenParams(**req_dict)
-        elif action == ReaderAction.READ:
-            params_model = ReaderReadParams(**req_dict)
-        elif action == ReaderAction.LIST_DIR:
-            params_model = ReaderListDirParams(**req_dict)
-        else:
-            sys.stderr.write(
-                f"❌ Internal CLI error: Unknown action type '{action}' for param model mapping.\n"
-            )
-            sys.exit(1)
-
-        req = ReaderRequest(action=action, params=params_model)
-        res: ReaderResponse = reader_service.handle_request(req)
 
     except Exception as e:  # Catch Pydantic ValidationError and other potential errors
         sys.stderr.write(
@@ -261,7 +241,7 @@ def main() -> None:
 
     # Add the action string to the dict that will be passed to build the Pydantic model
     full_request_dict = {"action": ReaderAction(action_str), **request_params_dict}
-    _handle_request_and_print(full_request_dict)
+    asyncio.run(_handle_request_and_print(full_request_dict))
 
 
 if __name__ == "__main__":

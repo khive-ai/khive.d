@@ -752,7 +752,7 @@ async def check_and_run_custom_init_script(
                         if isinstance(step, dict):
                             step["custom_script"] = str(custom_script_path)
                     return custom_result["steps"]
-                elif isinstance(custom_result, list):
+                if isinstance(custom_result, list):
                     # Array of step results
                     for step in custom_result:
                         if isinstance(step, dict):
@@ -783,50 +783,49 @@ async def check_and_run_custom_init_script(
                 result["stderr"] = stderr.strip()
 
             return [result]
-        else:
-            # Script failed - provide detailed error information
-            if not config.json_output:
-                error(
-                    f"Custom init script failed with exit code {proc.returncode}",
-                    console=True,
+        # Script failed - provide detailed error information
+        if not config.json_output:
+            error(
+                f"Custom init script failed with exit code {proc.returncode}",
+                console=True,
+            )
+
+            # Show the command that was executed
+            print(f"Command: {' '.join(cmd)}", file=sys.stderr)
+            print(f"Working directory: {config.project_root}", file=sys.stderr)
+
+            # Always show stdout if there was any (shows progress before failure)
+            if stdout.strip():
+                print("\n--- Script Output (stdout) ---", file=sys.stderr)
+                print(stdout.strip(), file=sys.stderr)
+
+            # Always show stderr if there was any (shows the actual error)
+            if stderr.strip():
+                print("\n--- Error Output (stderr) ---", file=sys.stderr)
+                print(stderr.strip(), file=sys.stderr)
+            else:
+                print("\n--- No error output captured ---", file=sys.stderr)
+                print(
+                    "The script may have failed silently or the error was sent to a different stream.",
+                    file=sys.stderr,
                 )
 
-                # Show the command that was executed
-                print(f"Command: {' '.join(cmd)}", file=sys.stderr)
-                print(f"Working directory: {config.project_root}", file=sys.stderr)
+        result = {
+            "name": "custom_init_script",
+            "status": "FAILED",
+            "message": f"Custom init script failed with exit code {proc.returncode}",
+            "command": " ".join(cmd),
+            "custom_script": str(custom_script_path),
+            "return_code": proc.returncode,
+            "detected_stacks": detected_stacks,
+            "enabled_steps": enabled_builtin_steps + enabled_custom_steps,
+        }
 
-                # Always show stdout if there was any (shows progress before failure)
-                if stdout.strip():
-                    print("\n--- Script Output (stdout) ---", file=sys.stderr)
-                    print(stdout.strip(), file=sys.stderr)
+        if config.json_output:
+            result["stdout"] = stdout.strip()
+            result["stderr"] = stderr.strip()
 
-                # Always show stderr if there was any (shows the actual error)
-                if stderr.strip():
-                    print("\n--- Error Output (stderr) ---", file=sys.stderr)
-                    print(stderr.strip(), file=sys.stderr)
-                else:
-                    print("\n--- No error output captured ---", file=sys.stderr)
-                    print(
-                        "The script may have failed silently or the error was sent to a different stream.",
-                        file=sys.stderr,
-                    )
-
-            result = {
-                "name": "custom_init_script",
-                "status": "FAILED",
-                "message": f"Custom init script failed with exit code {proc.returncode}",
-                "command": " ".join(cmd),
-                "custom_script": str(custom_script_path),
-                "return_code": proc.returncode,
-                "detected_stacks": detected_stacks,
-                "enabled_steps": enabled_builtin_steps + enabled_custom_steps,
-            }
-
-            if config.json_output:
-                result["stdout"] = stdout.strip()
-                result["stderr"] = stderr.strip()
-
-            return [result]
+        return [result]
 
     except asyncio.TimeoutError:
         error_msg = "Custom init script timed out after 10 minutes"
