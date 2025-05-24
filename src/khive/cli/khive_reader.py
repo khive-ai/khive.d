@@ -1,7 +1,4 @@
-# Copyright (c) 2025, HaiyangLi <quantocean.li at gmail dot com>
-#
-# SPDX-License-Identifier: Apache-2.0
-
+#!/usr/bin/env python3
 """
 CLI wrapper around khive.services.reader.reader_service.ReaderService.
 
@@ -89,6 +86,27 @@ CACHE = _load_cache()
 # but not across multiple CLI executions unless we repopulate it from CACHE.
 reader_service = ReaderServiceGroup()
 
+
+async def _handle_request_and_print(req_dict: dict[str, Any]) -> None:
+    """Validate, call ReaderService, persist cache if needed, pretty-print JSON."""
+    try:
+        # Construct the request with the correct nested params structure
+        action = req_dict.pop("action")  # Extract action
+        params_model = None
+        if action == ReaderAction.OPEN:
+            params_model = ReaderOpenParams(**req_dict)
+        elif action == ReaderAction.READ:
+            params_model = ReaderReadParams(**req_dict)
+        elif action == ReaderAction.LIST_DIR:
+            params_model = ReaderListDirParams(**req_dict)
+        else:
+            sys.stderr.write(
+                f"❌ Internal CLI error: Unknown action type '{action}' for param model mapping.\n"
+            )
+            sys.exit(1)
+
+        req = ReaderRequest(action=action, params=params_model)
+        res: ReaderResponse = await reader_service.handle_request(req)
 
 def _handle_request_and_print(req_dict: dict[str, Any]) -> None:
     """Validate, call ReaderService, persist cache if needed, pretty-print JSON."""

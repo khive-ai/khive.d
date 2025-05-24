@@ -6,7 +6,7 @@ updated: "2025-05-09"
 version: "1.0"
 slug: "khive-architect"
 name: "📐Khive-Architect"
-groups: ["read", "edit", "command", "mcp"]
+groups: ["read", "edit", "command"]
 source: "project"
 ---
 

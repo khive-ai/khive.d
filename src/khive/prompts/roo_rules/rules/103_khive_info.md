@@ -118,11 +118,26 @@ khive info search --provider perplexity --query "Climate change impacts" --optio
 khive info consult --question "Explain async/await in JavaScript" --models openai/gpt-o4-mini
 
 # Consult multiple LLMs
-khive info consult --question "Compare Python vs Rust for system programming" --models "openai/gpt-o4-mini,anthropic/claude-3.7-sonnet"
+khive info consult --question "Compare Python vs Rust for system programming" --models openai/gpt-o4-mini,anthropic/claude-3.7-sonnet
 
 # Consult with a system prompt
 khive info consult --question "Optimize this SQL query: SELECT * FROM users WHERE created_at > '2025-01-01'" --models openai/gpt-o4-mini --system_prompt "You are a database optimization expert. Keep your answers concise."
 ```
+
+## Error Handling
+
+- If an action fails, the output JSON will have `success: false` and an `error`
+  field describing the issue.
+  ```json
+  {
+    "success": false,
+    "error": "Invalid search provider: 'unknown'. Valid options are: ['perplexity', 'exa']",
+    "content": null
+  }
+  ```
+- Errors can occur at various stages: CLI argument parsing, request validation,
+  API communication, or service processing.
+- The CLI exits with a non-zero status code on failure.
 
 ## Exit Codes
 

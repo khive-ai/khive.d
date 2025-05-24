@@ -5,7 +5,6 @@ if not is_package_installed("fastmcp"):
         "fastmcp is not installed. Please install it with `pip install fastmcp`."
     )
 
-
 import lionfuncs as ln
 from fastmcp import FastMCP
 from khive.services.info.info_service import InfoServiceGroup

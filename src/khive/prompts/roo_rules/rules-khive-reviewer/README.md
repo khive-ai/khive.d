@@ -6,7 +6,7 @@ updated: "2025-05-09"
 version: "1.0"
 slug: "khive-reviewer"
 name: "🩻Khive-reviewer"
-groups: ["read", "command", "mcp", "edit"]
+groups: ["read", "command", "edit"]
 source: "project"
 ---
 

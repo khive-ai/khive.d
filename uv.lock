@@ -1460,7 +1460,7 @@ requires-dist = [
     { name = "openai", specifier = ">=1.78.1" },
     { name = "orjson", specifier = ">=3.10.18" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
-    { name = "pydapter", specifier = ">=0.1.8" },
+    { name = "pydapter", specifier = ">=0.2.0" },
     { name = "pypdf2", marker = "extra == 'all'", specifier = ">=3.0.0" },
     { name = "pypdf2", marker = "extra == 'reader'", specifier = ">=3.0.0" },
     { name = "python-docx", marker = "extra == 'all'", specifier = ">=1.0.0" },
@@ -2784,15 +2784,15 @@ wheels = [
 
 [[package]]
 name = "pydapter"
-version = "0.1.8"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "toml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/43/17/901e6599c417058432bc8b922e155c9c84038c77aa88f535b7b22c415c36/pydapter-0.1.8.tar.gz", hash = "sha256:9d1016aceb093f6f928fa5cde6176af40516f896a2d36e869eca5d5240f23018", size = 298258, upload-time = "2025-05-20T23:38:29.412Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/14/e8/e6293d6bc5789f0aaa0cd5650fa3927932da1adaf478dc9179cbd9e29ded/pydapter-0.2.0.tar.gz", hash = "sha256:97782d29f4f9a228418deb3f3da15f1806557ebbec9ea5ec657f323f291b7526", size = 330127, upload-time = "2025-05-24T18:52:29.245Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d3/91/5c80e66cc63663de14a6107a3ffca768887737df610a5226eb00cf8b079f/pydapter-0.1.8-py3-none-any.whl", hash = "sha256:c1dc554af2df0d119e8e7a86c9969d780766c885517188b4b17919a2e33376eb", size = 75828, upload-time = "2025-05-20T23:38:27.781Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/fd/12c5ce9ce71b5d2aaf22cb14d06c1c89f4a77f5af99e5dff61f5486bf665/pydapter-0.2.0-py3-none-any.whl", hash = "sha256:13c5c9814d7db636a44f945acec3c8378ce49cb273703326b78a618e3147b355", size = 93302, upload-time = "2025-05-24T18:52:27.901Z" },
 ]
 
 [[package]]
@@ -3503,18 +3503,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/de/7e/fff70b02e57852fda17bd43f99dda37b9bcf3e1af3d97c5834ff48d04715/ruff-0.11.8-py3-none-win32.whl", hash = "sha256:5b18caa297a786465cc511d7f8be19226acf9c0a1127e06e736cd4e1878c3ea2", size = 10451102, upload-time = "2025-05-01T14:53:14.303Z" },
     { url = "https://files.pythonhosted.org/packages/7b/a9/eaa571eb70648c9bde3120a1d5892597de57766e376b831b06e7c1e43945/ruff-0.11.8-py3-none-win_amd64.whl", hash = "sha256:6e70d11043bef637c5617297bdedec9632af15d53ac1e1ba29c448da9341b0c4", size = 11597410, upload-time = "2025-05-01T14:53:16.571Z" },
     { url = "https://files.pythonhosted.org/packages/cd/be/f6b790d6ae98f1f32c645f8540d5c96248b72343b0a56fab3a07f2941897/ruff-0.11.8-py3-none-win_arm64.whl", hash = "sha256:304432e4c4a792e3da85b7699feb3426a0908ab98bf29df22a31b0cdd098fac2", size = 10713129, upload-time = "2025-05-01T14:53:22.27Z" },
-]
-
-[[package]]
-name = "s3transfer"
-version = "0.13.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "botocore" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ed/5d/9dcc100abc6711e8247af5aa561fc07c4a046f72f659c3adea9a449e191a/s3transfer-0.13.0.tar.gz", hash = "sha256:f5e6db74eb7776a37208001113ea7aa97695368242b364d73e91c981ac522177", size = 150232, upload-time = "2025-05-22T19:24:50.245Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/18/17/22bf8155aa0ea2305eefa3a6402e040df7ebe512d1310165eda1e233c3f8/s3transfer-0.13.0-py3-none-any.whl", hash = "sha256:0148ef34d6dd964d0d8cf4311b2b21c474693e57c2e069ec708ce043d2b527be", size = 85152, upload-time = "2025-05-22T19:24:48.703Z" },
 ]
 
 [[package]]
