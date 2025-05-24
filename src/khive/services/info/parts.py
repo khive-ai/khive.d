@@ -67,8 +67,7 @@ class InfoConsultParams(BaseModel):
 
     @field_validator("models", mode="before")
     def check_models(cls, v):
-        v = [v] if not isinstance(v, list) else v
-        return v
+        return [v] if not isinstance(v, list) else v
 
 
 class InfoRequest(BaseModel):
