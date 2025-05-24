@@ -86,7 +86,7 @@ Every Khive AI role follows structured workflows with quality gates:
 ```
 📋 Templates for Every Stage
 ├── RR (Research Reports) - Evidence-based analysis
-├── TDS (Technical Design Specs) - Complete blueprints  
+├── TDS (Technical Design Specs) - Complete blueprints
 ├── IP (Implementation Plans) - TDD-first development
 ├── TI (Test Implementation) - Comprehensive testing
 ├── CRR (Code Review Reports) - Quality verification
@@ -230,7 +230,8 @@ ls .khive/prompts/roo_rules/
 
 ## 📚 Learn More
 
-- **[Golden Path](src/khive/prompts/roo_rules/rules/003_golden_path.md)** - The methodology
+- **[Golden Path](src/khive/prompts/roo_rules/rules/003_golden_path.md)** - The
+  methodology
 - **[Discord](https://discord.gg/JDj9ENhUE8)** - Join the community
 
 ## 📜 License

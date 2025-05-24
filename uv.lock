@@ -1407,7 +1407,7 @@ requires-dist = [
     { name = "openai", marker = "extra == 'reader'", specifier = ">=1.70.0" },
     { name = "orjson", specifier = ">=3.10.18" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
-    { name = "pydapter", specifier = ">=0.1.8" },
+    { name = "pydapter", specifier = ">=0.2.0" },
     { name = "pypdf2", marker = "extra == 'all'", specifier = ">=3.0.0" },
     { name = "pypdf2", marker = "extra == 'reader'", specifier = ">=3.0.0" },
     { name = "python-docx", marker = "extra == 'all'", specifier = ">=1.0.0" },
@@ -2730,15 +2730,15 @@ wheels = [
 
 [[package]]
 name = "pydapter"
-version = "0.1.8"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "toml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/43/17/901e6599c417058432bc8b922e155c9c84038c77aa88f535b7b22c415c36/pydapter-0.1.8.tar.gz", hash = "sha256:9d1016aceb093f6f928fa5cde6176af40516f896a2d36e869eca5d5240f23018", size = 298258, upload-time = "2025-05-20T23:38:29.412Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/14/e8/e6293d6bc5789f0aaa0cd5650fa3927932da1adaf478dc9179cbd9e29ded/pydapter-0.2.0.tar.gz", hash = "sha256:97782d29f4f9a228418deb3f3da15f1806557ebbec9ea5ec657f323f291b7526", size = 330127, upload-time = "2025-05-24T18:52:29.245Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d3/91/5c80e66cc63663de14a6107a3ffca768887737df610a5226eb00cf8b079f/pydapter-0.1.8-py3-none-any.whl", hash = "sha256:c1dc554af2df0d119e8e7a86c9969d780766c885517188b4b17919a2e33376eb", size = 75828, upload-time = "2025-05-20T23:38:27.781Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/fd/12c5ce9ce71b5d2aaf22cb14d06c1c89f4a77f5af99e5dff61f5486bf665/pydapter-0.2.0-py3-none-any.whl", hash = "sha256:13c5c9814d7db636a44f945acec3c8378ce49cb273703326b78a618e3147b355", size = 93302, upload-time = "2025-05-24T18:52:27.901Z" },
 ]
 
 [[package]]

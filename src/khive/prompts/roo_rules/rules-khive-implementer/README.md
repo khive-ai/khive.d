@@ -6,7 +6,7 @@ updated: "2025-05-09"
 version: "1.0"
 slug: "khive-implementer"
 name: "🛠️Khive-Implementer"
-groups: ["read", "edit", "command", "mcp", "browser"]
+groups: ["read", "edit", "command", "browser"]
 source: "project"
 ---
 

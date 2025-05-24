@@ -1,13 +1,3 @@
----
-title: "uv Usage Guide"
-by: "Ocean"
-scope: "project"
-created: "2025-05-05"
-updated: "2025-05-05"
-version: "1.0"
-description: guide to using `uv` for managing virtual environments and dependencies
----
-
 ## 1. Why `uv`?
 
 `uv` is a modern, extremely fast tool, aiming to replace `pip`, `venv`,

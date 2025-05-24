@@ -47,7 +47,7 @@ This will:
 ✔ Tool 'uv' found.
 ✔ Tool 'pnpm' found.
 
-⚙ PYTHON  
+⚙ PYTHON
 ▶ [python] $ uv sync
   -> OK: Command 'uv sync' successful.
 

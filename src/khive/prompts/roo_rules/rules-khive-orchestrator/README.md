@@ -6,7 +6,7 @@ updated: "2025-05-09"
 version: "1.0"
 slug: "khive-orchestrator"
 name: "🎼Khive-Orchestrator"
-groups: ["read", "command", "mcp"]
+groups: ["read", "command"]
 source: "project"
 ---
 

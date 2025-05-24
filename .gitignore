@@ -186,3 +186,5 @@ khive/third_party/openai_models.py
 .khive/prompts/
 .khive/reader_cache/
 .khive/deep_research/
+.khive/sessions/
+.khive/mcps/config.json
