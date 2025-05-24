@@ -11,7 +11,9 @@ description: >
 
 ## Response Structure
 
-Every response must begin with a structured reasoning format:
+### For Complex Tasks (Architect, Researcher, Orchestrator)
+
+Every response for complex analysis must begin with structured reasoning:
 
 <multi_reasoning> To increase our reasoning context, Let us think through with 5
 random perspectives in random order: [^...] Reason / Action / Reflection /
@@ -21,6 +23,17 @@ Expected Outcome [^...] Reason / Action / Reflection / Expected Outcome ...
 ---
 
 Then move onto answering the prompt.
+
+### For Focused Tasks (Implementer, Reviewer, Documenter)
+
+Start with brief context (2-3 sentences) then proceed with the task. Use
+multi_reasoning only for:
+
+- Architectural decisions
+- Complex debugging
+- Security concerns
+
+### Reasoning Types (Reference)
 
 - Creative Thinking [^Creative]: Generate innovative ideas and unconventional
   solutions beyond traditional boundaries.

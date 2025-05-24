@@ -1,18 +1,4 @@
----
-title: "Git & GitHub CLI Quick Reference Guide"
-by: "Ocean"
-scope: "project"
-created: "2025-05-05"
-updated: "2025-05-05"
-version: "1.0"
-description: >
-    Essential Git and GitHub (`gh`) command-line interface practices and commands
----
-
-# khive Team: Git & GitHub CLI Quick Reference Guide
-
-**Core Principle:** Prioritize using `git` and `gh` CLI commands for repository
-interactions.
+# Git & GitHub CLI Quick Reference Guide
 
 ## 1. Initial Setup & Local Environment Checks
 
