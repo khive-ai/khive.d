@@ -8,22 +8,31 @@ khive_mcp.py - MCP (Model Context Protocol) server management and interaction.
 Features
 ========
 * MCP server configuration management via .khive/mcps/config.json
-* Proper MCP initialization handshake and communication
-* JSON-RPC 2.0 over stdin/stdout transport
-* Server lifecycle management (start, stop, status)
-* Tool discovery and execution
-* Persistent server connections
+* Uses FastMCP v2 library for high-level MCP abstractions
+* Seamless integration with Pydapter for data transformation
+* Tool discovery and execution with smart argument parsing
+* Persistent server connections with automatic reconnection
+* Rich terminal output with color support
 
-CLI
----
-    khive mcp list                           # List configured servers
-    khive mcp status [server]                # Show server status
-    khive mcp start <server>                 # Start an MCP server
-    khive mcp stop <server>                  # Stop an MCP server
-    khive mcp tools <server>                 # List available tools
-    khive mcp call <server> <tool> [args]    # Call a tool
+CLI Examples
+============
+    # List all configured MCP servers
+    khive mcp list
+    
+    # Check status of a specific server
+    khive mcp status filesystem
+    
+    # List available tools on a server
+    khive mcp tools filesystem
+    
+    # Call a tool with arguments
+    khive mcp call filesystem read_file --path /etc/hosts
+    khive mcp call github create_issue --title "Bug report" --body "Details..."
+    
+    # Use JSON for complex arguments
+    khive mcp call api request --json '{"method": "POST", "data": {...}}'
 
-Exit codes: 0 success · 1 failure · 2 warnings.
+Exit codes: 0 success · 1 failure · 2 timeout/forbidden.
 """
 
 from __future__ import annotations
@@ -31,12 +40,16 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
 import subprocess
 import sys
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
+
+# Import from our FastMCP v2 implementation
+from khive.adapters.fastmcp_client import MCPClient, MCPConfig, load_mcp_config
+
+# Import pydapter integration
+from khive.adapters import MCPServerAdapter, MCPToolRequest, create_mcp_server_adapter
 
 # --- Project Root and Config Path ---
 try:
@@ -52,13 +65,14 @@ KHIVE_CONFIG_DIR = PROJECT_ROOT / ".khive"
 
 # --- ANSI Colors and Logging ---
 ANSI = {
-    "G": "\033[32m" if sys.stdout.isatty() else "",
-    "R": "\033[31m" if sys.stdout.isatty() else "",
-    "Y": "\033[33m" if sys.stdout.isatty() else "",
-    "B": "\033[34m" if sys.stdout.isatty() else "",
-    "C": "\033[36m" if sys.stdout.isatty() else "",
-    "M": "\033[35m" if sys.stdout.isatty() else "",
-    "N": "\033[0m" if sys.stdout.isatty() else "",
+    "G": "\033[32m" if sys.stdout.isatty() else "",  # Green
+    "R": "\033[31m" if sys.stdout.isatty() else "",  # Red
+    "Y": "\033[33m" if sys.stdout.isatty() else "",  # Yellow
+    "B": "\033[34m" if sys.stdout.isatty() else "",  # Blue
+    "C": "\033[36m" if sys.stdout.isatty() else "",  # Cyan
+    "M": "\033[35m" if sys.stdout.isatty() else "",  # Magenta
+    "N": "\033[0m" if sys.stdout.isatty() else "",   # Normal/Reset
+    "DIM": "\033[2m" if sys.stdout.isatty() else "", # Dim
 }
 verbose_mode = False
 
@@ -105,311 +119,78 @@ def die_mcp(
     sys.exit(1)
 
 
-# --- Configuration Data Classes ---
-@dataclass
-class MCPServerConfig:
-    name: str
-    command: str
-    args: list[str] = field(default_factory=list)
-    env: dict[str, str] = field(default_factory=dict)
-    always_allow: list[str] = field(default_factory=list)
-    disabled: bool = False
-    timeout: int = 30
-
-
-@dataclass
-class MCPConfig:
-    project_root: Path
-    servers: dict[str, MCPServerConfig] = field(default_factory=dict)
-
-    # CLI args / internal state
-    json_output: bool = False
-    dry_run: bool = False
-    verbose: bool = False
-
-    @property
-    def khive_config_dir(self) -> Path:
-        return self.project_root / ".khive"
-
-    @property
-    def mcps_config_file(self) -> Path:
-        return self.khive_config_dir / "mcps" / "config.json"
-
-    @property
-    def mcps_state_file(self) -> Path:
-        return self.khive_config_dir / "mcps" / "state.json"
-
-
-def load_mcp_config(
-    project_r: Path, cli_args: argparse.Namespace | None = None
-) -> MCPConfig:
-    cfg = MCPConfig(project_root=project_r)
-
-    # Load MCP server configurations
-    if cfg.mcps_config_file.exists():
-        log_msg_mcp(f"Loading MCP config from {cfg.mcps_config_file}")
-        try:
-            config_data = json.loads(cfg.mcps_config_file.read_text())
-            mcp_servers = config_data.get("mcpServers", {})
-
-            for server_name, server_config in mcp_servers.items():
-                cfg.servers[server_name] = MCPServerConfig(
-                    name=server_name,
-                    command=server_config.get("command", ""),
-                    args=server_config.get("args", []),
-                    env=server_config.get("env", {}),
-                    always_allow=server_config.get("alwaysAllow", []),
-                    disabled=server_config.get("disabled", False),
-                    timeout=server_config.get("timeout", 30),
-                )
-        except (json.JSONDecodeError, KeyError) as e:
-            warn_msg_mcp(f"Could not parse MCP config: {e}. Using empty configuration.")
-
-    # Apply CLI arguments
-    if cli_args:
-        cfg.json_output = cli_args.json_output
-        cfg.dry_run = cli_args.dry_run
-        cfg.verbose = cli_args.verbose
-
-        global verbose_mode
-        verbose_mode = cli_args.verbose
-
-    return cfg
-
-
-def save_mcp_state(config: MCPConfig, server_states: dict[str, dict[str, Any]]) -> None:
-    """Save MCP server runtime state."""
-    try:
-        config.mcps_state_file.parent.mkdir(parents=True, exist_ok=True)
-        config.mcps_state_file.write_text(json.dumps(server_states, indent=2))
-    except OSError as e:
-        warn_msg_mcp(f"Could not save MCP state: {e}")
-
-
-def load_mcp_state(config: MCPConfig) -> dict[str, dict[str, Any]]:
-    """Load MCP server runtime state."""
-    if not config.mcps_state_file.exists():
-        return {}
-
-    try:
-        return json.loads(config.mcps_state_file.read_text())
-    except (json.JSONDecodeError, OSError):
-        return {}
-
-
-# --- MCP Client Implementation ---
-class MCPClient:
-    """Proper MCP client that handles the full JSON-RPC 2.0 protocol."""
-
-    def __init__(self, server_config: MCPServerConfig):
-        self.server_config = server_config
-        self.process: asyncio.subprocess.Process | None = None
-        self.message_id = 0
-        self.connected = False
-        self.server_info: dict[str, Any] = {}
-        self.tools: list[dict[str, Any]] = []
-
-    async def connect(self) -> bool:
-        """Connect to the MCP server and perform initialization handshake."""
-        try:
-            # Prepare environment
-            env = os.environ.copy()
-            env.update(self.server_config.env)
-
-            # Start the MCP server process
-            cmd = [self.server_config.command] + self.server_config.args
-            log_msg_mcp(f"Starting MCP server: {' '.join(cmd)}")
-
-            self.process = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                env=env,
-            )
-
-            # Perform MCP initialization handshake
-            await self._initialize()
-
-            # List available tools
-            await self._list_tools()
-
-            self.connected = True
-            return True
-
-        except Exception as e:
-            log_msg_mcp(f"Failed to connect: {e}")
-            if self.process:
-                self.process.terminate()
-                await self.process.wait()
-            return False
-
-    async def _initialize(self):
-        """Perform the MCP initialization handshake."""
-        log_msg_mcp("Performing MCP initialization handshake")
-
-        # Step 1: Send initialize request
-        init_response = await self._send_request(
-            "initialize",
-            {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {"tools": {}, "resources": {}, "prompts": {}},
-                "clientInfo": {"name": "khive", "version": "1.0.0"},
+def print_example_configs():
+    """Print example MCP server configurations."""
+    print(f"\n{ANSI['B']}Example MCP Configuration{ANSI['N']} (.khive/mcps/config.json):")
+    example_config = {
+        'mcpServers': {
+            'filesystem': {
+                'command': 'npx',
+                'args': ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+                'alwaysAllow': ['read_file', 'write_file', 'list_directory']
             },
-        )
-
-        if "error" in init_response:
-            raise Exception(f"Initialization failed: {init_response['error']}")
-
-        # Store server info
-        if "result" in init_response:
-            self.server_info = init_response["result"]
-            log_msg_mcp(
-                f"Server: {self.server_info.get('serverInfo', {}).get('name', 'unknown')}"
-            )
-
-        # Step 3: Send initialized notification (Step 2 was receiving the response)
-        await self._send_notification("notifications/initialized")
-        log_msg_mcp("MCP initialization completed")
-
-    async def _list_tools(self):
-        """List available tools from the server."""
-        tools_response = await self._send_request("tools/list")
-        if "result" in tools_response and "tools" in tools_response["result"]:
-            self.tools = tools_response["result"]["tools"]
-            log_msg_mcp(f"Found {len(self.tools)} tools")
-
-    async def _send_request(self, method: str, params: dict | None = None) -> dict:
-        """Send a JSON-RPC request and wait for response."""
-        if not self.process or not self.process.stdin:
-            raise Exception("Not connected to MCP server")
-
-        self.message_id += 1
-        message = {"jsonrpc": "2.0", "id": self.message_id, "method": method}
-        if params:
-            message["params"] = params
-
-        # Send message
-        message_str = json.dumps(message) + "\n"
-        log_msg_mcp(f"Sending: {method}")
-
-        self.process.stdin.write(message_str.encode())
-        await self.process.stdin.drain()
-
-        # Read response
-        try:
-            response_line = await asyncio.wait_for(
-                self.process.stdout.readline(), timeout=self.server_config.timeout
-            )
-
-            if not response_line:
-                raise Exception("Server closed connection")
-
-            response = json.loads(response_line.decode().strip())
-            log_msg_mcp(f"Received response for: {method}")
-            return response
-
-        except asyncio.TimeoutError:
-            raise Exception(f"Timeout waiting for response to {method}")
-        except json.JSONDecodeError as e:
-            raise Exception(f"Invalid JSON response: {e}")
-
-    async def _send_notification(self, method: str, params: dict | None = None):
-        """Send a JSON-RPC notification (no response expected)."""
-        if not self.process or not self.process.stdin:
-            raise Exception("Not connected to MCP server")
-
-        message = {"jsonrpc": "2.0", "method": method}
-        if params:
-            message["params"] = params
-
-        message_str = json.dumps(message) + "\n"
-        log_msg_mcp(f"Sending notification: {method}")
-
-        self.process.stdin.write(message_str.encode())
-        await self.process.stdin.drain()
-
-    async def call_tool(
-        self, tool_name: str, arguments: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Call a specific tool on the MCP server."""
-        if not self.connected:
-            raise Exception("Not connected to MCP server")
-
-        # Check if tool is allowed
-        if (
-            self.server_config.always_allow
-            and tool_name not in self.server_config.always_allow
-        ):
-            raise Exception(f"Tool '{tool_name}' not in allowlist")
-
-        # Check if tool exists
-        tool_names = [tool.get("name") for tool in self.tools]
-        if tool_name not in tool_names:
-            raise Exception(f"Tool '{tool_name}' not found. Available: {tool_names}")
-
-        log_msg_mcp(f"Calling tool: {tool_name}")
-        response = await self._send_request(
-            "tools/call", {"name": tool_name, "arguments": arguments}
-        )
-
-        if "error" in response:
-            raise Exception(f"Tool call failed: {response['error']}")
-
-        return response.get("result", {})
-
-    async def list_tools(self) -> list[dict[str, Any]]:
-        """Get list of available tools."""
-        return self.tools
-
-    async def disconnect(self):
-        """Disconnect from the MCP server."""
-        if self.process:
-            try:
-                # Send a graceful shutdown if possible
-                if self.connected:
-                    await self._send_notification("notifications/cancelled")
-            except:
-                pass  # Ignore errors during shutdown
-
-            # Terminate the process
-            self.process.terminate()
-            try:
-                await asyncio.wait_for(self.process.wait(), timeout=5)
-            except asyncio.TimeoutError:
-                self.process.kill()
-                await self.process.wait()
-
-            self.process = None
-            self.connected = False
+            'github': {
+                'command': 'docker',
+                'args': ['run', '-i', '--rm', 'mcp/github-server'],
+                'env': {'GITHUB_TOKEN': '$GITHUB_TOKEN'},
+                'alwaysAllow': ['create_issue', 'list_issues', 'create_pr']
+            }
+        }
+    }
+    print(f"{ANSI['DIM']}{json.dumps(example_config, indent=2)}{ANSI['N']}")
 
 
 # --- Global MCP client registry ---
 _mcp_clients: dict[str, MCPClient] = {}
+_mcp_adapters: dict[str, MCPServerAdapter] = {}
 
 
-async def get_mcp_client(server_config: MCPServerConfig) -> MCPClient:
+async def get_mcp_client(server_config) -> MCPClient:
     """Get or create an MCP client for a server."""
     if server_config.name not in _mcp_clients:
         client = MCPClient(server_config)
+        log_msg_mcp(f"Connecting to {server_config.name}...")
         if await client.connect():
             _mcp_clients[server_config.name] = client
+            info_msg_mcp(f"Connected to {server_config.name}")
         else:
             raise Exception(f"Failed to connect to MCP server '{server_config.name}'")
 
     return _mcp_clients[server_config.name]
 
 
+async def get_mcp_adapter(server_name: str) -> MCPServerAdapter:
+    """Get or create a pydapter-based MCP server adapter."""
+    if server_name not in _mcp_adapters:
+        adapter = await create_mcp_server_adapter(server_name)
+        _mcp_adapters[server_name] = adapter
+    return _mcp_adapters[server_name]
+
+
 async def disconnect_all_clients():
-    """Disconnect all MCP clients."""
+    """Disconnect all MCP clients and adapters."""
     for client in _mcp_clients.values():
         await client.disconnect()
+    for adapter in _mcp_adapters.values():
+        await adapter.aclose()
     _mcp_clients.clear()
+    _mcp_adapters.clear()
 
 
 # --- Command Implementations ---
 async def cmd_list_servers(config: MCPConfig) -> dict[str, Any]:
     """List all configured MCP servers."""
+    if not config.servers:
+        if not config.json_output:
+            warn_msg_mcp("No MCP servers configured")
+            print_example_configs()
+        return {
+            "status": "success",
+            "message": "No MCP servers configured",
+            "servers": [],
+            "total_count": 0,
+        }
+    
     servers_info = []
 
     for server_name, server_config in config.servers.items():
@@ -444,10 +225,15 @@ async def cmd_server_status(
     """Get status of one or all MCP servers."""
     if server_name:
         if server_name not in config.servers:
+            available = list(config.servers.keys())
+            if available:
+                error_msg = f"Server '{server_name}' not found. Available servers: {', '.join(available)}"
+            else:
+                error_msg = f"Server '{server_name}' not found. No servers configured."
             return {
                 "status": "failure",
-                "message": f"Server '{server_name}' not found in configuration",
-                "available_servers": list(config.servers.keys()),
+                "message": error_msg,
+                "available_servers": available,
             }
 
         server_config = config.servers[server_name]
@@ -461,13 +247,15 @@ async def cmd_server_status(
             "status": "disconnected",
         }
 
-        # Check if we have an active connection
-        if server_name in _mcp_clients:
-            client = _mcp_clients[server_name]
-            if client.connected:
-                server_info["status"] = "connected"
-                server_info["server_info"] = client.server_info
-                server_info["tools"] = client.tools
+        # Try to connect if not already connected
+        try:
+            client = await get_mcp_client(server_config)
+            server_info["status"] = "connected"
+            server_info["server_info"] = client.server_info
+            server_info["tools"] = client.tools
+        except Exception as e:
+            server_info["status"] = "error"
+            server_info["error"] = str(e)
 
         return {
             "status": "success",
@@ -482,10 +270,15 @@ async def cmd_server_status(
 async def cmd_list_tools(config: MCPConfig, server_name: str) -> dict[str, Any]:
     """List tools available on a specific server."""
     if server_name not in config.servers:
+        available = list(config.servers.keys())
+        if available:
+            error_msg = f"Server '{server_name}' not found. Available servers: {', '.join(available)}"
+        else:
+            error_msg = f"Server '{server_name}' not found. No servers configured."
         return {
             "status": "failure",
-            "message": f"Server '{server_name}' not found in configuration",
-            "available_servers": list(config.servers.keys()),
+            "message": error_msg,
+            "available_servers": available,
         }
 
     if config.dry_run:
@@ -511,6 +304,7 @@ async def cmd_list_tools(config: MCPConfig, server_name: str) -> dict[str, Any]:
             "status": "failure",
             "message": f"Failed to list tools: {e}",
             "server": server_name,
+            "hint": "Make sure the server is running and accessible",
         }
 
 
@@ -573,14 +367,20 @@ def parse_tool_arguments(args: argparse.Namespace) -> dict[str, Any]:
 
 
 async def cmd_call_tool(
-    config: MCPConfig, server_name: str, tool_name: str, arguments: dict[str, Any]
+    config: MCPConfig, server_name: str, tool_name: str, arguments: dict[str, Any],
+    use_adapter: bool = False
 ) -> dict[str, Any]:
     """Call a tool on a specific server."""
     if server_name not in config.servers:
+        available = list(config.servers.keys())
+        if available:
+            error_msg = f"Server '{server_name}' not found. Available servers: {', '.join(available)}"
+        else:
+            error_msg = f"Server '{server_name}' not found. No servers configured."
         return {
             "status": "failure",
-            "message": f"Server '{server_name}' not found in configuration",
-            "available_servers": list(config.servers.keys()),
+            "message": error_msg,
+            "available_servers": available,
         }
 
     if config.dry_run:
@@ -593,26 +393,69 @@ async def cmd_call_tool(
         }
 
     try:
-        server_config = config.servers[server_name]
-        client = await get_mcp_client(server_config)
-        result = await client.call_tool(tool_name, arguments)
+        if use_adapter:
+            # Use pydapter-based MCP server adapter for enhanced features
+            adapter = await get_mcp_adapter(server_name)
+            request = MCPToolRequest(
+                server_name=server_name,
+                tool_name=tool_name,
+                arguments=arguments
+            )
+            response = await adapter.from_obj(request)
+            
+            if response.success:
+                return {
+                    "status": "success",
+                    "message": f"Tool '{tool_name}' executed successfully",
+                    "server": server_name,
+                    "tool": tool_name,
+                    "arguments": arguments,
+                    "result": response.result,
+                    "execution_time_ms": response.execution_time_ms,
+                }
+            else:
+                return {
+                    "status": "failure",
+                    "message": f"Tool execution failed: {response.error}",
+                    "server": server_name,
+                    "tool": tool_name,
+                    "arguments": arguments,
+                    "error": response.error,
+                }
+        else:
+            # Use direct MCP client
+            server_config = config.servers[server_name]
+            client = await get_mcp_client(server_config)
+            result = await client.call_tool(tool_name, arguments)
 
-        return {
-            "status": "success",
-            "message": f"Tool '{tool_name}' executed successfully",
-            "server": server_name,
-            "tool": tool_name,
-            "arguments": arguments,  # Include arguments in response for debugging
-            "result": result,
-        }
+            return {
+                "status": "success",
+                "message": f"Tool '{tool_name}' executed successfully",
+                "server": server_name,
+                "tool": tool_name,
+                "arguments": arguments,
+                "result": result,
+            }
     except Exception as e:
+        error_details = str(e)
+        hint = None
+        
+        # Provide helpful hints based on common errors
+        if "not found" in error_details.lower():
+            hint = f"Use 'khive mcp tools {server_name}' to see available tools"
+        elif "not in allowlist" in error_details.lower():
+            hint = "Update 'alwaysAllow' in .khive/mcps/config.json to allow this tool"
+        elif "connection" in error_details.lower():
+            hint = "Check if the MCP server is running and accessible"
+            
         return {
             "status": "failure",
-            "message": f"Failed to call tool: {e}",
+            "message": f"Failed to call tool: {error_details}",
             "server": server_name,
             "tool": tool_name,
             "arguments": arguments,
-            "error": str(e),
+            "error": error_details,
+            "hint": hint,
         }
 
 
@@ -642,9 +485,12 @@ async def main_mcp_flow(args: argparse.Namespace, config: MCPConfig) -> dict[str
                 return {
                     "status": "failure",
                     "message": f"Argument parsing error: {e}",
+                    "hint": "Use --var key=value or --json '{...}' for complex arguments",
                 }
 
-            return await cmd_call_tool(config, server_name, tool_name, arguments)
+            # Use adapter if requested
+            use_adapter = getattr(args, "use_adapter", False)
+            return await cmd_call_tool(config, server_name, tool_name, arguments, use_adapter)
 
         else:
             return {
@@ -661,56 +507,111 @@ async def main_mcp_flow(args: argparse.Namespace, config: MCPConfig) -> dict[str
 
 # --- CLI Entry Point ---
 def cli_entry_mcp() -> None:
-    parser = argparse.ArgumentParser(description="khive MCP server management.")
+    parser = argparse.ArgumentParser(
+        description="khive MCP server management - interact with AI tools via Model Context Protocol.",
+        epilog="""
+Examples:
+  khive mcp list                                    # List all configured servers
+  khive mcp status filesystem                       # Check status of 'filesystem' server
+  khive mcp tools github                            # List tools available on 'github' server
+  khive mcp call filesystem read_file --path /tmp/test.txt
+  khive mcp call github create_issue --title "Bug" --body "Description"
+  
+For more information, see: https://modelcontextprotocol.io
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
 
     # Global arguments
     parser.add_argument(
         "--project-root",
         type=Path,
         default=PROJECT_ROOT,
-        help="Project root directory.",
+        help="Project root directory (default: git root or current directory)",
     )
     parser.add_argument(
-        "--json-output", action="store_true", help="Output results in JSON format."
+        "--json-output", action="store_true", help="Output results in JSON format"
     )
     parser.add_argument(
-        "--dry-run", "-n", action="store_true", help="Show what would be done."
+        "--dry-run", "-n", action="store_true", help="Show what would be done without executing"
     )
     parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable verbose logging."
+        "--verbose", "-v", action="store_true", help="Enable verbose logging"
     )
 
     # Subcommands
-    subparsers = parser.add_subparsers(dest="command", help="MCP commands")
+    subparsers = parser.add_subparsers(dest="command", help="MCP commands", required=True)
 
     # List command
-    subparsers.add_parser("list", help="List configured MCP servers")
+    list_parser = subparsers.add_parser(
+        "list", 
+        help="List configured MCP servers",
+        description="Display all MCP servers configured in .khive/mcps/config.json"
+    )
 
     # Status command
-    status_parser = subparsers.add_parser("status", help="Show server status")
-    status_parser.add_argument("server", nargs="?", help="Specific server name")
+    status_parser = subparsers.add_parser(
+        "status", 
+        help="Show server status and connection info",
+        description="Check the status of MCP servers and their available tools"
+    )
+    status_parser.add_argument(
+        "server", 
+        nargs="?", 
+        help="Specific server name (shows all if omitted)"
+    )
 
     # Tools command
-    tools_parser = subparsers.add_parser("tools", help="List available tools")
-    tools_parser.add_argument("server", help="Server name")
+    tools_parser = subparsers.add_parser(
+        "tools", 
+        help="List available tools on a server",
+        description="Discover what tools (functions) are available on an MCP server"
+    )
+    tools_parser.add_argument("server", help="Server name to query")
 
     # Call command - Enhanced with natural argument parsing
-    call_parser = subparsers.add_parser("call", help="Call a tool")
+    call_parser = subparsers.add_parser(
+        "call", 
+        help="Call a tool on an MCP server",
+        description="Execute a tool (function) on an MCP server with arguments",
+        epilog="""
+Argument formats:
+  --key value              : Simple key-value pairs
+  --flag                   : Boolean flags (no value = true)
+  --var key=value          : Alternative key=value syntax
+  --json '{"key": "val"}'  : JSON for complex arguments
+  
+Examples:
+  khive mcp call fs read_file --path /etc/hosts
+  khive mcp call api request --method POST --var data='{"name": "test"}'
+  khive mcp call github create_issue --json '{"title": "Bug", "labels": ["bug", "urgent"]}'
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     call_parser.add_argument("server", help="Server name")
-    call_parser.add_argument("tool", help="Tool name")
+    call_parser.add_argument("tool", help="Tool name to call")
 
     # Support for --var key=value arguments
     call_parser.add_argument(
         "--var",
         action="append",
         help="Tool argument as key=value pair (can be repeated)",
+        metavar="KEY=VALUE"
     )
 
     # Support for JSON fallback
     call_parser.add_argument(
         "--json",
         dest="json_args",
-        help="Tool arguments as JSON string (fallback for complex arguments)",
+        help="Tool arguments as JSON string (for complex arguments)",
+        metavar="JSON"
+    )
+    
+    # Use pydapter integration
+    call_parser.add_argument(
+        "--use-adapter",
+        action="store_true",
+        help="Use pydapter-based adapter for enhanced features (audit logging, etc.)"
     )
 
     # Parse known args to allow unknown flags for tool arguments
@@ -719,10 +620,6 @@ def cli_entry_mcp() -> None:
     # If we're in call command, process unknown args as tool arguments
     if args.command == "call":
         args.tool_args = unknown
-
-    if not args.command:
-        parser.print_help()
-        sys.exit(1)
 
     global verbose_mode
     verbose_mode = args.verbose
@@ -734,6 +631,14 @@ def cli_entry_mcp() -> None:
         )
 
     config = load_mcp_config(args.project_root, args)
+
+    # Show helpful message if no servers configured
+    if not config.servers and args.command != "list":
+        if not args.json_output:
+            warn_msg_mcp("No MCP servers configured")
+            print_example_configs()
+            print(f"\n{ANSI['C']}Create the config file at:{ANSI['N']} {config.mcps_config_file}")
+        die_mcp("No MCP servers configured", json_output_flag=args.json_output)
 
     result = asyncio.run(main_mcp_flow(args, config))
 
@@ -750,47 +655,70 @@ def cli_entry_mcp() -> None:
 
         print(f"{status_icon} {result.get('message', 'Operation completed')}")
 
+        # Show hint if available
+        if "hint" in result:
+            print(f"{ANSI['DIM']}💡 Hint: {result['hint']}{ANSI['N']}")
+
         # Show additional details for specific commands
         if args.command == "list" and "servers" in result:
-            print("\nConfigured MCP Servers:")
-            for server in result["servers"]:
-                status_color = {
-                    "connected": ANSI["G"],
-                    "disconnected": ANSI["Y"],
-                }.get(server["status"], ANSI["R"])
+            if result["servers"]:
+                print(f"\n{ANSI['B']}Configured MCP Servers:{ANSI['N']}")
+                for server in result["servers"]:
+                    status_color = {
+                        "connected": ANSI["G"],
+                        "disconnected": ANSI["Y"],
+                        "error": ANSI["R"],
+                    }.get(server["status"], ANSI["R"])
 
-                disabled_indicator = " (disabled)" if server["disabled"] else ""
-                print(
-                    f"  • {server['name']}: {status_color}{server['status']}{ANSI['N']}{disabled_indicator}"
-                )
-                print(f"    Command: {server['command']}")
-                print(f"    Operations: {server['operations_count']}")
-                if "tools_count" in server:
-                    print(f"    Tools: {server['tools_count']}")
+                    disabled_indicator = f" {ANSI['DIM']}(disabled){ANSI['N']}" if server["disabled"] else ""
+                    print(
+                        f"  {ANSI['C']}•{ANSI['N']} {server['name']}: {status_color}{server['status']}{ANSI['N']}{disabled_indicator}"
+                    )
+                    print(f"    {ANSI['DIM']}Command: {server['command']}")
+                    if server.get("operations_count", 0) > 0:
+                        print(f"    Allowed operations: {server['operations_count']}")
+                    if "tools_count" in server:
+                        print(f"    Available tools: {server['tools_count']}{ANSI['N']}")
 
         elif args.command == "tools" and "tools" in result:
-            print(f"\nAvailable Tools on {args.server}:")
-            for tool in result["tools"]:
-                print(f"  • {tool.get('name', 'unnamed')}")
-                if "description" in tool:
-                    print(f"    {tool['description']}")
-                if "inputSchema" in tool and "properties" in tool["inputSchema"]:
-                    params = list(tool["inputSchema"]["properties"].keys())
-                    print(f"    Parameters: {', '.join(params)}")
+            if result["tools"]:
+                print(f"\n{ANSI['B']}Available Tools on {args.server}:{ANSI['N']}")
+                for tool in result["tools"]:
+                    print(f"  {ANSI['C']}•{ANSI['N']} {ANSI['M']}{tool.get('name', 'unnamed')}{ANSI['N']}")
+                    if "description" in tool:
+                        print(f"    {tool['description']}")
+                    if "inputSchema" in tool and "properties" in tool["inputSchema"]:
+                        params = list(tool["inputSchema"]["properties"].keys())
+                        required = tool["inputSchema"].get("required", [])
+                        param_strs = []
+                        for p in params:
+                            if p in required:
+                                param_strs.append(f"{ANSI['Y']}{p}{ANSI['N']} (required)")
+                            else:
+                                param_strs.append(f"{ANSI['DIM']}{p}{ANSI['N']}")
+                        print(f"    Parameters: {', '.join(param_strs)}")
+            else:
+                print(f"\n{ANSI['DIM']}No tools available on this server{ANSI['N']}")
 
         elif args.command == "call" and "result" in result:
-            print("\nTool Result:")
-            if "content" in result["result"]:
+            print(f"\n{ANSI['B']}Tool Result:{ANSI['N']}")
+            if isinstance(result["result"], dict) and "content" in result["result"]:
                 for content in result["result"]["content"]:
                     if content.get("type") == "text":
                         print(content.get("text", ""))
             else:
+                # Pretty print JSON result
                 print(json.dumps(result["result"], indent=2))
+
+            # Show execution time if available
+            if "execution_time_ms" in result:
+                print(f"\n{ANSI['DIM']}Execution time: {result['execution_time_ms']:.2f}ms{ANSI['N']}")
 
             # Show the parsed arguments if verbose
             if verbose_mode and "arguments" in result:
-                print("\nParsed Arguments:")
+                print(f"\n{ANSI['DIM']}Parsed Arguments:")
                 print(json.dumps(result["arguments"], indent=2))
+                print(ANSI['N'])
 
     # Exit with appropriate code
     if result.get("status") == "failure":
@@ -810,6 +738,15 @@ def main(argv: list[str] | None = None) -> None:
 
     try:
         cli_entry_mcp()
+    except KeyboardInterrupt:
+        error_msg_mcp("\nOperation cancelled by user")
+        sys.exit(130)  # Standard exit code for SIGINT
+    except Exception as e:
+        if verbose_mode:
+            import traceback
+            traceback.print_exc()
+        error_msg_mcp(f"Unexpected error: {e}")
+        sys.exit(1)
     finally:
         # Restore original args
         sys.argv = original_argv
