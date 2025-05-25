@@ -58,15 +58,18 @@ The scope of this implementation plan includes:
 ### 4.1 README.md Updates
 
 1. **Command Consistency**
+
    - Update all references to `khive search` to `khive info search`
    - Specifically update line 76 in the Command Catalogue table
    - Update any examples that use `khive search`
 
 2. **API Key Information**
+
    - Move API key requirements to a dedicated "Setup" section
    - Expand with more details on how to obtain and configure API keys
 
 3. **Project Layout**
+
    - Revise to describe directory structure at a higher, architectural level
    - Focus on the purpose of each directory rather than individual files
    - Explain the relationship between cli/, commands/, services/, etc.
@@ -84,6 +87,7 @@ The scope of this implementation plan includes:
 ### 4.3 CHANGELOG.md Updates
 
 1. Add an "Unreleased" section at the top of the file:
+
    ```markdown
    ## [Unreleased]
 
@@ -97,6 +101,7 @@ The scope of this implementation plan includes:
 ### 4.4 docs/ Directory Updates
 
 1. **Review all files in docs/ directory**
+
    - Ensure consistency with current command structure
    - Update any outdated information
    - Verify all examples are correct and runnable

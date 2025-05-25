@@ -1,7 +1,7 @@
 ---
 title: "Roo Lite"
 version: "1.1"
-scope:  "project"
+scope: "project"
 created: "2025-05-05"
 updated: "2025-05-09"
 description: >

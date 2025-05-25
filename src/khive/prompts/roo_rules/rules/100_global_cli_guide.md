@@ -52,7 +52,7 @@ khive new-doc <TYPE> <issue-number>
 
 # Common types:
 khive new-doc RR 123   # Research Report
-khive new-doc TDS 123  # Technical Design Spec  
+khive new-doc TDS 123  # Technical Design Spec
 khive new-doc IP 123   # Implementation Plan
 khive new-doc CRR 123  # Code Review Report
 

@@ -3,15 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-khive_ci.py - Enhanced CI command with custom script support.
+khive_ci.py - Enhanced CI command with nested configuration support.
 
 Features
 ========
 * Multi-stack test execution (Python, Rust)
+* Nested configuration support for monorepos
 * Custom CI script support via .khive/scripts/khive_ci.sh
 * Proper async execution with timeout handling
 * JSON output support
-* Configurable via TOML
+* Configurable via TOML at multiple levels
+* Respects pytest.ini and pyproject.toml configurations
 
 CLI
 ---
@@ -26,6 +28,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -58,7 +61,10 @@ ANSI = {
     "R": "\033[31m" if sys.stdout.isatty() else "",
     "Y": "\033[33m" if sys.stdout.isatty() else "",
     "B": "\033[34m" if sys.stdout.isatty() else "",
+    "M": "\033[35m" if sys.stdout.isatty() else "",
+    "C": "\033[36m" if sys.stdout.isatty() else "",
     "N": "\033[0m" if sys.stdout.isatty() else "",
+    "BOLD": "\033[1m" if sys.stdout.isatty() else "",
 }
 verbose_mode = False
 
@@ -105,7 +111,91 @@ def die_ci(
     sys.exit(1)
 
 
+# --- Test Output Parsing ---
+@dataclass
+class PytestSummary:
+    """Parsed pytest output summary."""
+
+    passed: int = 0
+    failed: int = 0
+    skipped: int = 0
+    errors: int = 0
+    warnings: int = 0
+    duration: float = 0.0
+    coverage_percent: float | None = None
+    test_files: list[str] = field(default_factory=list)
+    failures: list[str] = field(default_factory=list)
+
+    @property
+    def total(self) -> int:
+        return self.passed + self.failed + self.skipped + self.errors
+
+    @property
+    def success(self) -> bool:
+        return self.failed == 0 and self.errors == 0
+
+
+def parse_pytest_output(output: str) -> PytestSummary:
+    """Parse pytest output to extract key metrics."""
+    summary = PytestSummary()
+
+    # Parse test results line (e.g., "369 passed, 4 skipped, 9 warnings in 5.95s")
+    results_pattern = r"(\d+)\s+passed|(\d+)\s+failed|(\d+)\s+skipped|(\d+)\s+error|(\d+)\s+warnings?\s+in\s+([\d.]+)s"
+    for match in re.finditer(results_pattern, output):
+        if match.group(1):
+            summary.passed = int(match.group(1))
+        elif match.group(2):
+            summary.failed = int(match.group(2))
+        elif match.group(3):
+            summary.skipped = int(match.group(3))
+        elif match.group(4):
+            summary.errors = int(match.group(4))
+        elif match.group(5):
+            summary.warnings = int(match.group(5))
+        elif match.group(6):
+            summary.duration = float(match.group(6))
+
+    # Parse coverage if present
+    coverage_pattern = r"TOTAL\s+\d+\s+\d+\s+(\d+)%"
+    coverage_match = re.search(coverage_pattern, output)
+    if coverage_match:
+        summary.coverage_percent = float(coverage_match.group(1))
+
+    # Parse test file names
+    file_pattern = r"^(tests/[^\s]+\.py)\s+"
+    for match in re.finditer(file_pattern, output, re.MULTILINE):
+        summary.test_files.append(match.group(1))
+
+    # Parse failures
+    failure_section = re.search(r"=+ FAILURES =+(.+?)(?:=+ |$)", output, re.DOTALL)
+    if failure_section:
+        summary.failures = [
+            line.strip()
+            for line in failure_section.group(1).split("\n")
+            if line.strip()
+        ]
+
+    return summary
+
+
 # --- Configuration ---
+@dataclass
+class TestConfig:
+    """Configuration for a specific test type."""
+
+    test_command: str
+    test_tool: str
+    config_file: str | None = None
+    test_paths: list[str] = field(default_factory=list)
+    timeout: int | None = None
+    coverage: bool = False
+    coverage_threshold: float = 80.0
+    extra_args: list[str] = field(default_factory=list)
+    env: dict[str, str] = field(default_factory=dict)
+    use_native_discovery: bool = True  # New: respect tool's native discovery
+    show_output: str = "smart"  # New: always/never/smart/on-failure
+
+
 @dataclass
 class CIConfig:
     project_root: Path
@@ -113,10 +203,47 @@ class CIConfig:
     json_output: bool = False
     dry_run: bool = False
     verbose: bool = False
+    test_configs: dict[str, TestConfig] = field(default_factory=dict)
+    enabled_tests: list[str] = field(default_factory=list)
 
     @property
     def khive_config_dir(self) -> Path:
         return self.project_root / ".khive"
+
+
+def load_pytest_config(project_root: Path) -> dict[str, Any]:
+    """Load pytest configuration from pytest.ini or pyproject.toml."""
+    config = {}
+
+    # Check pyproject.toml first (higher priority)
+    pyproject_path = project_root / "pyproject.toml"
+    if pyproject_path.exists():
+        try:
+            pyproject_data = tomllib.loads(pyproject_path.read_text())
+            tool_pytest = pyproject_data.get("tool", {}).get("pytest", {})
+            if tool_pytest:
+                config.update(tool_pytest)
+                log_msg_ci(f"Loaded pytest config from {pyproject_path}")
+        except Exception as e:
+            warn_msg_ci(f"Could not parse pytest config from pyproject.toml: {e}")
+
+    # Check pytest.ini
+    pytest_ini = project_root / "pytest.ini"
+    if pytest_ini.exists():
+        try:
+            import configparser
+
+            parser = configparser.ConfigParser()
+            parser.read(pytest_ini)
+            if "pytest" in parser:
+                for key, value in parser["pytest"].items():
+                    if key not in config:  # pyproject.toml takes precedence
+                        config[key] = value
+                log_msg_ci(f"Loaded pytest config from {pytest_ini}")
+        except Exception as e:
+            warn_msg_ci(f"Could not parse pytest.ini: {e}")
+
+    return config
 
 
 def load_ci_config(
@@ -124,15 +251,90 @@ def load_ci_config(
 ) -> CIConfig:
     cfg = CIConfig(project_root=project_r)
 
+    # Default test configurations
+    default_python_config = TestConfig(
+        test_command="pytest",
+        test_tool="pytest",
+        test_paths=[],
+        extra_args=[],
+        use_native_discovery=True,
+        show_output="smart",
+    )
+
+    default_rust_config = TestConfig(
+        test_command="cargo test",
+        test_tool="cargo",
+        test_paths=[],
+        extra_args=[],
+        show_output="smart",
+    )
+
     # Load configuration from .khive/ci.toml if it exists
     config_file = cfg.khive_config_dir / "ci.toml"
     if config_file.exists():
         log_msg_ci(f"Loading CI config from {config_file}")
         try:
             raw_toml = tomllib.loads(config_file.read_text())
+
+            # Load general settings
             cfg.timeout = raw_toml.get("timeout", cfg.timeout)
+            cfg.enabled_tests = raw_toml.get("enable", ["python", "rust"])
+
+            # Load test-specific configurations
+            test_configs = raw_toml.get("tests", {})
+
+            for test_type, test_config in test_configs.items():
+                if test_type == "python":
+                    cfg.test_configs["python"] = TestConfig(
+                        test_command=test_config.get(
+                            "command", default_python_config.test_command
+                        ),
+                        test_tool=test_config.get(
+                            "tool", default_python_config.test_tool
+                        ),
+                        test_paths=test_config.get("paths", []),
+                        timeout=test_config.get("timeout"),
+                        coverage=test_config.get("coverage", False),
+                        coverage_threshold=test_config.get("coverage_threshold", 80.0),
+                        extra_args=test_config.get("extra_args", []),
+                        env=test_config.get("env", {}),
+                        use_native_discovery=test_config.get(
+                            "use_native_discovery", True
+                        ),
+                        show_output=test_config.get("show_output", "smart"),
+                    )
+                elif test_type == "rust":
+                    cfg.test_configs["rust"] = TestConfig(
+                        test_command=test_config.get(
+                            "command", default_rust_config.test_command
+                        ),
+                        test_tool=test_config.get(
+                            "tool", default_rust_config.test_tool
+                        ),
+                        test_paths=test_config.get("paths", []),
+                        timeout=test_config.get("timeout"),
+                        extra_args=test_config.get("extra_args", []),
+                        env=test_config.get("env", {}),
+                        show_output=test_config.get("show_output", "smart"),
+                    )
+                else:
+                    # Custom test type
+                    cfg.test_configs[test_type] = TestConfig(
+                        test_command=test_config.get("command", ""),
+                        test_tool=test_config.get("tool", ""),
+                        test_paths=test_config.get("paths", []),
+                        timeout=test_config.get("timeout"),
+                        extra_args=test_config.get("extra_args", []),
+                        env=test_config.get("env", {}),
+                        show_output=test_config.get("show_output", "smart"),
+                    )
+
         except Exception as e:
             warn_msg_ci(f"Could not parse {config_file}: {e}. Using default values.")
+    else:
+        # No config file, use defaults
+        cfg.test_configs["python"] = default_python_config
+        cfg.test_configs["rust"] = default_rust_config
 
     # Apply CLI arguments
     if cli_args:
@@ -148,7 +350,7 @@ def load_ci_config(
     return cfg
 
 
-# --- Data Classes (same as original) ---
+# --- Data Classes ---
 @dataclass
 class CITestResult:
     """Represents the result of a test execution."""
@@ -160,6 +362,8 @@ class CITestResult:
     stderr: str
     duration: float
     success: bool
+    project_path: str | None = None
+    summary: PytestSummary | None = None  # New: parsed test summary
 
 
 @dataclass
@@ -169,6 +373,7 @@ class CIResult:
     project_root: Path
     test_results: list[CITestResult] = field(default_factory=list)
     discovered_projects: dict[str, dict[str, Any]] = field(default_factory=dict)
+    nested_results: list[dict[str, Any]] = field(default_factory=list)
     overall_success: bool = True
     total_duration: float = 0.0
 
@@ -180,61 +385,147 @@ class CIResult:
             self.overall_success = False
 
 
-# --- Project Detection (exact copy from original) ---
-def detect_project_types(project_root: Path) -> dict[str, dict[str, Any]]:
+# --- Project Detection ---
+def detect_project_types(
+    project_root: Path, config: CIConfig | None = None
+) -> dict[str, dict[str, Any]]:
     """
-    Detect project types and their test configurations.
+    Detect project types and their test configurations within a specific directory.
 
     Args:
         project_root: Path to the project root directory
+        config: CIConfig with test configurations
 
     Returns:
         Dictionary mapping project types to their configurations
     """
     projects = {}
 
+    # Check if we should skip directories with their own configs
+    skip_nested = project_root == (config.project_root if config else project_root)
+
     # Check for Python project
-    if (project_root / "pyproject.toml").exists():
-        projects["python"] = {
-            "test_command": "pytest",
-            "test_tool": "pytest",
-            "config_file": "pyproject.toml",
-            "test_paths": _discover_python_test_paths(project_root),
-        }
-    elif (project_root / "setup.py").exists() or (
-        project_root / "requirements.txt"
+    if (project_root / "pyproject.toml").exists() or (
+        project_root / "setup.py"
     ).exists():
-        projects["python"] = {
-            "test_command": "pytest",
-            "test_tool": "pytest",
-            "config_file": None,
-            "test_paths": _discover_python_test_paths(project_root),
-        }
+        python_config = config.test_configs.get("python") if config else None
+        if python_config:
+            # If native discovery is enabled and no paths specified, let pytest handle it
+            test_paths = python_config.test_paths
+            if python_config.use_native_discovery and not test_paths:
+                test_paths = []  # Empty list means pytest will use its own discovery
+            elif not test_paths:
+                test_paths = _discover_python_test_paths(project_root, skip_nested)
+
+            projects["python"] = {
+                "test_command": python_config.test_command,
+                "test_tool": python_config.test_tool,
+                "config_file": "pyproject.toml"
+                if (project_root / "pyproject.toml").exists()
+                else None,
+                "test_paths": test_paths,
+                "timeout": python_config.timeout,
+                "coverage": python_config.coverage,
+                "coverage_threshold": python_config.coverage_threshold,
+                "extra_args": python_config.extra_args,
+                "env": python_config.env,
+                "use_native_discovery": python_config.use_native_discovery,
+                "show_output": python_config.show_output,
+            }
+        else:
+            projects["python"] = {
+                "test_command": "pytest",
+                "test_tool": "pytest",
+                "config_file": "pyproject.toml"
+                if (project_root / "pyproject.toml").exists()
+                else None,
+                "test_paths": [],  # Let pytest discover
+                "use_native_discovery": True,
+                "show_output": "smart",
+            }
 
     # Check for Rust project
     if (project_root / "Cargo.toml").exists():
-        projects["rust"] = {
-            "test_command": "cargo test",
-            "test_tool": "cargo",
-            "config_file": "Cargo.toml",
-            "test_paths": _discover_rust_test_paths(project_root),
-        }
+        rust_config = config.test_configs.get("rust") if config else None
+        if rust_config:
+            projects["rust"] = {
+                "test_command": rust_config.test_command,
+                "test_tool": rust_config.test_tool,
+                "config_file": "Cargo.toml",
+                "test_paths": rust_config.test_paths
+                or _discover_rust_test_paths(project_root),
+                "timeout": rust_config.timeout,
+                "extra_args": rust_config.extra_args,
+                "env": rust_config.env,
+                "show_output": rust_config.show_output,
+            }
+        else:
+            projects["rust"] = {
+                "test_command": "cargo test",
+                "test_tool": "cargo",
+                "config_file": "Cargo.toml",
+                "test_paths": _discover_rust_test_paths(project_root),
+                "show_output": "smart",
+            }
+
+    # Check for custom test types from config
+    if config:
+        for test_type, test_config in config.test_configs.items():
+            if test_type not in ["python", "rust"] and test_config.test_command:
+                projects[test_type] = {
+                    "test_command": test_config.test_command,
+                    "test_tool": test_config.test_tool,
+                    "config_file": test_config.config_file,
+                    "test_paths": test_config.test_paths,
+                    "timeout": test_config.timeout,
+                    "extra_args": test_config.extra_args,
+                    "env": test_config.env,
+                    "show_output": test_config.show_output,
+                }
+
+    # Filter by enabled tests
+    if config and config.enabled_tests:
+        projects = {k: v for k, v in projects.items() if k in config.enabled_tests}
 
     return projects
 
 
-def _discover_python_test_paths(project_root: Path) -> list[str]:
-    """Discover Python test paths."""
+def _discover_python_test_paths(
+    project_root: Path, skip_nested: bool = True
+) -> list[str]:
+    """Discover Python test paths, optionally skipping nested projects."""
     test_paths = []
+
+    # Collect directories to skip if they have their own CI config
+    dirs_to_skip = set()
+    if skip_nested:
+        for ci_config in project_root.rglob(".khive/ci.toml"):
+            if ci_config.parent.parent != project_root:
+                dirs_to_skip.add(ci_config.parent.parent)
 
     # Common test directories
     common_test_dirs = ["tests", "test", "src/tests"]
     for test_dir in common_test_dirs:
         test_path = project_root / test_dir
         if test_path.exists() and test_path.is_dir():
-            test_paths.append(str(test_path.relative_to(project_root)))
+            # Check if this path is inside a nested project
+            skip = False
+            for skip_dir in dirs_to_skip:
+                try:
+                    test_path.relative_to(skip_dir)
+                    skip = True
+                    break
+                except ValueError:
+                    continue
 
-    # Look for test files in common patterns, but exclude virtual environments
+            if not skip:
+                test_paths.append(str(test_path.relative_to(project_root)))
+
+    # If we found common test directories, don't look for individual files
+    if test_paths:
+        return test_paths
+
+    # Look for test files in common patterns
     test_patterns = ["test_*.py", "*_test.py"]
     for pattern in test_patterns:
         for test_file in project_root.rglob(pattern):
@@ -245,7 +536,17 @@ def _discover_python_test_paths(project_root: Path) -> list[str]:
             ):
                 continue
 
-            if test_file.is_file():
+            # Skip if in a nested project
+            skip = False
+            for skip_dir in dirs_to_skip:
+                try:
+                    test_file.relative_to(skip_dir)
+                    skip = True
+                    break
+                except ValueError:
+                    continue
+
+            if not skip and test_file.is_file():
                 test_dir = str(test_file.parent.relative_to(project_root))
                 if test_dir not in test_paths and test_dir != ".":
                     test_paths.append(test_dir)
@@ -287,6 +588,137 @@ def validate_test_tools(projects: dict[str, dict[str, Any]]) -> dict[str, bool]:
         tool_availability[project_type] = shutil.which(tool) is not None
 
     return tool_availability
+
+
+# --- Nested Directory Support ---
+async def run_ci_for_nested_directory(
+    dir_path: Path, parent_config: CIConfig, cli_args: argparse.Namespace
+) -> dict[str, Any] | None:
+    """
+    Run CI for a directory with its own .khive/ci.toml configuration.
+
+    Returns the result dict if CI was run, None otherwise.
+    """
+    nested_config_path = dir_path / ".khive" / "ci.toml"
+
+    if not nested_config_path.exists():
+        return None
+
+    info_msg_ci(
+        f"Processing nested project: {dir_path.relative_to(parent_config.project_root)}",
+        console=not parent_config.json_output,
+    )
+
+    # Create a new config for this subdirectory
+    nested_config = load_ci_config(dir_path, cli_args)
+
+    # Check for custom CI script in nested directory
+    custom_result = await check_and_run_custom_ci_script(nested_config)
+    if custom_result:
+        return {
+            "directory": str(dir_path.relative_to(parent_config.project_root)),
+            "status": "success" if custom_result.overall_success else "failure",
+            "test_results": [
+                {
+                    "test_type": tr.test_type,
+                    "command": tr.command,
+                    "exit_code": tr.exit_code,
+                    "success": tr.success,
+                    "duration": tr.duration,
+                    "stdout": tr.stdout if parent_config.verbose else "",
+                    "stderr": tr.stderr if parent_config.verbose else "",
+                }
+                for tr in custom_result.test_results
+            ],
+            "duration": custom_result.total_duration,
+        }
+
+    # Otherwise, run standard CI for this directory
+    result = CIResult(project_root=dir_path)
+
+    # Discover projects in this directory
+    discovered_projects = detect_project_types(dir_path, nested_config)
+    result.discovered_projects = discovered_projects
+
+    if not discovered_projects:
+        return {
+            "directory": str(dir_path.relative_to(parent_config.project_root)),
+            "status": "skipped",
+            "message": f"No test projects discovered in {dir_path.name}",
+            "test_results": [],
+            "duration": 0.0,
+        }
+
+    # Validate tools
+    tool_availability = validate_test_tools(discovered_projects)
+    missing_tools = [
+        project_type
+        for project_type, available in tool_availability.items()
+        if not available
+    ]
+
+    if missing_tools:
+        return {
+            "directory": str(dir_path.relative_to(parent_config.project_root)),
+            "status": "error",
+            "message": f"Missing required tools for {dir_path.name}: {', '.join(missing_tools)}",
+            "test_results": [],
+            "duration": 0.0,
+        }
+
+    if nested_config.dry_run:
+        return {
+            "directory": str(dir_path.relative_to(parent_config.project_root)),
+            "status": "dry_run",
+            "would_execute": [
+                f"{config['test_command']} for {project_type}"
+                for project_type, config in discovered_projects.items()
+            ],
+            "test_results": [],
+            "duration": 0.0,
+        }
+
+    # Execute tests
+    for project_type, proj_config in discovered_projects.items():
+        if not parent_config.verbose and not parent_config.json_output:
+            print(f"Running {project_type} tests in {dir_path.name}...")
+
+        test_result = await execute_tests_async(
+            project_root=dir_path,
+            project_type=project_type,
+            config=proj_config,
+            timeout=proj_config.get("timeout", nested_config.timeout),
+            verbose=parent_config.verbose,
+        )
+        test_result.project_path = str(dir_path.relative_to(parent_config.project_root))
+
+        result.add_test_result(test_result)
+
+        # Show test output based on configuration
+        show_output = proj_config.get("show_output", "smart")
+        should_show = should_show_output(show_output, test_result, parent_config)
+
+        if should_show and not parent_config.json_output:
+            display_test_output(test_result, project_type, dir_path.name)
+
+    return {
+        "directory": str(dir_path.relative_to(parent_config.project_root)),
+        "status": "success" if result.overall_success else "failure",
+        "test_results": [
+            {
+                "test_type": tr.test_type,
+                "command": tr.command,
+                "exit_code": tr.exit_code,
+                "success": tr.success,
+                "duration": tr.duration,
+                "stdout": tr.stdout if parent_config.verbose else "",
+                "stderr": tr.stderr if parent_config.verbose else "",
+                "summary": tr.summary.__dict__ if tr.summary else None,
+            }
+            for tr in result.test_results
+        ],
+        "duration": result.total_duration,
+    }
 
 
 # --- Custom Script Support ---
@@ -494,26 +926,54 @@ async def execute_tests_async(
     """
     start_time = time.time()
 
-    # Prepare command (same logic as original)
-    if project_type == "python":
-        cmd = ["pytest"]
-        if verbose:
-            cmd.append("-v")
-        # Add test paths if specified
-        if config.get("test_paths"):
-            cmd.extend(config["test_paths"])
-    elif project_type == "rust":
-        cmd = ["cargo", "test"]
-        if verbose:
-            cmd.append("--verbose")
-    else:
-        raise ValueError(f"Unsupported project type: {project_type}")
+    # Build command based on configuration
+    cmd_parts = config["test_command"].split()
+    cmd = []
+
+    # Add environment variables
+    env = os.environ.copy()
+    if config.get("env"):
+        env.update(config["env"])
+
+    # Build the command
+    for part in cmd_parts:
+        cmd.append(part)
+
+    # For Python, respect pytest configuration
+    if project_type == "python" and config["test_tool"] == "pytest":
+        # Load pytest configuration
+        pytest_config = load_pytest_config(project_root)
+
+        # Don't add verbose flag if it's already in pytest config
+        if verbose and "-v" not in cmd and "--verbose" not in cmd:
+            if not pytest_config.get("verbose"):
+                cmd.append("-v")
+
+        # Add coverage if requested
+        if config.get("coverage"):
+            # Check if coverage is already configured
+            if "--cov" not in cmd:
+                cmd.extend(["--cov", "--cov-report=term-missing"])
+                if config.get("coverage_threshold"):
+                    cmd.extend(["--cov-fail-under", str(config["coverage_threshold"])])
+
+    elif project_type == "rust" and verbose:
+        cmd.append("--verbose")
+
+    # Add extra arguments
+    if config.get("extra_args"):
+        cmd.extend(config["extra_args"])
+
+    # Add test paths only if specified and not using native discovery
+    if config.get("test_paths") and not config.get("use_native_discovery", False):
+        cmd.extend(config["test_paths"])
 
     try:
         # Use async subprocess for better control
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             cwd=project_root,
+            env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -528,6 +988,11 @@ async def execute_tests_async(
 
         duration = time.time() - start_time
 
+        # Parse pytest output if applicable
+        summary = None
+        if project_type == "python" and "pytest" in config["test_tool"]:
+            summary = parse_pytest_output(stdout + "\n" + stderr)
+
         return CITestResult(
             test_type=project_type,
             command=" ".join(cmd),
@@ -536,6 +1001,7 @@ async def execute_tests_async(
             stderr=stderr,
             duration=duration,
             success=exit_code == 0,
+            summary=summary,
         )
 
     except asyncio.TimeoutError:
@@ -562,7 +1028,132 @@ async def execute_tests_async(
         )
 
 
-# --- Output Formatting (same as original) ---
+# --- Output Display Helpers ---
+def should_show_output(
+    show_output: str, test_result: CITestResult, config: CIConfig
+) -> bool:
+    """Determine if test output should be shown based on configuration."""
+    if config.json_output:
+        return False
+
+    if show_output == "always":
+        return True
+    elif show_output == "never":
+        return False
+    elif show_output == "on-failure":
+        return not test_result.success
+    elif show_output == "smart":
+        # Show on failure or if there's important information
+        if not test_result.success:
+            return True
+        if test_result.summary:
+            # Show if there are warnings, skipped tests, or low coverage
+            if test_result.summary.warnings > 0 or test_result.summary.skipped > 0:
+                return True
+            if (
+                test_result.summary.coverage_percent is not None
+                and test_result.summary.coverage_percent < 80
+            ):
+                return True
+        return config.verbose
+
+    return False
+
+
+def display_test_output(
+    test_result: CITestResult, project_type: str, project_name: str = ""
+) -> None:
+    """Display test output in a user-friendly format."""
+    project_info = f" in {project_name}" if project_name else ""
+
+    if test_result.success:
+        # For successful tests, show a summary if we have pytest data
+        if test_result.summary and test_result.summary.total > 0:
+            print(
+                f"\n{ANSI['G']}✓ {project_type} tests passed{project_info}:{ANSI['N']}"
+            )
+
+            # Show test counts
+            parts = []
+            if test_result.summary.passed > 0:
+                parts.append(
+                    f"{ANSI['G']}{test_result.summary.passed} passed{ANSI['N']}"
+                )
+            if test_result.summary.skipped > 0:
+                parts.append(
+                    f"{ANSI['Y']}{test_result.summary.skipped} skipped{ANSI['N']}"
+                )
+            if test_result.summary.warnings > 0:
+                parts.append(
+                    f"{ANSI['Y']}{test_result.summary.warnings} warnings{ANSI['N']}"
+                )
+
+            print(f"  {' · '.join(parts)} in {test_result.summary.duration:.2f}s")
+
+            # Show coverage if available
+            if test_result.summary.coverage_percent is not None:
+                coverage_color = (
+                    ANSI["G"]
+                    if test_result.summary.coverage_percent >= 80
+                    else ANSI["Y"]
+                )
+                print(
+                    f"  Coverage: {coverage_color}{test_result.summary.coverage_percent:.1f}%{ANSI['N']}"
+                )
+
+            # Show warnings or important info from output
+            if test_result.summary.warnings > 0 and test_result.stdout:
+                # Extract warning section
+                warning_section = re.search(
+                    r"=+ warnings summary =+(.+?)(?:=+ |$)",
+                    test_result.stdout,
+                    re.DOTALL,
+                )
+                if warning_section:
+                    print(f"\n{ANSI['Y']}Warnings:{ANSI['N']}")
+                    warning_lines = (
+                        warning_section.group(1).strip().split("\n")[:5]
+                    )  # Show first 5
+                    for line in warning_lines:
+                        print(f"  {line}")
+                    if len(warning_lines) < test_result.summary.warnings:
+                        print(
+                            f"  ... and {test_result.summary.warnings - len(warning_lines)} more"
+                        )
+        else:
+            # Fallback to simple output
+            print(test_result.stdout)
+    else:
+        # For failed tests, show full output
+        print(f"\n{ANSI['R']}✗ {project_type} tests failed{project_info}:{ANSI['N']}")
+        print(f"Command: {test_result.command}")
+
+        if test_result.summary and test_result.summary.total > 0:
+            # Show failure summary
+            parts = []
+            if test_result.summary.failed > 0:
+                parts.append(
+                    f"{ANSI['R']}{test_result.summary.failed} failed{ANSI['N']}"
+                )
+            if test_result.summary.errors > 0:
+                parts.append(
+                    f"{ANSI['R']}{test_result.summary.errors} errors{ANSI['N']}"
+                )
+            if test_result.summary.passed > 0:
+                parts.append(
+                    f"{ANSI['G']}{test_result.summary.passed} passed{ANSI['N']}"
+                )
+
+            print(f"  {' · '.join(parts)}")
+
+        # Show output
+        if test_result.stdout:
+            print(f"\n{test_result.stdout}")
+        if test_result.stderr:
+            print(f"\n{ANSI['R']}Errors:{ANSI['N']}\n{test_result.stderr}")
+
+
+# --- Output Formatting ---
 def format_output(
     result: CIResult, json_output: bool = False, verbose: bool = False
 ) -> str:
@@ -590,59 +1181,105 @@ def format_output(
                     "exit_code": tr.exit_code,
                     "success": tr.success,
                     "duration": tr.duration,
+                    "project_path": tr.project_path,
                     "stdout": tr.stdout if verbose else "",
                     "stderr": tr.stderr if verbose else "",
+                    "summary": tr.summary.__dict__ if tr.summary else None,
                 }
                 for tr in result.test_results
             ],
+            "nested_results": result.nested_results,
         }
         return json.dumps(output_data, indent=2)
 
     # Human-readable format
     lines = []
-    lines.append("khive ci - Continuous Integration Results")
-    lines.append("=" * 50)
-    lines.append(f"Project Root: {result.project_root}")
-    lines.append(f"Total Duration: {result.total_duration:.2f}s")
-    lines.append("")
 
-    # Discovered projects
-    if result.discovered_projects:
-        lines.append("Discovered Projects:")
+    # Header
+    header = f"{ANSI['BOLD']}khive ci{ANSI['N']} - Test Results"
+    lines.append(f"\n{header}")
+    lines.append("=" * 50)
+
+    # Summary statistics
+    total_tests = sum(
+        tr.summary.total if tr.summary else 0 for tr in result.test_results
+    )
+    total_passed = sum(
+        tr.summary.passed if tr.summary else (1 if tr.success else 0)
+        for tr in result.test_results
+    )
+    total_failed = sum(
+        tr.summary.failed if tr.summary else (0 if tr.success else 1)
+        for tr in result.test_results
+    )
+    total_skipped = sum(
+        tr.summary.skipped if tr.summary else 0 for tr in result.test_results
+    )
+
+    if total_tests > 0:
+        status_color = ANSI["G"] if result.overall_success else ANSI["R"]
+        status_icon = "✓" if result.overall_success else "✗"
+        lines.append(
+            f"\n{status_color}{status_icon} Overall Status: {'SUCCESS' if result.overall_success else 'FAILURE'}{ANSI['N']}"
+        )
+
+        # Test summary
+        summary_parts = []
+        if total_passed > 0:
+            summary_parts.append(f"{ANSI['G']}{total_passed} passed{ANSI['N']}")
+        if total_failed > 0:
+            summary_parts.append(f"{ANSI['R']}{total_failed} failed{ANSI['N']}")
+        if total_skipped > 0:
+            summary_parts.append(f"{ANSI['Y']}{total_skipped} skipped{ANSI['N']}")
+
+        lines.append(f"   {' · '.join(summary_parts)} in {result.total_duration:.2f}s")
+
+        # Coverage summary if available
+        coverage_results = [
+            tr.summary.coverage_percent
+            for tr in result.test_results
+            if tr.summary and tr.summary.coverage_percent is not None
+        ]
+        if coverage_results:
+            avg_coverage = sum(coverage_results) / len(coverage_results)
+            coverage_color = ANSI["G"] if avg_coverage >= 80 else ANSI["Y"]
+            lines.append(f"   Coverage: {coverage_color}{avg_coverage:.1f}%{ANSI['N']}")
+
+    # Discovered projects (only in verbose mode)
+    if verbose and result.discovered_projects:
+        lines.append("\nDiscovered Projects:")
         for project_type, config in result.discovered_projects.items():
             lines.append(f"  • {project_type.title()}: {config['test_command']}")
             if config.get("test_paths"):
                 lines.append(f"    Test paths: {', '.join(config['test_paths'])}")
-        lines.append("")
 
-    # Test results
-    if result.test_results:
-        lines.append("Test Results:")
-        for test_result in result.test_results:
-            status = "✓ PASS" if test_result.success else "✗ FAIL"
-            lines.append(
-                f"  {status} {test_result.test_type} ({test_result.duration:.2f}s)"
-            )
-            lines.append(f"    Command: {test_result.command}")
+    # Test results details (only show failures in non-verbose mode)
+    if not verbose and result.test_results:
+        failed_tests = [tr for tr in result.test_results if not tr.success]
+        if failed_tests:
+            lines.append("\nFailed Tests:")
+            for test_result in failed_tests:
+                project_info = (
+                    f" [{test_result.project_path}]" if test_result.project_path else ""
+                )
+                lines.append(
+                    f"  {ANSI['R']}✗{ANSI['N']} {test_result.test_type}{project_info}"
+                )
+                if test_result.summary and test_result.summary.failures:
+                    for failure in test_result.summary.failures[
+                        :3
+                    ]:  # Show first 3 failures
+                        lines.append(f"    - {failure}")
 
-            if not test_result.success:
-                # Always show error output for failed tests
-                if test_result.stdout:
-                    lines.append(f"    Output: {test_result.stdout}")
-                if test_result.stderr:
-                    lines.append(f"    Error: {test_result.stderr}")
-            elif verbose:
-                # Show output for successful tests only in verbose mode
-                if test_result.stdout:
-                    lines.append(f"    Output: {test_result.stdout}")
-                if test_result.stderr:
-                    lines.append(f"    Warnings: {test_result.stderr}")
-        lines.append("")
+    # Nested results
+    if result.nested_results:
+        lines.append("\nNested Projects:")
+        for nested in result.nested_results:
+            status = "✓" if nested["status"] == "success" else "✗"
+            color = ANSI["G"] if nested["status"] == "success" else ANSI["R"]
+            lines.append(f"  {color}{status}{ANSI['N']} {nested['directory']}")
 
-    # Overall status
-    overall_status = "SUCCESS" if result.overall_success else "FAILURE"
-    lines.append(f"Overall Status: {overall_status}")
-
+    lines.append("")  # Empty line at end
     return "\n".join(lines)
 
 
@@ -656,7 +1293,7 @@ async def run_ci_async(
     timeout: int = 300,
 ) -> int:
     """
-    Run continuous integration checks with async support.
+    Run continuous integration checks with async support and nested configurations.
 
     Args:
         project_root: Path to the project root
@@ -669,13 +1306,15 @@ async def run_ci_async(
     Returns:
         Exit code (0 for success, non-zero for failure)
     """
-    config = CIConfig(
-        project_root=project_root,
+    # Create args namespace for config loading
+    args = argparse.Namespace(
         json_output=json_output,
         dry_run=dry_run,
         verbose=verbose,
         timeout=timeout,
     )
+
+    config = load_ci_config(project_root, args)
 
     # Check for custom CI script first
     custom_result = await check_and_run_custom_ci_script(config)
@@ -684,15 +1323,126 @@ async def run_ci_async(
         print(output)
         return 0 if custom_result.overall_success else 1
 
-    # Use original logic for built-in CI
     result = CIResult(project_root=project_root)
 
     try:
-        # Discover projects (exact same logic as original)
-        discovered_projects = detect_project_types(project_root)
+        # First, find and process all nested directories with their own CI configs
+        nested_dirs = []
+        for ci_config in project_root.rglob(".khive/ci.toml"):
+            if ci_config.parent.parent != project_root:  # Skip root .khive
+                nested_dirs.append(ci_config.parent.parent)
+
+        # Sort by depth to process parent directories before children
+        nested_dirs.sort(key=lambda p: len(p.parts))
+
+        # Process nested directories
+        processed_dirs = set()
+        for nested_dir in nested_dirs:
+            # Skip if this directory is inside an already processed directory
+            skip = False
+            for processed in processed_dirs:
+                try:
+                    nested_dir.relative_to(processed)
+                    skip = True
+                    break
+                except ValueError:
+                    continue
+
+            if not skip:
+                nested_result = await run_ci_for_nested_directory(
+                    nested_dir, config, args
+                )
+                if nested_result:
+                    result.nested_results.append(nested_result)
+                    processed_dirs.add(nested_dir)
+
+                    # Update overall success based on nested results
+                    if nested_result["status"] not in ["success", "skipped", "dry_run"]:
+                        result.overall_success = False
+
+                    # Add duration
+                    result.total_duration += nested_result.get("duration", 0)
+
+        # Discover projects in root (excluding nested directories)
+        discovered_projects = detect_project_types(project_root, config)
         result.discovered_projects = discovered_projects
 
-        if not discovered_projects:
+        # Execute tests for root-level projects
+        if discovered_projects:
+            # Filter projects based on test_type
+            if test_type != "all":
+                discovered_projects = {
+                    k: v for k, v in discovered_projects.items() if k == test_type
+                }
+
+            # Validate tools
+            tool_availability = validate_test_tools(discovered_projects)
+            missing_tools = [
+                project_type
+                for project_type, available in tool_availability.items()
+                if not available
+            ]
+
+            if missing_tools:
+                error_msg = f"Missing required tools for: {', '.join(missing_tools)}"
+                if json_output:
+                    output_data = {
+                        "status": "error",
+                        "message": error_msg,
+                        "missing_tools": missing_tools,
+                        "nested_results": result.nested_results,
+                    }
+                    print(json.dumps(output_data, indent=2))
+                else:
+                    print(f"Error: {error_msg}", file=sys.stderr)
+                return 1
+
+            if dry_run:
+                if json_output:
+                    output_data = {
+                        "status": "dry_run",
+                        "discovered_projects": discovered_projects,
+                        "would_execute": [
+                            f"{proj_config['test_command']} for {proj_type}"
+                            for proj_type, proj_config in discovered_projects.items()
+                        ],
+                        "nested_results": result.nested_results,
+                    }
+                    print(json.dumps(output_data, indent=2))
+                else:
+                    print("Dry run - would execute:")
+                    for proj_type, proj_config in discovered_projects.items():
+                        print(f"  • {proj_config['test_command']} for {proj_type}")
+                    if result.nested_results:
+                        print("\nNested projects:")
+                        for nested in result.nested_results:
+                            print(f"  • {nested['directory']}")
+                return 0
+
+            # Execute tests for root projects
+            for proj_type, proj_config in discovered_projects.items():
+                if not verbose and not json_output:
+                    print(f"{ANSI['B']}Running {proj_type} tests...{ANSI['N']}")
+
+                test_result = await execute_tests_async(
+                    project_root=project_root,
+                    project_type=proj_type,
+                    config=proj_config,
+                    timeout=proj_config.get("timeout", timeout),
+                    verbose=verbose,
+                )
+
+                result.add_test_result(test_result)
+
+                # Show test output based on configuration
+                show_output = proj_config.get("show_output", "smart")
+                should_show = should_show_output(show_output, test_result, config)
+
+                if should_show and not json_output:
+                    display_test_output(test_result, proj_type)
+
+        # Handle case where no tests were found anywhere
+        if not result.test_results and not result.nested_results:
             if json_output:
                 output_data = {
                     "status": "no_tests",
@@ -701,84 +1451,10 @@ async def run_ci_async(
                 }
                 print(json.dumps(output_data, indent=2))
             else:
-                print("No test projects discovered in the current directory.")
+                print(
+                    "No test projects discovered in the current directory or subdirectories."
+                )
             return 0
-
-        # Filter projects based on test_type
-        if test_type != "all":
-            discovered_projects = {
-                k: v for k, v in discovered_projects.items() if k == test_type
-            }
-
-        # Validate tools
-        tool_availability = validate_test_tools(discovered_projects)
-        missing_tools = [
-            project_type
-            for project_type, available in tool_availability.items()
-            if not available
-        ]
-
-        if missing_tools:
-            error_msg = f"Missing required tools for: {', '.join(missing_tools)}"
-            if json_output:
-                output_data = {
-                    "status": "error",
-                    "message": error_msg,
-                    "missing_tools": missing_tools,
-                }
-                print(json.dumps(output_data, indent=2))
-            else:
-                print(f"Error: {error_msg}", file=sys.stderr)
-            return 1
-
-        if dry_run:
-            if json_output:
-                output_data = {
-                    "status": "dry_run",
-                    "discovered_projects": discovered_projects,
-                    "would_execute": [
-                        f"{config['test_command']} for {project_type}"
-                        for project_type, config in discovered_projects.items()
-                    ],
-                }
-                print(json.dumps(output_data, indent=2))
-            else:
-                print("Dry run - would execute:")
-                for project_type, config in discovered_projects.items():
-                    print(f"  • {config['test_command']} for {project_type}")
-            return 0
-
-        # Execute tests using async version
-        for project_type, proj_config in discovered_projects.items():
-            if not verbose and not json_output:
-                print(f"Running {project_type} tests...")
-
-            test_result = await execute_tests_async(
-                project_root=project_root,
-                project_type=project_type,
-                config=proj_config,
-                timeout=timeout,
-                verbose=verbose,
-            )
-
-            result.add_test_result(test_result)
-
-            # Show test output immediately if not in JSON mode
-            if not json_output:
-                if test_result.success:
-                    if verbose and test_result.stdout:
-                        print(test_result.stdout)
-                else:
-                    # Always show output for failed tests
-                    print(
-                        f"\n{ANSI['R']}Test execution failed for {project_type}:{ANSI['N']}"
-                    )
-                    print(f"Command: {test_result.command}")
-                    if test_result.stdout:
-                        print(f"\nOutput:\n{test_result.stdout}")
-                    if test_result.stderr:
-                        print(f"\nError:\n{test_result.stderr}")
-                    print()  # Extra newline for separation
 
         # Output results
         output = format_output(result, json_output=json_output, verbose=verbose)
@@ -802,7 +1478,7 @@ def main() -> None:
     Main entry point for the khive ci command.
     """
     parser = argparse.ArgumentParser(
-        description="Run continuous integration checks including test discovery and execution."
+        description="Run continuous integration checks with nested configuration support."
     )
 
     parser.add_argument(

@@ -78,19 +78,23 @@ khive fmt [--stack stack1,stack2,...] [--check] [--dry-run] [--json-output] [--v
 ## 4. Implementation Steps
 
 1. Create the CLI interface file `src/khive/cli/khive_fmt.py`
+
    - Implement configuration loading
    - Implement file discovery
    - Implement formatter execution
    - Implement CLI argument parsing
 
 2. Create the command implementation file `src/khive/commands/fmt.py`
+
    - Delegate to the CLI interface
 
 3. Update the CLI dispatcher in `src/khive/cli/khive_cli.py`
+
    - Add the new command to the `COMMANDS` dictionary
    - Add a description to the `COMMAND_DESCRIPTIONS` dictionary
 
 4. Create tests in `tests/cli/test_khive_fmt.py`
+
    - Test configuration loading
    - Test file discovery
    - Test formatter execution

@@ -3,15 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-khive_fmt.py - Opinionated multi-stack formatter for khive projects.
+khive_fmt.py - Opinionated multi-stack formatter for khive projects with nested configuration support.
 
 Features
 ========
 * Formats code across multiple stacks (Python, Rust, Deno, Markdown)
 * Supports selective formatting via --stack flag
 * Supports check-only mode via --check flag
-* Configurable via TOML
+* Configurable via TOML with nested configuration support for monorepos
 * Handles missing formatters gracefully
+* Respects nested .khive configurations in subdirectories
 
 CLI
 ---
@@ -34,6 +35,16 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import Mock  # For testing purposes
 
+from .utils import (
+    ANSI,
+    StackConfig,
+    die,
+    error_msg,
+    info_msg,
+    log_msg,
+    warn_msg,
+)
+
 # Maximum number of files to process in a single batch to avoid "Argument list too long" errors
 MAX_FILES_PER_BATCH = 500
 
@@ -53,69 +64,6 @@ except (subprocess.CalledProcessError, FileNotFoundError):
     PROJECT_ROOT = Path.cwd()
 
 KHIVE_CONFIG_DIR = PROJECT_ROOT / ".khive"
-
-# --- ANSI Colors and Logging ---
-ANSI = {
-    "G": "\033[32m" if sys.stdout.isatty() else "",
-    "R": "\033[31m" if sys.stdout.isatty() else "",
-    "Y": "\033[33m" if sys.stdout.isatty() else "",
-    "B": "\033[34m" if sys.stdout.isatty() else "",
-    "N": "\033[0m" if sys.stdout.isatty() else "",
-}
-verbose_mode = False
-
-
-def log_msg(msg: str, *, kind: str = "B") -> None:
-    if verbose_mode:
-        print(f"{ANSI[kind]}▶{ANSI['N']} {msg}")
-
-
-def format_message(prefix: str, msg: str, color_code: str) -> str:
-    return f"{color_code}{prefix}{ANSI['N']} {msg}"
-
-
-def info_msg(msg: str, *, console: bool = True) -> str:
-    output = format_message("✔", msg, ANSI["G"])
-    if console:
-        print(output)
-    return output
-
-
-def warn_msg(msg: str, *, console: bool = True) -> str:
-    output = format_message("⚠", msg, ANSI["Y"])
-    if console:
-        print(output, file=sys.stderr)
-    return output
-
-
-def error_msg(msg: str, *, console: bool = True) -> str:
-    output = format_message("✖", msg, ANSI["R"])
-    if console:
-        print(output, file=sys.stderr)
-    return output
-
-
-def die(
-    msg: str, json_data: dict[str, Any] | None = None, json_output_flag: bool = False
-) -> None:
-    error_msg(msg, console=not json_output_flag)
-    if json_output_flag:
-        base_data = {"status": "failure", "message": msg, "stacks_processed": []}
-        if json_data and "stacks_processed" in json_data:
-            base_data["stacks_processed"] = json_data["stacks_processed"]
-        print(json.dumps(base_data, indent=2))
-    sys.exit(1)
-
-
-# --- Configuration ---
-@dataclass
-class StackConfig:
-    name: str
-    cmd: str
-    check_cmd: str
-    include: list[str] = field(default_factory=list)
-    exclude: list[str] = field(default_factory=list)
-    enabled: bool = True
 
 
 @dataclass
@@ -180,6 +128,13 @@ def load_fmt_config(
             check_cmd="deno fmt --check {files}",
             include=["*.ts", "*.js", "*.jsx", "*.tsx"],
             exclude=["*_generated.*", "node_modules/**"],
+        ),
+        "notebooks": StackConfig(
+            name="notebooks",
+            cmd="nbqa ruff {files} --fix",
+            check_cmd="nbqa ruff {files}",
+            include=["*.ipynb"],
+            exclude=["*_generated.ipynb", ".ipynb_checkpoints/**"],
         ),
     }
 
@@ -316,42 +271,168 @@ def run_command(
 
 
 def find_files(
-    root_dir: Path, include_patterns: list[str], exclude_patterns: list[str]
+    root_dir: Path,
+    include_patterns: list[str],
+    exclude_patterns: list[str],
+    stack_name: str | None = None,
 ) -> list[Path]:
-    """Find files matching include patterns but not exclude patterns."""
+    """Find files matching include patterns but not exclude patterns, respecting nested .khive configurations."""
     import fnmatch
 
+    # Cache for loaded configurations to avoid re-reading
+    config_cache: dict[Path, dict[str, tuple[list[str], list[str]]]] = {}
+
+    def load_nested_config(
+        dir_path: Path,
+    ) -> dict[str, tuple[list[str], list[str]]] | None:
+        """Load include/exclude patterns from a nested .khive/fmt.toml if it exists."""
+        if dir_path in config_cache:
+            return config_cache[dir_path]
+
+        config_path = dir_path / ".khive" / "fmt.toml"
+        if not config_path.exists():
+            config_cache[dir_path] = None
+            return None
+
+        try:
+            # Security check: ensure config is within project bounds
+            config_path = config_path.resolve()
+            root_resolved = root_dir.resolve()
+            if not str(config_path).startswith(str(root_resolved)):
+                warn_msg(f"Skipping config outside project: {config_path}")
+                config_cache[dir_path] = None
+                return None
+
+            log_msg(f"Loading nested config from {config_path}")
+
+            # Load the TOML file
+            raw_toml = tomllib.loads(config_path.read_text())
+
+            # Check if this config enables the current stack
+            enabled_stacks = raw_toml.get("enable", [])
+
+            stack_configs = raw_toml.get("stacks", {})
+            result = {}
+
+            for stack, stack_config in stack_configs.items():
+                if "include" in stack_config or "exclude" in stack_config:
+                    includes = stack_config.get("include", [])
+                    excludes = stack_config.get("exclude", [])
+                    result[stack] = (includes, excludes)
+
+            config_cache[dir_path] = result if result else None
+            return result
+
+        except Exception as e:
+            warn_msg(f"Error loading nested config from {config_path}: {e}")
+            config_cache[dir_path] = None
+            return None
+
+    def get_effective_patterns(file_path: Path) -> tuple[list[str], list[str]]:
+        """Get the effective include/exclude patterns for a file based on its location."""
+        # Start with root patterns
+        effective_includes = include_patterns.copy()
+        effective_excludes = exclude_patterns.copy()
+
+        # Check each parent directory for nested configs
+        current = file_path.parent
+
+        # Find the closest config
+        while current >= root_dir:
+            nested_config = load_nested_config(current)
+            if nested_config and stack_name and stack_name in nested_config:
+                # Use the patterns from the closest config
+                nested_includes, nested_excludes = nested_config[stack_name]
+                if nested_includes:  # Only override if includes are specified
+                    effective_includes = nested_includes
+                effective_excludes.extend(nested_excludes)
+                break  # Use only the closest config
+            current = current.parent
+
+        return effective_includes, effective_excludes
+
+    # Collect directories with their own .khive configs to skip
+    dirs_with_own_config = set()
+    for path in root_dir.rglob(".khive/fmt.toml"):
+        if path.parent.parent != root_dir:  # Skip root config
+            dirs_with_own_config.add(path.parent.parent)
+
     all_files = []
+    processed_dirs = set()
+
+    # Process each directory only once
     for pattern in include_patterns:
-        # Handle directory-specific patterns like "node_modules/**"
         if "**" in pattern:
             parts = pattern.split("**", 1)
             base_dir = parts[0].rstrip("/\\")
             file_pattern = parts[1].lstrip("/\\")
 
-            # Skip if the base directory doesn't exist
             if not (root_dir / base_dir).exists():
                 continue
 
             for path in (root_dir / base_dir).glob(f"**/{file_pattern}"):
-                all_files.append(path.relative_to(root_dir))
+                # Skip files in directories with their own config
+                skip = False
+                for config_dir in dirs_with_own_config:
+                    try:
+                        path.relative_to(config_dir)
+                        skip = True
+                        break
+                    except ValueError:
+                        continue
+
+                if not skip:
+                    rel_path = path.relative_to(root_dir)
+                    all_files.append(rel_path)
         else:
-            # Simple glob pattern
             for path in root_dir.glob(f"**/{pattern}"):
-                all_files.append(path.relative_to(root_dir))
+                # Skip files in directories with their own config
+                skip = False
+                for config_dir in dirs_with_own_config:
+                    try:
+                        path.relative_to(config_dir)
+                        skip = True
+                        break
+                    except ValueError:
+                        continue
+
+                if not skip:
+                    rel_path = path.relative_to(root_dir)
+                    all_files.append(rel_path)
 
     # Apply exclude patterns
     filtered_files = []
     for file_path in all_files:
+        # Get effective patterns for this file
+        effective_includes, effective_excludes = get_effective_patterns(
+            root_dir / file_path
+        )
+
+        # Check exclude patterns
         excluded = False
-        for pattern in exclude_patterns:
-            if fnmatch.fnmatch(str(file_path), pattern):
+        for pattern in effective_excludes:
+            if fnmatch.fnmatch(str(file_path), pattern) or fnmatch.fnmatch(
+                file_path.name, pattern
+            ):
                 excluded = True
                 break
+
         if not excluded:
             filtered_files.append(file_path)
 
-    return filtered_files
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_files = []
+    for f in filtered_files:
+        if f not in seen:
+            seen.add(f)
+            unique_files.append(f)
+
+    log_msg(
+        f"Found {len(unique_files)} files for stack '{stack_name}' after applying configurations"
+    )
+
+    return unique_files
 
 
 def check_and_run_custom_script(
@@ -488,49 +569,48 @@ def check_and_run_custom_script(
                 result["custom_script_stderr"] = proc.stderr.strip()
 
             return result
-        else:
-            # Script failed - provide detailed error information
-            if not config.json_output:
-                error_msg(
-                    f"Custom script failed with exit code {proc.returncode}",
-                    console=True,
+        # Script failed - provide detailed error information
+        if not config.json_output:
+            error_msg(
+                f"Custom script failed with exit code {proc.returncode}",
+                console=True,
+            )
+
+            # Show the command that was executed
+            print(f"Command: {' '.join(cmd)}", file=sys.stderr)
+            print(f"Working directory: {config.project_root}", file=sys.stderr)
+
+            # Always show stdout if there was any (shows progress before failure)
+            if proc.stdout.strip():
+                print("\n--- Script Output (stdout) ---", file=sys.stderr)
+                print(proc.stdout.strip(), file=sys.stderr)
+
+            # Always show stderr if there was any (shows the actual error)
+            if proc.stderr.strip():
+                print("\n--- Error Output (stderr) ---", file=sys.stderr)
+                print(proc.stderr.strip(), file=sys.stderr)
+            else:
+                print("\n--- No error output captured ---", file=sys.stderr)
+                print(
+                    "The script may have failed silently or the error was sent to a different stream.",
+                    file=sys.stderr,
                 )
 
-                # Show the command that was executed
-                print(f"Command: {' '.join(cmd)}", file=sys.stderr)
-                print(f"Working directory: {config.project_root}", file=sys.stderr)
+        result = {
+            "status": "failure",
+            "message": f"Custom script failed with exit code {proc.returncode}",
+            "stacks_processed": [],
+            "custom_script": str(custom_script_path),
+            "exit_code": proc.returncode,
+            "command": " ".join(cmd),
+            "working_directory": str(config.project_root),
+        }
 
-                # Always show stdout if there was any (shows progress before failure)
-                if proc.stdout.strip():
-                    print("\n--- Script Output (stdout) ---", file=sys.stderr)
-                    print(proc.stdout.strip(), file=sys.stderr)
+        if config.json_output:
+            result["custom_script_stdout"] = proc.stdout.strip()
+            result["custom_script_stderr"] = proc.stderr.strip()
 
-                # Always show stderr if there was any (shows the actual error)
-                if proc.stderr.strip():
-                    print("\n--- Error Output (stderr) ---", file=sys.stderr)
-                    print(proc.stderr.strip(), file=sys.stderr)
-                else:
-                    print("\n--- No error output captured ---", file=sys.stderr)
-                    print(
-                        "The script may have failed silently or the error was sent to a different stream.",
-                        file=sys.stderr,
-                    )
-
-            result = {
-                "status": "failure",
-                "message": f"Custom script failed with exit code {proc.returncode}",
-                "stacks_processed": [],
-                "custom_script": str(custom_script_path),
-                "exit_code": proc.returncode,
-                "command": " ".join(cmd),
-                "working_directory": str(config.project_root),
-            }
-
-            if config.json_output:
-                result["custom_script_stdout"] = proc.stdout.strip()
-                result["custom_script_stderr"] = proc.stderr.strip()
-
-            return result
+        return result
 
     except subprocess.TimeoutExpired as e:
         error_msg(
@@ -571,6 +651,79 @@ def check_and_run_custom_script(
         }
 
 
+def format_directory_with_nested_khive(
+    dir_path: Path, config: FmtConfig, args: argparse.Namespace
+) -> dict[str, Any] | None:
+    """
+    Check if a directory has its own .khive/fmt.toml and format it with its own configuration.
+    Returns the result dict if directory was processed, None otherwise.
+    """
+    nested_config_path = dir_path / ".khive" / "fmt.toml"
+
+    if not nested_config_path.exists():
+        return None
+
+    info_msg(
+        f"Processing nested project: {dir_path.relative_to(config.project_root)}",
+        console=not config.json_output,
+    )
+
+    # Create a new config for this subdirectory
+    nested_config = load_fmt_config(dir_path, args)
+
+    # Check for custom script in nested directory
+    nested_result = check_and_run_custom_script(nested_config, args)
+    if nested_result:
+        nested_result["directory"] = str(dir_path.relative_to(config.project_root))
+        return nested_result
+
+    # Otherwise, run standard formatting for this directory
+    overall_results: dict[str, Any] = {
+        "status": "success",
+        "message": f"Formatting completed for {dir_path.name}.",
+        "directory": str(dir_path.relative_to(config.project_root)),
+        "stacks_processed": [],
+    }
+
+    # Process each enabled stack in the nested config
+    for stack_name, stack in nested_config.stacks.items():
+        if stack.enabled:
+            stack_result = format_stack(stack, nested_config)
+            overall_results["stacks_processed"].append(stack_result)
+
+    # Determine overall status
+    if not overall_results["stacks_processed"]:
+        overall_results["status"] = "skipped"
+        overall_results["message"] = f"No stacks were processed in {dir_path.name}."
+    else:
+        has_errors = any(
+            result["status"] == "error"
+            for result in overall_results["stacks_processed"]
+        )
+        has_check_failures = any(
+            result["status"] == "check_failed"
+            for result in overall_results["stacks_processed"]
+        )
+
+        if has_errors:
+            overall_results["status"] = "failure"
+            overall_results["message"] = (
+                f"Formatting failed for one or more stacks in {dir_path.name}."
+            )
+        elif has_check_failures:
+            overall_results["status"] = "check_failed"
+            overall_results["message"] = (
+                f"Formatting check failed for one or more stacks in {dir_path.name}."
+            )
+        else:
+            overall_results["status"] = "success"
+            overall_results["message"] = (
+                f"Formatting completed successfully for {dir_path.name}."
+            )
+
+    return overall_results
+
+
 # --- Core Logic for Formatting ---
 def format_stack(stack: StackConfig, config: FmtConfig) -> dict[str, Any]:
     """Format files for a specific stack."""
@@ -584,8 +737,7 @@ def format_stack(stack: StackConfig, config: FmtConfig) -> dict[str, Any]:
     if not stack.enabled:
         return result
 
-    # For testing purposes, handle mock objects, but allow specific tests to override
-    # For testing purposes, handle mock objects, but allow specific tests to override
+    # For testing purposes, handle mock objects
     if (
         (hasattr(stack, "_is_mock") and not hasattr(stack, "_test_real_logic"))
         or (hasattr(config, "_is_mock") and not hasattr(config, "_test_real_logic"))
@@ -709,13 +861,14 @@ def format_stack(stack: StackConfig, config: FmtConfig) -> dict[str, Any]:
         warn_msg(result["message"], console=not config.json_output)
         return result
 
-    # Find files to format
-    files = find_files(config.project_root, stack.include, stack.exclude)
+    # Find files to format (now with stack name for proper nested config handling)
+    files = find_files(config.project_root, stack.include, stack.exclude, stack.name)
     if not files:
         result["status"] = "success"
         result["message"] = f"No files found for stack '{stack.name}'."
         info_msg(result["message"], console=not config.json_output)
         return result
+
     # Prepare command
     cmd_template = stack.check_cmd if config.check_only else stack.cmd
 
@@ -863,15 +1016,16 @@ def format_stack(stack: StackConfig, config: FmtConfig) -> dict[str, Any]:
                 result["stderr"] = "\n".join(stderr_messages)
                 warn_msg(result["message"], console=not config.json_output)
                 if stderr_messages:
-                    print("\n".join(stderr_messages))
+                    print("\n".join(stderr_messages), file=sys.stderr)
             else:
                 result["status"] = "error"
                 result["message"] = f"Formatting failed for stack '{stack.name}'."
                 result["stderr"] = "\n".join(stderr_messages)
                 error_msg(result["message"], console=not config.json_output)
                 if stderr_messages:
-                    print("\n".join(stderr_messages))
-                    print(proc.stderr)
+                    # Show the actual error messages
+                    for msg in stderr_messages:
+                        print(msg, file=sys.stderr)
 
     return result
 
@@ -883,41 +1037,74 @@ def _main_fmt_flow(args: argparse.Namespace, config: FmtConfig) -> dict[str, Any
     if custom_result is not None:
         return custom_result
 
-    # Original implementation continues here...
     overall_results: dict[str, Any] = {
         "status": "success",
         "message": "Formatting completed.",
         "stacks_processed": [],
+        "nested_directories": [],
     }
 
-    # Process each enabled stack
+    # First, find and process all nested directories with their own configs
+    nested_dirs = []
+    for path in config.project_root.rglob(".khive/fmt.toml"):
+        if path.parent.parent != config.project_root:  # Skip root .khive
+            nested_dirs.append(path.parent.parent)
+
+    # Sort by depth to process parent directories before children
+    nested_dirs.sort(key=lambda p: len(p.parts))
+
+    # Process nested directories
+    processed_dirs = set()
+    for nested_dir in nested_dirs:
+        # Skip if this directory is inside an already processed directory
+        skip = False
+        for processed in processed_dirs:
+            try:
+                nested_dir.relative_to(processed)
+                skip = True
+                break
+            except ValueError:
+                continue
+
+        if not skip:
+            nested_result = format_directory_with_nested_khive(nested_dir, config, args)
+            if nested_result:
+                overall_results["nested_directories"].append(nested_result)
+                processed_dirs.add(nested_dir)
+
+    # Process root directory stacks (files not in nested directories)
     for stack_name, stack in config.stacks.items():
         if stack.enabled:
             stack_result = format_stack(stack, config)
             overall_results["stacks_processed"].append(stack_result)
 
     # Determine overall status
-    if not overall_results["stacks_processed"]:
+    all_results = overall_results["stacks_processed"] + overall_results.get(
+        "nested_directories", []
+    )
+
+    if not all_results:
         overall_results["status"] = "skipped"
-        overall_results["message"] = "No stacks were processed."
+        overall_results["message"] = "No stacks or directories were processed."
     else:
-        # Check if any stack had errors
+        # Check if any stack or nested directory had errors
         has_errors = any(
-            result["status"] == "error"
-            for result in overall_results["stacks_processed"]
+            result.get("status") == "error" or result.get("status") == "failure"
+            for result in all_results
         )
         has_check_failures = any(
-            result["status"] == "check_failed"
-            for result in overall_results["stacks_processed"]
+            result.get("status") == "check_failed" for result in all_results
         )
 
         if has_errors:
             overall_results["status"] = "failure"
-            overall_results["message"] = "Formatting failed for one or more stacks."
+            overall_results["message"] = (
+                "Formatting failed for one or more stacks or directories."
+            )
         elif has_check_failures:
             overall_results["status"] = "check_failed"
             overall_results["message"] = (
-                "Formatting check failed for one or more stacks."
+                "Formatting check failed for one or more stacks or directories."
             )
         else:
             overall_results["status"] = "success"
@@ -928,7 +1115,9 @@ def _main_fmt_flow(args: argparse.Namespace, config: FmtConfig) -> dict[str, Any
 
 # --- CLI Entrypoint ---
 def cli_entry_fmt() -> None:
-    parser = argparse.ArgumentParser(description="khive code formatter.")
+    parser = argparse.ArgumentParser(
+        description="khive code formatter with nested configuration support."
+    )
 
     parser.add_argument(
         "--stack",

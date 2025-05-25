@@ -50,7 +50,7 @@ Embedable class functionality.
 - Test file structure with necessary imports and fixtures
 - Tests for Embedable initialization (default and custom)
 - Tests for n_dim property
-- Tests for _parse_embedding validator
+- Tests for \_parse_embedding validator
 
 **Dependencies:**
 
@@ -82,8 +82,8 @@ module.
 
 **Key Deliverables:**
 
-- Tests for _parse_embedding_response with various input formats
-- Tests for _get_default_embed_endpoint (with mocks)
+- Tests for \_parse_embedding_response with various input formats
+- Tests for \_get_default_embed_endpoint (with mocks)
 
 **Dependencies:**
 
@@ -114,18 +114,18 @@ module.
 
 #### 3.1.1 Test Group: Embedable Base Class
 
-| ID    | Description                               | Fixtures/Mocks | Assertions                                     |
-| ----- | ----------------------------------------- | -------------- | ---------------------------------------------- |
-| UT-1  | Test default initialization               | None           | content is None, embedding is empty list       |
-| UT-2  | Test custom initialization with content   | None           | content matches input, embedding is empty list |
-| UT-3  | Test custom initialization with embedding | None           | embedding matches input                        |
-| UT-4  | Test n_dim property                       | None           | n_dim equals length of embedding               |
-| UT-5  | Test _parse_embedding with None           | None           | Returns empty list                             |
-| UT-6  | Test _parse_embedding with valid string   | None           | Returns correct list of floats                 |
-| UT-7  | Test _parse_embedding with invalid string | None           | Raises ValueError                              |
-| UT-8  | Test _parse_embedding with valid list     | None           | Returns correct list of floats                 |
-| UT-9  | Test _parse_embedding with invalid list   | None           | Raises ValueError                              |
-| UT-10 | Test _parse_embedding with invalid type   | None           | Raises ValueError                              |
+| ID    | Description                                | Fixtures/Mocks | Assertions                                     |
+| ----- | ------------------------------------------ | -------------- | ---------------------------------------------- |
+| UT-1  | Test default initialization                | None           | content is None, embedding is empty list       |
+| UT-2  | Test custom initialization with content    | None           | content matches input, embedding is empty list |
+| UT-3  | Test custom initialization with embedding  | None           | embedding matches input                        |
+| UT-4  | Test n_dim property                        | None           | n_dim equals length of embedding               |
+| UT-5  | Test \_parse_embedding with None           | None           | Returns empty list                             |
+| UT-6  | Test \_parse_embedding with valid string   | None           | Returns correct list of floats                 |
+| UT-7  | Test \_parse_embedding with invalid string | None           | Raises ValueError                              |
+| UT-8  | Test \_parse_embedding with valid list     | None           | Returns correct list of floats                 |
+| UT-9  | Test \_parse_embedding with invalid list   | None           | Raises ValueError                              |
+| UT-10 | Test \_parse_embedding with invalid type   | None           | Raises ValueError                              |
 
 #### 3.1.2 Test Group: Embedable Methods
 
@@ -139,15 +139,15 @@ module.
 
 #### 3.1.3 Test Group: Helper Functions
 
-| ID    | Description                                                 | Fixtures/Mocks | Assertions                                     |
-| ----- | ----------------------------------------------------------- | -------------- | ---------------------------------------------- |
-| UT-16 | Test _parse_embedding_response with BaseModel               | MockBaseModel  | Returns correct embedding                      |
-| UT-17 | Test _parse_embedding_response with list of floats          | None           | Returns same list                              |
-| UT-18 | Test _parse_embedding_response with list containing dict    | None           | Returns extracted embedding                    |
-| UT-19 | Test _parse_embedding_response with dict (data format)      | None           | Returns extracted embedding                    |
-| UT-20 | Test _parse_embedding_response with dict (embedding format) | None           | Returns extracted embedding                    |
-| UT-21 | Test _get_default_embed_endpoint with openai                | MockSettings   | Returns OpenaiEmbedEndpoint with correct model |
-| UT-22 | Test _get_default_embed_endpoint with unsupported provider  | MockSettings   | Raises ValueError                              |
+| ID    | Description                                                  | Fixtures/Mocks | Assertions                                     |
+| ----- | ------------------------------------------------------------ | -------------- | ---------------------------------------------- |
+| UT-16 | Test \_parse_embedding_response with BaseModel               | MockBaseModel  | Returns correct embedding                      |
+| UT-17 | Test \_parse_embedding_response with list of floats          | None           | Returns same list                              |
+| UT-18 | Test \_parse_embedding_response with list containing dict    | None           | Returns extracted embedding                    |
+| UT-19 | Test \_parse_embedding_response with dict (data format)      | None           | Returns extracted embedding                    |
+| UT-20 | Test \_parse_embedding_response with dict (embedding format) | None           | Returns extracted embedding                    |
+| UT-21 | Test \_get_default_embed_endpoint with openai                | MockSettings   | Returns OpenaiEmbedEndpoint with correct model |
+| UT-22 | Test \_get_default_embed_endpoint with unsupported provider  | MockSettings   | Raises ValueError                              |
 
 ### 3.2 Integration Tests
 
@@ -178,7 +178,7 @@ the protocol itself.
 | --- | ------------------------------ | -------------------------------------- | ------------ | -------- | ---------- |
 | T-3 | Implement initialization tests | Test default and custom initialization | T-1          | High     | Low        |
 | T-4 | Implement n_dim tests          | Test n_dim property                    | T-1          | High     | Low        |
-| T-5 | Implement validator tests      | Test _parse_embedding validator        | T-1          | High     | Medium     |
+| T-5 | Implement validator tests      | Test \_parse_embedding validator       | T-1          | High     | Medium     |
 
 ### 4.3 Method Tests
 
@@ -189,10 +189,10 @@ the protocol itself.
 
 ### 4.4 Helper Function Tests
 
-| ID  | Task                                        | Description                     | Dependencies | Priority | Complexity |
-| --- | ------------------------------------------- | ------------------------------- | ------------ | -------- | ---------- |
-| T-8 | Implement _parse_embedding_response tests   | Test with various input formats | T-1, T-2     | High     | Medium     |
-| T-9 | Implement _get_default_embed_endpoint tests | Test default endpoint creation  | T-1, T-2     | High     | Medium     |
+| ID  | Task                                         | Description                     | Dependencies | Priority | Complexity |
+| --- | -------------------------------------------- | ------------------------------- | ------------ | -------- | ---------- |
+| T-8 | Implement \_parse_embedding_response tests   | Test with various input formats | T-1, T-2     | High     | Medium     |
+| T-9 | Implement \_get_default_embed_endpoint tests | Test default endpoint creation  | T-1, T-2     | High     | Medium     |
 
 ## 5. Implementation Sequence
 

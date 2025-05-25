@@ -95,7 +95,6 @@ ignore = [
     "N805",   # Default argument value is mutable (This was likely an intended ignore, you can confirm)
     "TRY300",
     "TRY301",
-    "TCH001",
 ]
 
 # Per-file ignores allow you to disable specific rules for certain files or directories.
