@@ -1,7 +1,9 @@
 # AI Agent CLI Improvements for Khive
 
 ## Core Problem
+
 As an AI agent, I face unique challenges using CLI tools:
+
 - No visual feedback or tab completion
 - Must parse text output to understand results
 - Cannot maintain state between invocations
@@ -10,6 +12,7 @@ As an AI agent, I face unique challenges using CLI tools:
 ## Practical Improvements for AI Agents
 
 ### 1. **Structured Discovery Commands**
+
 ```bash
 # Current: I have to read docs or guess
 khive mcp tools github  # Returns human-readable list
@@ -26,6 +29,7 @@ khive discover examples --command "mcp call" --format json
 ```
 
 ### 2. **Command Validation (Dry Run++)**
+
 ```bash
 # Current: I run commands and hope they work
 khive mcp call github create_issue --title "Bug"
@@ -33,11 +37,12 @@ khive mcp call github create_issue --title "Bug"
 
 # Proposed: Validate without execution
 khive validate "mcp call github create_issue --title 'Bug'"
-# Returns: {"valid": false, "errors": ["Missing required parameter: body"], 
+# Returns: {"valid": false, "errors": ["Missing required parameter: body"],
 #          "suggestion": "Add --body 'description'"}
 ```
 
 ### 3. **State Query Commands**
+
 ```bash
 # Proposed: Let me query project state
 khive state show --format json
@@ -54,6 +59,7 @@ khive state history --last 5 --format json
 ```
 
 ### 4. **Error Enhancement Mode**
+
 ```bash
 # Proposed: Rich error context for agents
 export KHIVE_AGENT_MODE=1  # Or --agent-mode flag
@@ -76,6 +82,7 @@ khive mcp call github create_issue --title "Bug"
 ```
 
 ### 5. **Batch Command Support**
+
 ```bash
 # Proposed: Execute multiple commands atomically
 khive batch execute --format json << 'EOF'
@@ -88,6 +95,7 @@ EOF
 ```
 
 ### 6. **Context Persistence (Simple)**
+
 ```bash
 # Proposed: Simple file-based context
 khive context set --issue 148 --pr-title "fix: remove custom MCP"
@@ -103,31 +111,37 @@ khive commit  # Automatically adds "Closes #148" from context
 ## Implementation Strategy
 
 ### Phase 1: Discovery & Validation (No Backend)
+
 - Add `khive discover` command that introspects argparse
 - Add `khive validate` that runs parsers without execution
 - All data comes from existing code structure
 
 ### Phase 2: State & Context (Local Files)
+
 - Add `.khive/state.json` for command history
 - Add `.khive/context.json` for session context
 - Simple file read/write, no database
 
 ### Phase 3: Agent Mode (Enhanced Output)
+
 - Add `--agent-mode` global flag
 - Structured JSON errors with fix suggestions
 - Command examples in error messages
 
 ### Phase 4: Batch Operations (Advanced)
+
 - Parse multi-line command input
 - Execute with rollback capability
 - Template variable substitution
 
 ## Design Principles for AI Tools
 
-1. **Discoverable**: I should be able to find out what's possible without external docs
+1. **Discoverable**: I should be able to find out what's possible without
+   external docs
 2. **Validatable**: I should know if a command will work before running it
 3. **Recoverable**: Errors should tell me exactly how to fix them
-4. **Stateful**: I should be able to query what's happened and what state we're in
+4. **Stateful**: I should be able to query what's happened and what state we're
+   in
 5. **Structured**: All output should be parseable (JSON) in agent mode
 
 ## Example: How This Helps Me
@@ -167,4 +181,5 @@ result = execute_command("khive mcp call github create_issue --title 'Bug' --bod
 3. Implement simple file-based context (just JSON files)
 4. Gradually add validation and state tracking
 
-The key insight: **Design for machines first, humans second**. The pretty colors and formatting can stay, but every command needs a machine-readable mode.
+The key insight: **Design for machines first, humans second**. The pretty colors
+and formatting can stay, but every command needs a machine-readable mode.

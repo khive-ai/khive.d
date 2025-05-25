@@ -1,14 +1,14 @@
 # Implementation Plan: Fix CI Test Failures for FastMCP Integration
 
-**Issue:** #152  
-**Date:** 2025-01-24  
-**Implementer:** @khive-implementer
+**Issue:** #152 **Date:** 2025-01-24 **Implementer:** @khive-implementer
 
 ## Problem Analysis
 
 The CI tests are failing because:
+
 1. Tests still import and mock the old `MCPClient` class
-2. The new `FastMCPClient` has a different interface (uses `stdio_client` from fastmcp)
+2. The new `FastMCPClient` has a different interface (uses `stdio_client` from
+   fastmcp)
 3. Mock patterns need to be updated to match FastMCP's async patterns
 4. Test isolation is broken - tests may be trying to connect to real MCP servers
 
@@ -32,7 +32,7 @@ The CI tests are failing because:
    # Old pattern:
    mock_client = AsyncMock()
    mock_client.connect.return_value = True
-   
+
    # New pattern:
    mock_client = AsyncMock()
    mock_stdio_client = AsyncMock(return_value=mock_client)
@@ -66,7 +66,8 @@ The CI tests are failing because:
 
 1. `tests/adapters/test_mcp_adapters.py` - Update all MCPClient mocks
 2. `tests/cli/test_khive_mcp.py` - Update get_mcp_client mocks
-3. Potentially add `tests/adapters/test_fastmcp_client.py` for specific FastMCP tests
+3. Potentially add `tests/adapters/test_fastmcp_client.py` for specific FastMCP
+   tests
 
 ## Success Criteria
 

@@ -12,10 +12,9 @@ demonstrating Khive's principle: "tools should unify, not multiply."
 from __future__ import annotations
 
 import json
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.client import Client
@@ -24,6 +23,7 @@ from fastmcp.client import Client
 @dataclass
 class MCPServerConfig:
     """Configuration for an MCP server."""
+
     name: str
     command: str
     args: list[str] = field(default_factory=list)
@@ -36,6 +36,7 @@ class MCPServerConfig:
 @dataclass
 class MCPConfig:
     """Configuration for MCP servers."""
+
     project_root: Path
     servers: dict[str, MCPServerConfig] = field(default_factory=dict)
 
@@ -57,7 +58,7 @@ class MCPConfig:
         return self.khive_config_dir / "mcps" / "state.json"
 
 
-def load_mcp_config(project_r: Path, cli_args: Optional[Any] = None) -> MCPConfig:
+def load_mcp_config(project_r: Path, cli_args: Any | None = None) -> MCPConfig:
     """Load MCP configuration from project."""
     cfg = MCPConfig(project_root=project_r)
 
@@ -80,13 +81,15 @@ def load_mcp_config(project_r: Path, cli_args: Optional[Any] = None) -> MCPConfi
         except (json.JSONDecodeError, KeyError) as e:
             # Can't use log_msg_mcp here due to circular import
             if cfg.verbose:
-                print(f"Warning: Could not parse MCP config: {e}. Using empty configuration.")
+                print(
+                    f"Warning: Could not parse MCP config: {e}. Using empty configuration."
+                )
 
     # Apply CLI arguments
     if cli_args:
-        cfg.json_output = getattr(cli_args, 'json_output', False)
-        cfg.dry_run = getattr(cli_args, 'dry_run', False)
-        cfg.verbose = getattr(cli_args, 'verbose', False)
+        cfg.json_output = getattr(cli_args, "json_output", False)
+        cfg.dry_run = getattr(cli_args, "dry_run", False)
+        cfg.verbose = getattr(cli_args, "verbose", False)
 
     return cfg
 
@@ -96,11 +99,11 @@ class FastMCPClient:
 
     def __init__(self, server_config: MCPServerConfig):
         self.server_config = server_config
-        self.client: Optional[Client] = None
+        self.client: Client | None = None
         self.connected = False
         self.server_info: dict[str, Any] = {}
         self.tools: list[dict[str, Any]] = []
-        
+
         # Create FastMCP app for client operations
         self.app = FastMCP(name=f"khive-client-{server_config.name}")
 
@@ -109,25 +112,25 @@ class FastMCPClient:
         try:
             # Build the command
             cmd = [self.server_config.command] + self.server_config.args
-            
+
             # Create a FastMCP client connection
             self.client = await self.app.create_client(
                 command=cmd,
                 env=self.server_config.env,
-                timeout=self.server_config.timeout
+                timeout=self.server_config.timeout,
             )
-            
+
             # Get server information
             self.server_info = await self.client.get_server_info()
-            
+
             # Get available tools
             tools_response = await self.client.list_tools()
             self.tools = tools_response if isinstance(tools_response, list) else []
-            
+
             self.connected = True
             return True
 
-        except Exception as e:
+        except Exception:
             if self.client:
                 await self.client.close()
                 self.client = None
@@ -155,20 +158,13 @@ class FastMCPClient:
 
         # Call the tool using FastMCP v2 client
         result = await self.client.call_tool(tool_name, **arguments)
-        
+
         # Convert result to expected format
         if isinstance(result, dict):
             return result
         else:
             # Wrap simple results in our expected format
-            return {
-                "content": [
-                    {
-                        "type": "text",
-                        "text": str(result)
-                    }
-                ]
-            }
+            return {"content": [{"type": "text", "text": str(result)}]}
 
     async def list_tools(self) -> list[dict[str, Any]]:
         """Get list of available tools."""

@@ -2,11 +2,15 @@
 
 ## Executive Summary
 
-Based on research and the unique challenges AI agents face when using CLIs, this guide provides a practical implementation roadmap for transforming khive into the first truly AI-native command-line tool. We focus on immediate, high-impact improvements that can be implemented incrementally.
+Based on research and the unique challenges AI agents face when using CLIs, this
+guide provides a practical implementation roadmap for transforming khive into
+the first truly AI-native command-line tool. We focus on immediate, high-impact
+improvements that can be implemented incrementally.
 
 ## Core Principles (From Research)
 
-1. **Dynamic Error Recovery**: LLMs can understand context and adapt recovery strategies
+1. **Dynamic Error Recovery**: LLMs can understand context and adapt recovery
+   strategies
 2. **Pre-execution Validation**: Commands should be validated before execution
 3. **Structured Communication**: Standardized formats for all interactions
 4. **Deterministic Behavior**: Identical inputs yield identical outputs
@@ -26,7 +30,7 @@ def add_global_arguments(parser):
         action="store_true",
         help="Enable AI agent mode with structured JSON output"
     )
-    
+
 # Example usage:
 # khive --agent-mode mcp call github create_issue --title "Bug"
 # Returns: {"success": false, "error": {"type": "MissingParameter", ...}}
@@ -45,36 +49,36 @@ from typing import Dict, Any, List
 def build_parser():
     parser = argparse.ArgumentParser(description="Discover khive capabilities")
     subparsers = parser.add_subparsers(dest="discover_type")
-    
+
     # Discover all commands
     commands_parser = subparsers.add_parser(
-        "commands", 
+        "commands",
         help="List all available commands"
     )
-    
+
     # Discover parameters for a command
     params_parser = subparsers.add_parser(
         "parameters",
         help="List parameters for a specific command"
     )
     params_parser.add_argument("command", help="Command to inspect")
-    
+
     # Discover examples
     examples_parser = subparsers.add_parser(
         "examples",
         help="Get examples for a command"
     )
     examples_parser.add_argument("command", help="Command to get examples for")
-    
+
     return parser
 
 async def cmd_discover_commands() -> Dict[str, Any]:
     """Discover all khive commands by introspecting the CLI."""
     from khive.cli.khive_cli import build_parser as main_parser
-    
+
     parser = main_parser()
     commands = {}
-    
+
     # Extract top-level commands
     for action in parser._subparsers._actions:
         if isinstance(action, argparse._SubParsersAction):
@@ -83,7 +87,7 @@ async def cmd_discover_commands() -> Dict[str, Any]:
                     "description": cmd_parser.description or "",
                     "subcommands": {}
                 }
-                
+
                 # Check for subcommands
                 for sub_action in cmd_parser._actions:
                     if isinstance(sub_action, argparse._SubParsersAction):
@@ -91,7 +95,7 @@ async def cmd_discover_commands() -> Dict[str, Any]:
                             commands[cmd_name]["subcommands"][sub_name] = {
                                 "description": sub_parser.description or ""
                             }
-    
+
     return {
         "success": True,
         "commands": commands,
@@ -102,21 +106,21 @@ async def cmd_discover_parameters(command: str) -> Dict[str, Any]:
     """Discover parameters for a specific command."""
     # Parse command path (e.g., "mcp.call")
     parts = command.split(".")
-    
+
     # Get the appropriate parser
     parser = get_parser_for_command(parts)
-    
+
     if not parser:
         return {
             "success": False,
             "error": f"Command '{command}' not found"
         }
-    
+
     parameters = {}
     for action in parser._actions:
         if action.dest == "help":
             continue
-            
+
         param_info = {
             "type": get_type_name(action.type),
             "required": action.required if hasattr(action, 'required') else False,
@@ -124,13 +128,13 @@ async def cmd_discover_parameters(command: str) -> Dict[str, Any]:
             "default": action.default if action.default != argparse.SUPPRESS else None,
             "choices": list(action.choices) if action.choices else None
         }
-        
+
         # Handle flags vs arguments
         if action.option_strings:
             param_info["flags"] = action.option_strings
-        
+
         parameters[action.dest] = param_info
-    
+
     return {
         "success": True,
         "command": command,
@@ -141,14 +145,14 @@ async def cmd_discover_parameters(command: str) -> Dict[str, Any]:
 def cli_entry_discover():
     parser = build_parser()
     args = parser.parse_args()
-    
+
     if args.discover_type == "commands":
         result = asyncio.run(cmd_discover_commands())
     elif args.discover_type == "parameters":
         result = asyncio.run(cmd_discover_parameters(args.command))
     elif args.discover_type == "examples":
         result = asyncio.run(cmd_discover_examples(args.command))
-    
+
     print(json.dumps(result, indent=2))
 ```
 
@@ -170,7 +174,7 @@ class AgentError:
     suggested_fix: Optional[str] = None
     example_command: Optional[str] = None
     documentation_url: Optional[str] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "type": self.error_type,
@@ -185,16 +189,16 @@ class AgentError:
 
 class ErrorEnhancer:
     """Enhance errors with AI-friendly information."""
-    
+
     def enhance_missing_parameter_error(
-        self, 
-        command: str, 
+        self,
+        command: str,
         parameter: str,
         parameter_schema: Dict[str, Any]
     ) -> AgentError:
         """Enhance missing parameter errors."""
         example_value = parameter_schema.get("examples", ["value"])[0]
-        
+
         return AgentError(
             error_type="MissingParameter",
             message=f"Required parameter '{parameter}' is missing",
@@ -202,7 +206,7 @@ class ErrorEnhancer:
             suggested_fix=f"Add --{parameter} {example_value}",
             example_command=f"{command} --{parameter} {example_value}"
         )
-    
+
     def enhance_validation_error(
         self,
         command: str,
@@ -234,13 +238,13 @@ from datetime import datetime
 
 class AgentContext:
     """Persistent context for AI agents."""
-    
+
     def __init__(self, project_root: Path):
         self.project_root = project_root
         self.context_file = project_root / ".khive" / "agent_context.json"
         self.context_file.parent.mkdir(parents=True, exist_ok=True)
         self._context = self._load_context()
-    
+
     def _load_context(self) -> Dict[str, Any]:
         """Load context from disk."""
         if self.context_file.exists():
@@ -248,27 +252,27 @@ class AgentContext:
                 return json.loads(self.context_file.read_text())
             except:
                 pass
-        
+
         return {
             "session_id": str(uuid.uuid4()),
             "created_at": datetime.utcnow().isoformat(),
             "values": {}
         }
-    
+
     def set(self, key: str, value: Any) -> None:
         """Set a context value."""
         self._context["values"][key] = value
         self._context["updated_at"] = datetime.utcnow().isoformat()
         self._save_context()
-    
+
     def get(self, key: str, default: Any = None) -> Any:
         """Get a context value."""
         return self._context["values"].get(key, default)
-    
+
     def get_all(self) -> Dict[str, Any]:
         """Get all context values."""
         return self._context["values"].copy()
-    
+
     def _save_context(self) -> None:
         """Save context to disk."""
         self.context_file.write_text(json.dumps(self._context, indent=2))
@@ -277,22 +281,22 @@ class AgentContext:
 def cli_entry_context():
     parser = argparse.ArgumentParser(description="Manage agent context")
     subparsers = parser.add_subparsers(dest="action")
-    
+
     # Set context
     set_parser = subparsers.add_parser("set", help="Set context value")
     set_parser.add_argument("key", help="Context key")
     set_parser.add_argument("value", help="Context value")
-    
+
     # Get context
     get_parser = subparsers.add_parser("get", help="Get context value")
     get_parser.add_argument("key", help="Context key")
-    
+
     # Show all context
     show_parser = subparsers.add_parser("show", help="Show all context")
-    
+
     args = parser.parse_args()
     context = AgentContext(PROJECT_ROOT)
-    
+
     if args.action == "set":
         context.set(args.key, args.value)
         print(json.dumps({"success": True, "key": args.key, "value": args.value}))
@@ -324,32 +328,32 @@ class CommandExecution:
 
 class CommandHistory:
     """Track command execution history."""
-    
+
     def __init__(self, project_root: Path):
         self.history_file = project_root / ".khive" / "command_history.jsonl"
         self.history_file.parent.mkdir(parents=True, exist_ok=True)
-    
+
     def record(self, execution: CommandExecution) -> None:
         """Record a command execution."""
         with self.history_file.open("a") as f:
             f.write(json.dumps(execution.__dict__) + "\n")
-    
+
     def get_recent(self, limit: int = 10) -> List[CommandExecution]:
         """Get recent command executions."""
         if not self.history_file.exists():
             return []
-        
+
         lines = self.history_file.read_text().strip().split("\n")
         recent_lines = lines[-limit:] if len(lines) > limit else lines
-        
+
         executions = []
         for line in recent_lines:
             if line:
                 data = json.loads(line)
                 executions.append(CommandExecution(**data))
-        
+
         return executions
-    
+
     def search(self, pattern: str) -> List[CommandExecution]:
         """Search command history."""
         results = []
@@ -374,10 +378,10 @@ from typing import Dict, Any, List, Optional
 
 class CommandValidator:
     """Validate commands before execution."""
-    
+
     def __init__(self, schema_registry):
         self.schema_registry = schema_registry
-    
+
     def validate(self, command_line: str) -> Dict[str, Any]:
         """Validate a complete command line."""
         try:
@@ -389,11 +393,11 @@ class CommandValidator:
                     "error": "Command must start with 'khive'",
                     "suggestion": "Try: khive <command> [options]"
                 }
-            
+
             # Find command schema
             command_path = self._get_command_path(parts[1:])
             schema = self.schema_registry.get_schema(command_path)
-            
+
             if not schema:
                 similar = self._find_similar_commands(command_path)
                 return {
@@ -402,24 +406,24 @@ class CommandValidator:
                     "similar_commands": similar,
                     "suggestion": f"Did you mean: khive {similar[0]}?" if similar else None
                 }
-            
+
             # Parse arguments
             parsed_args = self._parse_arguments(parts[1:], schema)
-            
+
             # Validate required parameters
             missing = self._check_required_parameters(parsed_args, schema)
             if missing:
                 param = missing[0]
                 param_schema = schema.parameters[param]
                 example = param_schema.examples[0] if param_schema.examples else "value"
-                
+
                 return {
                     "valid": False,
                     "error": f"Missing required parameter: {param}",
                     "suggestion": f"Add --{param} {example}",
                     "example_command": f"{command_line} --{param} {example}"
                 }
-            
+
             # Validate parameter values
             validation_errors = self._validate_parameter_values(parsed_args, schema)
             if validation_errors:
@@ -430,7 +434,7 @@ class CommandValidator:
                     "parameter": error["parameter"],
                     "suggestion": error["suggestion"]
                 }
-            
+
             # Success!
             return {
                 "valid": True,
@@ -439,7 +443,7 @@ class CommandValidator:
                 "predicted_side_effects": schema.side_effects,
                 "confidence": 0.95  # High confidence since we validated everything
             }
-            
+
         except Exception as e:
             return {
                 "valid": False,
@@ -458,7 +462,7 @@ from typing import Dict, Any, List
 
 class ExecutionPredictor:
     """Predict command execution outcomes."""
-    
+
     def predict(self, command: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """Predict execution outcome."""
         # Validate first
@@ -469,9 +473,9 @@ class ExecutionPredictor:
                 "reason": validation["error"],
                 "suggestion": validation.get("suggestion")
             }
-        
+
         schema = self.schema_registry.get_schema(validation["command"])
-        
+
         # Check for conflicts
         conflicts = self._check_conflicts(schema, context)
         if conflicts:
@@ -480,7 +484,7 @@ class ExecutionPredictor:
                 "reason": f"Conflict detected: {conflicts[0]}",
                 "suggestion": "Resolve conflict before execution"
             }
-        
+
         # Predict side effects
         side_effects = []
         for effect in schema.side_effects:
@@ -496,7 +500,7 @@ class ExecutionPredictor:
                     "description": "Will make network request",
                     "reversible": False
                 })
-        
+
         return {
             "will_succeed": True,
             "confidence": 0.85,
@@ -520,14 +524,14 @@ async def main_mcp_flow(args: argparse.Namespace, config: MCPConfig) -> dict[str
     if getattr(args, "agent_mode", False):
         context = AgentContext(args.project_root)
         history = CommandHistory(args.project_root)
-        
+
         # Record command start
         start_time = time.time()
-    
+
     try:
         # Original command logic
         result = await original_main_mcp_flow(args, config)
-        
+
         # Enhance result for agent mode
         if getattr(args, "agent_mode", False):
             # Record execution
@@ -540,16 +544,16 @@ async def main_mcp_flow(args: argparse.Namespace, config: MCPConfig) -> dict[str
                 success=result.get("status") == "success",
                 duration_ms=duration_ms
             ))
-            
+
             # Add execution metadata
             result["_metadata"] = {
                 "duration_ms": duration_ms,
                 "context_used": context.get_all(),
                 "timestamp": datetime.utcnow().isoformat()
             }
-        
+
         return result
-        
+
     except Exception as e:
         if getattr(args, "agent_mode", False):
             # Enhance error for agents
@@ -562,7 +566,7 @@ async def main_mcp_flow(args: argparse.Namespace, config: MCPConfig) -> dict[str
                     param,
                     {"examples": ["example_value"]}  # Get from schema
                 )
-                
+
                 return {
                     "status": "failure",
                     "error": enhanced_error.to_dict(),
@@ -571,7 +575,7 @@ async def main_mcp_flow(args: argparse.Namespace, config: MCPConfig) -> dict[str
                         "timestamp": datetime.utcnow().isoformat()
                     }
                 }
-        
+
         # Re-raise for normal mode
         raise
 ```
@@ -624,4 +628,6 @@ history = execute_command("khive --agent-mode history recent --limit 5")
 4. Iterate based on real-world agent behavior
 5. Document patterns for other CLI tools to adopt
 
-This approach transforms khive from a human-centric CLI to a dual-purpose tool that serves both humans and AI agents effectively, setting a new standard for AI-native development tools.
+This approach transforms khive from a human-centric CLI to a dual-purpose tool
+that serves both humans and AI agents effectively, setting a new standard for
+AI-native development tools.
