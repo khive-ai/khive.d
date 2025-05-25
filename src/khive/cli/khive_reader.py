@@ -151,7 +151,7 @@ async def _handle_request_and_print(req_dict: dict[str, Any]) -> None:
 # --------------------------------------------------------------------------- #
 # Command-line parsing                                                        #
 # --------------------------------------------------------------------------- #
-async def _main() -> None:
+def main() -> None:
     ap = argparse.ArgumentParser(prog="reader_cli.py", description="khive Reader CLI")
     sub = ap.add_subparsers(
         dest="action_command", required=True, help="Action to perform"
@@ -241,19 +241,7 @@ async def _main() -> None:
 
     # Add the action string to the dict that will be passed to build the Pydantic model
     full_request_dict = {"action": ReaderAction(action_str), **request_params_dict}
-    await _handle_request_and_print(full_request_dict)
-
-
-def main() -> None:
-    """Main entry point for the CLI."""
-    try:
-        asyncio.run(_main())
-    except KeyboardInterrupt:
-        sys.stderr.write("❌ Operation cancelled by user.\n")
-        sys.exit(1)
-    except Exception as e:
-        sys.stderr.write(f"❌ Unexpected error: {e}\n")
-        sys.exit(1)
+    asyncio.run(_handle_request_and_print(full_request_dict))
 
 
 if __name__ == "__main__":
