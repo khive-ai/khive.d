@@ -1,0 +1,4 @@
+# .khive/ci.toml
+[tests.python]
+use_native_discovery = true  # Let pytest find tests itself
+show_output = "smart"        # Smart output display
