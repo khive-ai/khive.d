@@ -474,9 +474,8 @@ async def cmd_server_status(
             "message": f"Status for server '{server_name}'",
             "server": server_info,
         }
-    else:
-        # Return status for all servers
-        return await cmd_list_servers(config)
+    # Return status for all servers
+    return await cmd_list_servers(config)
 
 
 async def cmd_list_tools(config: MCPConfig, server_name: str) -> dict[str, Any]:
@@ -623,15 +622,15 @@ async def main_mcp_flow(args: argparse.Namespace, config: MCPConfig) -> dict[str
         if args.command == "list":
             return await cmd_list_servers(config)
 
-        elif args.command == "status":
+        if args.command == "status":
             server_name = getattr(args, "server", None)
             return await cmd_server_status(config, server_name)
 
-        elif args.command == "tools":
+        if args.command == "tools":
             server_name = args.server
             return await cmd_list_tools(config, server_name)
 
-        elif args.command == "call":
+        if args.command == "call":
             server_name = args.server
             tool_name = args.tool
 
@@ -646,12 +645,11 @@ async def main_mcp_flow(args: argparse.Namespace, config: MCPConfig) -> dict[str
 
             return await cmd_call_tool(config, server_name, tool_name, arguments)
 
-        else:
-            return {
-                "status": "failure",
-                "message": f"Unknown command: {args.command}",
-                "available_commands": ["list", "status", "tools", "call"],
-            }
+        return {
+            "status": "failure",
+            "message": f"Unknown command: {args.command}",
+            "available_commands": ["list", "status", "tools", "call"],
+        }
 
     finally:
         # Clean up connections on exit

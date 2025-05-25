@@ -7,6 +7,7 @@ if not is_package_installed("fastmcp"):
 
 import lionfuncs as ln
 from fastmcp import FastMCP
+
 from khive.services.info.info_service import InfoServiceGroup
 from khive.services.info.parts import (
     ExaSearchRequest,
@@ -107,7 +108,7 @@ async def search(
 )
 async def consult(
     query: str,
-    models: list[str] = ["anthropic/claude-sonnet-4"],
+    models: list[str] | None = None,
     system_prompt: str | None = None,
 ):
     """consult with SOTA LLMs.
@@ -118,6 +119,8 @@ async def consult(
             You can choose one or more of [openai/gpt-o4-mini, google/gemini-2.5-pro-preview, anthropic/claude-sonnet-4]. If more than one model is provided, the results will be aggregated. Hint: good to get a variety of answers. default is anthropic/claude-sonnet-4
         system_prompt (str | None): Optional system prompt to guide the LLM's behavior.
     """
+    if models is None:
+        models = ["anthropic/claude-sonnet-4"]
     system_prompt = (
         system_prompt
         or "You are diligent research expert, excelling at critical thinking and reflective reasoning. Concisely, answer the question as thoughtfully accurate and as you can."
