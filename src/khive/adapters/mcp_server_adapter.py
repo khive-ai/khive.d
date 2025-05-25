@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shutil
 import time
 from datetime import datetime
 from typing import Any
@@ -161,11 +162,17 @@ class MCPServerAdapter:
                 from pathlib import Path
 
                 try:
+                    # Use shutil.which to get full path to git executable for security
+                    git_cmd = shutil.which("git")
+                    if not git_cmd:
+                        raise FileNotFoundError("git command not found in PATH")
+                    
                     project_root = Path(
-                        subprocess.check_output(
-                            ["git", "rev-parse", "--show-toplevel"],
+                        subprocess.check_output(  # noqa: S603 # git command with validated executable path
+                            [git_cmd, "rev-parse", "--show-toplevel"],
                             text=True,
                             stderr=subprocess.PIPE,
+                            shell=False,  # Explicitly disable shell for security
                         ).strip()
                     )
                 except (subprocess.CalledProcessError, FileNotFoundError):

@@ -128,7 +128,7 @@ def print_example_configs():
         "mcpServers": {
             "filesystem": {
                 "command": "npx",
-                "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+                "args": ["-y", "@modelcontextprotocol/server-filesystem", str(Path.home() / "Documents")],
                 "alwaysAllow": ["read_file", "write_file", "list_directory"],
             },
             "github": {
