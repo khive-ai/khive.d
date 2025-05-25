@@ -1,9 +1,9 @@
 ---
-title: 'The Practical Golden Path: Hub-and-Spoke Workflow'
-by:     'khive Team'
-created: '2025-04-05'
-updated: '2025-05-09'
-version: '1.7'
+title: "The Practical Golden Path: Hub-and-Spoke Workflow"
+by: "khive Team"
+created: "2025-04-05"
+updated: "2025-05-09"
+version: "1.7"
 description: >
   Practical coding standards for khive. Designed to be easy to follow from the terminal with the khive helper scripts; enforced in Quality Review & CI.
 ---

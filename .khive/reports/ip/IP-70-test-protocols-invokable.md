@@ -62,7 +62,7 @@ We will follow a Test-Driven Development (TDD) approach:
 
 **Key Deliverables:**
 
-- Tests for _invoke method
+- Tests for \_invoke method
 - Tests for invoke method with different execution scenarios
 - Tests for status transitions
 
@@ -85,14 +85,14 @@ We will follow a Test-Driven Development (TDD) approach:
 | UT-2 | Test custom initialization of Invokable                   | None           | Custom values are correctly set                           |
 | UT-3 | Test has_invoked property with different execution states | None           | Property returns correct boolean based on execution state |
 
-#### 3.1.2 Test Group: _invoke Method
+#### 3.1.2 Test Group: \_invoke Method
 
-| ID   | Description                                           | Fixtures/Mocks  | Assertions                                                |
-| ---- | ----------------------------------------------------- | --------------- | --------------------------------------------------------- |
-| UT-4 | Test _invoke with valid function                      | `mock_function` | Function is called with correct args and returns expected |
-| UT-5 | Test _invoke with None function raises ValueError     | None            | ValueError is raised with correct message                 |
-| UT-6 | Test _invoke with sync function is properly converted | `mock_sync_fn`  | Function is properly converted to async and called        |
-| UT-7 | Test _invoke with async function is called directly   | `mock_async_fn` | Function is called directly without conversion            |
+| ID   | Description                                            | Fixtures/Mocks  | Assertions                                                |
+| ---- | ------------------------------------------------------ | --------------- | --------------------------------------------------------- |
+| UT-4 | Test \_invoke with valid function                      | `mock_function` | Function is called with correct args and returns expected |
+| UT-5 | Test \_invoke with None function raises ValueError     | None            | ValueError is raised with correct message                 |
+| UT-6 | Test \_invoke with sync function is properly converted | `mock_sync_fn`  | Function is properly converted to async and called        |
+| UT-7 | Test \_invoke with async function is called directly   | `mock_async_fn` | Function is called directly without conversion            |
 
 #### 3.1.3 Test Group: invoke Method
 
@@ -133,10 +133,10 @@ protocol behavior.
 
 ### 4.3 Method Tests
 
-| ID  | Task                           | Description                                                        | Dependencies | Priority | Complexity |
-| --- | ------------------------------ | ------------------------------------------------------------------ | ------------ | -------- | ---------- |
-| T-5 | Implement _invoke method tests | Test the _invoke method with different scenarios                   | T-1, T-2     | High     | Medium     |
-| T-6 | Implement invoke method tests  | Test the invoke method with success, failure, and cancel scenarios | T-1, T-2     | High     | Medium     |
+| ID  | Task                            | Description                                                        | Dependencies | Priority | Complexity |
+| --- | ------------------------------- | ------------------------------------------------------------------ | ------------ | -------- | ---------- |
+| T-5 | Implement \_invoke method tests | Test the \_invoke method with different scenarios                  | T-1, T-2     | High     | Medium     |
+| T-6 | Implement invoke method tests   | Test the invoke method with success, failure, and cancel scenarios | T-1, T-2     | High     | Medium     |
 
 ### 4.4 Edge Cases and Error Handling
 
@@ -194,7 +194,7 @@ gantt
 1. Set up test file structure and import necessary modules
 2. Implement mock classes for testing
 3. Implement basic initialization and property tests
-4. Implement _invoke method tests
+4. Implement \_invoke method tests
 5. Implement invoke method tests for success, failure, and cancellation
    scenarios
 6. Implement edge case and error handling tests

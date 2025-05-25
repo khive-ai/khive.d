@@ -189,6 +189,7 @@ graph TD
     `lionfuncs.concurrency` if needed beyond what the `Executor` provides for
     individual calls.
 - **Interface (Conceptual):**
+
   ```python
   from typing import Protocol, Any, Dict
   from lionfuncs.network import NetworkExecutor # Assuming import
@@ -218,6 +219,7 @@ graph TD
     (e.g., session pooling if `AsyncAPIClient` instances are created and managed
     per endpoint by the executor).
 - **Interface (Conceptual, from `TDS-100.md` and Issue #80):**
+
   ```python
   from typing import Protocol, Any, Awaitable, Callable
   # from lionfuncs.network import EndpointConfig, RequestModel, ResponseModel # Assuming imports
@@ -240,6 +242,7 @@ graph TD
       # May also include methods for direct function execution if it's a general executor
       # async def submit(self, func: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any) -> T: ...
   ```
+
   _Note: The exact signature will depend on `lionfuncs`'s actual API.
   `TDS-100.md` suggests `execute(endpoint_config, request_data)`._
 
@@ -252,6 +255,7 @@ graph TD
     client).
   - Authentication specific to an endpoint.
 - **Interface (Conceptual):**
+
   ```python
   from typing import Protocol, Any
   # from lionfuncs.models import RequestModel, ResponseModel # Assuming imports
@@ -265,6 +269,7 @@ graph TD
       async def __aenter__(self) -> 'ILionfuncsAsyncAPIClient': ...
       async def __aexit__(self, *args) -> None: ...
   ```
+
   _Note: `khive` services might not interact with `AsyncAPIClient` directly if
   the `NetworkExecutor` abstracts this away by taking `EndpointConfig`._
 

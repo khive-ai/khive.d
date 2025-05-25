@@ -127,12 +127,12 @@ For future development, the following automated tests should be implemented:
 
 #### 3.2.1 Unit Tests
 
-| ID   | Description                                                    | Fixtures/Mocks                | Assertions                                             |
-| ---- | -------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------ |
-| UT-1 | Test that _read_doc returns expected content for valid input   | Mock file system              | Response contains expected content                     |
-| UT-2 | Test that _read_doc handles missing files appropriately        | Mock file system with no file | Response contains appropriate error message            |
-| UT-3 | Test that _open_doc correctly processes different file formats | Mock document converter       | Response contains correct document information         |
-| UT-4 | Test that _list_dir correctly filters files by extension       | Mock file system              | Response contains only files with specified extensions |
+| ID   | Description                                                     | Fixtures/Mocks                | Assertions                                             |
+| ---- | --------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------ |
+| UT-1 | Test that \_read_doc returns expected content for valid input   | Mock file system              | Response contains expected content                     |
+| UT-2 | Test that \_read_doc handles missing files appropriately        | Mock file system with no file | Response contains appropriate error message            |
+| UT-3 | Test that \_open_doc correctly processes different file formats | Mock document converter       | Response contains correct document information         |
+| UT-4 | Test that \_list_dir correctly filters files by extension       | Mock file system              | Response contains only files with specified extensions |
 
 #### 3.2.2 Integration Tests
 

@@ -233,7 +233,7 @@ async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
 
 ### 8.1 Improvements
 
-#### Improvement 1: Structured Logging in _close_client
+#### Improvement 1: Structured Logging in \_close_client
 
 **Location:** `src/khive/connections/endpoint.py:109-114`\
 **Description:** The current implementation imports the logging module inside
@@ -284,7 +284,7 @@ be installed.
 
 ### 8.2 Positive Highlights
 
-#### Highlight 1: Excellent Error Handling in _close_client
+#### Highlight 1: Excellent Error Handling in \_close_client
 
 **Location:** `src/khive/connections/endpoint.py:90-116`\
 **Description:** The `_close_client` method handles different client types and

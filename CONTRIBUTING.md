@@ -53,6 +53,7 @@ Before you begin, ensure you have the following installed:
 ## Development Workflow
 
 1. Create a new branch for your feature or bugfix:
+
    ```bash
    git checkout -b feat/your-feature-name
    # or
@@ -62,16 +63,19 @@ Before you begin, ensure you have the following installed:
 2. Make your changes, following the [coding standards](#coding-standards)
 
 3. Run the formatter and linters:
+
    ```bash
    khive fmt
    ```
 
 4. Run the tests:
+
    ```bash
    khive ci --check
    ```
 
 5. Commit your changes using the Conventional Commits format:
+
    ```bash
    khive commit "feat(component): add new feature"
    # or
@@ -79,6 +83,7 @@ Before you begin, ensure you have the following installed:
    ```
 
 6. Push your branch to GitHub:
+
    ```bash
    git push -u origin feat/your-feature-name
    ```

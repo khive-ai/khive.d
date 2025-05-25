@@ -131,9 +131,9 @@ def test_embedable_n_dim_with_embedding():
     assert obj.n_dim == 4
 ```
 
-#### 3.1.3 Test Case: _parse_embedding Validator
+#### 3.1.3 Test Case: \_parse_embedding Validator
 
-**Purpose:** Verify that the _parse_embedding validator correctly handles
+**Purpose:** Verify that the \_parse_embedding validator correctly handles
 various input types.
 
 **Test Implementation:**
@@ -300,10 +300,10 @@ async def test_generate_embedding_default_endpoint(monkeypatch):
 
 ### 3.3 Test Suite: Helper Functions
 
-#### 3.3.1 Test Case: _parse_embedding_response Function
+#### 3.3.1 Test Case: \_parse_embedding_response Function
 
-**Purpose:** Verify that _parse_embedding_response correctly extracts embeddings
-from various response formats.
+**Purpose:** Verify that \_parse_embedding_response correctly extracts
+embeddings from various response formats.
 
 **Setup:**
 
@@ -401,9 +401,9 @@ def test_parse_embedding_response_passthrough():
     assert result == response
 ```
 
-#### 3.3.2 Test Case: _get_default_embed_endpoint Function
+#### 3.3.2 Test Case: \_get_default_embed_endpoint Function
 
-**Purpose:** Verify that _get_default_embed_endpoint returns the correct
+**Purpose:** Verify that \_get_default_embed_endpoint returns the correct
 endpoint based on settings.
 
 **Test Implementation:**

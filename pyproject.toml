@@ -24,6 +24,7 @@ dev = [
     "freezegun>=1.5.1",
     "ipykernel>=6.29.5",
     "isort>=6.0.1",
+    "nbqa>=1.9.1",
     "pre-commit>=4.2.0",
     "pytest-asyncio>=0.23.0", # Added pytest-asyncio
     "pytest-cov>=4.1.0",
@@ -94,3 +95,48 @@ exclude = [
 
 [project.scripts]                # PEP 621 console-scripts table
 khive         = "khive.cli.khive_cli:main"
+
+
+[tool."khive fmt"]
+enable = ["python", "docs"]
+
+[tool."khive fmt".stacks.python]
+cmd = "ruff format {files}"
+check_cmd = "ruff format --check {files}"
+include = ["*.py"]
+exclude = [
+    "*_generated.py",
+    ".venv/**",
+    "venv/**",
+    "env/**",
+    ".env/**",
+    "**/.venv/**",
+    "**/venv/**",
+    "**/env/**",
+    "**/.env/**",
+    "node_modules/**",
+    "**/node_modules/**",
+    "target/**",
+    "**/target/**",
+    "__pycache__/**",
+    "**/__pycache__/**",
+    "*.pyc",
+    ".git/**",
+    ".pytest_cache/**",
+    ".mypy_cache/**",
+    ".ruff_cache/**",
+    "build/**",
+    "dist/**",
+    "*.egg-info/**",
+    ".tox/**",
+    ".coverage",
+    "htmlcov/**",
+    "site-packages/**",
+    "**/site-packages/**",
+]
+
+[tool."khive fmt".stacks.docs]
+cmd = "deno fmt {files}"
+check_cmd = "deno fmt --check {files}"
+include = ["*.md", "*.markdown"]
+exclude = []

@@ -148,11 +148,11 @@ def test_has_invoked_property():
     assert obj.has_invoked is True
 ```
 
-### 3.2 Test Suite: _invoke Method
+### 3.2 Test Suite: \_invoke Method
 
-#### 3.2.1 Test Case: _invoke with None Function
+#### 3.2.1 Test Case: \_invoke with None Function
 
-**Purpose:** Verify that _invoke raises ValueError when _invoke_function is
+**Purpose:** Verify that \_invoke raises ValueError when \_invoke_function is
 None.
 
 **Test Implementation:**
@@ -167,9 +167,9 @@ async def test_invoke_with_none_function():
         await obj._invoke()
 ```
 
-#### 3.2.2 Test Case: _invoke with Synchronous Function
+#### 3.2.2 Test Case: \_invoke with Synchronous Function
 
-**Purpose:** Verify that _invoke correctly converts a synchronous function to
+**Purpose:** Verify that \_invoke correctly converts a synchronous function to
 asynchronous.
 
 **Test Implementation:**
@@ -195,9 +195,9 @@ async def test_invoke_with_sync_function():
     assert result == "1-2-3"
 ```
 
-#### 3.2.3 Test Case: _invoke with Asynchronous Function
+#### 3.2.3 Test Case: \_invoke with Asynchronous Function
 
-**Purpose:** Verify that _invoke correctly calls an asynchronous function
+**Purpose:** Verify that \_invoke correctly calls an asynchronous function
 directly.
 
 **Test Implementation:**

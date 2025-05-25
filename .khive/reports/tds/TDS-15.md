@@ -82,15 +82,18 @@ graph TD
 ### 2.2 Dependencies
 
 1. **Testing frameworks**:
+
    - pytest (>=7.0.0)
    - pytest-cov (>=4.0.0)
    - pytest-asyncio (>=0.21.0)
    - pytest-benchmark (>=4.0.0)
 
 2. **Property-based testing**:
+
    - hypothesis (>=6.82.0)
 
 3. **Integration testing**:
+
    - testcontainers (>=3.7.0)
 
 4. **Mocking**:

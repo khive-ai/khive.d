@@ -172,10 +172,10 @@ def process(id, opts=None):
 
 ### 5.1 Unit Test Coverage
 
-| | Module | Line Coverage | Branch Coverage | Notes | | |
------------------------ | ------------- | --------------- |
----------------------------------- | | | `rate_limiter.py` | 91% | 90% |
-Excellent coverage | | | `executor.py` | 96% | 95% | Excellent coverage |
+|                                    | Module | Line Coverage | Branch Coverage   | Notes |     |                    |
+| ---------------------------------- | ------ | ------------- | ----------------- | ----- | --- | ------------------ |
+| ---------------------------------- |        |               | `rate_limiter.py` | 91%   | 90% |                    |
+| Excellent coverage                 |        |               | `executor.py`     | 96%   | 95% | Excellent coverage |
 
 ### 5.2 Integration Test Coverage
 

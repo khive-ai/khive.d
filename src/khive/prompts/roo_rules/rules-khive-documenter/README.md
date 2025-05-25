@@ -86,7 +86,8 @@ CHANGELOG.md
 README.md
 ```
 
-_Put _why_ & _how_ in the **docs** section, deep internal reasoning in **dev**._
+_Put \_why_ & _how_ in the **docs** section, deep internal reasoning in
+**dev**.\_
 
 ### Quality Gate
 

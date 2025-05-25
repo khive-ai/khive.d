@@ -79,7 +79,7 @@ maintainability, security, performance, and consistency with the project style.
 
 - Some Endpoint integration tests are skipped (marked with `@pytest.mark.skip`)
 - Minor warning in integration tests about coroutine
-  'AsyncMockMixin._execute_mock_call' never being awaited
+  'AsyncMockMixin.\_execute_mock_call' never being awaited
 - Half-open state handling in CircuitBreaker could be improved with more
   granular control
 
@@ -555,7 +555,7 @@ requirements.
 
 1. Implement the skipped Endpoint integration tests to ensure proper integration
    with the Endpoint class
-2. Fix the warning about coroutine 'AsyncMockMixin._execute_mock_call' never
+2. Fix the warning about coroutine 'AsyncMockMixin.\_execute_mock_call' never
    being awaited in the integration tests
 
 ### 9.3 Minor Suggestions (Nice to Have)
@@ -584,7 +584,7 @@ well-implemented, though the Endpoint integration tests are currently skipped.
 
 There are no critical issues that need to be addressed before merging. The main
 recommendations are to implement the skipped Endpoint integration tests and fix
-the warning about coroutine 'AsyncMockMixin._execute_mock_call' never being
+the warning about coroutine 'AsyncMockMixin.\_execute_mock_call' never being
 awaited. Some minor improvements could be made to enhance the half-open state
 management and add more detailed logging for retry attempts.
 
