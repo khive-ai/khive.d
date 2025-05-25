@@ -67,18 +67,18 @@ class TestMCPServerAdapter:
         mock_client = AsyncMock()
         mock_client.call_tool.return_value = {"content": [{"type": "text", "text": "success"}]}
         
-        with patch('khive.adapters.mcp_client.MCPClient') as mock_client_class:
+        with patch('khive.adapters.fastmcp_client.MCPClient') as mock_client_class:
             mock_client_class.return_value = mock_client
             mock_client.connect.return_value = True
             
-            with patch('khive.adapters.mcp_client.load_mcp_config') as mock_load_config:
+            with patch('khive.adapters.fastmcp_client.load_mcp_config') as mock_load_config:
                 mock_mcp_config = MagicMock()
                 mock_mcp_config.servers = {
                     "test_server": MagicMock(name="test_server", command="test", args=[])
                 }
                 mock_load_config.return_value = mock_mcp_config
                 
-                adapter = MCPServerAdapter(config)
+                adapter = MCPServerAdapter(config, mock_mcp_config)
                 
                 request = MCPToolRequest(
                     server_name="test_server",
@@ -113,18 +113,18 @@ class TestMCPServerAdapter:
         mock_client = AsyncMock()
         mock_client.call_tool.return_value = {"result": "success"}
         
-        with patch('khive.adapters.mcp_client.MCPClient') as mock_client_class:
+        with patch('khive.adapters.fastmcp_client.MCPClient') as mock_client_class:
             mock_client_class.return_value = mock_client
             mock_client.connect.return_value = True
             
-            with patch('khive.adapters.mcp_client.load_mcp_config') as mock_load_config:
+            with patch('khive.adapters.fastmcp_client.load_mcp_config') as mock_load_config:
                 mock_mcp_config = MagicMock()
                 mock_mcp_config.servers = {
                     "test_server": MagicMock(name="test_server", command="test", args=[])
                 }
                 mock_load_config.return_value = mock_mcp_config
                 
-                adapter = MCPServerAdapter(config)
+                adapter = MCPServerAdapter(config, mock_mcp_config)
                 
                 request = MCPToolRequest(
                     server_name="test_server",
@@ -150,7 +150,7 @@ class TestMCPDiscoveryAdapter:
     async def test_from_obj_basic_discovery(self):
         """Test basic discovery functionality."""
         # Mock the MCP config loading
-        with patch('khive.adapters.mcp_client.load_mcp_config') as mock_load_config:
+        with patch('khive.adapters.fastmcp_client.load_mcp_config') as mock_load_config:
             mock_mcp_config = MagicMock()
             mock_mcp_config.servers = {
                 "test_server": MagicMock(
@@ -162,7 +162,7 @@ class TestMCPDiscoveryAdapter:
             mock_load_config.return_value = mock_mcp_config
             
             # Mock the MCP client
-            with patch('khive.adapters.mcp_client.MCPClient') as mock_client_class:
+            with patch('khive.adapters.fastmcp_client.MCPClient') as mock_client_class:
                 mock_client = AsyncMock()
                 mock_client.connect.return_value = True
                 mock_client.tools = [

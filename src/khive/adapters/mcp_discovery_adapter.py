@@ -17,7 +17,7 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from .mcp_client import MCPClient, MCPConfig, load_mcp_config
+from .fastmcp_client import MCPClient, MCPConfig, load_mcp_config
 from .mcp_models import (
     MCPDiscoveryRequest,
     MCPDiscoveryResponse,

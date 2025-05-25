@@ -14,7 +14,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class CapabilityContext(BaseModel):
@@ -25,8 +25,8 @@ class CapabilityContext(BaseModel):
     request_id: Optional[str] = Field(None, description="Unique request identifier for audit trail")
     source_ip: Optional[str] = Field(None, description="Source IP address if applicable")
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "principal_id": "agent_research_001",
                 "capability_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJFUzI1NiJ9...",
@@ -34,6 +34,7 @@ class CapabilityContext(BaseModel):
                 "source_ip": "192.168.1.100"
             }
         }
+    )
 
 
 class MCPToolRequest(BaseModel):
@@ -43,9 +44,8 @@ class MCPToolRequest(BaseModel):
     tool_name: str = Field(..., description="Name of the tool to execute")
     arguments: Dict[str, Any] = Field(default_factory=dict, description="Tool arguments")
     timeout: Optional[int] = Field(None, description="Timeout in seconds for tool execution")
-    
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "server_name": "filesystem",
                 "tool_name": "read_file",
@@ -55,6 +55,7 @@ class MCPToolRequest(BaseModel):
                 "timeout": 30
             }
         }
+    )
 
 
 class MCPToolResponse(BaseModel):
@@ -66,9 +67,8 @@ class MCPToolResponse(BaseModel):
     execution_time_ms: Optional[float] = Field(None, description="Execution time in milliseconds")
     server_name: str = Field(..., description="Name of the server that executed the tool")
     tool_name: str = Field(..., description="Name of the executed tool")
-    
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "success": True,
                 "result": {
@@ -85,6 +85,7 @@ class MCPToolResponse(BaseModel):
                 "tool_name": "read_file"
             }
         }
+    )
 
 
 class MCPDiscoveryRequest(BaseModel):
@@ -94,16 +95,15 @@ class MCPDiscoveryRequest(BaseModel):
     tool_filter: Optional[str] = Field(None, description="Filter tools by name pattern")
     include_disabled: bool = Field(False, description="Include disabled servers in discovery")
     include_schemas: bool = Field(True, description="Include parameter schemas in tool info")
-    
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "server_filter": "filesystem*",
                 "tool_filter": "*file*",
-                "include_disabled": False,
                 "include_schemas": True
             }
         }
+    )
 
 
 class MCPToolInfo(BaseModel):

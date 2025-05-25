@@ -38,7 +38,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 # Import shared MCP client
-from ..adapters.mcp_client import (
+from ..adapters.fastmcp_client import (
     MCPClient,
     MCPConfig,
     MCPServerConfig,

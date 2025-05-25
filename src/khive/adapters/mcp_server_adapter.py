@@ -20,7 +20,7 @@ from typing import Any, Dict, Optional
 
 from pydantic import BaseModel
 
-from .mcp_client import MCPClient, MCPConfig, MCPServerConfig, load_mcp_config
+from .fastmcp_client import MCPClient, MCPConfig, MCPServerConfig, load_mcp_config
 from .mcp_models import (
     CapabilityContext,
     MCPServerAdapterConfig,
