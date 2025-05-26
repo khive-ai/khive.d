@@ -5,6 +5,9 @@ This module tests the core HTTP client functionality including request handling,
 error management, retries, and connection pooling.
 """
 
+import aiohttp
+from aiohttp import ClientResponse, ClientSession
+import asyncio
 import pytest
 from unittest.mock import AsyncMock, Mock, patch, MagicMock
 import httpx
