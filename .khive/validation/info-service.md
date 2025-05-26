@@ -12,7 +12,10 @@ status: "PARTIALLY FUNCTIONAL - COMPREHENSIVE MODE BROKEN"
 ## Executive Summary
 
 The [`khive info`](../src/khive/services/info/info_service.py:1) service has
-been validated and is **partially functional** with critical issues in comprehensive analysis mode. While basic functionality works, the comprehensive analysis feature is completely broken with no helpful error messages, severely limiting the service's research capabilities.
+been validated and is **partially functional** with critical issues in
+comprehensive analysis mode. While basic functionality works, the comprehensive
+analysis feature is completely broken with no helpful error messages, severely
+limiting the service's research capabilities.
 
 ## Test Cases Executed
 
@@ -47,7 +50,8 @@ khive info --mode analytical "microservices vs monolith"
 khive info --mode realtime "latest Python packaging trends"
 ```
 
-**Result**: **CRITICAL ISSUE** - Comprehensive mode completely broken, other modes work
+**Result**: **CRITICAL ISSUE** - Comprehensive mode completely broken, other
+modes work
 
 ### 4. Multi-Perspective Analysis ✅
 
@@ -67,13 +71,15 @@ confidence scores in responses
 
 ### 6. Comprehensive Analysis Mode ❌
 
-**Test**: Comprehensive analysis functionality
-**Result**: **CRITICAL FAILURE** - Comprehensive analysis mode does not work at all and provides no helpful error messages, making the service essentially useless for detailed research
+**Test**: Comprehensive analysis functionality **Result**: **CRITICAL
+FAILURE** - Comprehensive analysis mode does not work at all and provides no
+helpful error messages, making the service essentially useless for detailed
+research
 
 ### 7. Output Formatting ❌
 
-**Test**: Clean, readable output format
-**Result**: **ISSUE IDENTIFIED** - Raw API responses are displayed instead of clean, formatted output
+**Test**: Clean, readable output format **Result**: **ISSUE IDENTIFIED** - Raw
+API responses are displayed instead of clean, formatted output
 
 ### 8. Help Documentation ✅
 
@@ -106,28 +112,34 @@ khive info --help
 
 ### 1. Comprehensive Analysis Mode Failure
 
-**Issue**: Comprehensive analysis mode completely non-functional
-**Impact**: Service essentially useless for detailed research tasks
-**Severity**: **CRITICAL** - Core functionality broken
-**Error Handling**: No helpful error messages provided
-**Location**: [`info_service.py`](../src/khive/services/info/info_service.py:1) comprehensive mode implementation
+**Issue**: Comprehensive analysis mode completely non-functional **Impact**:
+Service essentially useless for detailed research tasks **Severity**:
+**CRITICAL** - Core functionality broken **Error Handling**: No helpful error
+messages provided **Location**:
+[`info_service.py`](../src/khive/services/info/info_service.py:1) comprehensive
+mode implementation
 
-**Details**: The comprehensive analysis feature, which is the primary value proposition of khive info, does not work at all. Users receive no meaningful error messages, making debugging impossible.
+**Details**: The comprehensive analysis feature, which is the primary value
+proposition of khive info, does not work at all. Users receive no meaningful
+error messages, making debugging impossible.
 
 ### 2. Output Formatting Problem
 
-**Issue**: Raw API responses displayed instead of clean output
-**Impact**: Reduces usability and professional appearance
-**Severity**: Medium (functionality works when modes work, presentation poor)
-**Location**: [`info_service.py`](../src/khive/services/info/info_service.py:1) output formatting logic
+**Issue**: Raw API responses displayed instead of clean output **Impact**:
+Reduces usability and professional appearance **Severity**: Medium
+(functionality works when modes work, presentation poor) **Location**:
+[`info_service.py`](../src/khive/services/info/info_service.py:1) output
+formatting logic
 
-**Example**: Instead of clean formatted text, users see raw JSON or API response structures mixed with the actual content.
+**Example**: Instead of clean formatted text, users see raw JSON or API response
+structures mixed with the actual content.
 
 ## Overall Assessment
 
 ### Strengths
 
-1. **Basic Query Processing**: Handles simple research questions in working modes
+1. **Basic Query Processing**: Handles simple research questions in working
+   modes
 2. **Natural Language Interface**: User-friendly interaction model
 3. **Partial Mode Support**: Quick and basic modes function
 4. **Citations**: Provides attribution when modes work
@@ -144,7 +156,8 @@ khive info --help
 
 ### Immediate Actions
 
-1. **Fix Comprehensive Mode**: **URGENT** - Restore comprehensive analysis functionality
+1. **Fix Comprehensive Mode**: **URGENT** - Restore comprehensive analysis
+   functionality
 2. **Implement Error Handling**: Add meaningful error messages for mode failures
 3. **Fix Formatting Issue**: Clean up output presentation
 4. **Add Diagnostic Logging**: Help identify why comprehensive mode fails
@@ -157,14 +170,17 @@ khive info --help
 
 ## Validation Conclusion
 
-The [`khive info`](../src/khive/services/info/info_service.py:1) service
-has significant functionality gaps that severely limit its utility. The comprehensive analysis mode failure makes the service unsuitable for its primary research purpose.
+The [`khive info`](../src/khive/services/info/info_service.py:1) service has
+significant functionality gaps that severely limit its utility. The
+comprehensive analysis mode failure makes the service unsuitable for its primary
+research purpose.
 
 **Status**: **NOT RECOMMENDED FOR PRODUCTION** - Critical functionality broken
 
 **Next Steps**:
 
-1. **URGENT**: Fix comprehensive analysis mode in [`info_service.py`](../src/khive/services/info/info_service.py:1)
+1. **URGENT**: Fix comprehensive analysis mode in
+   [`info_service.py`](../src/khive/services/info/info_service.py:1)
 2. Implement proper error handling and diagnostic messages
 3. Address output formatting issues
 4. Comprehensive testing of all modes before production use

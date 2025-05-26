@@ -11,7 +11,12 @@ status: "PARTIALLY_VALIDATED"
 
 ## Executive Summary
 
-The [`khive mcp`](../../src/khive/commands/mcp.py) service has been partially validated with mixed results. While core CLI accessibility and basic functionality work correctly, a critical configuration issue prevents full service operation. The service demonstrates proper help documentation and server listing capabilities, but fails on tools enumeration due to incorrect script path resolution.
+The [`khive mcp`](../../src/khive/commands/mcp.py) service has been partially
+validated with mixed results. While core CLI accessibility and basic
+functionality work correctly, a critical configuration issue prevents full
+service operation. The service demonstrates proper help documentation and server
+listing capabilities, but fails on tools enumeration due to incorrect script
+path resolution.
 
 **Overall Assessment: ⚠️ PARTIALLY VALIDATED - Configuration Issue Identified**
 
@@ -67,7 +72,8 @@ The [`khive mcp`](../../src/khive/commands/mcp.py) service has been partially va
 ### ✅ Core CLI Features
 
 - **Help Documentation:** Clear usage instructions available
-- **Command Accessibility:** Available via [`khive mcp`](../../src/khive/cli/khive_cli.py:1)
+- **Command Accessibility:** Available via
+  [`khive mcp`](../../src/khive/cli/khive_cli.py:1)
 - **Server Discovery:** Can list configured MCP servers
 - **Basic Status:** Provides service status information
 
@@ -87,17 +93,17 @@ The [`khive mcp`](../../src/khive/commands/mcp.py) service has been partially va
 
 ### 🔧 Critical Configuration Issue
 
-**Problem:** Script path resolution failure
-**Error:** `Script not found: /Users/lion/khived/docker`
-**Impact:** Prevents tools enumeration and potentially other operations
-**Location:** MCP service configuration or script path logic
-**Status:** ❌ **UNRESOLVED** - Requires configuration fix
+**Problem:** Script path resolution failure **Error:**
+`Script not found: /Users/lion/khived/docker` **Impact:** Prevents tools
+enumeration and potentially other operations **Location:** MCP service
+configuration or script path logic **Status:** ❌ **UNRESOLVED** - Requires
+configuration fix
 
 ### ⚠️ Minor Issues
 
-**Help Command Exit Code:** Undefined exit code behavior
-**Impact:** Low - functionality works despite undefined exit code
-**Status:** ⚠️ **MINOR** - Does not affect core functionality
+**Help Command Exit Code:** Undefined exit code behavior **Impact:** Low -
+functionality works despite undefined exit code **Status:** ⚠️ **MINOR** - Does
+not affect core functionality
 
 ## Service Architecture Analysis
 
@@ -127,7 +133,8 @@ The khive mcp service demonstrates proper integration patterns:
 
 ### Required Configuration Fix
 
-The service expects a docker script at `/Users/lion/khived/docker` but this file does not exist. This suggests either:
+The service expects a docker script at `/Users/lion/khived/docker` but this file
+does not exist. This suggests either:
 
 1. Missing script installation
 2. Incorrect path configuration
@@ -152,14 +159,14 @@ The service expects a docker script at `/Users/lion/khived/docker` but this file
 
 ### Test Results Summary
 
-| Test Case | Status | Details |
-|-----------|--------|---------|
-| CLI Access | ✅ PASS | Service accessible |
-| Help Documentation | ✅ PASS | Works (exit code undefined) |
-| Server Listing | ✅ PASS | Shows 1 server (github) |
-| Status Command | ✅ PARTIAL | Basic functionality works |
-| Tools Command | ❌ FAIL | Script not found error |
-| Configuration | ❌ FAIL | Path resolution issue |
+| Test Case          | Status     | Details                     |
+| ------------------ | ---------- | --------------------------- |
+| CLI Access         | ✅ PASS    | Service accessible          |
+| Help Documentation | ✅ PASS    | Works (exit code undefined) |
+| Server Listing     | ✅ PASS    | Shows 1 server (github)     |
+| Status Command     | ✅ PARTIAL | Basic functionality works   |
+| Tools Command      | ❌ FAIL    | Script not found error      |
+| Configuration      | ❌ FAIL    | Path resolution issue       |
 
 ## Recommendations
 
@@ -171,7 +178,8 @@ The service expects a docker script at `/Users/lion/khived/docker` but this file
 
 ### Configuration Resolution Options
 
-1. **Install Missing Script:** Create required docker script at expected location
+1. **Install Missing Script:** Create required docker script at expected
+   location
 2. **Update Path Configuration:** Modify service to look in correct location
 3. **Remove Script Dependency:** If docker script not needed, remove requirement
 
@@ -204,17 +212,21 @@ The service expects a docker script at `/Users/lion/khived/docker` but this file
 
 ## Conclusion
 
-The khive mcp service demonstrates proper CLI integration and basic functionality but is limited by a critical configuration issue. The service successfully handles help documentation, server listing, and basic status operations, indicating solid architectural foundation. However, the script path resolution failure prevents full validation and operational capability.
+The khive mcp service demonstrates proper CLI integration and basic
+functionality but is limited by a critical configuration issue. The service
+successfully handles help documentation, server listing, and basic status
+operations, indicating solid architectural foundation. However, the script path
+resolution failure prevents full validation and operational capability.
 
-**Status: ⚠️ PARTIALLY VALIDATED**
-**Confidence Level: Medium**
-**Ready for Production: No - Configuration Fix Required**
-**Blocking Issue: Docker script path resolution**
+**Status: ⚠️ PARTIALLY VALIDATED** **Confidence Level: Medium** **Ready for
+Production: No - Configuration Fix Required** **Blocking Issue: Docker script
+path resolution**
 
-The service shows promise but requires configuration resolution before full deployment. Once the script path issue is resolved, the service should be ready for complete validation and production use.
+The service shows promise but requires configuration resolution before full
+deployment. Once the script path issue is resolved, the service should be ready
+for complete validation and production use.
 
 ---
 
-_Validation completed by khive-documenter on 2025-05-26_
-_Related Issue: #159 - Validating upgraded khive toolkit_
-_Branch: validate/khive-mcp_
+_Validation completed by khive-documenter on 2025-05-26_ _Related Issue: #159 -
+Validating upgraded khive toolkit_ _Branch: validate/khive-mcp_

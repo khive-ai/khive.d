@@ -410,7 +410,7 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
             # Initialize endpoint if needed
             if self._exa is None:
                 self._exa = match_endpoint("exa", "search")
-            
+
             response = await self._exa.call({
                 "query": query,
                 "numResults": 5,
@@ -419,8 +419,12 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
 
             insights = []
             # Handle both dict and object response formats
-            results = response.get("results", []) if isinstance(response, dict) else getattr(response, "results", [])
-            
+            results = (
+                response.get("results", [])
+                if isinstance(response, dict)
+                else getattr(response, "results", [])
+            )
+
             for result in results[:5]:
                 # Handle both dict and object result formats
                 if isinstance(result, dict):
@@ -433,7 +437,7 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
                     url = getattr(result, "url", None)
                     score = getattr(result, "score", 0.8)
                     text = getattr(result, "text", None)
-                
+
                 insights.append(
                     Insight(
                         summary=title,
@@ -465,7 +469,7 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
             # Initialize endpoint if needed
             if self._perplexity is None:
                 self._perplexity = match_endpoint("perplexity", "chat")
-            
+
             system_content = "Provide comprehensive analysis with key insights."
             if context:
                 system_content += f" Context: {context}"

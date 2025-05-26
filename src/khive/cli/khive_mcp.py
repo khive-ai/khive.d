@@ -169,13 +169,14 @@ class MCPCommand(BaseCLICommand):
                 loop = asyncio.get_running_loop()
                 # If we're already in an async context, we need to handle this differently
                 import concurrent.futures
+
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     future = executor.submit(self._run_async_command, args, config)
                     result = future.result()
             except RuntimeError:
                 # No event loop running, safe to use asyncio.run()
                 result = asyncio.run(self._execute_async(args, config))
-            
+
             return result
         except Exception as e:
             return CLIResult(
@@ -189,7 +190,9 @@ class MCPCommand(BaseCLICommand):
                 # If there's already a loop running, skip cleanup
                 pass
 
-    def _run_async_command(self, args: argparse.Namespace, config: MCPConfig) -> CLIResult:
+    def _run_async_command(
+        self, args: argparse.Namespace, config: MCPConfig
+    ) -> CLIResult:
         """Run the async command in a new event loop."""
         return asyncio.run(self._execute_async(args, config))
 
@@ -226,42 +229,43 @@ class MCPCommand(BaseCLICommand):
                 message=f"Unknown subcommand: {args.subcommand}",
                 exit_code=1,
             )
+
     def _resolve_command_path(self, command: str) -> str:
         """Resolve command to full path if it's a system command."""
         # If command is already an absolute path, use it as-is
         if Path(command).is_absolute():
             return command
-        
+
         # If command exists as a relative path, use it as-is
         if Path(command).exists():
             return command
-            
+
         # Try to find the command in PATH
         resolved_path = shutil.which(command)
         if resolved_path:
             return resolved_path
-            
+
         # If not found, return original command and let the transport handle the error
         return command
 
     def _is_python_script(self, path: str) -> bool:
         """Check if a file is a Python script."""
         path_obj = Path(path)
-        
+
         # Check file extension
-        if path_obj.suffix == '.py':
+        if path_obj.suffix == ".py":
             return True
-            
+
         # Check if it's executable and has python shebang
         if path_obj.exists() and path_obj.is_file():
             try:
-                with open(path_obj, 'rb') as f:
-                    first_line = f.readline().decode('utf-8', errors='ignore')
-                    if first_line.startswith('#!') and 'python' in first_line:
+                with open(path_obj, "rb") as f:
+                    first_line = f.readline().decode("utf-8", errors="ignore")
+                    if first_line.startswith("#!") and "python" in first_line:
                         return True
             except (OSError, UnicodeDecodeError):
                 pass
-                
+
         return False
 
     async def _get_client(self, server_config: MCPServerConfig) -> Client:
@@ -275,7 +279,7 @@ class MCPCommand(BaseCLICommand):
         else:
             # Default to stdio transport - resolve command path first
             resolved_command = self._resolve_command_path(server_config.command)
-            
+
             # Choose appropriate transport based on command type
             if self._is_python_script(resolved_command):
                 transport = PythonStdioTransport(
@@ -300,7 +304,7 @@ class MCPCommand(BaseCLICommand):
     async def _cleanup_clients(self):
         """Clean up all active clients."""
         cleanup_tasks = []
-        
+
         for client in self._clients.values():
             try:
                 # Create cleanup task with timeout
@@ -312,24 +316,24 @@ class MCPCommand(BaseCLICommand):
                             await c.close()
                     except Exception:
                         pass
-                
+
                 cleanup_tasks.append(asyncio.create_task(cleanup_client(client)))
             except Exception:
                 pass
-        
+
         # Wait for all cleanup tasks with timeout
         if cleanup_tasks:
             try:
                 await asyncio.wait_for(
                     asyncio.gather(*cleanup_tasks, return_exceptions=True),
-                    timeout=5.0  # 5 second timeout for cleanup
+                    timeout=5.0,  # 5 second timeout for cleanup
                 )
             except asyncio.TimeoutError:
                 # Force cancel remaining tasks
                 for task in cleanup_tasks:
                     if not task.done():
                         task.cancel()
-        
+
         self._clients.clear()
 
     async def _cmd_list_servers(self, config: MCPConfig) -> CLIResult:
@@ -440,7 +444,7 @@ class MCPCommand(BaseCLICommand):
 
         try:
             client = await self._get_client(server_config)
-            
+
             # Add timeout to prevent hanging
             async with asyncio.timeout(server_config.timeout):
                 async with client:
@@ -527,7 +531,7 @@ class MCPCommand(BaseCLICommand):
 
         try:
             client = await self._get_client(server_config)
-            
+
             # Add timeout to prevent hanging
             async with asyncio.timeout(server_config.timeout):
                 async with client:

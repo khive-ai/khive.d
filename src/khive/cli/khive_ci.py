@@ -292,7 +292,9 @@ class CICommand(ConfigurableCLICommand):
                 exit_code=1,
             )
 
-    async def _execute_async(self, args: argparse.Namespace, config: CIConfig) -> CLIResult:
+    async def _execute_async(
+        self, args: argparse.Namespace, config: CIConfig
+    ) -> CLIResult:
         """Execute the CI command asynchronously (for use within async contexts)."""
         # Run async CI logic directly without asyncio.run()
         try:

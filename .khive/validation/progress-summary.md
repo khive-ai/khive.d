@@ -14,39 +14,45 @@ completion: "75%"
 
 **Overall Progress: 75% Complete (6 of 8 services fully functional)** ⚠️
 
-The khive toolkit validation has made significant progress with 6 of 8 core services fully validated and functional. 3 of 5 identified critical issues have been systematically resolved, achieving 75% service reliability. The toolkit is production-ready for core functionality with enhanced autonomous workflow capabilities, though two services (khive mcp and khive info) require significant additional work.
+The khive toolkit validation has made significant progress with 6 of 8 core
+services fully validated and functional. 3 of 5 identified critical issues have
+been systematically resolved, achieving 75% service reliability. The toolkit is
+production-ready for core functionality with enhanced autonomous workflow
+capabilities, though two services (khive mcp and khive info) require significant
+additional work.
 
 ## Validation Status Overview
 
 ### ✅ Fully Functional Services (7/8)
 
-| Service                                                    | Status           | Issues Found           | Production Ready |
-| ---------------------------------------------------------- | ---------------- | ---------------------- | ---------------- |
-| [`khive dev`](../src/khive/commands/dev.py)                | ✅ **VALIDATED** | Runtime warning (fixed) | ✅ Yes           |
-| [`khive git`](../src/khive/commands/git.py)                | ✅ **VALIDATED** | AttributeError (fixed) | ✅ Yes           |
-| [`khive info`](../src/khive/services/info/info_service.py) | ❌ **BROKEN** | Comprehensive analysis broken | ❌ No           |
-| [`khive fmt`](../src/khive/commands/fmt.py)                | ✅ **VALIDATED** | No issues found        | ✅ Yes           |
-| [`khive ci`](../src/khive/cli/khive_ci.py)                 | ✅ **VALIDATED** | Tool validation (fixed) | ✅ Yes           |
-| [`khive new-doc`](../src/khive/commands/new_doc.py)        | ✅ **VALIDATED** | No issues found        | ✅ Yes           |
-| [`khive init`](../src/khive/commands/init.py)             | ✅ **VALIDATED** | No issues found        | ✅ Yes           |
+| Service                                                    | Status           | Issues Found                  | Production Ready |
+| ---------------------------------------------------------- | ---------------- | ----------------------------- | ---------------- |
+| [`khive dev`](../src/khive/commands/dev.py)                | ✅ **VALIDATED** | Runtime warning (fixed)       | ✅ Yes           |
+| [`khive git`](../src/khive/commands/git.py)                | ✅ **VALIDATED** | AttributeError (fixed)        | ✅ Yes           |
+| [`khive info`](../src/khive/services/info/info_service.py) | ❌ **BROKEN**    | Comprehensive analysis broken | ❌ No            |
+| [`khive fmt`](../src/khive/commands/fmt.py)                | ✅ **VALIDATED** | No issues found               | ✅ Yes           |
+| [`khive ci`](../src/khive/cli/khive_ci.py)                 | ✅ **VALIDATED** | Tool validation (fixed)       | ✅ Yes           |
+| [`khive new-doc`](../src/khive/commands/new_doc.py)        | ✅ **VALIDATED** | No issues found               | ✅ Yes           |
+| [`khive init`](../src/khive/commands/init.py)              | ✅ **VALIDATED** | No issues found               | ✅ Yes           |
 
 ### ⚠️ Partially Functional Services (2/8)
 
-| Service                                                    | Status           | Issues Found           | Production Ready |
-| ---------------------------------------------------------- | ---------------- | ---------------------- | ---------------- |
-| [`khive mcp`](../src/khive/commands/mcp.py)                | ⚠️ **PARTIAL** | Async issues (unresolved) | ⚠️ Limited           |
-| [`khive info`](../src/khive/services/info/info_service.py) | ❌ **BROKEN** | Comprehensive analysis broken | ❌ No           |
+| Service                                                    | Status         | Issues Found                  | Production Ready |
+| ---------------------------------------------------------- | -------------- | ----------------------------- | ---------------- |
+| [`khive mcp`](../src/khive/commands/mcp.py)                | ⚠️ **PARTIAL** | Async issues (unresolved)     | ⚠️ Limited       |
+| [`khive info`](../src/khive/services/info/info_service.py) | ❌ **BROKEN**  | Comprehensive analysis broken | ❌ No            |
 
 ### ⏳ Remaining Work (2/8)
-*khive mcp requires async operation fixes for full functionality*
-*khive info requires comprehensive analysis mode rebuild*
+
+_khive mcp requires async operation fixes for full functionality_ _khive info
+requires comprehensive analysis mode rebuild_
 
 ## Detailed Validation Results
 
 ### 1. khive dev - ✅ VALIDATED & FIXED
 
-**Validation Report:** [dev-service.md](dev-service.md)  
-**Status:** Production Ready  
+**Validation Report:** [dev-service.md](dev-service.md)\
+**Status:** Production Ready\
 **Key Capabilities Confirmed:**
 
 - Natural language understanding for development tasks
@@ -58,14 +64,15 @@ The khive toolkit validation has made significant progress with 6 of 8 core serv
 **Issues Found & Fixed:**
 
 - ✅ **Runtime Warning Resolved** (Issue #161)
-- **Location:** [`dev_service.py:45`](../src/khive/services/dev/dev_service.py:45)
+- **Location:**
+  [`dev_service.py:45`](../src/khive/services/dev/dev_service.py:45)
 - **Fix:** Added proper `await` for async coroutine operations
 - **Result:** Clean async operations without warnings
 
 ### 2. khive git - ✅ VALIDATED & FIXED
 
-**Validation Report:** [git-service.md](git-service.md)  
-**Status:** Production Ready  
+**Validation Report:** [git-service.md](git-service.md)\
+**Status:** Production Ready\
 **Key Capabilities Confirmed:**
 
 - Natural language processing for git operations
@@ -76,15 +83,15 @@ The khive toolkit validation has made significant progress with 6 of 8 core serv
 **Issues Found & Fixed:**
 
 - ✅ **Critical AttributeError Resolved**
-- **Location:** [`git_service.py`](../src/khive/services/git/git_service.py) and [`parts.py`](../src/khive/services/git/parts.py)
+- **Location:** [`git_service.py`](../src/khive/services/git/git_service.py) and
+  [`parts.py`](../src/khive/services/git/parts.py)
 - **Fix:** Added missing method implementations and corrected model attributes
 - **Result:** Service now fully operational
 
 ### 3. khive info - ❌ CRITICAL ISSUES IDENTIFIED
 
-**Validation Report:** [info-service.md](info-service.md)
-**Status:** Not Production Ready - Critical Functionality Broken
-**Key Capabilities Confirmed:**
+**Validation Report:** [info-service.md](info-service.md) **Status:** Not
+Production Ready - Critical Functionality Broken **Key Capabilities Confirmed:**
 
 - Basic CLI accessibility and help documentation
 - Natural language query processing (limited modes)
@@ -100,8 +107,8 @@ The khive toolkit validation has made significant progress with 6 of 8 core serv
 
 ### 4. khive fmt - ✅ VALIDATED
 
-**Validation Report:** [fmt-service.md](fmt-service.md)  
-**Status:** Production Ready  
+**Validation Report:** [fmt-service.md](fmt-service.md)\
+**Status:** Production Ready\
 **Key Capabilities Confirmed:**
 
 - Intelligent code formatting across multiple languages
@@ -113,8 +120,8 @@ The khive toolkit validation has made significant progress with 6 of 8 core serv
 
 ### 5. khive ci - ✅ VALIDATED & FIXED
 
-**Validation Report:** [ci-service.md](ci-service.md)  
-**Status:** Production Ready  
+**Validation Report:** [ci-service.md](ci-service.md)\
+**Status:** Production Ready\
 **Key Capabilities Confirmed:**
 
 - Comprehensive CI/CD pipeline integration
@@ -126,14 +133,14 @@ The khive toolkit validation has made significant progress with 6 of 8 core serv
 
 - ✅ **Tool Validation Enhanced** (Issue #162)
 - **Location:** [`khive_ci.py`](../src/khive/cli/khive_ci.py)
-- **Fix:** Implemented comprehensive tool validation with detailed error messaging
+- **Fix:** Implemented comprehensive tool validation with detailed error
+  messaging
 - **Result:** Reliable CI operations with clear feedback
 
 ### 6. khive mcp - ⚠️ PARTIALLY VALIDATED
 
-**Validation Report:** [mcp-service.md](mcp-service.md)
-**Status:** Partially Functional - Async Issues
-**Key Capabilities Confirmed:**
+**Validation Report:** [mcp-service.md](mcp-service.md) **Status:** Partially
+Functional - Async Issues **Key Capabilities Confirmed:**
 
 - Basic CLI accessibility and help documentation
 - Server discovery and listing (1 github server detected)
@@ -145,13 +152,15 @@ The khive toolkit validation has made significant progress with 6 of 8 core serv
 - ⚠️ **Docker Script Path Resolution Partially Fixed** (Issue #163)
 - **Location:** [`khive_mcp.py`](../src/khive/cli/khive_mcp.py)
 - **Status:** Path resolution improved but async issues remain
-- **Remaining Problems:** Tools enumeration fails, async operation handling issues
-- **Impact:** Limited functionality - basic operations work, advanced features unreliable
+- **Remaining Problems:** Tools enumeration fails, async operation handling
+  issues
+- **Impact:** Limited functionality - basic operations work, advanced features
+  unreliable
 
 ### 7. khive new-doc - ✅ VALIDATED
 
-**Validation Report:** [new-doc-service.md](new-doc-service.md)  
-**Status:** Production Ready  
+**Validation Report:** [new-doc-service.md](new-doc-service.md)\
+**Status:** Production Ready\
 **Key Capabilities Confirmed:**
 
 - Template-based document generation
@@ -163,8 +172,8 @@ The khive toolkit validation has made significant progress with 6 of 8 core serv
 
 ### 8. khive init - ✅ VALIDATED
 
-**Validation Report:** [init-service.md](init-service.md)  
-**Status:** Production Ready  
+**Validation Report:** [init-service.md](init-service.md)\
+**Status:** Production Ready\
 **Key Capabilities Confirmed:**
 
 - Project initialization and scaffolding
@@ -297,20 +306,26 @@ The khive toolkit validation has made significant progress with 6 of 8 core serv
 
 ## Conclusion
 
-The khive toolkit validation has made **significant progress** with mixed results:
+The khive toolkit validation has made **significant progress** with mixed
+results:
 
 - **75% service functionality** achieved (6 of 8 services)
 - **Most critical issues resolved** systematically (3 of 5)
 - **Enhanced autonomous workflow capabilities** delivered for core services
 - **Production deployment ready** for core functionality
 
-The systematic validation approach proved effective for most services, identifying and resolving critical issues while maintaining backward compatibility. The toolkit provides a solid foundation for autonomous development workflows with reliable service integration. Two services (khive mcp and khive info) require significant work to restore full functionality.
+The systematic validation approach proved effective for most services,
+identifying and resolving critical issues while maintaining backward
+compatibility. The toolkit provides a solid foundation for autonomous
+development workflows with reliable service integration. Two services (khive mcp
+and khive info) require significant work to restore full functionality.
 
 **Final Status: CORE SYSTEMS FUNCTIONAL, TWO SERVICES NEED MAJOR WORK** ⚠️
 
 ---
 
-_Validation completed by khive-documenter on 2025-05-26_  
-_Related Issue: #159 - Validating upgraded khive toolkit_  
-_Branch: feat/update-cli_  
-_Final Resolution Summary: [final-resolution-summary.md](final-resolution-summary.md)_
+_Validation completed by khive-documenter on 2025-05-26_\
+_Related Issue: #159 - Validating upgraded khive toolkit_\
+_Branch: feat/update-cli_\
+_Final Resolution Summary:
+[final-resolution-summary.md](final-resolution-summary.md)_

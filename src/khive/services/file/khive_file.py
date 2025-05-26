@@ -279,7 +279,11 @@ def main():
 
     # Add --dry-run to specific operations that support it
     dry_run_operations = [
-        write_parser, delete_parser, copy_parser, move_parser, mkdir_parser
+        write_parser,
+        delete_parser,
+        copy_parser,
+        move_parser,
+        mkdir_parser,
     ]
     for subparser in dry_run_operations:
         subparser.add_argument(

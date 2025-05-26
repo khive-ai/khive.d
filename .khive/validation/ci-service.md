@@ -10,7 +10,10 @@ status: "BLOCKED"
 
 ## Executive Summary
 
-The [`khive ci`](src/khive/cli/khive_ci.py) service validation revealed critical access and execution issues. While the initial bridge file problem was resolved, the service remains blocked by missing tool dependencies with unclear error messaging.
+The [`khive ci`](src/khive/cli/khive_ci.py) service validation revealed critical
+access and execution issues. While the initial bridge file problem was resolved,
+the service remains blocked by missing tool dependencies with unclear error
+messaging.
 
 ## Validation Results
 
@@ -18,7 +21,8 @@ The [`khive ci`](src/khive/cli/khive_ci.py) service validation revealed critical
 
 1. **Bridge File Creation**
    - **Issue**: Initial access failed - missing bridge file
-   - **Resolution**: Created [`src/khive/commands/ci.py`](src/khive/commands/ci.py:1) bridge file
+   - **Resolution**: Created
+     [`src/khive/commands/ci.py`](src/khive/commands/ci.py:1) bridge file
    - **Status**: ✅ FIXED
 
 2. **CLI Access**
@@ -54,7 +58,8 @@ The [`khive ci`](src/khive/cli/khive_ci.py) service validation revealed critical
 
 ### Bridge Implementation
 
-The [`ci.py`](src/khive/commands/ci.py:1) bridge file successfully connects the CLI to the service:
+The [`ci.py`](src/khive/commands/ci.py:1) bridge file successfully connects the
+CLI to the service:
 
 ```python
 # Bridge pattern implementation
@@ -66,23 +71,26 @@ if __name__ == "__main__":
 
 ### CLI Integration
 
-The service integrates with the main CLI through [`khive_cli.py`](src/khive/cli/khive_cli.py:1) command registration.
+The service integrates with the main CLI through
+[`khive_cli.py`](src/khive/cli/khive_cli.py:1) command registration.
 
 ## Configuration Analysis
 
 ### CI Configuration
 
-The [`.khive/ci.toml`](.khive/ci.toml:1) file exists and appears to contain CI service configuration, suggesting the service expects specific tool configurations.
+The [`.khive/ci.toml`](.khive/ci.toml:1) file exists and appears to contain CI
+service configuration, suggesting the service expects specific tool
+configurations.
 
 ## Comparison with Other Services
 
-| Service | Bridge File | CLI Access | Execution | Status |
-|---------|-------------|------------|-----------|---------|
-| [`khive dev`](.khive/validation/dev-service.md) | ✅ | ✅ | ✅ | WORKING |
-| [`khive git`](.khive/validation/git-service.md) | ✅ | ✅ | ✅ | WORKING |
-| [`khive info`](.khive/validation/info-service.md) | ✅ | ✅ | ✅ | WORKING |
-| [`khive fmt`](.khive/validation/fmt-service.md) | ✅ | ✅ | ✅ | WORKING |
-| **khive ci** | ✅ | ✅ | ❌ | **BLOCKED** |
+| Service                                           | Bridge File | CLI Access | Execution | Status      |
+| ------------------------------------------------- | ----------- | ---------- | --------- | ----------- |
+| [`khive dev`](.khive/validation/dev-service.md)   | ✅          | ✅         | ✅        | WORKING     |
+| [`khive git`](.khive/validation/git-service.md)   | ✅          | ✅         | ✅        | WORKING     |
+| [`khive info`](.khive/validation/info-service.md) | ✅          | ✅         | ✅        | WORKING     |
+| [`khive fmt`](.khive/validation/fmt-service.md)   | ✅          | ✅         | ✅        | WORKING     |
+| **khive ci**                                      | ✅          | ✅         | ❌        | **BLOCKED** |
 
 ## Recommended Actions
 
@@ -112,12 +120,14 @@ The [`.khive/ci.toml`](.khive/ci.toml:1) file exists and appears to contain CI s
 ## Service Capabilities Assessment
 
 ### Confirmed Capabilities
+
 - ✅ CLI integration and command registration
 - ✅ Help documentation system
 - ✅ Configuration file support
 - ✅ Bridge pattern implementation
 
 ### Unconfirmed Capabilities
+
 - ❓ CI pipeline execution
 - ❓ Test running and validation
 - ❓ Code quality checks
@@ -127,20 +137,24 @@ The [`.khive/ci.toml`](.khive/ci.toml:1) file exists and appears to contain CI s
 
 **Status**: 🔴 **BLOCKED**
 
-The khive ci service has proper architectural foundation but is currently non-functional due to missing tool dependencies. The service follows the same patterns as other working services, suggesting the core implementation is sound.
+The khive ci service has proper architectural foundation but is currently
+non-functional due to missing tool dependencies. The service follows the same
+patterns as other working services, suggesting the core implementation is sound.
 
-**Confidence Level**: Medium - Architecture appears correct, but execution issues prevent full validation.
+**Confidence Level**: Medium - Architecture appears correct, but execution
+issues prevent full validation.
 
 ## Next Steps
 
 1. **Debug Tool Dependencies**: Investigate what tools the CI service expects
-2. **Fix Error Messaging**: Improve diagnostic output for missing dependencies  
+2. **Fix Error Messaging**: Improve diagnostic output for missing dependencies
 3. **Complete Validation**: Re-test once dependencies are resolved
-4. **Document Requirements**: Create clear documentation of CI service prerequisites
+4. **Document Requirements**: Create clear documentation of CI service
+   prerequisites
 
 ---
 
-**Validation Date**: 2025-05-26  
-**Validator**: khive-documenter  
-**Branch**: validate/khive-ci  
+**Validation Date**: 2025-05-26\
+**Validator**: khive-documenter\
+**Branch**: validate/khive-ci\
 **Related Issue**: #159
