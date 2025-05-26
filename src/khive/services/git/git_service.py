@@ -959,18 +959,22 @@ class GitService(Service):
     def _identify_failure_point(self, error_msg: str) -> str:
         """Identify what specifically failed from error message."""
         error_lower = error_msg.lower()
-        
+
         if "permission denied" in error_lower:
             return "File or directory permissions"
         elif "not a git repository" in error_lower:
             return "Git repository initialization"
-        elif "remote" in error_lower and ("rejected" in error_lower or "failed" in error_lower):
+        elif "remote" in error_lower and (
+            "rejected" in error_lower or "failed" in error_lower
+        ):
             return "Remote repository communication"
         elif "merge conflict" in error_lower or "conflict" in error_lower:
             return "Merge operation"
         elif "branch" in error_lower and "not found" in error_lower:
             return "Branch reference"
-        elif "commit" in error_lower and ("failed" in error_lower or "error" in error_lower):
+        elif "commit" in error_lower and (
+            "failed" in error_lower or "error" in error_lower
+        ):
             return "Commit operation"
         elif "authentication" in error_lower or "auth" in error_lower:
             return "Authentication"
@@ -982,7 +986,7 @@ class GitService(Service):
     def _explain_failure_reason(self, error_msg: str) -> str:
         """Explain why the failure occurred."""
         error_lower = error_msg.lower()
-        
+
         if "permission denied" in error_lower:
             return "Insufficient permissions to access file or directory"
         elif "not a git repository" in error_lower:
@@ -1014,94 +1018,94 @@ class GitService(Service):
         """Suggest fixes for the error."""
         error_lower = error_msg.lower()
         fixes = []
-        
+
         if "permission denied" in error_lower:
             fixes.extend([
                 "Check file permissions with 'ls -la'",
                 "Run with appropriate permissions",
-                "Ensure you own the repository directory"
+                "Ensure you own the repository directory",
             ])
         elif "not a git repository" in error_lower:
             fixes.extend([
                 "Initialize git repository with 'git init'",
                 "Navigate to the correct repository directory",
-                "Clone the repository if it exists remotely"
+                "Clone the repository if it exists remotely",
             ])
         elif "remote" in error_lower and "rejected" in error_lower:
             fixes.extend([
                 "Pull latest changes first with 'git pull'",
                 "Resolve any merge conflicts",
-                "Force push if you're sure (use with caution)"
+                "Force push if you're sure (use with caution)",
             ])
         elif "merge conflict" in error_lower:
             fixes.extend([
                 "Resolve conflicts manually in affected files",
                 "Use 'git status' to see conflicted files",
-                "Run 'git add' after resolving conflicts"
+                "Run 'git add' after resolving conflicts",
             ])
         elif "authentication" in error_lower:
             fixes.extend([
                 "Check your git credentials",
                 "Re-authenticate with git provider",
-                "Verify SSH keys or personal access tokens"
+                "Verify SSH keys or personal access tokens",
             ])
         else:
             fixes.extend([
                 "Check git status for repository state",
                 "Verify the command syntax",
-                "Try the operation again"
+                "Try the operation again",
             ])
-        
+
         return fixes[:3]  # Return top 3 fixes
 
     def _suggest_workarounds(self, error_type: str) -> list[str]:
         """Suggest workarounds for the error."""
         workarounds = []
-        
+
         if error_type in ["ConnectionError", "NetworkError"]:
             workarounds.extend([
                 "Try again when network is stable",
                 "Use a different network connection",
-                "Work offline and sync later"
+                "Work offline and sync later",
             ])
         elif error_type == "PermissionError":
             workarounds.extend([
                 "Use sudo if appropriate",
                 "Change to a directory you own",
-                "Copy files to a writable location"
+                "Copy files to a writable location",
             ])
         else:
             workarounds.extend([
                 "Try a different approach to achieve the same goal",
                 "Use git command line directly",
-                "Check git documentation for alternatives"
+                "Check git documentation for alternatives",
             ])
-        
+
         return workarounds[:2]  # Return top 2 workarounds
 
     def _suggest_prevention(self, error_type: str) -> list[str]:
         """Suggest prevention tips for future."""
         tips = []
-        
+
         if error_type == "PermissionError":
             tips.extend([
                 "Always work in directories you own",
                 "Set up proper file permissions",
-                "Use version control for important files"
+                "Use version control for important files",
             ])
         elif error_type in ["ConnectionError", "NetworkError"]:
             tips.extend([
                 "Ensure stable internet connection",
                 "Keep local repository synced regularly",
-                "Use offline-capable workflows"
+                "Use offline-capable workflows",
             ])
         else:
             tips.extend([
                 "Keep git repository in good state",
                 "Commit changes frequently",
-                "Test operations on feature branches first"
+                "Test operations on feature branches first",
             ])
-        
+
         return tips[:2]  # Return top 2 tips
 
     async def _get_repository_state(self) -> RepositoryUnderstanding:
@@ -1109,43 +1113,49 @@ class GitService(Service):
         # Get basic git state
         current_branch = await self._git_ops.get_current_branch()
         changed_files_raw = await self._git_ops.get_changed_files()
-        
+
         # Analyze files
         files_changed = []
         for file_info in changed_files_raw:
-            diff = await self._git_ops.get_file_diff(file_info["path"], file_info["staged"])
-            file_understanding = await self._file_analyzer.understand_file(file_info, diff)
+            diff = await self._git_ops.get_file_diff(
+                file_info["path"], file_info["staged"]
+            )
+            file_understanding = await self._file_analyzer.understand_file(
+                file_info, diff
+            )
             files_changed.append(file_understanding)
-        
+
         # Generate code insights
         diffs = {}
         for file_info in changed_files_raw:
-            diff = await self._git_ops.get_file_diff(file_info["path"], file_info["staged"])
+            diff = await self._git_ops.get_file_diff(
+                file_info["path"], file_info["staged"]
+            )
             if diff:
                 diffs[file_info["path"]] = diff
-        
+
         code_insights = await self._code_analyzer.analyze_changes(files_changed, diffs)
-        
+
         # Determine work phase
         work_phase = self._determine_work_phase(files_changed, code_insights)
-        
+
         # Determine branch purpose
         branch_purpose = self._infer_branch_purpose(current_branch, files_changed)
-        
+
         # Check health indicators
         can_build = await self._check_build_status()
         tests_passing = await self._check_test_status()
         lint_clean = await self._check_lint_status()
-        
+
         # Get collaboration context
         collaboration = await self._get_collaboration_context()
-        
+
         # Generate recommendations
         recommended_actions = self._generate_action_recommendations(
             files_changed, code_insights, work_phase
         )
         potential_issues = self._identify_potential_issues(files_changed, code_insights)
-        
+
         return RepositoryUnderstanding(
             current_branch=current_branch,
             branch_purpose=branch_purpose,
@@ -1160,35 +1170,37 @@ class GitService(Service):
             potential_issues=potential_issues,
         )
 
-    def _determine_work_phase(self, files: list[FileUnderstanding], insights: CodeInsight) -> str:
+    def _determine_work_phase(
+        self, files: list[FileUnderstanding], insights: CodeInsight
+    ) -> str:
         """Determine current work phase based on changes."""
         if not files:
             return "exploring"
-        
+
         # Check if mostly test files
         test_ratio = sum(1 for f in files if f.role == "test") / len(files)
         if test_ratio > 0.7:
             return "testing"
-        
+
         # Check if documentation changes
         doc_ratio = sum(1 for f in files if f.role == "docs") / len(files)
         if doc_ratio > 0.5:
             return "polishing"
-        
+
         # Check complexity
         if insights.complexity in ["complex", "moderate"]:
             return "implementing"
-        
+
         # Default based on change type
         if insights.change_type in ["fix", "refactor"]:
             return "polishing"
-        
+
         return "implementing"
 
     def _infer_branch_purpose(self, branch: str, files: list[FileUnderstanding]) -> str:
         """Infer the purpose of the current branch."""
         branch_lower = branch.lower()
-        
+
         # Check branch name patterns
         if "feature" in branch_lower or "feat" in branch_lower:
             return "Feature development"
@@ -1202,7 +1214,7 @@ class GitService(Service):
             return "Documentation updates"
         elif branch in ["main", "master", "develop"]:
             return "Main development branch"
-        
+
         # Infer from file changes
         if files:
             if all(f.role == "test" for f in files):
@@ -1213,7 +1225,7 @@ class GitService(Service):
                 return "Authentication feature"
             elif any("api" in str(f.path).lower() for f in files):
                 return "API development"
-        
+
         return "Development work"
 
     async def _check_build_status(self) -> bool:
@@ -1249,27 +1261,27 @@ class GitService(Service):
     ) -> list[str]:
         """Generate recommended next actions."""
         recommendations = []
-        
+
         if phase == "implementing":
             if not insights.adds_tests:
                 recommendations.append("Add tests for new functionality")
             if not insights.updates_docs:
                 recommendations.append("Update documentation")
             recommendations.append("Commit current progress")
-        
+
         elif phase == "testing":
             recommendations.append("Run full test suite")
             recommendations.append("Check test coverage")
-        
+
         elif phase == "polishing":
             recommendations.append("Review code quality")
             recommendations.append("Update documentation")
             recommendations.append("Prepare for review")
-        
+
         # Always suggest commit if there are changes
         if files:
             recommendations.append("Save progress with commit")
-        
+
         return recommendations[:3]  # Top 3
 
     def _identify_potential_issues(
@@ -1277,70 +1289,74 @@ class GitService(Service):
     ) -> list[str]:
         """Identify potential issues."""
         issues = []
-        
+
         if insights.introduces_tech_debt:
             issues.append("Code contains TODO/FIXME comments")
-        
+
         if insights.risk_level == "high":
             issues.append("Changes affect high-risk areas")
-        
+
         if insights.affects_public_api:
             issues.append("Changes may break API compatibility")
-        
+
         if not insights.adds_tests and insights.change_type == "feature":
             issues.append("New feature lacks test coverage")
-        
+
         return issues
 
-    async def _smart_stage_files(self, state: RepositoryUnderstanding, request: GitRequest) -> list[str]:
+    async def _smart_stage_files(
+        self, state: RepositoryUnderstanding, request: GitRequest
+    ) -> list[str]:
         """Intelligently stage files based on context."""
         staged_files = []
-        
+
         # Get all changed files
         changed_files_raw = await self._git_ops.get_changed_files()
-        
+
         # Filter files to stage
         files_to_stage = []
         for file_info in changed_files_raw:
             path = file_info["path"]
-            
+
             # Skip already staged files
             if file_info["staged"]:
                 staged_files.append(str(path))
                 continue
-            
+
             # Auto-stage based on file type and context
             if self._should_auto_stage(path, state, request):
                 files_to_stage.append(path)
-        
+
         # Stage the selected files
         if files_to_stage:
             success = await self._git_ops.stage_files(files_to_stage)
             if success:
                 staged_files.extend(str(f) for f in files_to_stage)
-        
+
         return staged_files
 
-    def _should_auto_stage(self, path: Path, state: RepositoryUnderstanding, request: GitRequest) -> bool:
+    def _should_auto_stage(
+        self, path: Path, state: RepositoryUnderstanding, request: GitRequest
+    ) -> bool:
         """Determine if a file should be auto-staged."""
         path_str = str(path).lower()
-        
+
         # Always stage test files if they exist
         if "test" in path_str:
             return True
-        
+
         # Stage documentation updates
         if path.suffix in [".md", ".rst", ".txt"]:
             return True
-        
+
         # Stage core files if they're part of the main work
         if path.suffix in [".py", ".js", ".ts", ".go", ".rs"]:
             return True
-        
+
         # Skip temporary files
         if path.name.startswith(".") or path.suffix in [".tmp", ".bak"]:
             return False
-        
+
         return True  # Default to staging
 
     async def _generate_contextual_commit(
@@ -1349,26 +1365,25 @@ class GitService(Service):
         """Generate a commit message with full context."""
         # Use the commit message generator
         context = {}
-        
+
         # Add request context
         if request.context:
             context.update({
                 "task_description": request.context.task_description,
-                "issue_id": request.context.related_issues[0] if request.context.related_issues else None,
+                "issue_id": request.context.related_issues[0]
+                if request.context.related_issues
+                else None,
             })
-        
+
         # Add session context
         if session.implementation_flow:
             context["task_description"] = session.implementation_flow.task
-        
+
         # Generate message
         commit_message = await self._commit_generator.generate(
-            state.files_changed,
-            state.code_insights,
-            context,
-            style="conventional"
+            state.files_changed, state.code_insights, context, style="conventional"
         )
-        
+
         return commit_message
 
     async def _perform_commit(self, message: str) -> dict[str, str]:
@@ -1380,7 +1395,7 @@ class GitService(Service):
     ) -> list[Recommendation]:
         """Build recommendations for exploration phase."""
         recommendations = []
-        
+
         # Recommend actions based on current state
         if state.files_changed:
             recommendations.append(
@@ -1394,7 +1409,7 @@ class GitService(Service):
                     prerequisites=[],
                 )
             )
-        
+
         if not state.tests_passing:
             recommendations.append(
                 Recommendation(
@@ -1407,7 +1422,7 @@ class GitService(Service):
                     prerequisites=[],
                 )
             )
-        
+
         if state.code_insights.introduces_tech_debt:
             recommendations.append(
                 Recommendation(
@@ -1420,15 +1435,18 @@ class GitService(Service):
                     prerequisites=[],
                 )
             )
-        
+
         return recommendations[:3]  # Top 3 recommendations
 
     def _build_implement_recommendations(
-        self, state: RepositoryUnderstanding, session: GitSession, commit_result: dict[str, str]
+        self,
+        state: RepositoryUnderstanding,
+        session: GitSession,
+        commit_result: dict[str, str],
     ) -> list[Recommendation]:
         """Build recommendations for implementation phase."""
         recommendations = []
-        
+
         # Push changes if commit was successful
         if commit_result.get("success"):
             recommendations.append(
@@ -1442,10 +1460,13 @@ class GitService(Service):
                     prerequisites=[],
                 )
             )
-        
+
         # Suggest next steps based on implementation flow
         if session.implementation_flow:
-            if not session.implementation_flow.has_tests and state.code_insights.change_type == "feature":
+            if (
+                not session.implementation_flow.has_tests
+                and state.code_insights.change_type == "feature"
+            ):
                 recommendations.append(
                     Recommendation(
                         action="Add tests for the new feature",
@@ -1457,15 +1478,18 @@ class GitService(Service):
                         prerequisites=[],
                     )
                 )
-        
+
         return recommendations
 
     def _build_collaborate_recommendations(
-        self, state: RepositoryUnderstanding, session: GitSession, pr_result: dict[str, Any]
+        self,
+        state: RepositoryUnderstanding,
+        session: GitSession,
+        pr_result: dict[str, Any],
     ) -> list[Recommendation]:
         """Build recommendations for collaboration phase."""
         recommendations = []
-        
+
         if pr_result.get("success"):
             recommendations.append(
                 Recommendation(
@@ -1478,7 +1502,7 @@ class GitService(Service):
                     prerequisites=[],
                 )
             )
-        
+
         return recommendations
 
     def _build_integrate_recommendations(
@@ -1486,7 +1510,7 @@ class GitService(Service):
     ) -> list[Recommendation]:
         """Build recommendations for integration phase."""
         recommendations = []
-        
+
         recommendations.append(
             Recommendation(
                 action="Test the integrated changes",
@@ -1498,15 +1522,18 @@ class GitService(Service):
                 prerequisites=[],
             )
         )
-        
+
         return recommendations
 
     def _build_understand_recommendations(
-        self, insights: dict[str, Any], state: RepositoryUnderstanding, session: GitSession
+        self,
+        insights: dict[str, Any],
+        state: RepositoryUnderstanding,
+        session: GitSession,
     ) -> list[Recommendation]:
         """Build recommendations for understanding phase."""
         recommendations = []
-        
+
         if "quality" in insights and insights["quality"].issues:
             recommendations.append(
                 Recommendation(
@@ -1519,7 +1546,7 @@ class GitService(Service):
                     prerequisites=[],
                 )
             )
-        
+
         return recommendations
 
     # Add placeholder methods for missing functionality
@@ -1543,7 +1570,9 @@ class GitService(Service):
             "Help me understand these changes",
         ]
 
-    def _suggest_next_phase(self, state: RepositoryUnderstanding, session: GitSession) -> str:
+    def _suggest_next_phase(
+        self, state: RepositoryUnderstanding, session: GitSession
+    ) -> str:
         """Suggest the next phase of work."""
         if state.work_phase == "implementing":
             return "testing"
