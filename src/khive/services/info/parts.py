@@ -38,7 +38,7 @@ class InfoRequest(BaseModel):
     )
 
     time_budget_seconds: float = Field(
-        10.0, description="How long to spend gathering insights", ge=1.0, le=60.0
+        20.0, description="How long to spend gathering insights", ge=1.0, le=60.0
     )
 
 

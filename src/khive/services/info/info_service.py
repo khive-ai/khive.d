@@ -169,12 +169,8 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
                 "temperature": 0.3,
             })
 
-            # Extract the answer
-            answer = (
-                response.choices[0].message.content
-                if hasattr(response, "choices")
-                else str(response)
-            )
+            # Extract the answer using the helper method
+            answer = self._extract_content(response)
 
             return InfoResponse(
                 success=True,
@@ -411,6 +407,10 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
     async def _search_with_exa(self, query: str) -> dict[str, Any]:
         """Perform search and convert to insights."""
         try:
+            # Initialize endpoint if needed
+            if self._exa is None:
+                self._exa = match_endpoint("exa", "search")
+            
             response = await self._exa.call({
                 "query": query,
                 "numResults": 5,
@@ -418,19 +418,32 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
             })
 
             insights = []
-            for result in response.results[:5]:
+            # Handle both dict and object response formats
+            results = response.get("results", []) if isinstance(response, dict) else getattr(response, "results", [])
+            
+            for result in results[:5]:
+                # Handle both dict and object result formats
+                if isinstance(result, dict):
+                    title = result.get("title", "No title")
+                    url = result.get("url")
+                    score = result.get("score", 0.8)
+                    text = result.get("text")
+                else:
+                    title = getattr(result, "title", "No title")
+                    url = getattr(result, "url", None)
+                    score = getattr(result, "score", 0.8)
+                    text = getattr(result, "text", None)
+                
                 insights.append(
                     Insight(
-                        summary=result.title,
-                        details=result.text[:500] if hasattr(result, "text") else None,
+                        summary=title,
+                        details=text[:500] if text else None,
                         sources=[
                             InsightSource(
                                 type="search",
                                 provider="exa",
-                                confidence=(
-                                    result.score if hasattr(result, "score") else 0.8
-                                ),
-                                url=result.url if hasattr(result, "url") else None,
+                                confidence=score,
+                                url=url,
                             )
                         ],
                         relevance=0.8,
@@ -439,7 +452,9 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
 
             return {"insights": insights, "raw": str(response)}
 
-        except Exception:
+        except Exception as e:
+            # Log the exception for debugging
+            print(f"Exa search error: {e}")
             return {"insights": [], "raw": ""}
 
     async def _analyze_with_perplexity(
@@ -447,6 +462,10 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
     ) -> dict[str, Any]:
         """Perform analysis and convert to insights."""
         try:
+            # Initialize endpoint if needed
+            if self._perplexity is None:
+                self._perplexity = match_endpoint("perplexity", "chat")
+            
             system_content = "Provide comprehensive analysis with key insights."
             if context:
                 system_content += f" Context: {context}"
@@ -562,12 +581,18 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
         """Extract text content from various response formats."""
         if isinstance(response, str):
             return response
+        elif isinstance(response, dict):
+            # Handle Perplexity response format
+            if "choices" in response and response["choices"]:
+                choice = response["choices"][0]
+                if isinstance(choice, dict) and "message" in choice:
+                    return choice["message"].get("content", "")
+            # Fallback for other dict formats
+            return response.get("content", response.get("text", str(response)))
         elif hasattr(response, "choices") and response.choices:
             return response.choices[0].message.content
         elif hasattr(response, "content"):
             return response.content
-        elif isinstance(response, dict):
-            return response.get("content", response.get("text", str(response)))
         else:
             return str(response)
 
