@@ -27,17 +27,43 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
+import platform
 import shutil
+import sys
+import threading
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
-from fastmcp import Client
-from fastmcp.client.transports import PythonStdioTransport, SSETransport, StdioTransport
+try:
+    from fastmcp import Client
+    from fastmcp.client.transports import SSETransport
+
+    # Import with fallback for different FastMCP versions
+    try:
+        from fastmcp.client.transports import StdioTransport, PythonStdioTransport
+    except ImportError:
+        # Older versions might have different import paths
+        from fastmcp.transports import StdioTransport
+
+        PythonStdioTransport = None
+except ImportError:
+    Client = None
+    SSETransport = None
+    StdioTransport = None
+    PythonStdioTransport = None
 
 from khive.utils import BaseConfig, die, error_msg, info_msg, log_msg, warn_msg
 
 from .base import BaseCLICommand, CLIResult, cli_command
+
+
+# Timeouts based on community recommendations
+DEFAULT_TIMEOUT = 30.0  # Increased from 10s
+INIT_TIMEOUT = 5.0  # Initial connection timeout
+CLEANUP_TIMEOUT = 2.0  # Faster cleanup
 
 
 @dataclass
@@ -50,10 +76,12 @@ class MCPServerConfig:
     env: dict[str, str] = field(default_factory=dict)
     always_allow: list[str] = field(default_factory=list)
     disabled: bool = False
-    timeout: int = 10  # Reduce default timeout for faster feedback
-    # New field for transport type
-    transport: str = "stdio"  # stdio or sse
-    url: str | None = None  # For SSE transport
+    timeout: int = DEFAULT_TIMEOUT
+    transport: str = "stdio"
+    url: str | None = None
+    # New fields for better subprocess handling
+    buffer_size: int = 65536  # 64KB buffer
+    use_shell: bool = False  # Whether to use shell execution
 
 
 @dataclass
@@ -67,6 +95,65 @@ class MCPConfig(BaseConfig):
         return self.khive_config_dir / "mcps" / "config.json"
 
 
+class StdioTransportFixed(StdioTransport):
+    """Fixed StdioTransport that handles buffering properly."""
+
+    def __init__(
+        self,
+        command: str,
+        args: list[str] = None,
+        env: dict[str, str] = None,
+        buffer_size: int = 65536,
+    ):
+        super().__init__(command, args or [], env or {})
+        self.buffer_size = buffer_size
+        self._read_lock = asyncio.Lock()
+        self._write_lock = asyncio.Lock()
+
+    async def start(self):
+        """Start the subprocess with proper buffering."""
+        # Prepare environment
+        env = os.environ.copy()
+        env.update(self.env)
+
+        # Add Python unbuffered mode for Python scripts
+        env["PYTHONUNBUFFERED"] = "1"
+
+        # Platform-specific handling
+        if platform.system() == "Windows":
+            # Windows needs CREATE_NO_WINDOW flag
+            import subprocess
+
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+            self._process = await asyncio.create_subprocess_exec(
+                self.command,
+                *self.args,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=env,
+                startupinfo=startupinfo,
+                limit=self.buffer_size,  # Increase buffer limit
+            )
+        else:
+            # Unix/Linux/Mac
+            self._process = await asyncio.create_subprocess_exec(
+                self.command,
+                *self.args,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=env,
+                limit=self.buffer_size,  # Increase buffer limit
+            )
+
+        # Start background tasks for reading with proper error handling
+        self._read_task = asyncio.create_task(self._read_output())
+        self._error_task = asyncio.create_task(self._read_errors())
+
+
 @cli_command("mcp")
 class MCPCommand(BaseCLICommand):
     """Manage MCP servers using FastMCP."""
@@ -77,8 +164,8 @@ class MCPCommand(BaseCLICommand):
             description="MCP (Model Context Protocol) server management",
         )
         self._check_fastmcp()
-        # Store active clients
-        self._clients: dict[str, Client] = {}
+        self._active_clients: dict[str, Client] = {}
+        self._client_locks: dict[str, asyncio.Lock] = {}
 
     def _check_fastmcp(self):
         """Check if FastMCP is installed."""
@@ -144,9 +231,11 @@ class MCPCommand(BaseCLICommand):
                         env=server_config.get("env", {}),
                         always_allow=server_config.get("alwaysAllow", []),
                         disabled=server_config.get("disabled", False),
-                        timeout=server_config.get("timeout", 10),
+                        timeout=server_config.get("timeout", DEFAULT_TIMEOUT),
                         transport=transport,
                         url=url,
+                        buffer_size=server_config.get("bufferSize", 65536),
+                        use_shell=server_config.get("useShell", False),
                     )
             except (json.JSONDecodeError, KeyError) as e:
                 warn_msg(f"Could not parse MCP config: {e}")
@@ -154,7 +243,7 @@ class MCPCommand(BaseCLICommand):
         return config
 
     def _execute(self, args: argparse.Namespace, config: MCPConfig) -> CLIResult:
-        """Execute the MCP command."""
+        """Execute the MCP command using nest_asyncio for compatibility."""
         if not args.subcommand:
             return CLIResult(
                 status="failure",
@@ -162,179 +251,234 @@ class MCPCommand(BaseCLICommand):
                 exit_code=1,
             )
 
-        # Run async command with proper event loop handling
+        # Try to use nest_asyncio if available (solves many event loop issues)
         try:
-            # Check if there's already an event loop running
+            import nest_asyncio
+
+            nest_asyncio.apply()
+            log_msg("Using nest_asyncio for event loop compatibility")
+        except ImportError:
+            log_msg("nest_asyncio not available, using standard asyncio")
+
+        # Create a new event loop in a thread to avoid conflicts
+        result_container = {}
+        exception_container = {}
+
+        def run_in_thread():
             try:
-                loop = asyncio.get_running_loop()
-                # If we're already in an async context, we need to handle this differently
-                import concurrent.futures
+                # Create new event loop for this thread
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
 
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(self._run_async_command, args, config)
-                    result = future.result()
-            except RuntimeError:
-                # No event loop running, safe to use asyncio.run()
-                result = asyncio.run(self._execute_async(args, config))
+                # Platform-specific event loop policy
+                if platform.system() == "Windows":
+                    # Use ProactorEventLoop on Windows for better subprocess support
+                    if hasattr(asyncio, "WindowsProactorEventLoopPolicy"):
+                        asyncio.set_event_loop_policy(
+                            asyncio.WindowsProactorEventLoopPolicy()
+                        )
 
-            return result
-        except Exception as e:
+                try:
+                    result = loop.run_until_complete(self._execute_async(args, config))
+                    result_container["result"] = result
+                finally:
+                    # Cleanup
+                    try:
+                        # Cancel any pending tasks
+                        pending = asyncio.all_tasks(loop)
+                        for task in pending:
+                            task.cancel()
+
+                        # Give tasks a chance to cleanup
+                        if pending:
+                            loop.run_until_complete(
+                                asyncio.gather(*pending, return_exceptions=True)
+                            )
+                    except Exception as e:
+                        log_msg(f"Error during cleanup: {e}")
+                    finally:
+                        loop.close()
+                        asyncio.set_event_loop(None)
+            except Exception as e:
+                exception_container["exception"] = e
+
+        # Run in thread
+        thread = threading.Thread(target=run_in_thread)
+        thread.start()
+
+        # Wait with timeout
+        thread.join(
+            timeout=config.servers[args.server].timeout
+            if hasattr(args, "server") and args.server in config.servers
+            else DEFAULT_TIMEOUT + 10
+        )
+
+        if thread.is_alive():
+            # Thread is still running - timeout
             return CLIResult(
-                status="failure", message=f"Unexpected error: {e}", exit_code=1
+                status="failure",
+                message="Operation timed out",
+                exit_code=1,
             )
-        finally:
-            # Clean up any active clients
-            try:
-                asyncio.run(self._cleanup_clients())
-            except RuntimeError:
-                # If there's already a loop running, skip cleanup
-                pass
 
-    def _run_async_command(
-        self, args: argparse.Namespace, config: MCPConfig
-    ) -> CLIResult:
-        """Run the async command in a new event loop."""
-        return asyncio.run(self._execute_async(args, config))
+        # Check results
+        if "exception" in exception_container:
+            return CLIResult(
+                status="failure",
+                message=f"Error: {exception_container['exception']}",
+                exit_code=1,
+            )
+
+        return result_container.get(
+            "result",
+            CLIResult(
+                status="failure",
+                message="Unknown error occurred",
+                exit_code=1,
+            ),
+        )
 
     async def _execute_async(
         self, args: argparse.Namespace, config: MCPConfig
     ) -> CLIResult:
         """Execute async MCP operations."""
-        if args.subcommand == "list":
-            return await self._cmd_list_servers(config)
-
-        elif args.subcommand == "status":
-            server_name = getattr(args, "server", None)
-            return await self._cmd_server_status(config, server_name)
-
-        elif args.subcommand == "tools":
-            return await self._cmd_list_tools(config, args.server)
-
-        elif args.subcommand == "call":
-            # Parse tool arguments
-            try:
+        try:
+            if args.subcommand == "list":
+                return await self._cmd_list_servers(config)
+            elif args.subcommand == "status":
+                server_name = getattr(args, "server", None)
+                return await self._cmd_server_status(config, server_name)
+            elif args.subcommand == "tools":
+                return await self._cmd_list_tools(config, args.server)
+            elif args.subcommand == "call":
                 arguments = self._parse_tool_arguments(args)
-            except ValueError as e:
+                return await self._cmd_call_tool(
+                    config, args.server, args.tool, arguments
+                )
+            else:
                 return CLIResult(
                     status="failure",
-                    message=f"Argument parsing error: {e}",
+                    message=f"Unknown subcommand: {args.subcommand}",
                     exit_code=1,
                 )
-
-            return await self._cmd_call_tool(config, args.server, args.tool, arguments)
-
-        else:
-            return CLIResult(
-                status="failure",
-                message=f"Unknown subcommand: {args.subcommand}",
-                exit_code=1,
-            )
+        finally:
+            # Cleanup all clients
+            await self._cleanup_all_clients()
 
     def _resolve_command_path(self, command: str) -> str:
         """Resolve command to full path if it's a system command."""
-        # If command is already an absolute path, use it as-is
+        # Handle python module execution
+        if command == "python" or command.startswith("python"):
+            # Don't resolve python, let the system handle it
+            return command
+
         if Path(command).is_absolute():
             return command
 
-        # If command exists as a relative path, use it as-is
         if Path(command).exists():
-            return command
+            return str(Path(command).resolve())
 
-        # Try to find the command in PATH
         resolved_path = shutil.which(command)
         if resolved_path:
             return resolved_path
 
-        # If not found, return original command and let the transport handle the error
         return command
 
-    def _is_python_script(self, path: str) -> bool:
-        """Check if a file is a Python script."""
-        path_obj = Path(path)
-
-        # Check file extension
-        if path_obj.suffix == ".py":
-            return True
-
-        # Check if it's executable and has python shebang
-        if path_obj.exists() and path_obj.is_file():
-            try:
-                with open(path_obj, "rb") as f:
-                    first_line = f.readline().decode("utf-8", errors="ignore")
-                    if first_line.startswith("#!") and "python" in first_line:
-                        return True
-            except (OSError, UnicodeDecodeError):
-                pass
-
-        return False
-
-    async def _get_client(self, server_config: MCPServerConfig) -> Client:
-        """Get or create a FastMCP client for a server."""
-        if server_config.name in self._clients:
-            return self._clients[server_config.name]
-
-        # Create appropriate transport
+    def _create_transport(self, server_config: MCPServerConfig):
+        """Create appropriate transport based on configuration."""
         if server_config.transport == "sse" and server_config.url:
-            transport = SSETransport(server_config.url)
+            return SSETransport(server_config.url)
         else:
-            # Default to stdio transport - resolve command path first
+            # Resolve command
             resolved_command = self._resolve_command_path(server_config.command)
 
-            # Choose appropriate transport based on command type
-            if self._is_python_script(resolved_command):
-                transport = PythonStdioTransport(
-                    script_path=resolved_command,
-                    args=server_config.args,
-                    env=server_config.env,
+            # Prepare environment
+            env = os.environ.copy()
+            env.update(server_config.env)
+
+            # Force unbuffered output for Python
+            env["PYTHONUNBUFFERED"] = "1"
+
+            # Use our fixed transport
+            return StdioTransportFixed(
+                command=resolved_command,
+                args=server_config.args,
+                env=env,
+                buffer_size=server_config.buffer_size,
+            )
+
+    @asynccontextmanager
+    async def _get_client(self, server_config: MCPServerConfig):
+        """Get or create a client with proper locking."""
+        client_key = server_config.name
+
+        # Ensure we have a lock for this client
+        if client_key not in self._client_locks:
+            self._client_locks[client_key] = asyncio.Lock()
+
+        async with self._client_locks[client_key]:
+            # Check if client exists and is healthy
+            if client_key in self._active_clients:
+                client = self._active_clients[client_key]
+                # TODO: Add health check here
+                yield client
+                return
+
+            # Create new client
+            transport = self._create_transport(server_config)
+            client = Client(transport)
+
+            try:
+                # Initialize with timeout
+                async with asyncio.timeout(INIT_TIMEOUT):
+                    await client.__aenter__()
+
+                # Store active client
+                self._active_clients[client_key] = client
+
+                # Yield for use
+                yield client
+
+            except asyncio.TimeoutError:
+                # Cleanup on timeout
+                try:
+                    await client.__aexit__(None, None, None)
+                except:
+                    pass
+                raise asyncio.TimeoutError(
+                    f"Failed to connect to {server_config.name} within {INIT_TIMEOUT}s"
                 )
-            else:
-                # Use generic StdioTransport for non-Python executables
-                transport = StdioTransport(
-                    command=resolved_command,
-                    args=server_config.args,
-                    env=server_config.env,
-                )
+            except Exception:
+                # Cleanup on error
+                try:
+                    await client.__aexit__(None, None, None)
+                except:
+                    pass
+                raise
 
-        # Create client
-        client = Client(transport)
-        self._clients[server_config.name] = client
-
-        return client
-
-    async def _cleanup_clients(self):
+    async def _cleanup_all_clients(self):
         """Clean up all active clients."""
         cleanup_tasks = []
 
-        for client in self._clients.values():
-            try:
-                # Create cleanup task with timeout
-                async def cleanup_client(c):
-                    try:
-                        if hasattr(c, "_context_manager") and c._context_manager:
-                            await c.__aexit__(None, None, None)
-                        elif hasattr(c, "close"):
-                            await c.close()
-                    except Exception:
-                        pass
+        for client_key, client in list(self._active_clients.items()):
 
-                cleanup_tasks.append(asyncio.create_task(cleanup_client(client)))
-            except Exception:
-                pass
+            async def cleanup_client(key, c):
+                try:
+                    async with asyncio.timeout(CLEANUP_TIMEOUT):
+                        await c.__aexit__(None, None, None)
+                except Exception as e:
+                    log_msg(f"Error cleaning up client {key}: {e}")
+                finally:
+                    if key in self._active_clients:
+                        del self._active_clients[key]
 
-        # Wait for all cleanup tasks with timeout
+            cleanup_tasks.append(cleanup_client(client_key, client))
+
         if cleanup_tasks:
-            try:
-                await asyncio.wait_for(
-                    asyncio.gather(*cleanup_tasks, return_exceptions=True),
-                    timeout=5.0,  # 5 second timeout for cleanup
-                )
-            except asyncio.TimeoutError:
-                # Force cancel remaining tasks
-                for task in cleanup_tasks:
-                    if not task.done():
-                        task.cancel()
+            await asyncio.gather(*cleanup_tasks, return_exceptions=True)
 
-        self._clients.clear()
+        self._active_clients.clear()
+        self._client_locks.clear()
 
     async def _cmd_list_servers(self, config: MCPConfig) -> CLIResult:
         """List all configured MCP servers."""
@@ -387,10 +531,8 @@ class MCPCommand(BaseCLICommand):
             # Try to connect and get server info
             if not server_config.disabled:
                 try:
-                    client = await self._get_client(server_config)
                     async with asyncio.timeout(server_config.timeout):
-                        async with client:
-                            # Get server capabilities
+                        async with self._get_client(server_config) as client:
                             tools = await client.list_tools()
                             server_info["status"] = "connected"
                             server_info["tools_count"] = len(tools)
@@ -399,8 +541,10 @@ class MCPCommand(BaseCLICommand):
                                 for tool in tools
                             ]
                 except asyncio.TimeoutError:
-                    server_info["status"] = "error"
-                    server_info["error"] = f"Timeout after {server_config.timeout}s"
+                    server_info["status"] = "timeout"
+                    server_info["error"] = (
+                        f"Connection timeout ({server_config.timeout}s)"
+                    )
                 except Exception as e:
                     server_info["status"] = "error"
                     server_info["error"] = str(e)
@@ -443,11 +587,8 @@ class MCPCommand(BaseCLICommand):
             )
 
         try:
-            client = await self._get_client(server_config)
-
-            # Add timeout to prevent hanging
             async with asyncio.timeout(server_config.timeout):
-                async with client:
+                async with self._get_client(server_config) as client:
                     tools = await client.list_tools()
 
                     tools_info = []
@@ -530,11 +671,8 @@ class MCPCommand(BaseCLICommand):
             )
 
         try:
-            client = await self._get_client(server_config)
-
-            # Add timeout to prevent hanging
             async with asyncio.timeout(server_config.timeout):
-                async with client:
+                async with self._get_client(server_config) as client:
                     # Call the tool
                     result = await client.call_tool(tool_name, arguments)
 
