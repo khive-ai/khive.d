@@ -138,10 +138,10 @@ class TestInitCommand:
         )
 
     def test_check_condition_tool_exists(self, init_command, tmp_path):
-        with patch("khive.utils.check_tool_available", return_value=True):
+        with patch("khive.cli.khive_init.check_tool_available", return_value=True):
             assert init_command._check_condition("tool_exists:python", tmp_path) is True
 
-        with patch("khive.utils.check_tool_available", return_value=False):
+        with patch("khive.cli.khive_init.check_tool_available", return_value=False):
             assert (
                 init_command._check_condition("tool_exists:nonexistent", tmp_path)
                 is False
@@ -152,7 +152,7 @@ class TestInitCommand:
         assert init_command._check_condition("", tmp_path) is True
 
     def test_check_condition_unknown_type(self, init_command, tmp_path):
-        with patch("khive.utils.warn_msg") as mock_warn:
+        with patch("khive.cli.khive_init.warn_msg") as mock_warn:
             result = init_command._check_condition("unknown_type:value", tmp_path)
             assert result is False
             mock_warn.assert_called_once()
@@ -290,16 +290,16 @@ class TestAsyncMethods:
         assert "No command defined" in result["message"]
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
     async def test_step_tools_all_present(self, init_command, mock_project_root):
         config = InitConfig(project_root=mock_project_root)
 
-        with patch("khive.utils.check_tool_available", return_value=True):
+        with patch("khive.cli.khive_init.check_tool_available", return_value=True):
             with patch.object(Path, "exists", return_value=False):  # No project files
                 result = await init_command._step_tools(config)
 
         assert result["name"] == "tools"
         assert result["status"] == "OK"
-
     @pytest.mark.asyncio
     async def test_step_tools_missing_required(self, init_command, mock_project_root):
         config = InitConfig(project_root=mock_project_root)
@@ -310,7 +310,7 @@ class TestAsyncMethods:
         def mock_exists(self):
             return str(self).endswith("pyproject.toml")  # Python project detected
 
-        with patch("khive.utils.check_tool_available", side_effect=mock_tool_check):
+        with patch("khive.cli.khive_init.check_tool_available", side_effect=mock_tool_check):
             with patch.object(Path, "exists", mock_exists):
                 result = await init_command._step_tools(config)
 
@@ -339,7 +339,7 @@ class TestAsyncMethods:
         mock_result = {"name": "python", "status": "OK", "message": "uv sync completed"}
 
         with patch.object(Path, "exists", mock_exists):
-            with patch("khive.utils.check_tool_available", return_value=True):
+            with patch("khive.cli.khive_init.check_tool_available", return_value=True):
                 with patch.object(
                     init_command, "_run_shell_command_async", return_value=mock_result
                 ):
