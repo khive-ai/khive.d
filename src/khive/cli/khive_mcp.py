@@ -27,16 +27,32 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
+import platform
+import shutil
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
-from fastmcp import Client
-from fastmcp.client.transports import PythonStdioTransport, SSETransport
+from fastmcp.client import Client
+from fastmcp.client.transports import (
+    StdioTransport,
+    PythonStdioTransport,
+    SSETransport,
+    StreamableHttpTransport,
+)
+
 
 from khive.utils import BaseConfig, die, error_msg, info_msg, log_msg, warn_msg
 
 from .base import BaseCLICommand, CLIResult, cli_command
+
+
+# Timeouts based on community recommendations
+DEFAULT_TIMEOUT = 30.0  # Increased from 10s
+INIT_TIMEOUT = 5.0  # Initial connection timeout
+CLEANUP_TIMEOUT = 2.0  # Faster cleanup
 
 
 @dataclass
@@ -49,10 +65,12 @@ class MCPServerConfig:
     env: dict[str, str] = field(default_factory=dict)
     always_allow: list[str] = field(default_factory=list)
     disabled: bool = False
-    timeout: int = 30
-    # New field for transport type
-    transport: str = "stdio"  # stdio or sse
-    url: str | None = None  # For SSE transport
+    timeout: int = DEFAULT_TIMEOUT
+    transport: str = "stdio"
+    url: str | None = None
+    # New fields for better subprocess handling
+    buffer_size: int = 65536  # 64KB buffer
+    use_shell: bool = False  # Whether to use shell execution
 
 
 @dataclass
@@ -66,6 +84,65 @@ class MCPConfig(BaseConfig):
         return self.khive_config_dir / "mcps" / "config.json"
 
 
+class StdioTransportFixed(StdioTransport):
+    """Fixed StdioTransport that handles buffering properly."""
+
+    def __init__(
+        self,
+        command: str,
+        args: list[str] = None,
+        env: dict[str, str] = None,
+        buffer_size: int = 65536,
+    ):
+        super().__init__(command, args or [], env or {})
+        self.buffer_size = buffer_size
+        self._read_lock = asyncio.Lock()
+        self._write_lock = asyncio.Lock()
+
+    async def start(self):
+        """Start the subprocess with proper buffering."""
+        # Prepare environment
+        env = os.environ.copy()
+        env.update(self.env)
+
+        # Add Python unbuffered mode for Python scripts
+        env["PYTHONUNBUFFERED"] = "1"
+
+        # Platform-specific handling
+        if platform.system() == "Windows":
+            # Windows needs CREATE_NO_WINDOW flag
+            import subprocess
+
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+            self._process = await asyncio.create_subprocess_exec(
+                self.command,
+                *self.args,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=env,
+                startupinfo=startupinfo,
+                limit=self.buffer_size,  # Increase buffer limit
+            )
+        else:
+            # Unix/Linux/Mac
+            self._process = await asyncio.create_subprocess_exec(
+                self.command,
+                *self.args,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=env,
+                limit=self.buffer_size,  # Increase buffer limit
+            )
+
+        # Start background tasks for reading with proper error handling
+        self._read_task = asyncio.create_task(self._read_output())
+        self._error_task = asyncio.create_task(self._read_errors())
+
+
 @cli_command("mcp")
 class MCPCommand(BaseCLICommand):
     """Manage MCP servers using FastMCP."""
@@ -76,8 +153,8 @@ class MCPCommand(BaseCLICommand):
             description="MCP (Model Context Protocol) server management",
         )
         self._check_fastmcp()
-        # Store active clients
-        self._clients: dict[str, Client] = {}
+        self._active_clients: dict[str, Client] = {}
+        self._client_locks: dict[str, asyncio.Lock] = {}
 
     def _check_fastmcp(self):
         """Check if FastMCP is installed."""
@@ -120,6 +197,9 @@ class MCPCommand(BaseCLICommand):
         config = MCPConfig(project_root=args.project_root)
         config.update_from_cli_args(args)
 
+        # Load environment variables from .env file
+        env_vars = self._load_environment_variables(config.project_root)
+
         # Load MCP server configurations
         if config.mcps_config_file.exists():
             log_msg(f"Loading MCP config from {config.mcps_config_file}")
@@ -128,32 +208,211 @@ class MCPCommand(BaseCLICommand):
                 mcp_servers = config_data.get("mcpServers", {})
 
                 for server_name, server_config in mcp_servers.items():
-                    # Determine transport type
-                    transport = "stdio"
-                    url = None
+                    # Intelligently detect transport type
+                    transport, url = self._detect_transport_type(server_config)
 
-                    if "url" in server_config:
-                        transport = "sse"
-                        url = server_config["url"]
+                    # Merge environment variables with priority: config env > .env file > system env
+                    merged_env = self._merge_environment_variables(
+                        server_config.get("env", {}), env_vars, server_name
+                    )
 
                     config.servers[server_name] = MCPServerConfig(
                         name=server_name,
                         command=server_config.get("command", ""),
                         args=server_config.get("args", []),
-                        env=server_config.get("env", {}),
+                        env=merged_env,
                         always_allow=server_config.get("alwaysAllow", []),
                         disabled=server_config.get("disabled", False),
-                        timeout=server_config.get("timeout", 30),
+                        timeout=server_config.get(
+                            "timeout", self._get_default_timeout(server_config)
+                        ),
                         transport=transport,
                         url=url,
+                        buffer_size=server_config.get("bufferSize", 65536),
+                        use_shell=server_config.get("useShell", False),
                     )
             except (json.JSONDecodeError, KeyError) as e:
                 warn_msg(f"Could not parse MCP config: {e}")
 
         return config
 
-    def _execute(self, args: argparse.Namespace, config: MCPConfig) -> CLIResult:
-        """Execute the MCP command."""
+    def _load_environment_variables(self, project_root: Path) -> dict[str, str]:
+        """Load environment variables from .env file and system environment."""
+        env_vars = {}
+
+        # Load from .env file if it exists
+        env_file = project_root / ".env"
+        if env_file.exists():
+            try:
+                log_msg(f"Loading environment variables from {env_file}")
+                with open(env_file, "r") as f:
+                    for line_num, line in enumerate(f, 1):
+                        line = line.strip()
+                        # Skip empty lines and comments
+                        if not line or line.startswith("#"):
+                            continue
+
+                        if "=" in line:
+                            key, value = line.split("=", 1)
+                            env_vars[key.strip()] = value.strip()
+                        else:
+                            warn_msg(f"Invalid .env line {line_num}: {line}")
+
+                log_msg(f"Loaded {len(env_vars)} environment variables from .env file")
+            except Exception as e:
+                warn_msg(f"Error reading .env file: {e}")
+
+        return env_vars
+
+    def _merge_environment_variables(
+        self, config_env: dict[str, str], dotenv_vars: dict[str, str], server_name: str
+    ) -> dict[str, str]:
+        """
+        Merge environment variables with proper priority and mapping.
+
+        Priority order:
+        1. Config file env section (highest priority)
+        2. .env file variables
+        3. System environment variables (lowest priority)
+
+        Also handles common environment variable name mappings.
+        """
+        merged_env = {}
+
+        # Define common environment variable mappings for different servers
+        env_mappings = {
+            "github": {
+                "GITHUB_PERSONAL_ACCESS_TOKEN": [
+                    "GITHUB_TOKEN",
+                    "GITHUB_PERSONAL_ACCESS_TOKEN",
+                ],
+                "GITHUB_TOKEN": ["GITHUB_TOKEN", "GITHUB_PERSONAL_ACCESS_TOKEN"],
+            },
+            # Add more server-specific mappings as needed
+        }
+
+        # Start with system environment
+        merged_env.update(os.environ)
+
+        # Apply .env file variables (overrides system env)
+        merged_env.update(dotenv_vars)
+
+        # Apply config env variables (highest priority)
+        merged_env.update(config_env)
+
+        # Handle environment variable mappings for this server
+        if server_name in env_mappings:
+            server_mappings = env_mappings[server_name]
+
+            for target_var, source_vars in server_mappings.items():
+                # If target variable is not set, try to find it from source variables
+                if target_var not in merged_env or not merged_env[target_var]:
+                    for source_var in source_vars:
+                        if source_var in merged_env and merged_env[source_var]:
+                            merged_env[target_var] = merged_env[source_var]
+                            log_msg(
+                                f"Mapped {source_var} -> {target_var} for server '{server_name}'"
+                            )
+                            break
+
+        return merged_env
+
+    def _get_default_timeout(self, server_config: dict) -> float:
+        """Get appropriate default timeout based on server configuration."""
+        command = server_config.get("command", "")
+
+        # Docker containers often need shorter timeouts for faster failure detection
+        if command == "docker" or command.startswith("docker "):
+            return 10.0  # Shorter timeout for Docker
+
+        return DEFAULT_TIMEOUT
+
+    def _detect_transport_type(self, server_config: dict) -> tuple[str, str | None]:
+        """Intelligently detect the transport type based on server configuration."""
+        # 1. Explicit transport specification takes precedence
+        if "transport" in server_config:
+            transport = server_config["transport"].lower()
+            if transport in ["sse", "http", "https"]:
+                url = server_config.get("url")
+                if not url:
+                    warn_msg(f"Transport '{transport}' specified but no URL provided")
+                return transport, url
+            elif transport in ["stdio", "pipe"]:
+                return "stdio", None
+            else:
+                warn_msg(f"Unknown transport type '{transport}', defaulting to stdio")
+
+        # 2. URL presence indicates SSE/HTTP transport
+        if "url" in server_config and server_config["url"]:
+            url = server_config["url"]
+            if url.startswith(("http://", "https://")):
+                return "sse", url
+            elif url.startswith(("ws://", "wss://")):
+                return "websocket", url
+            else:
+                warn_msg(f"Unrecognized URL scheme in '{url}', treating as SSE")
+                return "sse", url
+
+        # 3. Command-based detection for stdio transport
+        command = server_config.get("command", "")
+        if not command:
+            warn_msg("No command specified, defaulting to stdio transport")
+            return "stdio", None
+
+        # 4. Analyze command to determine best transport
+        # Check if it's a Docker command - many Docker MCP servers use HTTP internally
+        if command == "docker" or command.startswith("docker "):
+            # Check if this looks like a typical MCP server Docker image
+            args = server_config.get("args", [])
+            if any("mcp" in str(arg).lower() for arg in args):
+                # This looks like an MCP server in Docker
+                # Many MCP servers in Docker expose HTTP endpoints
+                # But without explicit URL, we'll try stdio first with shorter timeout
+                log_msg(
+                    f"Detected Docker MCP server, using stdio transport with shorter timeout"
+                )
+                return "stdio", None
+            else:
+                log_msg(f"Detected Docker command, using stdio transport")
+                return "stdio", None
+
+        # Check if it's a Python script or module
+        if (
+            command in ["python", "python3", "py"]
+            or command.startswith(("python ", "python3 ", "py "))
+            or command.endswith(".py")
+        ):
+            log_msg(f"Detected Python command, using stdio transport")
+            return "stdio", None
+
+        # Check if it's a Node.js command
+        if (
+            command in ["node", "npm", "npx", "yarn"]
+            or command.startswith(("node ", "npm ", "npx ", "yarn "))
+            or command.endswith(".js")
+        ):
+            log_msg(f"Detected Node.js command, using stdio transport")
+            return "stdio", None
+
+        # Check if it's an executable file
+        resolved_command = self._resolve_command_path(command)
+        if Path(resolved_command).exists() and os.access(resolved_command, os.X_OK):
+            log_msg(f"Detected executable file, using stdio transport")
+            return "stdio", None
+
+        # Check if it's a system command
+        if shutil.which(command.split()[0] if " " in command else command):
+            log_msg(f"Detected system command, using stdio transport")
+            return "stdio", None
+
+        # Default to stdio with warning
+        warn_msg(
+            f"Could not determine transport type for command '{command}', defaulting to stdio"
+        )
+        return "stdio", None
+
+    async def _execute(self, args: argparse.Namespace, config: MCPConfig) -> CLIResult:
+        """Execute the MCP command asynchronously."""
         if not args.subcommand:
             return CLIResult(
                 status="failure",
@@ -161,83 +420,252 @@ class MCPCommand(BaseCLICommand):
                 exit_code=1,
             )
 
-        # Run async command
+        # Try to use nest_asyncio if available (solves many event loop issues)
         try:
-            result = asyncio.run(self._execute_async(args, config))
-            return result
-        except Exception as e:
-            return CLIResult(
-                status="failure", message=f"Unexpected error: {e}", exit_code=1
-            )
-        finally:
-            # Clean up any active clients
-            asyncio.run(self._cleanup_clients())
+            import nest_asyncio
 
-    async def _execute_async(
-        self, args: argparse.Namespace, config: MCPConfig
-    ) -> CLIResult:
-        """Execute async MCP operations."""
-        if args.subcommand == "list":
-            return await self._cmd_list_servers(config)
+            nest_asyncio.apply()
+            log_msg("Using nest_asyncio for event loop compatibility")
+        except ImportError:
+            log_msg("nest_asyncio not available, using standard asyncio")
 
-        elif args.subcommand == "status":
-            server_name = getattr(args, "server", None)
-            return await self._cmd_server_status(config, server_name)
-
-        elif args.subcommand == "tools":
-            return await self._cmd_list_tools(config, args.server)
-
-        elif args.subcommand == "call":
-            # Parse tool arguments
-            try:
+        result = None
+        try:
+            if args.subcommand == "list":
+                result = await self._cmd_list_servers(config)
+            elif args.subcommand == "status":
+                server_name = getattr(args, "server", None)
+                result = await self._cmd_server_status(config, server_name)
+            elif args.subcommand == "tools":
+                result = await self._cmd_list_tools(config, args.server)
+            elif args.subcommand == "call":
                 arguments = self._parse_tool_arguments(args)
-            except ValueError as e:
-                return CLIResult(
+                result = await self._cmd_call_tool(
+                    config, args.server, args.tool, arguments
+                )
+            else:
+                result = CLIResult(
                     status="failure",
-                    message=f"Argument parsing error: {e}",
+                    message=f"Unknown subcommand: {args.subcommand}",
                     exit_code=1,
                 )
-
-            return await self._cmd_call_tool(config, args.server, args.tool, arguments)
-
-        else:
-            return CLIResult(
-                status="failure",
-                message=f"Unknown subcommand: {args.subcommand}",
-                exit_code=1,
-            )
-
-    async def _get_client(self, server_config: MCPServerConfig) -> Client:
-        """Get or create a FastMCP client for a server."""
-        if server_config.name in self._clients:
-            return self._clients[server_config.name]
-
-        # Create appropriate transport
-        if server_config.transport == "sse" and server_config.url:
-            transport = SSETransport(server_config.url)
-        else:
-            # Default to stdio transport
-            transport = PythonStdioTransport(
-                script_path=server_config.command,
-                args=server_config.args,
-                env=server_config.env,
-            )
-
-        # Create client
-        client = Client(transport)
-        self._clients[server_config.name] = client
-
-        return client
-
-    async def _cleanup_clients(self):
-        """Clean up all active clients."""
-        for client in self._clients.values():
+        except Exception as e:
+            # If we get an exception, try to cleanup but don't let cleanup errors mask the original error
             try:
-                if hasattr(client, "_context_manager") and client._context_manager:
-                    await client.__aexit__(None, None, None)
-            except Exception:
-                pass
-        self._clients.clear()
+                await self._safe_cleanup_all_clients()
+            except Exception as cleanup_error:
+                log_msg(f"Cleanup error (ignoring): {cleanup_error}")
+            raise e
+        else:
+            # Normal cleanup only if command succeeded
+            try:
+                await self._safe_cleanup_all_clients()
+            except Exception as cleanup_error:
+                log_msg(f"Cleanup error (ignoring): {cleanup_error}")
+
+        # Force garbage collection to clean up any remaining async resources
+        import gc
+
+        gc.collect()
+
+        return result
+
+    def _resolve_command_path(self, command: str) -> str:
+        """Resolve command to full path if it's a system command."""
+        # Handle python module execution
+        if command == "python" or command.startswith("python"):
+            # Don't resolve python, let the system handle it
+            return command
+
+        if Path(command).is_absolute():
+            return command
+
+        if Path(command).exists():
+            return str(Path(command).resolve())
+
+        resolved_path = shutil.which(command)
+        if resolved_path:
+            return resolved_path
+
+        return command
+
+    def _create_transport(self, server_config: MCPServerConfig):
+        """Create appropriate transport based on detected configuration."""
+        transport_type = server_config.transport.lower()
+
+        # Handle HTTP/SSE transports
+        if transport_type in ["http", "https"]:
+            if not server_config.url:
+                raise ValueError(f"URL required for {transport_type} transport")
+            log_msg(f"Creating SSE transport for {server_config.url}")
+            return StreamableHttpTransport(server_config.url)
+
+        elif transport_type == "sse":
+            if not server_config.url:
+                raise ValueError("URL required for SSE transport")
+            log_msg(f"Creating SSE transport for {server_config.url}")
+            return SSETransport(server_config.url)
+
+        # Handle WebSocket transport (if supported by FastMCP)
+        elif transport_type in ["websocket", "ws", "wss"]:
+            if not server_config.url:
+                raise ValueError(f"URL required for {transport_type} transport")
+            # Note: WebSocket transport may not be available in all FastMCP versions
+            try:
+                from fastmcp.client.transports import WSTransport
+
+                log_msg(f"Creating WebSocket transport for {server_config.url}")
+                return WSTransport(server_config.url)
+            except ImportError:
+                warn_msg("WebSocket transport not available, falling back to SSE")
+                return SSETransport(server_config.url)
+
+        # Handle stdio/pipe transports (default)
+        elif transport_type in ["stdio", "pipe"]:
+            return self._create_stdio_transport(server_config)
+
+        else:
+            warn_msg(f"Unknown transport type '{transport_type}', using stdio")
+            return self._create_stdio_transport(server_config)
+
+    def _create_stdio_transport(self, server_config: MCPServerConfig):
+        """Create the appropriate stdio transport based on command type."""
+        # Resolve command
+        resolved_command = self._resolve_command_path(server_config.command)
+
+        # Prepare environment - merge system env with server config env
+        env = os.environ.copy()
+        env.update(server_config.env)
+
+        # Force unbuffered output for Python scripts
+        env["PYTHONUNBUFFERED"] = "1"
+
+        # Log environment variables being passed (for debugging auth issues)
+        log_msg(f"Creating StdioTransport for {resolved_command}")
+        log_msg(f"Environment variables: {', '.join(sorted(env.keys()))}")
+        if "GITHUB_PERSONAL_ACCESS_TOKEN" in env:
+            # Log token presence without revealing the value
+            token_preview = (
+                env["GITHUB_PERSONAL_ACCESS_TOKEN"][:8] + "..."
+                if env["GITHUB_PERSONAL_ACCESS_TOKEN"]
+                else "None"
+            )
+            log_msg(f"GITHUB_PERSONAL_ACCESS_TOKEN: {token_preview}")
+
+        # Detect if this is a Python script for PythonStdioTransport
+        if self._is_python_command(server_config.command, server_config.args):
+            if PythonStdioTransport is not None:
+                # Extract Python script path from command/args
+                script_path = self._extract_python_script_path(
+                    server_config.command, server_config.args
+                )
+                if script_path:
+                    log_msg(f"Creating PythonStdioTransport for {script_path}")
+                    return PythonStdioTransport(
+                        script_path=script_path,
+                        args=self._extract_python_script_args(server_config.args),
+                        env=env,
+                    )
+
+        # Use standard StdioTransport (not our custom one) to avoid interference
+        log_msg(f"Using standard StdioTransport")
+        return StdioTransport(
+            command=resolved_command,
+            args=server_config.args,
+            env=env,
+        )
+
+    def _is_python_command(self, command: str, args: list[str]) -> bool:
+        """Check if this is a Python command that should use PythonStdioTransport."""
+        # Direct Python interpreter calls
+        if command in ["python", "python3", "py"]:
+            return True
+
+        # Python with flags (e.g., "python -m module")
+        if command.startswith(("python ", "python3 ", "py ")):
+            return True
+
+        # Direct .py file execution
+        if command.endswith(".py"):
+            return True
+
+        # Check if first arg is a .py file when using python interpreter
+        if command in ["python", "python3", "py"] and args and args[0].endswith(".py"):
+            return True
+
+        return False
+
+    def _extract_python_script_path(self, command: str, args: list[str]) -> str | None:
+        """Extract the Python script path from command and args."""
+        # Direct .py file execution
+        if command.endswith(".py"):
+            return self._resolve_command_path(command)
+
+        # Python interpreter with script as first argument
+        if command in ["python", "python3", "py"] and args:
+            first_arg = args[0]
+            # Skip flags like -m, -c, etc.
+            if not first_arg.startswith("-") and first_arg.endswith(".py"):
+                return self._resolve_command_path(first_arg)
+
+        return None
+
+    def _extract_python_script_args(self, args: list[str]) -> list[str]:
+        """Extract arguments for the Python script (excluding the script path itself)."""
+        if not args:
+            return []
+
+        # If first arg is a .py file, return the rest
+        if args[0].endswith(".py"):
+            return args[1:]
+
+        # Otherwise return all args (for cases like python -m module)
+        return args
+
+    @asynccontextmanager
+    async def _get_client(self, server_config: MCPServerConfig):
+        """Create a fresh client for each operation to avoid cleanup issues."""
+        # Create new client every time to avoid cancel scope issues
+        transport = self._create_transport(server_config)
+        client = Client(transport)
+
+        try:
+            # Initialize with timeout
+            async with asyncio.timeout(INIT_TIMEOUT):
+                await client.__aenter__()
+
+            # Yield for use
+            yield client
+
+        except asyncio.TimeoutError:
+            # Don't try to cleanup on timeout - just let it go
+            raise asyncio.TimeoutError(
+                f"Failed to connect to {server_config.name} within {INIT_TIMEOUT}s"
+            )
+        except Exception:
+            # Don't try to cleanup on error - just let it go
+            raise
+        finally:
+            # Don't try to explicitly close the client - this causes the cancel scope issues
+            # Just let Python's garbage collector handle it
+            pass
+
+    async def _cleanup_all_clients(self):
+        """No-op cleanup since we don't store clients anymore."""
+        # Clear any remaining references
+        self._active_clients.clear()
+        self._client_locks.clear()
+
+    async def _safe_cleanup_all_clients(self):
+        """No-op cleanup since we don't store clients anymore."""
+        # Clear any remaining references
+        self._active_clients.clear()
+        self._client_locks.clear()
+
+        # Force garbage collection to clean up any remaining resources
+        import gc
+
+        gc.collect()
 
     async def _cmd_list_servers(self, config: MCPConfig) -> CLIResult:
         """List all configured MCP servers."""
@@ -290,16 +718,20 @@ class MCPCommand(BaseCLICommand):
             # Try to connect and get server info
             if not server_config.disabled:
                 try:
-                    client = await self._get_client(server_config)
-                    async with client:
-                        # Get server capabilities
-                        tools = await client.list_tools()
-                        server_info["status"] = "connected"
-                        server_info["tools_count"] = len(tools)
-                        server_info["tools"] = [
-                            {"name": tool.name, "description": tool.description}
-                            for tool in tools
-                        ]
+                    async with asyncio.timeout(server_config.timeout):
+                        async with self._get_client(server_config) as client:
+                            tools = await client.list_tools()
+                            server_info["status"] = "connected"
+                            server_info["tools_count"] = len(tools)
+                            server_info["tools"] = [
+                                {"name": tool.name, "description": tool.description}
+                                for tool in tools
+                            ]
+                except asyncio.TimeoutError:
+                    server_info["status"] = "timeout"
+                    server_info["error"] = (
+                        f"Connection timeout ({server_config.timeout}s)"
+                    )
                 except Exception as e:
                     server_info["status"] = "error"
                     server_info["error"] = str(e)
@@ -342,29 +774,36 @@ class MCPCommand(BaseCLICommand):
             )
 
         try:
-            client = await self._get_client(server_config)
-            async with client:
-                tools = await client.list_tools()
+            async with asyncio.timeout(server_config.timeout):
+                async with self._get_client(server_config) as client:
+                    tools = await client.list_tools()
 
-                tools_info = []
-                for tool in tools:
-                    tool_info = {"name": tool.name, "description": tool.description}
+                    tools_info = []
+                    for tool in tools:
+                        tool_info = {"name": tool.name, "description": tool.description}
 
-                    # Add parameter info if available
-                    if hasattr(tool, "inputSchema") and tool.inputSchema:
-                        if "properties" in tool.inputSchema:
-                            tool_info["parameters"] = list(
-                                tool.inputSchema["properties"].keys()
-                            )
+                        # Add parameter info if available
+                        if hasattr(tool, "inputSchema") and tool.inputSchema:
+                            if "properties" in tool.inputSchema:
+                                tool_info["parameters"] = list(
+                                    tool.inputSchema["properties"].keys()
+                                )
 
-                    tools_info.append(tool_info)
+                        tools_info.append(tool_info)
 
-                return CLIResult(
-                    status="success",
-                    message=f"Found {len(tools_info)} tools on server '{server_name}'",
-                    data={"server": server_name, "tools": tools_info},
-                )
+                    return CLIResult(
+                        status="success",
+                        message=f"Found {len(tools_info)} tools on server '{server_name}'",
+                        data={"server": server_name, "tools": tools_info},
+                    )
 
+        except asyncio.TimeoutError:
+            return CLIResult(
+                status="failure",
+                message=f"Timeout connecting to server '{server_name}' after {server_config.timeout}s",
+                data={"server": server_name},
+                exit_code=1,
+            )
         except Exception as e:
             return CLIResult(
                 status="failure",
@@ -419,25 +858,32 @@ class MCPCommand(BaseCLICommand):
             )
 
         try:
-            client = await self._get_client(server_config)
-            async with client:
-                # Call the tool
-                result = await client.call_tool(tool_name, arguments)
+            async with asyncio.timeout(server_config.timeout):
+                async with self._get_client(server_config) as client:
+                    # Call the tool
+                    result = await client.call_tool(tool_name, arguments)
 
-                # Format result based on content type
-                formatted_result = self._format_tool_result(result)
+                    # Format result based on content type
+                    formatted_result = self._format_tool_result(result)
 
-                return CLIResult(
-                    status="success",
-                    message=f"Tool '{tool_name}' executed successfully",
-                    data={
-                        "server": server_name,
-                        "tool": tool_name,
-                        "arguments": arguments,
-                        "result": formatted_result,
-                    },
-                )
+                    return CLIResult(
+                        status="success",
+                        message=f"Tool '{tool_name}' executed successfully",
+                        data={
+                            "server": server_name,
+                            "tool": tool_name,
+                            "arguments": arguments,
+                            "result": formatted_result,
+                        },
+                    )
 
+        except asyncio.TimeoutError:
+            return CLIResult(
+                status="failure",
+                message=f"Timeout calling tool '{tool_name}' after {server_config.timeout}s",
+                data={"server": server_name, "tool": tool_name, "arguments": arguments},
+                exit_code=1,
+            )
         except Exception as e:
             return CLIResult(
                 status="failure",

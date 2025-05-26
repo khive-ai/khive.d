@@ -118,8 +118,8 @@ def main():
         "--time-budget",
         "-t",
         type=float,
-        default=10.0,
-        help="Maximum seconds to spend gathering insights (default: 10)",
+        default=20.0,
+        help="Maximum seconds to spend gathering insights (default: 20)",
     )
 
     parser.add_argument("--json", action="store_true", help="Output raw JSON response")

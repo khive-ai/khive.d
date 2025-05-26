@@ -187,9 +187,27 @@ class RepositoryUnderstanding(BaseModel):
     tests_passing: bool
     lint_clean: bool
 
+    # Git state indicators
+    has_uncommitted_changes: bool = False
+    has_staged_changes: bool = False
+    has_remote_branch: bool = False
+    commits_ahead: int = 0
+    commits_behind: int = 0
+
+    # Additional state
+    existing_pr: dict[str, Any] | None = None
+    last_commit: dict[str, Any] | None = None
+    changes_summary: dict[str, Any] | None = None
+
     # Recommendations
     recommended_actions: list[str]
     potential_issues: list[str]
+
+    def get_status_summary(self) -> str:
+        """Get a summary of the repository status."""
+        if not self.files_changed:
+            return "No changes"
+        return f"{len(self.files_changed)} files changed"
 
 
 # --- Response Model ---
@@ -216,6 +234,14 @@ class GitResponse(BaseModel):
     # Conversation continuity
     conversation_id: str
     follow_up_prompts: list[str]  # Suggested follow-up questions
+
+    # Success indicator
+    success: bool = Field(
+        default=True, description="Whether the operation was successful"
+    )
+
+    # Summary message
+    summary: str | None = Field(default=None, description="Optional summary message")
 
 
 class Recommendation(BaseModel):

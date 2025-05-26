@@ -292,6 +292,36 @@ class CICommand(ConfigurableCLICommand):
                 exit_code=1,
             )
 
+    async def _execute_async(
+        self, args: argparse.Namespace, config: CIConfig
+    ) -> CLIResult:
+        """Execute the CI command asynchronously (for use within async contexts)."""
+        # Run async CI logic directly without asyncio.run()
+        try:
+            self._execution_result = await self._run_ci_async(config)
+
+            # Convert to CLIResult
+            if self._execution_result.overall_success:
+                return CLIResult(
+                    status="success",
+                    message=self._format_summary_message(),
+                    data=self._format_result_data(),
+                )
+            else:
+                return CLIResult(
+                    status="failure",
+                    message=self._format_failure_message(),
+                    data=self._format_result_data(),
+                    exit_code=1,
+                )
+
+        except Exception as e:
+            return CLIResult(
+                status="error",
+                message=f"CI execution failed: {e}",
+                exit_code=1,
+            )
+
     async def _run_ci_async(self, config: CIConfig) -> CIExecutionResult:
         """Run CI checks asynchronously."""
         result = CIExecutionResult(project_root=config.project_root)

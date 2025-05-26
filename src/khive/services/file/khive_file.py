@@ -277,13 +277,17 @@ def main():
     exists_parser = subparsers.add_parser("exists", help="Check if path exists")
     exists_parser.add_argument("path", help="Path to check")
 
-    # Add common flags to all operation parsers
-    for subparser in subparsers.choices.values():
+    # Add --dry-run to specific operations that support it
+    dry_run_operations = [
+        write_parser,
+        delete_parser,
+        copy_parser,
+        move_parser,
+        mkdir_parser,
+    ]
+    for subparser in dry_run_operations:
         subparser.add_argument(
             "--dry-run", action="store_true", help="Show what would be done"
-        )
-        subparser.add_argument(
-            "--json", action="store_true", help="Output in JSON format"
         )
 
     args = parser.parse_args()
