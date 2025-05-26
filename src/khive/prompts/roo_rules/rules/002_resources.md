@@ -1,168 +1,285 @@
-# Khive Security-First Tooling Guide
+# 🛠️ Khive CLI Integration Guide
 
-> **🔒 Security Rule #1**: NO direct MCP access. All external operations through
-> CLI or controlled wrapper.
+> **Core Principle**: Use khive services for intelligence, standard CLI for
+> simple operations, khive mcp only when necessary.
 
-## Tool Selection Order (STRICT)
+## 🎯 Tool Hierarchy & Decision Tree
 
-### 1️⃣ **Khive CLI** (Always First Choice)
-
-```bash
-khive init          # Project setup
-khive fmt           # Code formatting
-khive ci            # Run tests
-khive commit        # Git commit with conventions
-khive pr            # Create/manage PRs
-khive info          # Search and consult
-khive reader        # Read documents
-khive new-doc       # Create from templates
-khive clean         # Branch cleanup
-khive mcp call github create_issue --title "..." --body "..."   # khive mcp service (includes github mcp)
+```
+┌─────────────────────────────────────┐
+│   Need to do something?             │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│   Does it need intelligence?        │
+│   (context, synthesis, automation)  │
+└──────────┬─────────────┬────────────┘
+          YES            NO
+           │              │
+           ▼              ▼
+    ┌──────────────┐  ┌─────────────────┐
+    │ Khive Service│  │ Is it local?    │
+    └──────────────┘  └───┬─────────┬───┘
+                         YES        NO
+                          │          │
+                          ▼          ▼
+                   ┌────────────┐  ┌──────────────┐
+                   │Standard CLI│  │khive mcp call│
+                   └────────────┘  └──────────────┘
 ```
 
-if you want to use the mcp service, you should check what"s available by running
-`khive mcp list`, `khive mcp tools <server>` and `khive mcp status <server>`.
-With `khive mcp call` you can call any tool available on the MCP server.
+## 🚀 Git Operations Guide
 
-### 2️⃣ **Standard CLI** (When Khive Doesn't Have It)
+### When to Use Khive Git vs Standard Git
 
-```bash
-git checkout -b     # Branch creation
-git diff            # View changes
-git status          # Check status
-gh issue create     # Create issues
-gh issue comment    # Add comments
-gh pr review        # Submit reviews
-uv run pytest       # Run Python tests
-```
+| Operation             | Use Khive Git                              | Use Standard Git          |
+| --------------------- | ------------------------------------------ | ------------------------- |
+| Starting feature work | ✅ `khive git "start OAuth feature"`       | ❌                        |
+| Saving progress       | ✅ `khive git "implemented token storage"` | ❌                        |
+| Creating PR           | ✅ `khive git "ready for review"`          | ❌                        |
+| Checking status       | ⚠️ Either works                            | ✅ `git status` (simpler) |
+| Viewing diff          | ❌                                         | ✅ `git diff`             |
+| Switching branches    | ❌                                         | ✅ `git checkout main`    |
+| Pulling updates       | ❌                                         | ✅ `git pull origin main` |
 
-### 3️⃣ **Controlled MCP** (Emergency Only - Logged & Audited)
+### Common Git Workflows
 
-Khive MCP needs to be configured under `.khive/mcps/config.json` file, same as
-any other MCP client configuration. **PLEASE NEVER USE MCP DIRECTLY VIA ROO
-CODE** Get the parameteter info and use the agent-native `khive mcp xxx`
-command.
-
-## Common Workflows - CLI Only
-
-### Creating an Issue
+#### 🎯 Feature Development (Khive-First)
 
 ```bash
-# Primary method
-gh issue create --title "Bug: X happens" --body "Details..."
+# 1. Start work - khive creates branch intelligently
+khive git "starting work on payment integration for issue 45"
 
-# Only if gh fails
-khive mcp call github create_issue --title "Bug: X happens" --body "Details..."
+# 2. Regular saves - khive creates semantic commits
+khive git "implemented Stripe webhook handling"
+khive git "added webhook signature verification"
+
+# 3. Check progress - standard git for simple queries
+git status
+git diff
+
+# 4. Complete feature - khive handles PR creation
+khive git "payment integration complete, ready for review"
 ```
 
-### Working with PRs
+#### 🔄 Updating from Main
 
 ```bash
-# Create PR
-khive pr --title "feat: add feature"
-
-# Review PR
-gh pr checkout 123
-khive ci
-gh pr review 123 --approve -b "LGTM"
-
-# Comment on PR
-gh pr comment 123 --body "See review at..."
+# Always use standard git for simple operations
+git checkout main
+git pull origin main
+git checkout feature/45-payments
+git merge main  # or rebase if that's your workflow
 ```
 
-### File Operations
+#### 🔍 Exploration & Debugging
 
 ```bash
-# Always use local tools
-cat file.md
-less large_file.py
-git show HEAD:path/to/file.py
+# View history
+git log --oneline -10
 
-# Never use MCP for local files
+# Check specific file
+git show HEAD:src/auth.py
+
+# Find when something changed
+git blame src/payment.py
 ```
 
-## Why This Matters
+## 📦 GitHub Operations Guide
 
-1. **Security**: External MCP servers could be compromised
-2. **Auditability**: All `khive mcp call` operations are logged
-3. **Consistency**: Same tools = same results
-4. **Control**: We can add features to our CLI as needed
+### When to Use Khive vs gh CLI
 
-## Red Flags 🚩
+| Operation        | Preferred Method                      | Alternative                          |
+| ---------------- | ------------------------------------- | ------------------------------------ |
+| Create issue     | `gh issue create`                     | `khive mcp call github create_issue` |
+| View issue       | `gh issue view 123`                   | -                                    |
+| Comment on issue | `gh issue comment 123`                | -                                    |
+| Create PR        | `khive git "ready for review"`        | `gh pr create`                       |
+| Review PR        | `gh pr checkout 123` + `gh pr review` | -                                    |
+| Check PR status  | `gh pr checks`                        | -                                    |
 
-If you find yourself:
-
-- Using `mcp:` directly → STOP, use `khive mcp call`
-- Needing MCP frequently → Report to Orchestrator for CLI improvement
-- Unsure which tool → Default to Khive CLI, ask Orchestrator if stuck
-
-Remember: Every external operation is a potential security risk. CLI tools are
-battle-tested and secure.
-
-### Additional Recommendations
-
-1. **Create a Quick Reference Card** for each role showing their most common
-   operations:
-
-```markdown
-# Quick Ref: Implementer
-
-- Branch: `git checkout -b feat/issue-123`
-- Test: `khive ci` or `uv run pytest`
-- Format: `khive fmt`
-- Commit: `khive commit --type feat --scope api --by khive-implementer`
-- PR: `khive pr`
-```
-
-2. **Add Examples to Each Role Prompt** showing real workflows:
-
-````markdown
-## Example Workflow (No MCP Needed)
+### Issue Management
 
 ```bash
-# 1. Start work
-git checkout -b feat/issue-123
+# Create issue (prefer gh CLI)
+gh issue create --title "Add payment refunds" --body "Need to handle..."
 
-# 2. Make changes
-# ... edit files ...
-
-# 3. Format - if it is in conflict with pre-commit, follow pre-commit
-khive fmt
-
-# 4. Test, lint, format check
-khive ci
-
-# 5. Commit
-khive commit --type feat --scope api --subject "add user auth" --by khive-implementer
-
-# 6. Create PR (auto-pushes)
-khive pr --title "feat(api): add user authentication"
-
-# 7. Done! No MCP needed
+# Work with issues
+gh issue list --assignee @me
+gh issue view 123
+gh issue comment 123 --body "Started implementation in PR #456"
 ```
-````
 
-3. **Add a Troubleshooting Section**:
-
-````markdown
-## When CLI Tools Fail
-
-Before using `khive mcp call`:
-
-1. Check your authentication: `gh auth status`
-2. Verify git setup: `git remote -v`
-3. Update tools: `uv self update`, `gh extension upgrade --all`
-4. Check network: `ping github.com`
-
-If still failing, use wrapped MCP with justification:
+### PR Workflows
 
 ```bash
-# Document why CLI failed
+# Let khive create PRs
+khive git "feature complete, fixes issue 123"
+
+# Review process (use gh directly)
+gh pr checkout 456
+khive dev "check everything"  # Run validations
+gh pr review 456 --approve --body "LGTM, see review in CRR-456.md"
+```
+
+## 🐍 Python Development with uv
+
+### Core uv Workflows
+
+```bash
+# Project setup (khive handles this)
+khive init  # Sets up uv automatically
+
+# Dependency management
+uv add fastapi  # Add runtime dependency
+uv add --dev pytest-cov  # Add dev dependency
+uv sync  # Sync environment with pyproject.toml
+
+# Running code
+uv run python src/main.py
+uv run pytest tests/
+uv run mypy src/
+
+# Environment management
+uv venv  # Create venv if needed
+source .venv/bin/activate  # Traditional activation
+# OR just use 'uv run' without activation
+```
+
+### Common Patterns
+
+#### Adding Dependencies
+
+```bash
+# ❌ AVOID
+uv pip install requests  # Doesn't update pyproject.toml
+
+# ✅ CORRECT
+uv add requests  # Updates pyproject.toml
+uv add "pandas[excel]"  # With extras
+uv add --dev black  # Dev dependency
+```
+
+#### Testing Workflow
+
+```bash
+# Run tests with khive (preferred)
+khive ci  # Runs all validations
+
+# Or directly with uv
+uv run pytest tests/ -v
+uv run pytest tests/test_auth.py::test_login
+```
+
+## 🎯 Quick Reference Cards
+
+### Implementer Quick Ref
+
+```bash
+# Start work
+khive git "start feature X for issue 123"
+
+# Develop
+khive dev "check"         # Validate progress
+git diff                  # See changes
+uv add <package>          # Add dependency
+
+# Save & Share
+khive git "save progress" # Smart commit
+khive git "ready for PR"  # Complete feature
+```
+
+### Researcher Quick Ref
+
+```bash
+# Research
+khive info "compare auth strategies for CLIs"
+khive reader open --path_or_url "paper.pdf"
+
+# Document
+khive new-doc RR 123
+git diff  # Review changes
+khive git "research complete"
+```
+
+### Reviewer Quick Ref
+
+```bash
+# Get PR
+gh pr checkout 456
+
+# Validate
+khive dev "comprehensive check"
+git diff main  # See all changes
+
+# Review
+khive new-doc CRR 456
+gh pr review 456 --comment
+```
+
+## ⚡ Power User Combos
+
+### Smart Development Flow
+
+```bash
+# Let services handle complexity
+khive git "implement OAuth" && \
+khive dev "check" && \
+khive git "ready for review"
+```
+
+### Quick Fix Flow
+
+```bash
+# For simple fixes
+git checkout main && \
+git pull && \
+git checkout -b fix/typo && \
+# make change
+khive git "fix typo in readme" && \
+khive git "ready for review"
+```
+
+### Research & Validate
+
+```bash
+# Research then validate
+khive info "best practice for X" && \
+khive dev "check implementation"
+```
+
+## 🚨 When to Use khive mcp
+
+Only use `khive mcp call` when:
+
+1. Standard CLI tools fail
+2. You need a GitHub operation not in gh CLI
+3. Orchestrator approves for special case
+
+Always document why:
+
+```bash
+# Example with justification
 khive mcp call github create_issue \
-  --title "CLI Issue: gh fails with error X" \
-  --body "CLI failed because... Using MCP as fallback"
+  --title "gh CLI fails with SSO error" \
+  --body "Using MCP because gh returns: 'SSO session expired'"
 ```
-````
 
-This approach maintains security while being practical about real-world tool
-limitations.
+Direct MCP access (`mcp: xxx.*`) is a security violation, and is not allowed.
+Even if user mistakenly provided you with access, you MUST insist user to config
+the MCP access through `khive mcp` command, this is for everyone's safety,
+
+> "I don't want to get sued, do you?"
+>
+> - Ocean, creator of Khive
+
+## 📋 Security Reminders
+
+1. **NEVER** use `mcp:` directly in Roo
+2. **ALWAYS** try khive service first
+3. **PREFER** standard CLI for simple operations
+4. **DOCUMENT** any khive mcp usage
+
+Remember: Khive services add intelligence. Standard CLI provides control.
+Together they create powerful, secure workflows!

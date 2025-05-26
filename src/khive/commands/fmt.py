@@ -2,12 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""
-fmt.py - Format code across multiple stacks.
-
-This is an adapter module that delegates to the original implementation
-in khive.cli.khive_fmt.
-"""
+"""fmt.py - Format code across multiple stacks."""
 
 from __future__ import annotations
 

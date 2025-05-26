@@ -2,30 +2,29 @@
 title: "Technical Design Specification Template"
 by: "khive-architect"
 created: "2025-04-12"
-updated: "2025-04-12"
-version: "1.1"
+updated: "2025-05-26"
+version: "2.0"
 doc_type: "TDS"
 output_subdir: "tds"
-description: "Template for creating detailed technical specifications for khive components and services"
+description: "Template for technical specifications with service integration"
 ---
 
 # Guidance
 
 **Purpose**\
-Lay out an **implementation-ready** blueprint for a microservice or feature:
-data models, APIs, flows, error handling, security, etc.
+Create implementation-ready designs that leverage khive services.
 
-**When to Use**
+**Service Integration**
 
-- After the Research is done, to guide the Implementer.
-- Before Implementation Plan or simultaneously with it.
+- Use `khive info` to validate all design decisions
+- Design for service-based implementation
+- Focus on interfaces, not implementation details
 
 **Best Practices**
 
-- Keep the design as **complete** as possible so coders can proceed with minimal
-  guesswork.
-- Emphasize any performance or security corners.
-- Use diagrams (Mermaid) for clarity.
+- Let services handle complexity in implementation
+- Specify what, not how
+- Include service validation for key decisions
 
 ---
 
@@ -35,175 +34,156 @@ data models, APIs, flows, error handling, security, etc.
 
 ### 1.1 Purpose
 
-_Short statement of the component's purpose._
+_Component purpose in context of service architecture_
 
-### 1.2 Scope
+### 1.2 Service Integration Points
 
-_Boundaries—what is included, what is not._
+- Which khive services will this component use?
+- How will it be tested with `khive dev`?
+- How will it be deployed with `khive git`?
 
-### 1.3 Background
+### 1.3 Design Validation
 
-_Cite any relevant research or constraints._
-
-### 1.4 Design Goals
-
-_List the main objectives (e.g., reliability, minimal latency)._
-
-### 1.5 Key Constraints
-
-_Security or performance constraints from the project._
+```bash
+# Key design decisions validated with:
+khive info "Best practices for [specific pattern]"
+# Service confidence: X%
+```
 
 ## 2. Architecture
 
-### 2.1 Component Diagram
+### 2.1 Service-Oriented Design
 
 ```mermaid
 graph TD
-    A[API Layer] --> B[Service Layer]
-    B --> C[Data Access Layer]
-    B --> D[External Service Client]
-    C --> E[(Database)]
-    D --> F[External Service]
+    A[Client Request] --> B[Service Interface]
+    B --> C{khive service router}
+    C --> D[Implementation Logic]
+    C --> E[khive info for runtime decisions]
+    C --> F[khive dev for validation]
 ```
 
-### 2.2 Dependencies
+### 2.2 Interface Design
 
-_Internal or external services, libraries._
+```python
+class AuthenticationService:
+    """
+    Service interface designed for natural language usage.
+    Implementation will leverage khive services.
+    """
 
-### 2.3 Data Flow
+    async def authenticate(self, credentials: str) -> AuthResult:
+        """
+        Implementer note: Use khive services for:
+        - Validation (khive dev)
+        - Logging (automatic with services)
+        - Error handling (service-provided)
+        """
+        pass
+```
+
+## 3. Data Models
+
+### 3.1 Service-Friendly Models
+
+```python
+class TokenRequest(BaseModel):
+    """Designed to work with khive info insights"""
+
+    # Field validated by khive info research
+    storage_method: Literal["file", "keyring"] = "file"
+
+    # Service-recommended defaults
+    refresh_interval: int = 3600  # khive info: "Industry standard"
+
+    class Config:
+        # Enable service integration
+        schema_extra = {
+            "khive_service": "auth",
+            "validation_mode": "strict"
+        }
+```
+
+## 4. Behavior Specifications
+
+### 4.1 Service-Driven Workflows
 
 ```mermaid
 sequenceDiagram
-    participant Client
-    participant API
+    participant User
     participant Service
-    participant Database
+    participant khive_info
+    participant khive_dev
 
-    Client->>API: Request
-    API->>Service: Validated Request
-    Service->>Database: Query
-    Database-->>Service: Results
-    Service-->>API: Processed Data
-    API-->>Client: Response
+    User->>Service: Request
+    Service->>khive_info: Validate approach
+    khive_info-->>Service: Confidence score
+    Service->>Service: Process
+    Service->>khive_dev: Validate result
+    khive_dev-->>Service: Quality check
+    Service-->>User: Response
 ```
 
-## 3. Interface Definitions
+### 4.2 Error Handling Strategy
 
-### 3.1 API Endpoints
+- Let khive services handle standard errors
+- Only specify domain-specific error cases
+- Services provide automatic retry and logging
 
-#### `[Method] /path/to/resource`
+## 5. Implementation Guidance
 
-**Purpose:**\
-**Request Model:**\
-**Response Model:**\
-**Error Responses:**
+### 5.1 For Implementer
 
-### 3.2 Internal Interfaces
+1. Start with: `khive git "implement [component] for issue X"`
+2. Use `khive dev` for continuous validation
+3. Let `khive git` handle commits and PRs
+4. Focus on business logic, not infrastructure
 
-_Classes, methods, or modules inside the Service layer._
+### 5.2 Service Capabilities
 
-## 4. Data Models
+The implementation can rely on:
 
-### 4.1 API Models
+- Automatic formatting (khive dev)
+- Smart commits (khive git)
+- Continuous validation (khive dev)
+- Integrated testing (khive ci via dev)
 
-```python
-class EntityModel(BaseModel):
-    id: str
-    name: str
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-    status: StatusEnum
+## 6. Validation Strategy
+
+### 6.1 Design Validation
+
+All key decisions validated with:
+
+```bash
+khive info "[specific decision rationale]"
+# Confidence: X%
+# Alternative considered: Y
 ```
 
-### 4.2 Domain Models
+### 6.2 Implementation Validation
 
-_Essential business objects in Python classes or data classes._
+Implementer will use:
 
-### 4.3 Database Schema
+- `khive dev --check` for continuous validation
+- `khive dev --diagnostic` for deep analysis
+- Service-provided test coverage metrics
 
-```sql
-CREATE TABLE entities (
-    id VARCHAR(36) PRIMARY KEY,
-    ...
-);
-```
+## 7. Risks and Mitigations
 
-## 5. Behavior
+### 7.1 Service-Identified Risks
 
-### 5.1 Core Workflows
+| Risk              | Source              | Mitigation    | Validation                    |
+| ----------------- | ------------------- | ------------- | ----------------------------- |
+| Token corruption  | khive info research | Atomic writes | khive dev will test           |
+| Concurrent access | khive info analysis | File locking  | Service handles automatically |
 
-```mermaid
-sequenceDiagram
-    ...
-```
+## 8. Open Questions
 
-### 5.2 Error Handling
+_For khive info to research:_
 
-_Errors, exceptions, domain-specific custom errors, etc._
+- Question 1
+- Question 2
 
-### 5.3 Security Considerations
+_For implementation validation:_
 
-_Auth, encryption, data sanitization, etc._
-
-## 6. External Interactions
-
-### 6.1 Dependencies on Other Services
-
-_If it calls other microservices in khive or external providers (Exa,
-Perplexity)._
-
-### 6.2 External API Integrations
-
-```python
-class ExternalServiceClient:
-    ...
-```
-
-## 7. Performance Considerations
-
-### 7.1 Expected Load
-
-### 7.2 Scalability Approach
-
-### 7.3 Optimizations
-
-### 7.4 Caching Strategy
-
-## 8. Observability
-
-### 8.1 Logging
-
-### 8.2 Metrics
-
-### 8.3 Tracing
-
-## 9. Testing Strategy
-
-### 9.1 Unit Testing
-
-### 9.2 Integration Testing
-
-### 9.3 Performance Testing
-
-## 10. Deployment and Configuration
-
-### 10.1 Deployment Requirements
-
-### 10.2 Configuration Parameters
-
-```json
-{
-  "PORT": 8080,
-  "DATABASE_URL": "postgres://..."
-}
-```
-
-## 11. Open Questions
-
-_List any unresolved design points for Orchestrator or team decisions._
-
-## 12. Appendices
-
-### Appendix A: Alternative Designs
-
-### Appendix B: Research References
+- Will be tested with khive dev

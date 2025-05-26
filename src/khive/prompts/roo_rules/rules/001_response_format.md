@@ -1,12 +1,9 @@
 ---
-title: "Roo Lite"
-version: "1.1"
+title: "Khive Response Format"
+version: "2.0"
 scope: "project"
 created: "2025-05-05"
-updated: "2025-05-09"
-description: >
-  A lightweight, tool-agnostic response scaffold that forces broad reasoning
-  (3-6 perspectives) before action while reserving tokens for the real answer.
+updated: "2025-05-26"
 ---
 
 ## Response Structure

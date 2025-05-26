@@ -3,7 +3,7 @@ enable = ["python", "docs"]
 
 [stacks.python]
 cmd = "ruff format {files}"
-check_cmd = "uv run ruff format --check {files}"
+check_cmd = "ruff format --check {files}"
 include = ["*.py"]
 exclude = [
     "*_generated.py",

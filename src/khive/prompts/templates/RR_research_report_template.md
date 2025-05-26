@@ -2,169 +2,137 @@
 title: "Research Report Template"
 by: "khive-researcher"
 created: "2025-04-12"
-updated: "2025-04-12"
-version: "1.1"
+updated: "2025-05-26"
+version: "2.0"
 doc_type: "RR"
 output_subdir: "rr"
-description: "Template for creating comprehensive research reports on technologies and components for the khive project"
+description: "Template for research reports using khive info service insights"
 ---
 
 # Guidance
 
 **Purpose**\
-To document your in-depth research findings about new technologies, architecture
-approaches, or library evaluations. Provides evidence-based recommendations for
-the Architect to rely on.
+Document synthesized insights from khive info service to guide design decisions.
 
-**When to Use**
+**Service Integration**
 
-- Whenever the Orchestrator requests a deep dive on a specific domain or
-  problem.
-- Before or during the design phase.
+- Use `khive info` for all research queries
+- Service provides synthesis and citations automatically
+- Focus on interpreting insights for your project
 
 **Best Practices**
 
-- Include comparisons (tables of pros/cons, cost, performance).
-- Cite sources.
-- Focus on actionable insights relevant to khive’s constraints.
+- Let khive info handle search complexity
+- Add project-specific interpretation
+- Include service confidence scores
 
 ---
 
-# Research Report: [Component/Technology Name]
+# Research Report: [Topic]
 
 ## Executive Summary
 
-_A concise (2-3 paragraph) summary of key findings and recommendations,
-highlighting the main takeaways._
+_2-3 paragraph synthesis of key findings from khive info, emphasizing actionable
+insights for the project._
 
-## 1. Introduction
+## 1. Research Context
 
-### 1.1 Research Objective
+### 1.1 Research Questions
 
-_What question or challenge does this research address?_
+_What specific questions did you ask khive info?_
 
-### 1.2 Methodology
+### 1.2 Service Queries Used
 
-_How you approached the research, resources used, criteria for evaluating
-solutions._
-
-### 1.3 Context
-
-_Background on how this topic fits into the khive architecture._
-
-## 2. Technical Analysis
-
-### 2.1 Technology Landscape
-
-_Overview of relevant libraries, frameworks, or patterns in this domain._
-
-### 2.2 Comparative Analysis
-
-| Factor            | Option A   | Option B   | Option C   |
-| ----------------- | ---------- | ---------- | ---------- |
-| Performance       | ⭐⭐⭐⭐⭐ | ⭐⭐⭐     | ⭐⭐⭐⭐   |
-| Security          | ⭐⭐⭐⭐   | ⭐⭐⭐⭐⭐ | ⭐⭐⭐     |
-| Maintainability   | ⭐⭐⭐⭐   | ⭐⭐⭐     | ⭐⭐⭐⭐⭐ |
-| Community/Support | ⭐⭐⭐⭐⭐ | ⭐⭐⭐     | ⭐⭐       |
-| Integration Ease  | ⭐⭐⭐     | ⭐⭐⭐⭐   | ⭐⭐⭐⭐⭐ |
-| Cost              | ⭐⭐       | ⭐⭐⭐⭐⭐ | ⭐⭐⭐     |
-
-_Discuss pros/cons for each option thoroughly._
-
-### 2.3 Performance Considerations
-
-_Identified bottlenecks or best practices for speed._
-
-### 2.4 Security Implications
-
-_Threats, vulnerabilities, or secure configuration steps._
-
-### 2.5 Scalability Assessment
-
-_How each solution scales with data volume or concurrency._
-
-## 3. Implementation Patterns
-
-### 3.1 Architecture Patterns
-
-```mermaid
-graph TD
-    A[Client] --> B[API Layer]
-    B --> C[Service Layer]
-    C --> D[Data Layer]
-    D --> E[Storage]
+```bash
+# Document your khive info queries for reproducibility
+khive info "Compare OAuth token storage methods for CLI tools"
+khive info "Security implications of file-based token storage"
 ```
 
-### 3.2 Code Examples
+## 2. Synthesized Insights
+
+### 2.1 Key Findings from khive info
+
+| Query Topic   | Key Insight                              | Confidence  | Impact on Project                     |
+| ------------- | ---------------------------------------- | ----------- | ------------------------------------- |
+| Token Storage | 80% of CLI tools use file-based approach | High (0.9)  | Validates our planned approach        |
+| Security      | Atomic writes prevent corruption         | High (0.85) | Must implement proper file operations |
+
+### 2.2 Service-Generated Recommendations
+
+_khive info provided these recommendations:_
+
+- Recommendation 1 (confidence: X)
+- Recommendation 2 (confidence: Y)
+
+### 2.3 Follow-up Insights
+
+_Based on khive info's suggestions, additional queries revealed:_
+
+- Additional insight 1
+- Additional insight 2
+
+## 3. Comparative Analysis
+
+_khive info synthesis comparing options:_
+
+| Factor          | Option A           | Option B       | Service Assessment                                    |
+| --------------- | ------------------ | -------------- | ----------------------------------------------------- |
+| Security        | File + permissions | System keyring | khive info: "File approach sufficient for most cases" |
+| Complexity      | Low                | High           | khive info: "Keyring adds 3x complexity"              |
+| User Experience | Good               | Variable       | khive info: "Users prefer predictable file locations" |
+
+## 4. Implementation Patterns
+
+### 4.1 Service-Validated Patterns
 
 ```python
-# Example usage snippet
-class VectorStoreService:
-    def __init__(self, config: ServiceConfig):
-        self.openai_client = OpenAI(api_key=config.openai_key)
-
-    async def index_document(self, doc: Document):
-        # Implementation detail...
+# Pattern validated by khive info as industry standard
+class TokenStorage:
+    """khive info confirmed this pattern used by GitHub CLI"""
+    def save_atomic(self, token: str) -> None:
+        # Atomic write pattern from khive info research
+        pass
 ```
 
-### 3.3 Error Handling Strategy
+### 4.2 Anti-Patterns Identified
 
-_Key considerations for error detection, transformation, rethrowing, etc._
+_khive info warned against:_
 
-### 3.4 Testing Approach
+- Anti-pattern 1: Direct file writes without atomicity
+- Anti-pattern 2: Storing tokens in environment variables
 
-_Suggest test harnesses or frameworks. Mention security/performance testing
-strategies._
-
-## 4. Integration Considerations
-
-### 4.1 Dependencies
-
-_External libraries or services needed._
-
-### 4.2 Configuration Requirements
-
-_Environment variables or secrets needed._
-
-### 4.3 Interface Design
-
-_If relevant, propose a sample interface or data model that emerges from the
-research._
-
-## 5. Recommendations
+## 5. Project-Specific Recommendations
 
 ### 5.1 Recommended Approach
 
-_Which solution or pattern do you recommend, and why?_
+_Based on khive info synthesis and our constraints:_
 
-### 5.2 Implementation Roadmap
+### 5.2 Risk Mitigation
 
-_If you see a phased approach, outline it here (like “Phase 1: basic
-integration,” “Phase 2: advanced caching,” etc.)._
+_khive info identified these risks:_
 
-### 5.3 Risk Assessment
+- Risk 1: Mitigation strategy
+- Risk 2: Mitigation strategy
 
-_Potential pitfalls or edge cases. How to mitigate them?_
+## 6. Evidence Trail
 
-### 5.4 Alternative Approaches
+### 6.1 Service Citations
 
-_If the recommended approach fails, provide fallback ideas._
+_All citations provided automatically by khive info_
 
-## 6. References
+### 6.2 Confidence Metrics
 
-1. [Source Name](URL) - Relevance
-2. [Source Name](URL) - Relevance
+- Overall research confidence: X%
+- Number of khive info queries: Y
+- Synthesis quality score: Z
 
 ## Appendices
 
-### Appendix A: Detailed Benchmarks
+### Appendix A: Raw khive info Responses
 
-_Raw data or performance logs, if any._
+_Include significant service responses for reference_
 
-### Appendix B: Configuration Examples
+### Appendix B: Additional Context
 
-_Sample config files or environment variables._
-
-### Appendix C: Additional Code Samples
-
-_More extensive code examples if needed._
+_Any manual research to supplement khive info insights_

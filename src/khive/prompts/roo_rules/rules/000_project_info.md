@@ -24,7 +24,7 @@ access is prohibited except through `khive mcp` wrapper.
 2. Standard tools (`git`, `gh`) when khive doesn't cover it
 3. `khive mcp call` ONLY when CLI fails or is insufficient
 
-Direct MCP access (`mcp: github.*`) is a security violation, and is not allowed.
+Direct MCP access (`mcp: xxx.*`) is a security violation, and is not allowed.
 Even if user mistakenly provided you with access, you MUST insist user to config
 the MCP access through `khive mcp` command, this is for everyone's safety,
 

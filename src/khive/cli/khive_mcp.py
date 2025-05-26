@@ -3,27 +3,23 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-khive_mcp.py - MCP (Model Context Protocol) server management and interaction.
+khive_mcp.py - MCP (Model Context Protocol) server management using FastMCP.
 
 Features
 ========
 * MCP server configuration management via .khive/mcps/config.json
-* Proper MCP initialization handshake and communication
-* JSON-RPC 2.0 over stdin/stdout transport
-* Server lifecycle management (start, stop, status)
+* Server lifecycle management using FastMCP client
 * Tool discovery and execution
-* Persistent server connections
+* Support for stdio and HTTP transports
 
 CLI
 ---
     khive mcp list                           # List configured servers
     khive mcp status [server]                # Show server status
-    khive mcp start <server>                 # Start an MCP server
-    khive mcp stop <server>                  # Stop an MCP server
     khive mcp tools <server>                 # List available tools
     khive mcp call <server> <tool> [args]    # Call a tool
 
-Exit codes: 0 success · 1 failure · 2 warnings.
+Exit codes: 0 success · 1 failure.
 """
 
 from __future__ import annotations
@@ -32,788 +28,974 @@ import argparse
 import asyncio
 import json
 import os
-import subprocess
-import sys
+import platform
+import shutil
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
-# --- Project Root and Config Path ---
-try:
-    PROJECT_ROOT = Path(
-        subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"], text=True, stderr=subprocess.PIPE
-        ).strip()
-    )
-except (subprocess.CalledProcessError, FileNotFoundError):
-    PROJECT_ROOT = Path.cwd()
-
-KHIVE_CONFIG_DIR = PROJECT_ROOT / ".khive"
-
-# --- ANSI Colors and Logging ---
-ANSI = {
-    "G": "\033[32m" if sys.stdout.isatty() else "",
-    "R": "\033[31m" if sys.stdout.isatty() else "",
-    "Y": "\033[33m" if sys.stdout.isatty() else "",
-    "B": "\033[34m" if sys.stdout.isatty() else "",
-    "C": "\033[36m" if sys.stdout.isatty() else "",
-    "M": "\033[35m" if sys.stdout.isatty() else "",
-    "N": "\033[0m" if sys.stdout.isatty() else "",
-}
-verbose_mode = False
+from fastmcp.client import Client
+from fastmcp.client.transports import (
+    StdioTransport,
+    PythonStdioTransport,
+    SSETransport,
+    StreamableHttpTransport,
+)
 
 
-def log_msg_mcp(msg: str, *, kind: str = "B") -> None:
-    if verbose_mode:
-        print(f"{ANSI[kind]}▶{ANSI['N']} {msg}")
+from khive.utils import BaseConfig, die, error_msg, info_msg, log_msg, warn_msg
+
+from .base import BaseCLICommand, CLIResult, cli_command
 
 
-def format_message_mcp(prefix: str, msg: str, color_code: str) -> str:
-    return f"{color_code}{prefix}{ANSI['N']} {msg}"
+# Timeouts based on community recommendations
+DEFAULT_TIMEOUT = 30.0  # Increased from 10s
+INIT_TIMEOUT = 5.0  # Initial connection timeout
+CLEANUP_TIMEOUT = 2.0  # Faster cleanup
 
 
-def info_msg_mcp(msg: str, *, console: bool = True) -> str:
-    output = format_message_mcp("✔", msg, ANSI["G"])
-    if console:
-        print(output)
-    return output
-
-
-def warn_msg_mcp(msg: str, *, console: bool = True) -> str:
-    output = format_message_mcp("⚠", msg, ANSI["Y"])
-    if console:
-        print(output, file=sys.stderr)
-    return output
-
-
-def error_msg_mcp(msg: str, *, console: bool = True) -> str:
-    output = format_message_mcp("✖", msg, ANSI["R"])
-    if console:
-        print(output, file=sys.stderr)
-    return output
-
-
-def die_mcp(
-    msg: str, json_data: dict[str, Any] | None = None, json_output_flag: bool = False
-) -> None:
-    error_msg_mcp(msg, console=not json_output_flag)
-    if json_output_flag:
-        base_data = {"status": "failure", "message": msg}
-        if json_data:
-            base_data.update(json_data)
-        print(json.dumps(base_data, indent=2))
-    sys.exit(1)
-
-
-# --- Configuration Data Classes ---
 @dataclass
 class MCPServerConfig:
+    """Configuration for an MCP server."""
+
     name: str
     command: str
     args: list[str] = field(default_factory=list)
     env: dict[str, str] = field(default_factory=dict)
     always_allow: list[str] = field(default_factory=list)
     disabled: bool = False
-    timeout: int = 30
+    timeout: int = DEFAULT_TIMEOUT
+    transport: str = "stdio"
+    url: str | None = None
+    # New fields for better subprocess handling
+    buffer_size: int = 65536  # 64KB buffer
+    use_shell: bool = False  # Whether to use shell execution
 
 
 @dataclass
-class MCPConfig:
-    project_root: Path
+class MCPConfig(BaseConfig):
+    """Configuration for MCP command."""
+
     servers: dict[str, MCPServerConfig] = field(default_factory=dict)
-
-    # CLI args / internal state
-    json_output: bool = False
-    dry_run: bool = False
-    verbose: bool = False
-
-    @property
-    def khive_config_dir(self) -> Path:
-        return self.project_root / ".khive"
 
     @property
     def mcps_config_file(self) -> Path:
         return self.khive_config_dir / "mcps" / "config.json"
 
-    @property
-    def mcps_state_file(self) -> Path:
-        return self.khive_config_dir / "mcps" / "state.json"
 
+class StdioTransportFixed(StdioTransport):
+    """Fixed StdioTransport that handles buffering properly."""
 
-def load_mcp_config(
-    project_r: Path, cli_args: argparse.Namespace | None = None
-) -> MCPConfig:
-    cfg = MCPConfig(project_root=project_r)
+    def __init__(
+        self,
+        command: str,
+        args: list[str] = None,
+        env: dict[str, str] = None,
+        buffer_size: int = 65536,
+    ):
+        super().__init__(command, args or [], env or {})
+        self.buffer_size = buffer_size
+        self._read_lock = asyncio.Lock()
+        self._write_lock = asyncio.Lock()
 
-    # Load MCP server configurations
-    if cfg.mcps_config_file.exists():
-        log_msg_mcp(f"Loading MCP config from {cfg.mcps_config_file}")
-        try:
-            config_data = json.loads(cfg.mcps_config_file.read_text())
-            mcp_servers = config_data.get("mcpServers", {})
+    async def start(self):
+        """Start the subprocess with proper buffering."""
+        # Prepare environment
+        env = os.environ.copy()
+        env.update(self.env)
 
-            for server_name, server_config in mcp_servers.items():
-                cfg.servers[server_name] = MCPServerConfig(
-                    name=server_name,
-                    command=server_config.get("command", ""),
-                    args=server_config.get("args", []),
-                    env=server_config.get("env", {}),
-                    always_allow=server_config.get("alwaysAllow", []),
-                    disabled=server_config.get("disabled", False),
-                    timeout=server_config.get("timeout", 30),
-                )
-        except (json.JSONDecodeError, KeyError) as e:
-            warn_msg_mcp(f"Could not parse MCP config: {e}. Using empty configuration.")
+        # Add Python unbuffered mode for Python scripts
+        env["PYTHONUNBUFFERED"] = "1"
 
-    # Apply CLI arguments
-    if cli_args:
-        cfg.json_output = cli_args.json_output
-        cfg.dry_run = cli_args.dry_run
-        cfg.verbose = cli_args.verbose
+        # Platform-specific handling
+        if platform.system() == "Windows":
+            # Windows needs CREATE_NO_WINDOW flag
+            import subprocess
 
-        global verbose_mode
-        verbose_mode = cli_args.verbose
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
-    return cfg
-
-
-def save_mcp_state(config: MCPConfig, server_states: dict[str, dict[str, Any]]) -> None:
-    """Save MCP server runtime state."""
-    try:
-        config.mcps_state_file.parent.mkdir(parents=True, exist_ok=True)
-        config.mcps_state_file.write_text(json.dumps(server_states, indent=2))
-    except OSError as e:
-        warn_msg_mcp(f"Could not save MCP state: {e}")
-
-
-def load_mcp_state(config: MCPConfig) -> dict[str, dict[str, Any]]:
-    """Load MCP server runtime state."""
-    if not config.mcps_state_file.exists():
-        return {}
-
-    try:
-        return json.loads(config.mcps_state_file.read_text())
-    except (json.JSONDecodeError, OSError):
-        return {}
-
-
-# --- MCP Client Implementation ---
-class MCPClient:
-    """Proper MCP client that handles the full JSON-RPC 2.0 protocol."""
-
-    def __init__(self, server_config: MCPServerConfig):
-        self.server_config = server_config
-        self.process: asyncio.subprocess.Process | None = None
-        self.message_id = 0
-        self.connected = False
-        self.server_info: dict[str, Any] = {}
-        self.tools: list[dict[str, Any]] = []
-
-    async def connect(self) -> bool:
-        """Connect to the MCP server and perform initialization handshake."""
-        try:
-            # Prepare environment
-            env = os.environ.copy()
-            env.update(self.server_config.env)
-
-            # Start the MCP server process
-            cmd = [self.server_config.command] + self.server_config.args
-            log_msg_mcp(f"Starting MCP server: {' '.join(cmd)}")
-
-            self.process = await asyncio.create_subprocess_exec(
-                *cmd,
+            self._process = await asyncio.create_subprocess_exec(
+                self.command,
+                *self.args,
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 env=env,
+                startupinfo=startupinfo,
+                limit=self.buffer_size,  # Increase buffer limit
+            )
+        else:
+            # Unix/Linux/Mac
+            self._process = await asyncio.create_subprocess_exec(
+                self.command,
+                *self.args,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=env,
+                limit=self.buffer_size,  # Increase buffer limit
             )
 
-            # Perform MCP initialization handshake
-            await self._initialize()
+        # Start background tasks for reading with proper error handling
+        self._read_task = asyncio.create_task(self._read_output())
+        self._error_task = asyncio.create_task(self._read_errors())
 
-            # List available tools
-            await self._list_tools()
 
-            self.connected = True
+@cli_command("mcp")
+class MCPCommand(BaseCLICommand):
+    """Manage MCP servers using FastMCP."""
+
+    def __init__(self):
+        super().__init__(
+            command_name="mcp",
+            description="MCP (Model Context Protocol) server management",
+        )
+        self._check_fastmcp()
+        self._active_clients: dict[str, Client] = {}
+        self._client_locks: dict[str, asyncio.Lock] = {}
+
+    def _check_fastmcp(self):
+        """Check if FastMCP is installed."""
+        if Client is None:
+            die(
+                "FastMCP is not installed. Install it with: pip install fastmcp",
+                {"suggestion": "Run: pip install fastmcp"},
+            )
+
+    def _add_arguments(self, parser: argparse.ArgumentParser) -> None:
+        """Add MCP-specific arguments."""
+        subparsers = parser.add_subparsers(dest="subcommand", help="MCP commands")
+
+        # List command
+        subparsers.add_parser("list", help="List configured MCP servers")
+
+        # Status command
+        status_parser = subparsers.add_parser("status", help="Show server status")
+        status_parser.add_argument("server", nargs="?", help="Specific server name")
+
+        # Tools command
+        tools_parser = subparsers.add_parser("tools", help="List available tools")
+        tools_parser.add_argument("server", help="Server name")
+
+        # Call command
+        call_parser = subparsers.add_parser("call", help="Call a tool")
+        call_parser.add_argument("server", help="Server name")
+        call_parser.add_argument("tool", help="Tool name")
+        call_parser.add_argument(
+            "--var",
+            action="append",
+            help="Tool argument as key=value (can be repeated)",
+        )
+        call_parser.add_argument(
+            "--json", dest="json_args", help="Tool arguments as JSON string"
+        )
+
+    def _create_config(self, args: argparse.Namespace) -> MCPConfig:
+        """Create MCPConfig from arguments and configuration files."""
+        config = MCPConfig(project_root=args.project_root)
+        config.update_from_cli_args(args)
+
+        # Load environment variables from .env file
+        env_vars = self._load_environment_variables(config.project_root)
+
+        # Load MCP server configurations
+        if config.mcps_config_file.exists():
+            log_msg(f"Loading MCP config from {config.mcps_config_file}")
+            try:
+                config_data = json.loads(config.mcps_config_file.read_text())
+                mcp_servers = config_data.get("mcpServers", {})
+
+                for server_name, server_config in mcp_servers.items():
+                    # Intelligently detect transport type
+                    transport, url = self._detect_transport_type(server_config)
+
+                    # Merge environment variables with priority: config env > .env file > system env
+                    merged_env = self._merge_environment_variables(
+                        server_config.get("env", {}), env_vars, server_name
+                    )
+
+                    config.servers[server_name] = MCPServerConfig(
+                        name=server_name,
+                        command=server_config.get("command", ""),
+                        args=server_config.get("args", []),
+                        env=merged_env,
+                        always_allow=server_config.get("alwaysAllow", []),
+                        disabled=server_config.get("disabled", False),
+                        timeout=server_config.get(
+                            "timeout", self._get_default_timeout(server_config)
+                        ),
+                        transport=transport,
+                        url=url,
+                        buffer_size=server_config.get("bufferSize", 65536),
+                        use_shell=server_config.get("useShell", False),
+                    )
+            except (json.JSONDecodeError, KeyError) as e:
+                warn_msg(f"Could not parse MCP config: {e}")
+
+        return config
+
+    def _load_environment_variables(self, project_root: Path) -> dict[str, str]:
+        """Load environment variables from .env file and system environment."""
+        env_vars = {}
+
+        # Load from .env file if it exists
+        env_file = project_root / ".env"
+        if env_file.exists():
+            try:
+                log_msg(f"Loading environment variables from {env_file}")
+                with open(env_file, "r") as f:
+                    for line_num, line in enumerate(f, 1):
+                        line = line.strip()
+                        # Skip empty lines and comments
+                        if not line or line.startswith("#"):
+                            continue
+
+                        if "=" in line:
+                            key, value = line.split("=", 1)
+                            env_vars[key.strip()] = value.strip()
+                        else:
+                            warn_msg(f"Invalid .env line {line_num}: {line}")
+
+                log_msg(f"Loaded {len(env_vars)} environment variables from .env file")
+            except Exception as e:
+                warn_msg(f"Error reading .env file: {e}")
+
+        return env_vars
+
+    def _merge_environment_variables(
+        self, config_env: dict[str, str], dotenv_vars: dict[str, str], server_name: str
+    ) -> dict[str, str]:
+        """
+        Merge environment variables with proper priority and mapping.
+
+        Priority order:
+        1. Config file env section (highest priority)
+        2. .env file variables
+        3. System environment variables (lowest priority)
+
+        Also handles common environment variable name mappings.
+        """
+        merged_env = {}
+
+        # Define common environment variable mappings for different servers
+        env_mappings = {
+            "github": {
+                "GITHUB_PERSONAL_ACCESS_TOKEN": [
+                    "GITHUB_TOKEN",
+                    "GITHUB_PERSONAL_ACCESS_TOKEN",
+                ],
+                "GITHUB_TOKEN": ["GITHUB_TOKEN", "GITHUB_PERSONAL_ACCESS_TOKEN"],
+            },
+            # Add more server-specific mappings as needed
+        }
+
+        # Start with system environment
+        merged_env.update(os.environ)
+
+        # Apply .env file variables (overrides system env)
+        merged_env.update(dotenv_vars)
+
+        # Apply config env variables (highest priority)
+        merged_env.update(config_env)
+
+        # Handle environment variable mappings for this server
+        if server_name in env_mappings:
+            server_mappings = env_mappings[server_name]
+
+            for target_var, source_vars in server_mappings.items():
+                # If target variable is not set, try to find it from source variables
+                if target_var not in merged_env or not merged_env[target_var]:
+                    for source_var in source_vars:
+                        if source_var in merged_env and merged_env[source_var]:
+                            merged_env[target_var] = merged_env[source_var]
+                            log_msg(
+                                f"Mapped {source_var} -> {target_var} for server '{server_name}'"
+                            )
+                            break
+
+        return merged_env
+
+    def _get_default_timeout(self, server_config: dict) -> float:
+        """Get appropriate default timeout based on server configuration."""
+        command = server_config.get("command", "")
+
+        # Docker containers often need shorter timeouts for faster failure detection
+        if command == "docker" or command.startswith("docker "):
+            return 10.0  # Shorter timeout for Docker
+
+        return DEFAULT_TIMEOUT
+
+    def _detect_transport_type(self, server_config: dict) -> tuple[str, str | None]:
+        """Intelligently detect the transport type based on server configuration."""
+        # 1. Explicit transport specification takes precedence
+        if "transport" in server_config:
+            transport = server_config["transport"].lower()
+            if transport in ["sse", "http", "https"]:
+                url = server_config.get("url")
+                if not url:
+                    warn_msg(f"Transport '{transport}' specified but no URL provided")
+                return transport, url
+            elif transport in ["stdio", "pipe"]:
+                return "stdio", None
+            else:
+                warn_msg(f"Unknown transport type '{transport}', defaulting to stdio")
+
+        # 2. URL presence indicates SSE/HTTP transport
+        if "url" in server_config and server_config["url"]:
+            url = server_config["url"]
+            if url.startswith(("http://", "https://")):
+                return "sse", url
+            elif url.startswith(("ws://", "wss://")):
+                return "websocket", url
+            else:
+                warn_msg(f"Unrecognized URL scheme in '{url}', treating as SSE")
+                return "sse", url
+
+        # 3. Command-based detection for stdio transport
+        command = server_config.get("command", "")
+        if not command:
+            warn_msg("No command specified, defaulting to stdio transport")
+            return "stdio", None
+
+        # 4. Analyze command to determine best transport
+        # Check if it's a Docker command - many Docker MCP servers use HTTP internally
+        if command == "docker" or command.startswith("docker "):
+            # Check if this looks like a typical MCP server Docker image
+            args = server_config.get("args", [])
+            if any("mcp" in str(arg).lower() for arg in args):
+                # This looks like an MCP server in Docker
+                # Many MCP servers in Docker expose HTTP endpoints
+                # But without explicit URL, we'll try stdio first with shorter timeout
+                log_msg(
+                    f"Detected Docker MCP server, using stdio transport with shorter timeout"
+                )
+                return "stdio", None
+            else:
+                log_msg(f"Detected Docker command, using stdio transport")
+                return "stdio", None
+
+        # Check if it's a Python script or module
+        if (
+            command in ["python", "python3", "py"]
+            or command.startswith(("python ", "python3 ", "py "))
+            or command.endswith(".py")
+        ):
+            log_msg(f"Detected Python command, using stdio transport")
+            return "stdio", None
+
+        # Check if it's a Node.js command
+        if (
+            command in ["node", "npm", "npx", "yarn"]
+            or command.startswith(("node ", "npm ", "npx ", "yarn "))
+            or command.endswith(".js")
+        ):
+            log_msg(f"Detected Node.js command, using stdio transport")
+            return "stdio", None
+
+        # Check if it's an executable file
+        resolved_command = self._resolve_command_path(command)
+        if Path(resolved_command).exists() and os.access(resolved_command, os.X_OK):
+            log_msg(f"Detected executable file, using stdio transport")
+            return "stdio", None
+
+        # Check if it's a system command
+        if shutil.which(command.split()[0] if " " in command else command):
+            log_msg(f"Detected system command, using stdio transport")
+            return "stdio", None
+
+        # Default to stdio with warning
+        warn_msg(
+            f"Could not determine transport type for command '{command}', defaulting to stdio"
+        )
+        return "stdio", None
+
+    async def _execute(self, args: argparse.Namespace, config: MCPConfig) -> CLIResult:
+        """Execute the MCP command asynchronously."""
+        if not args.subcommand:
+            return CLIResult(
+                status="failure",
+                message="No subcommand specified. Use --help for usage.",
+                exit_code=1,
+            )
+
+        # Try to use nest_asyncio if available (solves many event loop issues)
+        try:
+            import nest_asyncio
+
+            nest_asyncio.apply()
+            log_msg("Using nest_asyncio for event loop compatibility")
+        except ImportError:
+            log_msg("nest_asyncio not available, using standard asyncio")
+
+        result = None
+        try:
+            if args.subcommand == "list":
+                result = await self._cmd_list_servers(config)
+            elif args.subcommand == "status":
+                server_name = getattr(args, "server", None)
+                result = await self._cmd_server_status(config, server_name)
+            elif args.subcommand == "tools":
+                result = await self._cmd_list_tools(config, args.server)
+            elif args.subcommand == "call":
+                arguments = self._parse_tool_arguments(args)
+                result = await self._cmd_call_tool(
+                    config, args.server, args.tool, arguments
+                )
+            else:
+                result = CLIResult(
+                    status="failure",
+                    message=f"Unknown subcommand: {args.subcommand}",
+                    exit_code=1,
+                )
+        except Exception as e:
+            # If we get an exception, try to cleanup but don't let cleanup errors mask the original error
+            try:
+                await self._safe_cleanup_all_clients()
+            except Exception as cleanup_error:
+                log_msg(f"Cleanup error (ignoring): {cleanup_error}")
+            raise e
+        else:
+            # Normal cleanup only if command succeeded
+            try:
+                await self._safe_cleanup_all_clients()
+            except Exception as cleanup_error:
+                log_msg(f"Cleanup error (ignoring): {cleanup_error}")
+
+        # Force garbage collection to clean up any remaining async resources
+        import gc
+
+        gc.collect()
+
+        return result
+
+    def _resolve_command_path(self, command: str) -> str:
+        """Resolve command to full path if it's a system command."""
+        # Handle python module execution
+        if command == "python" or command.startswith("python"):
+            # Don't resolve python, let the system handle it
+            return command
+
+        if Path(command).is_absolute():
+            return command
+
+        if Path(command).exists():
+            return str(Path(command).resolve())
+
+        resolved_path = shutil.which(command)
+        if resolved_path:
+            return resolved_path
+
+        return command
+
+    def _create_transport(self, server_config: MCPServerConfig):
+        """Create appropriate transport based on detected configuration."""
+        transport_type = server_config.transport.lower()
+
+        # Handle HTTP/SSE transports
+        if transport_type in ["http", "https"]:
+            if not server_config.url:
+                raise ValueError(f"URL required for {transport_type} transport")
+            log_msg(f"Creating SSE transport for {server_config.url}")
+            return StreamableHttpTransport(server_config.url)
+
+        elif transport_type == "sse":
+            if not server_config.url:
+                raise ValueError("URL required for SSE transport")
+            log_msg(f"Creating SSE transport for {server_config.url}")
+            return SSETransport(server_config.url)
+
+        # Handle WebSocket transport (if supported by FastMCP)
+        elif transport_type in ["websocket", "ws", "wss"]:
+            if not server_config.url:
+                raise ValueError(f"URL required for {transport_type} transport")
+            # Note: WebSocket transport may not be available in all FastMCP versions
+            try:
+                from fastmcp.client.transports import WSTransport
+
+                log_msg(f"Creating WebSocket transport for {server_config.url}")
+                return WSTransport(server_config.url)
+            except ImportError:
+                warn_msg("WebSocket transport not available, falling back to SSE")
+                return SSETransport(server_config.url)
+
+        # Handle stdio/pipe transports (default)
+        elif transport_type in ["stdio", "pipe"]:
+            return self._create_stdio_transport(server_config)
+
+        else:
+            warn_msg(f"Unknown transport type '{transport_type}', using stdio")
+            return self._create_stdio_transport(server_config)
+
+    def _create_stdio_transport(self, server_config: MCPServerConfig):
+        """Create the appropriate stdio transport based on command type."""
+        # Resolve command
+        resolved_command = self._resolve_command_path(server_config.command)
+
+        # Prepare environment - merge system env with server config env
+        env = os.environ.copy()
+        env.update(server_config.env)
+
+        # Force unbuffered output for Python scripts
+        env["PYTHONUNBUFFERED"] = "1"
+
+        # Log environment variables being passed (for debugging auth issues)
+        log_msg(f"Creating StdioTransport for {resolved_command}")
+        log_msg(f"Environment variables: {', '.join(sorted(env.keys()))}")
+        if "GITHUB_PERSONAL_ACCESS_TOKEN" in env:
+            # Log token presence without revealing the value
+            token_preview = (
+                env["GITHUB_PERSONAL_ACCESS_TOKEN"][:8] + "..."
+                if env["GITHUB_PERSONAL_ACCESS_TOKEN"]
+                else "None"
+            )
+            log_msg(f"GITHUB_PERSONAL_ACCESS_TOKEN: {token_preview}")
+
+        # Detect if this is a Python script for PythonStdioTransport
+        if self._is_python_command(server_config.command, server_config.args):
+            if PythonStdioTransport is not None:
+                # Extract Python script path from command/args
+                script_path = self._extract_python_script_path(
+                    server_config.command, server_config.args
+                )
+                if script_path:
+                    log_msg(f"Creating PythonStdioTransport for {script_path}")
+                    return PythonStdioTransport(
+                        script_path=script_path,
+                        args=self._extract_python_script_args(server_config.args),
+                        env=env,
+                    )
+
+        # Use standard StdioTransport (not our custom one) to avoid interference
+        log_msg(f"Using standard StdioTransport")
+        return StdioTransport(
+            command=resolved_command,
+            args=server_config.args,
+            env=env,
+        )
+
+    def _is_python_command(self, command: str, args: list[str]) -> bool:
+        """Check if this is a Python command that should use PythonStdioTransport."""
+        # Direct Python interpreter calls
+        if command in ["python", "python3", "py"]:
             return True
 
-        except Exception as e:
-            log_msg_mcp(f"Failed to connect: {e}")
-            if self.process:
-                self.process.terminate()
-                await self.process.wait()
-            return False
+        # Python with flags (e.g., "python -m module")
+        if command.startswith(("python ", "python3 ", "py ")):
+            return True
 
-    async def _initialize(self):
-        """Perform the MCP initialization handshake."""
-        log_msg_mcp("Performing MCP initialization handshake")
+        # Direct .py file execution
+        if command.endswith(".py"):
+            return True
 
-        # Step 1: Send initialize request
-        init_response = await self._send_request(
-            "initialize",
-            {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {"tools": {}, "resources": {}, "prompts": {}},
-                "clientInfo": {"name": "khive", "version": "1.0.0"},
-            },
-        )
+        # Check if first arg is a .py file when using python interpreter
+        if command in ["python", "python3", "py"] and args and args[0].endswith(".py"):
+            return True
 
-        if "error" in init_response:
-            raise Exception(f"Initialization failed: {init_response['error']}")
+        return False
 
-        # Store server info
-        if "result" in init_response:
-            self.server_info = init_response["result"]
-            log_msg_mcp(
-                f"Server: {self.server_info.get('serverInfo', {}).get('name', 'unknown')}"
-            )
+    def _extract_python_script_path(self, command: str, args: list[str]) -> str | None:
+        """Extract the Python script path from command and args."""
+        # Direct .py file execution
+        if command.endswith(".py"):
+            return self._resolve_command_path(command)
 
-        # Step 3: Send initialized notification (Step 2 was receiving the response)
-        await self._send_notification("notifications/initialized")
-        log_msg_mcp("MCP initialization completed")
+        # Python interpreter with script as first argument
+        if command in ["python", "python3", "py"] and args:
+            first_arg = args[0]
+            # Skip flags like -m, -c, etc.
+            if not first_arg.startswith("-") and first_arg.endswith(".py"):
+                return self._resolve_command_path(first_arg)
 
-    async def _list_tools(self):
-        """List available tools from the server."""
-        tools_response = await self._send_request("tools/list")
-        if "result" in tools_response and "tools" in tools_response["result"]:
-            self.tools = tools_response["result"]["tools"]
-            log_msg_mcp(f"Found {len(self.tools)} tools")
+        return None
 
-    async def _send_request(self, method: str, params: dict | None = None) -> dict:
-        """Send a JSON-RPC request and wait for response."""
-        if not self.process or not self.process.stdin:
-            raise Exception("Not connected to MCP server")
+    def _extract_python_script_args(self, args: list[str]) -> list[str]:
+        """Extract arguments for the Python script (excluding the script path itself)."""
+        if not args:
+            return []
 
-        self.message_id += 1
-        message = {"jsonrpc": "2.0", "id": self.message_id, "method": method}
-        if params:
-            message["params"] = params
+        # If first arg is a .py file, return the rest
+        if args[0].endswith(".py"):
+            return args[1:]
 
-        # Send message
-        message_str = json.dumps(message) + "\n"
-        log_msg_mcp(f"Sending: {method}")
+        # Otherwise return all args (for cases like python -m module)
+        return args
 
-        self.process.stdin.write(message_str.encode())
-        await self.process.stdin.drain()
+    @asynccontextmanager
+    async def _get_client(self, server_config: MCPServerConfig):
+        """Create a fresh client for each operation to avoid cleanup issues."""
+        # Create new client every time to avoid cancel scope issues
+        transport = self._create_transport(server_config)
+        client = Client(transport)
 
-        # Read response
         try:
-            response_line = await asyncio.wait_for(
-                self.process.stdout.readline(), timeout=self.server_config.timeout
-            )
+            # Initialize with timeout
+            async with asyncio.timeout(INIT_TIMEOUT):
+                await client.__aenter__()
 
-            if not response_line:
-                raise Exception("Server closed connection")
-
-            response = json.loads(response_line.decode().strip())
-            log_msg_mcp(f"Received response for: {method}")
-            return response
+            # Yield for use
+            yield client
 
         except asyncio.TimeoutError:
-            raise Exception(f"Timeout waiting for response to {method}")
-        except json.JSONDecodeError as e:
-            raise Exception(f"Invalid JSON response: {e}")
+            # Don't try to cleanup on timeout - just let it go
+            raise asyncio.TimeoutError(
+                f"Failed to connect to {server_config.name} within {INIT_TIMEOUT}s"
+            )
+        except Exception:
+            # Don't try to cleanup on error - just let it go
+            raise
+        finally:
+            # Don't try to explicitly close the client - this causes the cancel scope issues
+            # Just let Python's garbage collector handle it
+            pass
 
-    async def _send_notification(self, method: str, params: dict | None = None):
-        """Send a JSON-RPC notification (no response expected)."""
-        if not self.process or not self.process.stdin:
-            raise Exception("Not connected to MCP server")
+    async def _cleanup_all_clients(self):
+        """No-op cleanup since we don't store clients anymore."""
+        # Clear any remaining references
+        self._active_clients.clear()
+        self._client_locks.clear()
 
-        message = {"jsonrpc": "2.0", "method": method}
-        if params:
-            message["params"] = params
+    async def _safe_cleanup_all_clients(self):
+        """No-op cleanup since we don't store clients anymore."""
+        # Clear any remaining references
+        self._active_clients.clear()
+        self._client_locks.clear()
 
-        message_str = json.dumps(message) + "\n"
-        log_msg_mcp(f"Sending notification: {method}")
+        # Force garbage collection to clean up any remaining resources
+        import gc
 
-        self.process.stdin.write(message_str.encode())
-        await self.process.stdin.drain()
+        gc.collect()
 
-    async def call_tool(
-        self, tool_name: str, arguments: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Call a specific tool on the MCP server."""
-        if not self.connected:
-            raise Exception("Not connected to MCP server")
+    async def _cmd_list_servers(self, config: MCPConfig) -> CLIResult:
+        """List all configured MCP servers."""
+        servers_info = []
+
+        for server_name, server_config in config.servers.items():
+            server_info = {
+                "name": server_name,
+                "command": server_config.command,
+                "transport": server_config.transport,
+                "disabled": server_config.disabled,
+                "operations_count": len(server_config.always_allow),
+            }
+
+            if server_config.transport == "sse":
+                server_info["url"] = server_config.url
+
+            servers_info.append(server_info)
+
+        return CLIResult(
+            status="success",
+            message=f"Found {len(servers_info)} configured MCP servers",
+            data={"servers": servers_info, "total_count": len(servers_info)},
+        )
+
+    async def _cmd_server_status(
+        self, config: MCPConfig, server_name: str | None = None
+    ) -> CLIResult:
+        """Get status of one or all MCP servers."""
+        if server_name:
+            if server_name not in config.servers:
+                return CLIResult(
+                    status="failure",
+                    message=f"Server '{server_name}' not found",
+                    data={"available_servers": list(config.servers.keys())},
+                    exit_code=1,
+                )
+
+            server_config = config.servers[server_name]
+            server_info = {
+                "name": server_name,
+                "command": server_config.command,
+                "args": server_config.args,
+                "transport": server_config.transport,
+                "disabled": server_config.disabled,
+                "timeout": server_config.timeout,
+                "allowed_operations": server_config.always_allow,
+            }
+
+            # Try to connect and get server info
+            if not server_config.disabled:
+                try:
+                    async with asyncio.timeout(server_config.timeout):
+                        async with self._get_client(server_config) as client:
+                            tools = await client.list_tools()
+                            server_info["status"] = "connected"
+                            server_info["tools_count"] = len(tools)
+                            server_info["tools"] = [
+                                {"name": tool.name, "description": tool.description}
+                                for tool in tools
+                            ]
+                except asyncio.TimeoutError:
+                    server_info["status"] = "timeout"
+                    server_info["error"] = (
+                        f"Connection timeout ({server_config.timeout}s)"
+                    )
+                except Exception as e:
+                    server_info["status"] = "error"
+                    server_info["error"] = str(e)
+            else:
+                server_info["status"] = "disabled"
+
+            return CLIResult(
+                status="success",
+                message=f"Status for server '{server_name}'",
+                data={"server": server_info},
+            )
+        else:
+            # Return status for all servers
+            return await self._cmd_list_servers(config)
+
+    async def _cmd_list_tools(self, config: MCPConfig, server_name: str) -> CLIResult:
+        """List tools available on a specific server."""
+        if server_name not in config.servers:
+            return CLIResult(
+                status="failure",
+                message=f"Server '{server_name}' not found",
+                data={"available_servers": list(config.servers.keys())},
+                exit_code=1,
+            )
+
+        server_config = config.servers[server_name]
+
+        if server_config.disabled:
+            return CLIResult(
+                status="failure",
+                message=f"Server '{server_name}' is disabled",
+                exit_code=1,
+            )
+
+        if config.dry_run:
+            return CLIResult(
+                status="success",
+                message=f"Would list tools for server '{server_name}' (dry run)",
+                data={"server": server_name},
+            )
+
+        try:
+            async with asyncio.timeout(server_config.timeout):
+                async with self._get_client(server_config) as client:
+                    tools = await client.list_tools()
+
+                    tools_info = []
+                    for tool in tools:
+                        tool_info = {"name": tool.name, "description": tool.description}
+
+                        # Add parameter info if available
+                        if hasattr(tool, "inputSchema") and tool.inputSchema:
+                            if "properties" in tool.inputSchema:
+                                tool_info["parameters"] = list(
+                                    tool.inputSchema["properties"].keys()
+                                )
+
+                        tools_info.append(tool_info)
+
+                    return CLIResult(
+                        status="success",
+                        message=f"Found {len(tools_info)} tools on server '{server_name}'",
+                        data={"server": server_name, "tools": tools_info},
+                    )
+
+        except asyncio.TimeoutError:
+            return CLIResult(
+                status="failure",
+                message=f"Timeout connecting to server '{server_name}' after {server_config.timeout}s",
+                data={"server": server_name},
+                exit_code=1,
+            )
+        except Exception as e:
+            return CLIResult(
+                status="failure",
+                message=f"Failed to list tools: {e}",
+                data={"server": server_name},
+                exit_code=1,
+            )
+
+    async def _cmd_call_tool(
+        self,
+        config: MCPConfig,
+        server_name: str,
+        tool_name: str,
+        arguments: dict[str, Any],
+    ) -> CLIResult:
+        """Call a tool on a specific server."""
+        if server_name not in config.servers:
+            return CLIResult(
+                status="failure",
+                message=f"Server '{server_name}' not found",
+                data={"available_servers": list(config.servers.keys())},
+                exit_code=1,
+            )
+
+        server_config = config.servers[server_name]
+
+        if server_config.disabled:
+            return CLIResult(
+                status="failure",
+                message=f"Server '{server_name}' is disabled",
+                exit_code=1,
+            )
 
         # Check if tool is allowed
-        if (
-            self.server_config.always_allow
-            and tool_name not in self.server_config.always_allow
-        ):
-            raise Exception(f"Tool '{tool_name}' not in allowlist")
+        if server_config.always_allow and tool_name not in server_config.always_allow:
+            return CLIResult(
+                status="failure",
+                message=f"Tool '{tool_name}' not in allowlist",
+                data={
+                    "allowed_tools": server_config.always_allow,
+                    "server": server_name,
+                    "tool": tool_name,
+                },
+                exit_code=1,
+            )
 
-        # Check if tool exists
-        tool_names = [tool.get("name") for tool in self.tools]
-        if tool_name not in tool_names:
-            raise Exception(f"Tool '{tool_name}' not found. Available: {tool_names}")
+        if config.dry_run:
+            return CLIResult(
+                status="success",
+                message=f"Would call tool '{tool_name}' on server '{server_name}' (dry run)",
+                data={"server": server_name, "tool": tool_name, "arguments": arguments},
+            )
 
-        log_msg_mcp(f"Calling tool: {tool_name}")
-        response = await self._send_request(
-            "tools/call", {"name": tool_name, "arguments": arguments}
-        )
-
-        if "error" in response:
-            raise Exception(f"Tool call failed: {response['error']}")
-
-        return response.get("result", {})
-
-    async def list_tools(self) -> list[dict[str, Any]]:
-        """Get list of available tools."""
-        return self.tools
-
-    async def disconnect(self):
-        """Disconnect from the MCP server."""
-        if self.process:
-            try:
-                # Send a graceful shutdown if possible
-                if self.connected:
-                    await self._send_notification("notifications/cancelled")
-            except:
-                pass  # Ignore errors during shutdown
-
-            # Terminate the process
-            self.process.terminate()
-            try:
-                await asyncio.wait_for(self.process.wait(), timeout=5)
-            except asyncio.TimeoutError:
-                self.process.kill()
-                await self.process.wait()
-
-            self.process = None
-            self.connected = False
-
-
-# --- Global MCP client registry ---
-_mcp_clients: dict[str, MCPClient] = {}
-
-
-async def get_mcp_client(server_config: MCPServerConfig) -> MCPClient:
-    """Get or create an MCP client for a server."""
-    if server_config.name not in _mcp_clients:
-        client = MCPClient(server_config)
-        if await client.connect():
-            _mcp_clients[server_config.name] = client
-        else:
-            raise Exception(f"Failed to connect to MCP server '{server_config.name}'")
-
-    return _mcp_clients[server_config.name]
-
-
-async def disconnect_all_clients():
-    """Disconnect all MCP clients."""
-    for client in _mcp_clients.values():
-        await client.disconnect()
-    _mcp_clients.clear()
-
-
-# --- Command Implementations ---
-async def cmd_list_servers(config: MCPConfig) -> dict[str, Any]:
-    """List all configured MCP servers."""
-    servers_info = []
-
-    for server_name, server_config in config.servers.items():
-        server_info = {
-            "name": server_name,
-            "command": server_config.command,
-            "disabled": server_config.disabled,
-            "operations_count": len(server_config.always_allow),
-            "status": "disconnected",
-        }
-
-        # Check if we have an active connection
-        if server_name in _mcp_clients:
-            client = _mcp_clients[server_name]
-            if client.connected:
-                server_info["status"] = "connected"
-                server_info["tools_count"] = len(client.tools)
-
-        servers_info.append(server_info)
-
-    return {
-        "status": "success",
-        "message": f"Found {len(servers_info)} configured MCP servers",
-        "servers": servers_info,
-        "total_count": len(servers_info),
-    }
-
-
-async def cmd_server_status(
-    config: MCPConfig, server_name: str | None = None
-) -> dict[str, Any]:
-    """Get status of one or all MCP servers."""
-    if server_name:
-        if server_name not in config.servers:
-            return {
-                "status": "failure",
-                "message": f"Server '{server_name}' not found in configuration",
-                "available_servers": list(config.servers.keys()),
-            }
-
-        server_config = config.servers[server_name]
-        server_info = {
-            "name": server_name,
-            "command": server_config.command,
-            "args": server_config.args,
-            "disabled": server_config.disabled,
-            "timeout": server_config.timeout,
-            "allowed_operations": server_config.always_allow,
-            "status": "disconnected",
-        }
-
-        # Check if we have an active connection
-        if server_name in _mcp_clients:
-            client = _mcp_clients[server_name]
-            if client.connected:
-                server_info["status"] = "connected"
-                server_info["server_info"] = client.server_info
-                server_info["tools"] = client.tools
-
-        return {
-            "status": "success",
-            "message": f"Status for server '{server_name}'",
-            "server": server_info,
-        }
-    else:
-        # Return status for all servers
-        return await cmd_list_servers(config)
-
-
-async def cmd_list_tools(config: MCPConfig, server_name: str) -> dict[str, Any]:
-    """List tools available on a specific server."""
-    if server_name not in config.servers:
-        return {
-            "status": "failure",
-            "message": f"Server '{server_name}' not found in configuration",
-            "available_servers": list(config.servers.keys()),
-        }
-
-    if config.dry_run:
-        return {
-            "status": "dry_run",
-            "message": f"Would list tools for server '{server_name}'",
-            "server": server_name,
-        }
-
-    try:
-        server_config = config.servers[server_name]
-        client = await get_mcp_client(server_config)
-        tools = await client.list_tools()
-
-        return {
-            "status": "success",
-            "message": f"Found {len(tools)} tools on server '{server_name}'",
-            "server": server_name,
-            "tools": tools,
-        }
-    except Exception as e:
-        return {
-            "status": "failure",
-            "message": f"Failed to list tools: {e}",
-            "server": server_name,
-        }
-
-
-def parse_tool_arguments(args: argparse.Namespace) -> dict[str, Any]:
-    """Parse tool arguments from CLI flags into a dictionary."""
-    arguments = {}
-
-    # Parse --var key=value arguments
-    if hasattr(args, "var") and args.var:
-        for var_arg in args.var:
-            if "=" not in var_arg:
-                raise ValueError(
-                    f"Invalid --var format: '{var_arg}'. Expected format: key=value"
-                )
-            key, value = var_arg.split("=", 1)
-
-            # Try to parse as JSON value for complex types
-            try:
-                parsed_value = json.loads(value)
-                arguments[key] = parsed_value
-            except json.JSONDecodeError:
-                # If not valid JSON, treat as string
-                arguments[key] = value
-
-    # Parse individual flag arguments (--key value)
-    # We'll collect these from unknown args that follow the pattern
-    if hasattr(args, "tool_args") and args.tool_args:
-        i = 0
-        while i < len(args.tool_args):
-            arg = args.tool_args[i]
-            if arg.startswith("--"):
-                key = arg[2:]  # Remove '--' prefix
-                if i + 1 < len(args.tool_args) and not args.tool_args[i + 1].startswith(
-                    "--"
-                ):
-                    value = args.tool_args[i + 1]
-                    # Try to parse as JSON for complex types
-                    try:
-                        parsed_value = json.loads(value)
-                        arguments[key] = parsed_value
-                    except json.JSONDecodeError:
-                        arguments[key] = value
-                    i += 2
-                else:
-                    # Boolean flag (no value)
-                    arguments[key] = True
-                    i += 1
-            else:
-                i += 1
-
-    # Fallback to JSON if provided
-    if hasattr(args, "json_args") and args.json_args:
         try:
-            json_arguments = json.loads(args.json_args)
-            arguments.update(json_arguments)
-        except json.JSONDecodeError:
-            raise ValueError(f"Invalid JSON in --json argument: {args.json_args}")
+            async with asyncio.timeout(server_config.timeout):
+                async with self._get_client(server_config) as client:
+                    # Call the tool
+                    result = await client.call_tool(tool_name, arguments)
 
-    return arguments
+                    # Format result based on content type
+                    formatted_result = self._format_tool_result(result)
 
+                    return CLIResult(
+                        status="success",
+                        message=f"Tool '{tool_name}' executed successfully",
+                        data={
+                            "server": server_name,
+                            "tool": tool_name,
+                            "arguments": arguments,
+                            "result": formatted_result,
+                        },
+                    )
 
-async def cmd_call_tool(
-    config: MCPConfig, server_name: str, tool_name: str, arguments: dict[str, Any]
-) -> dict[str, Any]:
-    """Call a tool on a specific server."""
-    if server_name not in config.servers:
-        return {
-            "status": "failure",
-            "message": f"Server '{server_name}' not found in configuration",
-            "available_servers": list(config.servers.keys()),
-        }
+        except asyncio.TimeoutError:
+            return CLIResult(
+                status="failure",
+                message=f"Timeout calling tool '{tool_name}' after {server_config.timeout}s",
+                data={"server": server_name, "tool": tool_name, "arguments": arguments},
+                exit_code=1,
+            )
+        except Exception as e:
+            return CLIResult(
+                status="failure",
+                message=f"Failed to call tool: {e}",
+                data={"server": server_name, "tool": tool_name, "arguments": arguments},
+                exit_code=1,
+            )
 
-    if config.dry_run:
-        return {
-            "status": "dry_run",
-            "message": f"Would call tool '{tool_name}' on server '{server_name}'",
-            "server": server_name,
-            "tool": tool_name,
-            "arguments": arguments,
-        }
+    def _parse_tool_arguments(self, args: argparse.Namespace) -> dict[str, Any]:
+        """Parse tool arguments from CLI flags."""
+        arguments = {}
 
-    try:
-        server_config = config.servers[server_name]
-        client = await get_mcp_client(server_config)
-        result = await client.call_tool(tool_name, arguments)
+        # Parse --var key=value arguments
+        if hasattr(args, "var") and args.var:
+            for var_arg in args.var:
+                if "=" not in var_arg:
+                    raise ValueError(
+                        f"Invalid --var format: '{var_arg}'. Expected: key=value"
+                    )
+                key, value = var_arg.split("=", 1)
 
-        return {
-            "status": "success",
-            "message": f"Tool '{tool_name}' executed successfully",
-            "server": server_name,
-            "tool": tool_name,
-            "arguments": arguments,  # Include arguments in response for debugging
-            "result": result,
-        }
-    except Exception as e:
-        return {
-            "status": "failure",
-            "message": f"Failed to call tool: {e}",
-            "server": server_name,
-            "tool": tool_name,
-            "arguments": arguments,
-            "error": str(e),
-        }
+                # Try to parse as JSON for complex types
+                try:
+                    parsed_value = json.loads(value)
+                    arguments[key] = parsed_value
+                except json.JSONDecodeError:
+                    # Treat as string
+                    arguments[key] = value
 
-
-async def main_mcp_flow(args: argparse.Namespace, config: MCPConfig) -> dict[str, Any]:
-    """Main MCP command flow."""
-    try:
-        # Dispatch to specific command handlers
-        if args.command == "list":
-            return await cmd_list_servers(config)
-
-        elif args.command == "status":
-            server_name = getattr(args, "server", None)
-            return await cmd_server_status(config, server_name)
-
-        elif args.command == "tools":
-            server_name = args.server
-            return await cmd_list_tools(config, server_name)
-
-        elif args.command == "call":
-            server_name = args.server
-            tool_name = args.tool
-
-            # Parse tool arguments from various CLI formats
+        # Parse JSON arguments if provided
+        if hasattr(args, "json_args") and args.json_args:
             try:
-                arguments = parse_tool_arguments(args)
-            except ValueError as e:
-                return {
-                    "status": "failure",
-                    "message": f"Argument parsing error: {e}",
-                }
+                json_arguments = json.loads(args.json_args)
+                arguments.update(json_arguments)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON: {e}")
 
-            return await cmd_call_tool(config, server_name, tool_name, arguments)
+        return arguments
+
+    def _format_tool_result(self, result: Any) -> Any:
+        """Format tool result for display."""
+        # Handle different result types
+        if isinstance(result, list):
+            # Check for MCP content format
+            formatted = []
+            for item in result:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    formatted.append(item.get("text", ""))
+                else:
+                    formatted.append(item)
+            return formatted
+
+        elif hasattr(result, "content"):
+            # Handle result objects with content attribute
+            return self._format_tool_result(result.content)
 
         else:
-            return {
-                "status": "failure",
-                "message": f"Unknown command: {args.command}",
-                "available_commands": ["list", "status", "tools", "call"],
-            }
+            # Return as-is
+            return result
 
-    finally:
-        # Clean up connections on exit
-        if not config.dry_run:
-            await disconnect_all_clients()
+    def _handle_result(self, result: CLIResult, json_output: bool) -> None:
+        """Override to provide custom formatting for MCP results."""
+        if json_output:
+            super()._handle_result(result, json_output)
+            return
 
+        # Custom human-readable output
+        if result.status == "success":
+            info_msg(result.message)
 
-# --- CLI Entry Point ---
-def cli_entry_mcp() -> None:
-    parser = argparse.ArgumentParser(description="khive MCP server management.")
+            # Special formatting for different commands
+            if result.data:
+                if "servers" in result.data:
+                    # List command
+                    print("\nConfigured MCP Servers:")
+                    for server in result.data["servers"]:
+                        status = "✓" if not server["disabled"] else "✗"
+                        print(
+                            f"  {status} {server['name']}: {server['command']} ({server['transport']})"
+                        )
+                        if server["transport"] == "sse" and "url" in server:
+                            print(f"    URL: {server['url']}")
+                        print(f"    Operations: {server['operations_count']}")
 
-    # Global arguments
-    parser.add_argument(
-        "--project-root",
-        type=Path,
-        default=PROJECT_ROOT,
-        help="Project root directory.",
-    )
-    parser.add_argument(
-        "--json-output", action="store_true", help="Output results in JSON format."
-    )
-    parser.add_argument(
-        "--dry-run", "-n", action="store_true", help="Show what would be done."
-    )
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable verbose logging."
-    )
+                elif "tools" in result.data:
+                    # Tools command
+                    print(f"\nAvailable Tools on {result.data['server']}:")
+                    for tool in result.data["tools"]:
+                        print(f"  • {tool['name']}")
+                        if tool.get("description"):
+                            print(f"    {tool['description']}")
+                        if tool.get("parameters"):
+                            print(f"    Parameters: {', '.join(tool['parameters'])}")
 
-    # Subcommands
-    subparsers = parser.add_subparsers(dest="command", help="MCP commands")
-
-    # List command
-    subparsers.add_parser("list", help="List configured MCP servers")
-
-    # Status command
-    status_parser = subparsers.add_parser("status", help="Show server status")
-    status_parser.add_argument("server", nargs="?", help="Specific server name")
-
-    # Tools command
-    tools_parser = subparsers.add_parser("tools", help="List available tools")
-    tools_parser.add_argument("server", help="Server name")
-
-    # Call command - Enhanced with natural argument parsing
-    call_parser = subparsers.add_parser("call", help="Call a tool")
-    call_parser.add_argument("server", help="Server name")
-    call_parser.add_argument("tool", help="Tool name")
-
-    # Support for --var key=value arguments
-    call_parser.add_argument(
-        "--var",
-        action="append",
-        help="Tool argument as key=value pair (can be repeated)",
-    )
-
-    # Support for JSON fallback
-    call_parser.add_argument(
-        "--json",
-        dest="json_args",
-        help="Tool arguments as JSON string (fallback for complex arguments)",
-    )
-
-    # Parse known args to allow unknown flags for tool arguments
-    args, unknown = parser.parse_known_args()
-
-    # If we're in call command, process unknown args as tool arguments
-    if args.command == "call":
-        args.tool_args = unknown
-
-    if not args.command:
-        parser.print_help()
-        sys.exit(1)
-
-    global verbose_mode
-    verbose_mode = args.verbose
-
-    if not args.project_root.is_dir():
-        die_mcp(
-            f"Project root not a directory: {args.project_root}",
-            json_output_flag=args.json_output,
-        )
-
-    config = load_mcp_config(args.project_root, args)
-
-    result = asyncio.run(main_mcp_flow(args, config))
-
-    if config.json_output:
-        print(json.dumps(result, indent=2))
-    else:
-        # Human-readable output
-        status_icon = {
-            "success": f"{ANSI['G']}✓{ANSI['N']}",
-            "failure": f"{ANSI['R']}✗{ANSI['N']}",
-            "dry_run": f"{ANSI['Y']}◦{ANSI['N']}",
-            "skipped": f"{ANSI['Y']}-{ANSI['N']}",
-        }.get(result.get("status", "unknown"), "?")
-
-        print(f"{status_icon} {result.get('message', 'Operation completed')}")
-
-        # Show additional details for specific commands
-        if args.command == "list" and "servers" in result:
-            print("\nConfigured MCP Servers:")
-            for server in result["servers"]:
-                status_color = {
-                    "connected": ANSI["G"],
-                    "disconnected": ANSI["Y"],
-                }.get(server["status"], ANSI["R"])
-
-                disabled_indicator = " (disabled)" if server["disabled"] else ""
-                print(
-                    f"  • {server['name']}: {status_color}{server['status']}{ANSI['N']}{disabled_indicator}"
-                )
-                print(f"    Command: {server['command']}")
-                print(f"    Operations: {server['operations_count']}")
-                if "tools_count" in server:
-                    print(f"    Tools: {server['tools_count']}")
-
-        elif args.command == "tools" and "tools" in result:
-            print(f"\nAvailable Tools on {args.server}:")
-            for tool in result["tools"]:
-                print(f"  • {tool.get('name', 'unnamed')}")
-                if "description" in tool:
-                    print(f"    {tool['description']}")
-                if "inputSchema" in tool and "properties" in tool["inputSchema"]:
-                    params = list(tool["inputSchema"]["properties"].keys())
-                    print(f"    Parameters: {', '.join(params)}")
-
-        elif args.command == "call" and "result" in result:
-            print("\nTool Result:")
-            if "content" in result["result"]:
-                for content in result["result"]["content"]:
-                    if content.get("type") == "text":
-                        print(content.get("text", ""))
-            else:
-                print(json.dumps(result["result"], indent=2))
-
-            # Show the parsed arguments if verbose
-            if verbose_mode and "arguments" in result:
-                print("\nParsed Arguments:")
-                print(json.dumps(result["arguments"], indent=2))
-
-    # Exit with appropriate code
-    if result.get("status") == "failure":
-        sys.exit(1)
-    elif result.get("status") in ["timeout", "forbidden"]:
-        sys.exit(2)
+                elif "result" in result.data:
+                    # Call command
+                    print("\nTool Result:")
+                    formatted_result = result.data["result"]
+                    if isinstance(formatted_result, list):
+                        for item in formatted_result:
+                            print(item)
+                    else:
+                        print(json.dumps(formatted_result, indent=2))
+        else:
+            error_msg(result.message)
 
 
 def main(argv: list[str] | None = None) -> None:
     """Entry point for khive CLI integration."""
-    # Save original args
-    original_argv = sys.argv
-
-    # Set new args if provided
-    if argv is not None:
-        sys.argv = [sys.argv[0], *argv]
-
-    try:
-        cli_entry_mcp()
-    finally:
-        # Restore original args
-        sys.argv = original_argv
+    cmd = MCPCommand()
+    cmd.run(argv)
 
 
 if __name__ == "__main__":
-    cli_entry_mcp()
+    main()

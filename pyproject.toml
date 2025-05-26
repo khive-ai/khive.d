@@ -9,7 +9,10 @@ dependencies = [
     "aiofiles>=24.1.0",
     "aiohttp>=3.11.0",
     "backoff>=2.0.0",
+    "fastmcp>=2.3.3",
     "lionfuncs>=3.2.0",
+    "mcp>=1.8.0",
+    "openai>=1.78.1",
     "orjson>=3.10.18",
     "pydantic-settings>=2.0.0",
     "pydapter>=0.2.0",
@@ -20,7 +23,6 @@ dependencies = [
 [dependency-groups]
 dev = [
     "black>=25.1.0",
-    "fastmcp>=2.3.3",
     "freezegun>=1.5.1",
     "ipykernel>=6.29.5",
     "isort>=6.0.1",
@@ -29,6 +31,7 @@ dev = [
     "pytest-asyncio>=0.23.0", # Added pytest-asyncio
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.10.0",
+    "questionary>=2.1.0",
     "ruff>=0.11.8",
 ]
 
@@ -36,37 +39,18 @@ dev = [
 [project.optional-dependencies]
 reader = [
     "docling>=2.31.0",
-    "openai>=1.70.0",
-    "sentence-transformers>=4.1.0",
-    "PyPDF2>=3.0.0",
-    "python-docx>=1.0.0",
-    "html2text>=2020.1.16",
-]
-mcp = [
-    "fastmcp>=2.3.3",
 ]
 schema = [
     "datamodel-code-generator>=0.30.1",
 ]
 ollama = [
     "ollama>=0.4.8",
-    "openai>=1.70.0",
-]
-openai = [
-    "openai>=1.70.0",
 ]
 
 all = [
     "docling>=2.31.0",
     "ollama>=0.4.8",
     "datamodel-code-generator>=0.30.1",
-    "openai>=1.70.0",
-    "fastmcp>=2.3.3",
-    "sentence-transformers>=2.2.0",
-    "PyPDF2>=3.0.0",
-    "python-docx>=1.0.0",
-    "html2text>=2020.1.16",
-    "sentence-transformers>=4.1.0",
 ]
 
 [tool.pytest.ini_options]

@@ -2,209 +2,204 @@
 title: "Test Implementation Template"
 by: "khive-implementer"
 created: "2025-04-12"
-updated: "2025-04-12"
-version: "1.1"
+updated: "2025-05-26"
+version: "2.0"
 doc_type: "TI"
 output_subdir: "ti"
-description: "Template for creating comprehensive test suites for khive components"
+description: "Test planning with service integration"
 ---
 
 # Guidance
 
 **Purpose**\
-Document the planned and actual test implementation. Clarify unit, integration,
-performance, mocking details, and test data.
+Plan comprehensive tests that work with khive services.
 
-**When to Use**
+**Service Integration**
 
-- Before/during writing tests, especially if it’s a large feature or
-  microservice.
-- As a blueprint to ensure coverage is complete.
-
-**Best Practices**
-
-- Keep tests short and focused.
-- Use mocking for external calls.
-- Outline coverage goals.
+- Tests run automatically via khive dev/ci
+- Focus on test cases, not infrastructure
+- Services handle coverage and reporting
 
 ---
 
-# Test Implementation Plan: [Component Name]
+# Test Implementation: [Component Name]
 
-## 1. Overview
+## 1. Service-Integrated Testing
 
-### 1.1 Component Under Test
+### 1.1 Automatic Test Execution
 
-_Short intro about the component or module(s)._
-
-### 1.2 Test Approach
-
-_Unit, integration, E2E, performance, etc._
-
-### 1.3 Key Testing Goals
-
-_What critical aspects you must verify? (e.g., error handling, concurrency.)_
-
-## 2. Test Environment
-
-### 2.1 Test Framework
-
-```
-# Python example
-pytest
-pytest-asyncio
-pytest-mock
-pytest-cov
+```bash
+# All tests run automatically with:
+khive dev "check"  # Quick validation
+khive ci          # Full test suite
 ```
 
-### 2.2 Mock Framework
+### 1.2 Service-Provided Features
 
-```
-# For Python
-unittest.mock
-pytest-mock
-```
+- Automatic coverage reporting
+- Performance benchmarking
+- Security scanning
+- Parallel execution
 
-### 2.3 Test Database
+## 2. Test Strategy
 
-_Approach: ephemeral container, in-memory, or stubs?_
+### 2.1 Test Categories
 
-## 3. Unit Tests
+| Category    | Purpose              | Service Support           |
+| ----------- | -------------------- | ------------------------- |
+| Unit        | Component logic      | khive dev tracks coverage |
+| Integration | Service interactions | khive ci validates        |
+| Performance | Speed/resource usage | khive dev benchmarks      |
+| Security    | Vulnerability checks | Automatic scanning        |
 
-### 3.1 Test Suite: [Module/Class Name]
-
-#### 3.1.1 Test Case: [Function/Method] - [Scenario]
-
-**Purpose:**\
-**Setup:**
+### 2.2 Service-Aware Test Design
 
 ```python
-@pytest.fixture
-def mock_dependency():
-    return Mock(spec=Dependency)
+class TestAuthService:
+    """Tests designed to work with khive services"""
+
+    def test_token_storage(self):
+        """khive dev will validate this test"""
+        # Clear, focused test
+        service = AuthService()
+        token = service.store_token("test-token")
+        assert token.is_stored
+
+    def test_performance(self):
+        """khive dev automatically benchmarks this"""
+        # Service provides timing metrics
+        pass
 ```
 
-**Test Implementation:**
+## 3. Test Implementation
+
+### 3.1 Unit Tests
 
 ```python
-def test_process_valid_input(service, mock_dependency):
-    ...
+# Simple, clear tests that services can analyze
+def test_refresh_logic():
+    """Test token refresh with backoff"""
+    service = AuthService()
+
+    # Mock external service
+    with patch('auth.external_api') as mock:
+        mock.return_value = new_token()
+
+        result = service.refresh_token()
+        assert result.is_valid
+
+    # khive dev ensures this is covered
 ```
 
-#### 3.1.2 Test Case: [Another Scenario]
-
-_Similar structure._
-
-### 3.2 Test Suite: [Another Module/Class]
-
-_And so on._
-
-## 4. Integration Tests
-
-### 4.1 Test Suite: [Integration Scenario]
-
-**Components Involved:**\
-**Setup:**
+### 3.2 Integration Tests
 
 ```python
-async def test_end_to_end_flow(client):
-    # Arrange
-    ...
-    # Act
-    ...
-    # Assert
-    ...
+async def test_full_auth_flow():
+    """End-to-end authentication test"""
+    # khive ci handles test database setup
+
+    async with test_client() as client:
+        # Test complete flow
+        response = await client.post("/auth/login",
+                                   json={"user": "test"})
+        assert response.status == 200
+
+        # Verify token works
+        token = response.json()["token"]
+        auth_response = await client.get("/protected",
+                                       headers={"Authorization": token})
+        assert auth_response.status == 200
 ```
 
-## 5. API Tests
+## 4. Service Validation
 
-### 5.1 Endpoint: [Method] /path
-
-**Purpose:**\
-**Request:**\
-**Expected Response:**
-
-```python
-async def test_create_entity_valid_input(client):
-    response = await client.post("/entities", json={"name": "Test Entity"})
-    assert response.status_code == 201
-```
-
-## 6. Error Handling Tests
-
-### 6.1 Test Suite: [Error Scenario Group]
-
-```python
-def test_service_handles_dependency_failure(service, mock_dependency):
-    mock_dependency.some_call.side_effect = DependencyError("Failure")
-    with pytest.raises(ServiceError):
-        service.process(...)
-```
-
-## 7. Performance Tests
-
-### 7.1 Benchmark / Load Testing
-
-```python
-def test_service_performance(benchmark, service):
-    def do_process():
-        for _ in range(1000):
-            service.process(...)
-    result = benchmark(do_process)
-    assert result.stats.mean < 0.01
-```
-
-## 8. Mock Implementation Details
-
-```python
-class MockDatabase:
-    def __init__(self):
-        self.storage = {}
-    ...
-```
-
-## 9. Test Data
-
-```python
-test_entities = [
-  {"id": "1", "name": "Test A"},
-  {"id": "2", "name": "Test B"}
-]
-```
-
-## 10. Helper Functions
-
-```python
-def create_test_jwt(user_id: str):
-    # ...
-```
-
-## 11. Test Coverage Targets
-
-- **Line Coverage Target:** 80%
-- **Branch Coverage Target:** 75%
-- **Critical Modules:** 90% coverage
-
-## 12. Continuous Integration
+### 4.1 Coverage Requirements
 
 ```yaml
-name: Test
-on: [push, pull_request]
-jobs:
-  tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install & Test
-        run: |
-          pip install -r requirements-dev.txt
-          pytest --cov=src tests/ --cov-report=xml
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
+# Enforced automatically by khive dev
+coverage:
+  minimum: 80%
+  target: 90%
+  critical_paths: 95%
 ```
 
-## 13. Notes and Caveats
+### 4.2 Performance Baselines
 
-### 13.1 Known Limitations
+```python
+# Service tracks these automatically
+performance_targets = {
+    "auth_request": "< 100ms",
+    "token_refresh": "< 200ms",
+    "batch_operation": "< 1s for 100 items"
+}
+```
 
-### 13.2 Future Improvements
+## 5. Test Data Management
+
+### 5.1 Service-Friendly Fixtures
+
+```python
+# Services can analyze and validate fixtures
+@pytest.fixture
+def valid_user():
+    """Standard test user"""
+    return User(
+        id="test-123",
+        name="Test User",
+        # khive dev validates fixture usage
+    )
+```
+
+## 6. Continuous Testing
+
+### 6.1 Development Workflow
+
+```bash
+# Write test
+# edit test_auth.py
+
+# Validate immediately
+khive dev "test this module"
+
+# Fix issues
+# edit auth.py
+
+# Validate again
+khive dev "check everything"
+
+# Commit when green
+khive git "added auth tests"
+```
+
+### 6.2 Service Intelligence
+
+khive dev provides:
+
+- Missing test detection
+- Coverage gaps
+- Performance regressions
+- Security issues
+
+## 7. Test Maintenance
+
+### 7.1 Service-Assisted Updates
+
+When tests fail:
+
+```bash
+khive dev "why is this test failing?"
+khive info "how to mock [specific service]"
+```
+
+### 7.2 Evolution Strategy
+
+- Let services track test health
+- Focus on business logic tests
+- Services handle infrastructure tests
+
+## 8. Success Criteria
+
+- [ ] khive dev shows >80% coverage
+- [ ] All tests pass with khive ci
+- [ ] No performance regressions
+- [ ] Security scan clean
