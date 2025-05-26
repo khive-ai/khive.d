@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from khive.cli.khive_ci import CICommand
 from khive.cli.khive_fmt import FormatCommand
@@ -26,8 +26,8 @@ from khive.services.dev.parts import (
     DevMode,
     DevRequest,
     DevResponse,
-    IssueType,
     IssueSeverity,
+    IssueType,
     ProjectHealth,
     StackType,
     TestResult,
@@ -102,7 +102,7 @@ class DevServiceGroup(Service):
         except Exception as e:
             return DevResponse(
                 success=False,
-                summary=f"Development operation failed: {str(e)}",
+                summary=f"Development operation failed: {e!s}",
                 mode_used=request.mode or DevMode.FULL_CHECK,
                 error=str(e),
                 duration=time.time() - start_time,
@@ -281,7 +281,7 @@ class DevServiceGroup(Service):
         except Exception as e:
             return DevResponse(
                 success=False,
-                summary=f"Setup failed: {str(e)}",
+                summary=f"Setup failed: {e!s}",
                 mode_used=DevMode.SETUP,
                 error=str(e),
             )
@@ -373,7 +373,7 @@ class DevServiceGroup(Service):
         except Exception as e:
             return DevResponse(
                 success=False,
-                summary=f"Quick fix failed: {str(e)}",
+                summary=f"Quick fix failed: {e!s}",
                 mode_used=DevMode.QUICK_FIX,
                 error=str(e),
             )
@@ -588,7 +588,7 @@ class DevServiceGroup(Service):
 
     # Helper methods
 
-    def _detect_project_stacks(self, project_root: Path) -> List[str]:
+    def _detect_project_stacks(self, project_root: Path) -> list[str]:
         """Detect which stacks are present in the project."""
         stacks = []
 
@@ -678,7 +678,7 @@ class DevServiceGroup(Service):
             next_steps=next_steps,
         )
 
-    def _generate_fix_summary(self, issues: List[DevIssue], fixed: int) -> str:
+    def _generate_fix_summary(self, issues: list[DevIssue], fixed: int) -> str:
         """Generate a summary for fix operations."""
         if not issues:
             return "Code quality check passed - no issues found"
@@ -691,7 +691,7 @@ class DevServiceGroup(Service):
             return f"Found {len(issues)} code quality issues that need attention"
 
     def _generate_comprehensive_summary(
-        self, issues: List[DevIssue], test_results: List[TestResult]
+        self, issues: list[DevIssue], test_results: list[TestResult]
     ) -> str:
         """Generate a comprehensive check summary."""
         parts = []
@@ -721,8 +721,8 @@ class DevServiceGroup(Service):
         return "Project check complete: " + ", ".join(parts)
 
     def _generate_next_steps_for_fixes(
-        self, issues: List[DevIssue], fixed: int
-    ) -> List[str]:
+        self, issues: list[DevIssue], fixed: int
+    ) -> list[str]:
         """Generate next steps after fix operations."""
         next_steps = []
 
@@ -739,8 +739,8 @@ class DevServiceGroup(Service):
         return next_steps
 
     def _generate_comprehensive_next_steps(
-        self, issues: List[DevIssue], test_results: List[TestResult]
-    ) -> List[str]:
+        self, issues: list[DevIssue], test_results: list[TestResult]
+    ) -> list[str]:
         """Generate next steps for comprehensive checks."""
         next_steps = []
 
@@ -766,8 +766,8 @@ class DevServiceGroup(Service):
         return next_steps[:3]  # Top 3 priorities
 
     def _analyze_issue_patterns(
-        self, issues: List[DevIssue]
-    ) -> Dict[str, Dict[str, str]]:
+        self, issues: list[DevIssue]
+    ) -> dict[str, dict[str, str]]:
         """Identify patterns in issues."""
         patterns = {}
 
@@ -792,8 +792,8 @@ class DevServiceGroup(Service):
         return patterns
 
     def _analyze_test_patterns(
-        self, test_results: List[TestResult]
-    ) -> List[DevInsight]:
+        self, test_results: list[TestResult]
+    ) -> list[DevInsight]:
         """Analyze patterns in test results."""
         insights = []
 
@@ -828,8 +828,8 @@ class DevServiceGroup(Service):
         return insights
 
     def _identify_root_causes(
-        self, issues: List[DevIssue], test_results: List[TestResult]
-    ) -> Dict[str, Any]:
+        self, issues: list[DevIssue], test_results: list[TestResult]
+    ) -> dict[str, Any]:
         """Identify root causes of problems."""
         root_causes = {
             "summary": "No major root causes identified",
@@ -864,4 +864,3 @@ class DevServiceGroup(Service):
     async def close(self) -> None:
         """Clean up resources."""
         # Commands don't need explicit cleanup
-        pass

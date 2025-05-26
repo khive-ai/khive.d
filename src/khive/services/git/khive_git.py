@@ -36,18 +36,16 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import questionary
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
-from rich.syntax import Syntax
 from rich.table import Table
 from rich.tree import Tree
 
-from khive.services.git import GitService, GitRequest, WorkContext
-
+from khive.services.git import GitRequest, GitService, WorkContext
 
 # Initialize Rich console for beautiful output
 console = Console()
@@ -205,7 +203,7 @@ class GitCLI:
         """Get input in interactive mode."""
         # Show current branch in prompt
         try:
-            from khive.utils import git_run, CommandResult
+            from khive.utils import CommandResult, git_run
 
             result = git_run(["branch", "--show-current"], capture=True, check=False)
             branch = "unknown"
@@ -220,9 +218,7 @@ class GitCLI:
             prompt, multiline=False, instruction="(What would you like to do?)"
         ).ask()
 
-    async def build_interactive_context(
-        self, request_text: str
-    ) -> Optional[WorkContext]:
+    async def build_interactive_context(self, request_text: str) -> WorkContext | None:
         """Build context interactively if needed."""
         # Check if request might benefit from context
         context_keywords = ["implement", "feature", "fix", "working on", "task"]
@@ -552,7 +548,7 @@ class GitCLI:
         except Exception:
             pass
 
-    def load_session_id(self) -> Optional[str]:
+    def load_session_id(self) -> str | None:
         """Load saved session ID."""
         try:
             if self.session_file.exists():
@@ -585,7 +581,7 @@ class GitCLI:
         except Exception:
             pass
 
-    def load_history(self) -> List[Dict[str, Any]]:
+    def load_history(self) -> list[dict[str, Any]]:
         """Load command history."""
         try:
             if self.history_file.exists():

@@ -71,7 +71,7 @@ class AuthenticationService:
     Service interface designed for natural language usage.
     Implementation will leverage khive services.
     """
-    
+
     async def authenticate(self, credentials: str) -> AuthResult:
         """
         Implementer note: Use khive services for:
@@ -89,13 +89,13 @@ class AuthenticationService:
 ```python
 class TokenRequest(BaseModel):
     """Designed to work with khive info insights"""
-    
+
     # Field validated by khive info research
     storage_method: Literal["file", "keyring"] = "file"
-    
+
     # Service-recommended defaults
     refresh_interval: int = 3600  # khive info: "Industry standard"
-    
+
     class Config:
         # Enable service integration
         schema_extra = {

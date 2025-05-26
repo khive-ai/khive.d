@@ -13,10 +13,9 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Set
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
-
 
 # --- Core Concepts ---
 
@@ -41,32 +40,32 @@ class WorkContext(BaseModel):
     """Rich context about what the agent is working on."""
 
     # Current focus
-    task_description: Optional[str] = None
-    related_issues: List[str] = Field(default_factory=list)
+    task_description: str | None = None
+    related_issues: list[str] = Field(default_factory=list)
 
     # Knowledge sources
-    research_findings: Dict[str, Any] = Field(default_factory=dict)
-    design_decisions: List[str] = Field(default_factory=list)
+    research_findings: dict[str, Any] = Field(default_factory=dict)
+    design_decisions: list[str] = Field(default_factory=list)
 
     # Constraints
-    requirements: List[str] = Field(default_factory=list)
-    avoid: List[str] = Field(default_factory=list)
+    requirements: list[str] = Field(default_factory=list)
+    avoid: list[str] = Field(default_factory=list)
 
     # Progress tracking
-    completed_steps: List[str] = Field(default_factory=list)
-    next_todos: List[str] = Field(default_factory=list)
+    completed_steps: list[str] = Field(default_factory=list)
+    next_todos: list[str] = Field(default_factory=list)
 
     # Evidence trail
-    search_ids: List[str] = Field(default_factory=list)
-    references: List[str] = Field(default_factory=list)
+    search_ids: list[str] = Field(default_factory=list)
+    references: list[str] = Field(default_factory=list)
 
 
 class CodeInsight(BaseModel):
     """Semantic understanding of code changes."""
 
     # What changed
-    primary_changes: List[str]  # Main modifications in plain language
-    side_effects: List[str]  # Indirect impacts
+    primary_changes: list[str]  # Main modifications in plain language
+    side_effects: list[str]  # Indirect impacts
 
     # Quality indicators
     adds_tests: bool
@@ -89,19 +88,19 @@ class CollaborationContext(BaseModel):
     """Information about collaboration state."""
 
     # Team awareness
-    active_reviewers: List[str] = Field(default_factory=list)
-    blocked_by: List[str] = Field(default_factory=list)
-    blocking: List[str] = Field(default_factory=list)
+    active_reviewers: list[str] = Field(default_factory=list)
+    blocked_by: list[str] = Field(default_factory=list)
+    blocking: list[str] = Field(default_factory=list)
 
     # Review state
-    feedback_received: List[Dict[str, str]] = Field(default_factory=list)
-    feedback_addressed: List[str] = Field(default_factory=list)
-    open_questions: List[str] = Field(default_factory=list)
+    feedback_received: list[dict[str, str]] = Field(default_factory=list)
+    feedback_addressed: list[str] = Field(default_factory=list)
+    open_questions: list[str] = Field(default_factory=list)
 
     # Social signals
-    reviewer_expertise: Dict[str, List[str]] = Field(default_factory=dict)
-    optimal_review_time: Optional[str] = None
-    team_availability: Dict[str, str] = Field(default_factory=dict)
+    reviewer_expertise: dict[str, list[str]] = Field(default_factory=dict)
+    optimal_review_time: str | None = None
+    team_availability: dict[str, str] = Field(default_factory=dict)
 
 
 # --- Request Model ---
@@ -122,14 +121,14 @@ class GitRequest(BaseModel):
     )
 
     # Rich context
-    context: Optional[WorkContext] = None
+    context: WorkContext | None = None
 
     # Identity & continuity
-    agent_id: Optional[str] = None
-    conversation_id: Optional[str] = None
+    agent_id: str | None = None
+    conversation_id: str | None = None
 
     # Preferences
-    preferences: Dict[str, Any] = Field(
+    preferences: dict[str, Any] = Field(
         default_factory=dict,
         description="Agent-specific preferences",
         examples=[
@@ -156,9 +155,9 @@ class FileUnderstanding(BaseModel):
     change_magnitude: Literal["cosmetic", "minor", "significant", "major"]
 
     # Relationships
-    tests_this: List[Path] = Field(default_factory=list)
-    tested_by: List[Path] = Field(default_factory=list)
-    depends_on: List[Path] = Field(default_factory=list)
+    tests_this: list[Path] = Field(default_factory=list)
+    tested_by: list[Path] = Field(default_factory=list)
+    depends_on: list[Path] = Field(default_factory=list)
 
     # Quality signals
     has_todo_comments: bool = False
@@ -177,7 +176,7 @@ class RepositoryUnderstanding(BaseModel):
     ]
 
     # Change analysis
-    files_changed: List[FileUnderstanding]
+    files_changed: list[FileUnderstanding]
     code_insights: CodeInsight
 
     # Collaboration state
@@ -189,8 +188,8 @@ class RepositoryUnderstanding(BaseModel):
     lint_clean: bool
 
     # Recommendations
-    recommended_actions: List[str]
-    potential_issues: List[str]
+    recommended_actions: list[str]
+    potential_issues: list[str]
 
 
 # --- Response Model ---
@@ -201,22 +200,22 @@ class GitResponse(BaseModel):
 
     # What happened
     understood_as: str  # How we interpreted the request
-    actions_taken: List[str]  # What we did in plain language
+    actions_taken: list[str]  # What we did in plain language
 
     # Current state
     repository_state: RepositoryUnderstanding
 
     # What's next
-    recommendations: List[Recommendation]
+    recommendations: list[Recommendation]
 
     # Knowledge gained
-    learned: Dict[str, Any] = Field(
+    learned: dict[str, Any] = Field(
         default_factory=dict, description="New information discovered during operations"
     )
 
     # Conversation continuity
     conversation_id: str
-    follow_up_prompts: List[str]  # Suggested follow-up questions
+    follow_up_prompts: list[str]  # Suggested follow-up questions
 
 
 class Recommendation(BaseModel):
@@ -231,11 +230,11 @@ class Recommendation(BaseModel):
 
     # How to do it
     example_request: str
-    prerequisites: List[str] = Field(default_factory=list)
+    prerequisites: list[str] = Field(default_factory=list)
 
     # Consequences
-    will_enable: List[str] = Field(default_factory=list)
-    will_block: List[str] = Field(default_factory=list)
+    will_enable: list[str] = Field(default_factory=list)
+    will_block: list[str] = Field(default_factory=list)
 
 
 # --- Workflow Types ---
@@ -246,12 +245,12 @@ class ImplementationFlow(BaseModel):
 
     # Planning
     task: str
-    approach: List[str]
-    success_criteria: List[str]
+    approach: list[str]
+    success_criteria: list[str]
 
     # Progress
     started_at: datetime
-    checkpoints: List[Dict[str, Any]] = Field(default_factory=list)
+    checkpoints: list[dict[str, Any]] = Field(default_factory=list)
 
     # Quality gates
     has_tests: bool = False
@@ -276,9 +275,9 @@ class CollaborationFlow(BaseModel):
     pr_body: str
 
     # Review optimization
-    suggested_reviewers: List[str]
-    review_focus_areas: List[str]
-    expected_feedback_types: List[str]
+    suggested_reviewers: list[str]
+    review_focus_areas: list[str]
+    expected_feedback_types: list[str]
 
     # Iteration tracking
     review_rounds: int = 0
@@ -293,15 +292,15 @@ class ReleaseFlow(BaseModel):
     release_type: Literal["major", "minor", "patch", "preview"]
 
     # Content
-    highlights: List[str]
-    breaking_changes: List[str]
+    highlights: list[str]
+    breaking_changes: list[str]
 
     # Automation
     auto_generated_notes: str
-    manual_notes: Optional[str] = None
+    manual_notes: str | None = None
 
     # Distribution
-    publish_targets: List[str] = Field(default_factory=list)
+    publish_targets: list[str] = Field(default_factory=list)
 
 
 # --- Intelligence Models ---
@@ -311,8 +310,8 @@ class PatternRecognition(BaseModel):
     """Recognized patterns in the codebase."""
 
     # Coding patterns
-    common_patterns: List[str]
-    anti_patterns: List[str]
+    common_patterns: list[str]
+    anti_patterns: list[str]
 
     # Workflow patterns
     typical_pr_size: int
@@ -320,8 +319,8 @@ class PatternRecognition(BaseModel):
     typical_iteration_count: int
 
     # Team patterns
-    expertise_map: Dict[str, List[str]]
-    collaboration_graph: Dict[str, List[str]]
+    expertise_map: dict[str, list[str]]
+    collaboration_graph: dict[str, list[str]]
 
 
 class QualityAssessment(BaseModel):
@@ -338,11 +337,11 @@ class QualityAssessment(BaseModel):
     consistency: Literal["excellent", "good", "fair", "poor"]
 
     # Specific issues
-    issues: List[QualityIssue]
+    issues: list[QualityIssue]
 
     # Improvements
-    quick_wins: List[str]
-    long_term_improvements: List[str]
+    quick_wins: list[str]
+    long_term_improvements: list[str]
 
 
 class QualityIssue(BaseModel):
@@ -367,20 +366,20 @@ class GitSession(BaseModel):
     last_activity: datetime
 
     # Accumulated understanding
-    repository_knowledge: Dict[str, Any] = Field(default_factory=dict)
-    learned_patterns: Optional[PatternRecognition] = None
+    repository_knowledge: dict[str, Any] = Field(default_factory=dict)
+    learned_patterns: PatternRecognition | None = None
 
     # Active workflows
-    implementation_flow: Optional[ImplementationFlow] = None
-    collaboration_flow: Optional[CollaborationFlow] = None
-    release_flow: Optional[ReleaseFlow] = None
+    implementation_flow: ImplementationFlow | None = None
+    collaboration_flow: CollaborationFlow | None = None
+    release_flow: ReleaseFlow | None = None
 
     # History
-    request_history: List[str] = Field(default_factory=list)
-    action_history: List[str] = Field(default_factory=list)
+    request_history: list[str] = Field(default_factory=list)
+    action_history: list[str] = Field(default_factory=list)
 
     # Preferences learned
-    inferred_preferences: Dict[str, Any] = Field(default_factory=dict)
+    inferred_preferences: dict[str, Any] = Field(default_factory=dict)
 
     def add_request(self, request: str):
         """Track request for context."""
@@ -408,8 +407,8 @@ class GitError(BaseModel):
 
     # Recovery
     can_retry: bool
-    fix_suggestions: List[str]
-    workarounds: List[str]
+    fix_suggestions: list[str]
+    workarounds: list[str]
 
     # Learning
-    prevention_tips: List[str]
+    prevention_tips: list[str]

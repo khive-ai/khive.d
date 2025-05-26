@@ -15,7 +15,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from khive.clients.executor import AsyncExecutor
 from khive.connections.match_endpoint import match_endpoint
@@ -47,7 +47,7 @@ class GitOperations:
 
         return "unknown"
 
-    async def get_changed_files(self) -> List[Dict[str, Any]]:
+    async def get_changed_files(self) -> list[dict[str, Any]]:
         """Get list of changed files with details."""
         changed_files = []
 
@@ -113,7 +113,7 @@ class GitOperations:
             return result.stdout
         return ""
 
-    async def stage_files(self, files: List[Path]) -> bool:
+    async def stage_files(self, files: list[Path]) -> bool:
         """Stage specific files."""
         if not files:
             return True
@@ -122,7 +122,7 @@ class GitOperations:
 
         return result == 0 or (isinstance(result, CommandResult) and result.success)
 
-    async def create_commit(self, message: str) -> Dict[str, str]:
+    async def create_commit(self, message: str) -> dict[str, str]:
         """Create a commit with the given message."""
         # Write message to temp file to handle multi-line messages
         import tempfile
@@ -157,7 +157,7 @@ class GitOperations:
 
     async def push_branch(
         self, branch: str, set_upstream: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Push branch to remote."""
         cmd = ["push"]
 
@@ -193,7 +193,7 @@ class GitOperations:
         result = git_run(["fetch", remote], check=False)
         return result == 0 or (isinstance(result, CommandResult) and result.success)
 
-    async def merge_branch(self, branch: str) -> Dict[str, Any]:
+    async def merge_branch(self, branch: str) -> dict[str, Any]:
         """Merge a branch into current branch."""
         result = git_run(["merge", branch], capture=True, check=False)
 
@@ -214,7 +214,7 @@ class GitOperations:
 
     async def get_commits_between(
         self, base: str, head: str = "HEAD", limit: int = 50
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get commits between two refs."""
         result = git_run(
             [
@@ -255,8 +255,8 @@ class GitOperations:
         return result == 0 or (isinstance(result, CommandResult) and result.success)
 
     async def pull_latest(
-        self, remote: str = "origin", branch: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, remote: str = "origin", branch: str | None = None
+    ) -> dict[str, Any]:
         """Pull latest changes."""
         cmd = ["pull", remote]
         if branch:
@@ -299,7 +299,7 @@ class GitOperations:
         result = git_run(cmd, check=False)
         return result == 0 or (isinstance(result, CommandResult) and result.success)
 
-    async def revert_commit(self, sha: str) -> Dict[str, Any]:
+    async def revert_commit(self, sha: str) -> dict[str, Any]:
         """Create a revert commit."""
         result = git_run(["revert", sha, "--no-edit"], capture=True, check=False)
 
@@ -312,7 +312,7 @@ class GitOperations:
 
         return {"success": result == 0}
 
-    async def stash_changes(self, message: Optional[str] = None) -> Dict[str, Any]:
+    async def stash_changes(self, message: str | None = None) -> dict[str, Any]:
         """Stash current changes."""
         cmd = ["stash", "push"]
         if message:
@@ -329,7 +329,7 @@ class GitOperations:
 
         return {"success": result == 0}
 
-    async def list_stashes(self) -> List[Dict[str, Any]]:
+    async def list_stashes(self) -> list[dict[str, Any]]:
         """List all stashes."""
         result = git_run(["stash", "list"], capture=True, check=False)
 
@@ -362,7 +362,7 @@ class GitOperations:
         result = git_run(["clean", "-f", "-d"], check=False)
         return result == 0 or (isinstance(result, CommandResult) and result.success)
 
-    async def get_merged_branches(self, base: str = "main") -> List[str]:
+    async def get_merged_branches(self, base: str = "main") -> list[str]:
         """Get list of branches merged into base."""
         result = git_run(
             ["branch", "--merged", base, "--format=%(refname:short)"],
@@ -401,7 +401,7 @@ class GitOperations:
 
     async def remove_files_by_pattern(
         self, pattern: str, track: bool = True
-    ) -> List[str]:
+    ) -> list[str]:
         """Remove files matching a pattern."""
         import glob
 
@@ -431,7 +431,7 @@ class GitOperations:
         }
         return status_map.get(status_code[0], "unknown")
 
-    async def _get_conflict_details(self) -> List[Dict[str, str]]:
+    async def _get_conflict_details(self) -> list[dict[str, str]]:
         """Get details about merge conflicts."""
         result = git_run(
             ["diff", "--name-only", "--diff-filter=U"], capture=True, check=False
@@ -445,7 +445,7 @@ class GitOperations:
 
         return conflicts
 
-    def _extract_stash_ref(self, output: str) -> Optional[str]:
+    def _extract_stash_ref(self, output: str) -> str | None:
         """Extract stash reference from stash output."""
         match = re.search(r"(stash@\{\d+\})", output)
         return match.group(1) if match else None
@@ -487,7 +487,7 @@ class FileAnalyzer:
         }
 
     async def understand_file(
-        self, file_info: Dict[str, Any], diff: Optional[str] = None
+        self, file_info: dict[str, Any], diff: str | None = None
     ) -> FileUnderstanding:
         """Create deep understanding of a file."""
         path = file_info["path"]
@@ -589,7 +589,7 @@ class CodeAnalyzer:
     """Analyze code changes for insights."""
 
     async def analyze_changes(
-        self, files: List[FileUnderstanding], diffs: Optional[Dict[Path, str]] = None
+        self, files: list[FileUnderstanding], diffs: dict[Path, str] | None = None
     ) -> CodeInsight:
         """Analyze code changes to produce insights."""
         primary_changes = []
@@ -650,7 +650,7 @@ class CodeAnalyzer:
         )
 
     def _determine_change_type(
-        self, files: List[FileUnderstanding], diffs: Optional[Dict[Path, str]] = None
+        self, files: list[FileUnderstanding], diffs: dict[Path, str] | None = None
     ) -> str:
         """Determine the type of change."""
         # Simple heuristics - would be more sophisticated
@@ -672,7 +672,7 @@ class CodeAnalyzer:
 
         return "feature"  # Default
 
-    def _assess_complexity(self, files: List[FileUnderstanding]) -> str:
+    def _assess_complexity(self, files: list[FileUnderstanding]) -> str:
         """Assess the complexity of changes."""
         total_magnitude_score = 0
         magnitude_map = {"cosmetic": 1, "minor": 2, "significant": 3, "major": 4}
@@ -692,7 +692,7 @@ class CodeAnalyzer:
             return "complex"
 
     def _assess_risk(
-        self, files: List[FileUnderstanding], change_type: str, complexity: str
+        self, files: list[FileUnderstanding], change_type: str, complexity: str
     ) -> str:
         """Assess risk level of changes."""
         # High risk indicators
@@ -712,7 +712,7 @@ class CodeAnalyzer:
         return "low" if change_type in ["docs", "test"] else "safe"
 
     def _check_api_changes(
-        self, files: List[FileUnderstanding], diffs: Optional[Dict[Path, str]] = None
+        self, files: list[FileUnderstanding], diffs: dict[Path, str] | None = None
     ) -> bool:
         """Check if changes affect public APIs."""
         api_indicators = ["api", "public", "export", "interface"]
@@ -736,11 +736,11 @@ class PRManager:
         title: str,
         body: str,
         base: str = "main",
-        head: Optional[str] = None,
+        head: str | None = None,
         draft: bool = False,
-        reviewers: Optional[List[str]] = None,
-        labels: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        reviewers: list[str] | None = None,
+        labels: list[str] | None = None,
+    ) -> dict[str, Any]:
         """Create a pull request."""
         if not await self._check_gh():
             return {"success": False, "error": "GitHub CLI not available"}
@@ -787,10 +787,10 @@ class PRManager:
     async def update_pr(
         self,
         pr_number: str,
-        title: Optional[str] = None,
-        body: Optional[str] = None,
-        add_reviewers: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        title: str | None = None,
+        body: str | None = None,
+        add_reviewers: list[str] | None = None,
+    ) -> dict[str, Any]:
         """Update an existing pull request."""
         if not await self._check_gh():
             return {"success": False, "error": "GitHub CLI not available"}
@@ -814,7 +814,7 @@ class PRManager:
             "number": pr_number,
         }
 
-    async def get_pr_status(self, pr_number: str) -> Optional[Dict[str, Any]]:
+    async def get_pr_status(self, pr_number: str) -> dict[str, Any] | None:
         """Get status of a pull request."""
         if not await self._check_gh():
             return None
@@ -857,9 +857,9 @@ class CommitMessageGenerator:
 
     async def generate(
         self,
-        files: List[FileUnderstanding],
+        files: list[FileUnderstanding],
         insights: CodeInsight,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
         style: str = "conventional",
     ) -> str:
         """Generate a commit message."""
@@ -873,11 +873,11 @@ class CommitMessageGenerator:
 
     async def _generate_with_llm(
         self,
-        files: List[FileUnderstanding],
+        files: list[FileUnderstanding],
         insights: CodeInsight,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
         style: str = "conventional",
-    ) -> Optional[str]:
+    ) -> str | None:
         """Generate commit message using LLM."""
         try:
             if not self._llm_endpoint:
@@ -901,7 +901,7 @@ class CommitMessageGenerator:
             if hasattr(response, "choices") and response.choices:
                 return response.choices[0].message.content.strip()
 
-        except Exception as e:
+        except Exception:
             # Log error and fall back
             pass
 
@@ -909,9 +909,9 @@ class CommitMessageGenerator:
 
     def _build_llm_prompt(
         self,
-        files: List[FileUnderstanding],
+        files: list[FileUnderstanding],
         insights: CodeInsight,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
         style: str = "conventional",
     ) -> str:
         """Build prompt for LLM."""
@@ -952,9 +952,9 @@ class CommitMessageGenerator:
 
     def _generate_rule_based(
         self,
-        files: List[FileUnderstanding],
+        files: list[FileUnderstanding],
         insights: CodeInsight,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
         style: str = "conventional",
     ) -> str:
         """Generate commit message using rules."""
@@ -993,7 +993,7 @@ class CommitMessageGenerator:
 
         return header
 
-    def _determine_scope(self, files: List[FileUnderstanding]) -> Optional[str]:
+    def _determine_scope(self, files: list[FileUnderstanding]) -> str | None:
         """Determine commit scope from files."""
         # Get common directory
         if not files:
@@ -1005,7 +1005,7 @@ class CommitMessageGenerator:
 
         # Find common parent
         common_parts = []
-        for parts in zip(*[p.parts for p in paths]):
+        for parts in zip(*[p.parts for p in paths], strict=False):
             if len(set(parts)) == 1:
                 common_parts.append(parts[0])
             else:
@@ -1017,7 +1017,7 @@ class CommitMessageGenerator:
         return None
 
     def _generate_subject(
-        self, files: List[FileUnderstanding], insights: CodeInsight
+        self, files: list[FileUnderstanding], insights: CodeInsight
     ) -> str:
         """Generate commit subject."""
         if insights.primary_changes:

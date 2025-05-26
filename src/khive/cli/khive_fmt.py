@@ -29,7 +29,7 @@ import os
 import stat
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from khive.cli.base import CLIResult, ConfigurableCLICommand, cli_command
 from khive.utils import (
@@ -48,7 +48,7 @@ from khive.utils import (
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover
-    import tomli as tomllib  # type: ignore
+    pass  # type: ignore
 
 # Maximum number of files to process in a single batch to avoid "Argument list too long" errors
 MAX_FILES_PER_BATCH = 500
@@ -58,12 +58,12 @@ MAX_FILES_PER_BATCH = 500
 class FmtConfig(BaseConfig):
     """Configuration for the fmt command."""
 
-    enable: List[str] = field(
+    enable: list[str] = field(
         default_factory=lambda: ["python", "rust", "docs", "deno"]
     )
-    stacks: Dict[str, StackConfig] = field(default_factory=dict)
+    stacks: dict[str, StackConfig] = field(default_factory=dict)
     check_only: bool = False
-    selected_stacks: List[str] = field(default_factory=list)
+    selected_stacks: list[str] = field(default_factory=list)
 
 
 @cli_command("fmt")
@@ -81,7 +81,7 @@ class FormatCommand(ConfigurableCLICommand):
         return "fmt.toml"
 
     @property
-    def default_config(self) -> Dict[str, Any]:
+    def default_config(self) -> dict[str, Any]:
         """Default configuration for formatting stacks."""
         return {
             "enable": ["python", "rust", "docs", "deno"],
@@ -178,7 +178,7 @@ class FormatCommand(ConfigurableCLICommand):
 
         return config
 
-    def _load_format_config(self, project_root: Path) -> Dict[str, Any]:
+    def _load_format_config(self, project_root: Path) -> dict[str, Any]:
         """Load format configuration from multiple sources."""
         config = self.default_config.copy()
 
@@ -211,11 +211,7 @@ class FormatCommand(ConfigurableCLICommand):
 
         # Convert to CLIResult
         status = results["status"]
-        if status == "check_failed":
-            return CLIResult(
-                status="failure", message=results["message"], data=results, exit_code=1
-            )
-        elif status == "failure" or status == "error":
+        if status == "check_failed" or (status == "failure" or status == "error"):
             return CLIResult(
                 status="failure", message=results["message"], data=results, exit_code=1
             )
@@ -224,7 +220,7 @@ class FormatCommand(ConfigurableCLICommand):
                 status=status, message=results["message"], data=results, exit_code=0
             )
 
-    def _check_and_run_custom_script(self, config: FmtConfig) -> Optional[CLIResult]:
+    def _check_and_run_custom_script(self, config: FmtConfig) -> CLIResult | None:
         """Check for custom formatting script and execute it if found."""
         custom_script_path = config.khive_config_dir / "scripts" / "khive_fmt.sh"
 
@@ -342,9 +338,9 @@ class FormatCommand(ConfigurableCLICommand):
                 exit_code=1,
             )
 
-    def _main_fmt_flow(self, config: FmtConfig) -> Dict[str, Any]:
+    def _main_fmt_flow(self, config: FmtConfig) -> dict[str, Any]:
         """Main formatting flow with nested directory support."""
-        overall_results: Dict[str, Any] = {
+        overall_results: dict[str, Any] = {
             "status": "success",
             "message": "Formatting completed.",
             "stacks_processed": [],
@@ -418,7 +414,7 @@ class FormatCommand(ConfigurableCLICommand):
 
     def _format_directory_with_nested_config(
         self, dir_path: Path, parent_config: FmtConfig
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Format a directory that has its own .khive/fmt.toml configuration."""
         info_msg(
             f"Processing nested project: {dir_path.relative_to(parent_config.project_root)}"
@@ -496,7 +492,7 @@ class FormatCommand(ConfigurableCLICommand):
 
         return results
 
-    def _format_stack(self, stack: StackConfig, config: FmtConfig) -> Dict[str, Any]:
+    def _format_stack(self, stack: StackConfig, config: FmtConfig) -> dict[str, Any]:
         """Format files for a specific stack."""
         result = {
             "stack_name": stack.name,
@@ -536,8 +532,8 @@ class FormatCommand(ConfigurableCLICommand):
             return self._format_files_in_batches(stack, config, files)
 
     def _format_cargo(
-        self, stack: StackConfig, config: FmtConfig, files: List[Path]
-    ) -> Dict[str, Any]:
+        self, stack: StackConfig, config: FmtConfig, files: list[Path]
+    ) -> dict[str, Any]:
         """Special handling for cargo fmt."""
         # Check if Cargo.toml exists
         cargo_toml_path = config.project_root / "Cargo.toml"
@@ -545,7 +541,7 @@ class FormatCommand(ConfigurableCLICommand):
             return {
                 "stack_name": stack.name,
                 "status": "skipped",
-                "message": f"Skipping Rust formatting: No Cargo.toml found",
+                "message": "Skipping Rust formatting: No Cargo.toml found",
                 "files_processed": 0,
             }
 
@@ -594,8 +590,8 @@ class FormatCommand(ConfigurableCLICommand):
                 }
 
     def _format_files_in_batches(
-        self, stack: StackConfig, config: FmtConfig, files: List[Path]
-    ) -> Dict[str, Any]:
+        self, stack: StackConfig, config: FmtConfig, files: list[Path]
+    ) -> dict[str, Any]:
         """Format files in batches to avoid command line length limits."""
         total_files = len(files)
         files_processed = 0
@@ -634,7 +630,7 @@ class FormatCommand(ConfigurableCLICommand):
                     "UnicodeDecodeError" in result.stderr
                     or "encoding" in result.stderr.lower()
                 ):
-                    warn_msg(f"Encoding error in batch, skipping affected files")
+                    warn_msg("Encoding error in batch, skipping affected files")
                     stderr_messages.append(
                         f"[WARNING] Encoding issues: {result.stderr}"
                     )
@@ -675,10 +671,10 @@ class FormatCommand(ConfigurableCLICommand):
     def _find_files(
         self,
         root_dir: Path,
-        include_patterns: List[str],
-        exclude_patterns: List[str],
-        stack_name: Optional[str] = None,
-    ) -> List[Path]:
+        include_patterns: list[str],
+        exclude_patterns: list[str],
+        stack_name: str | None = None,
+    ) -> list[Path]:
         """Find files matching patterns, respecting nested configurations."""
         import fnmatch
 
@@ -753,7 +749,7 @@ class FormatCommand(ConfigurableCLICommand):
         return unique_files
 
 
-def main(argv: Optional[List[str]] = None) -> None:
+def main(argv: list[str] | None = None) -> None:
     """Entry point for khive CLI integration."""
     cmd = FormatCommand()
     cmd.run(argv)

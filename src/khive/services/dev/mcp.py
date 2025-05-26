@@ -12,7 +12,7 @@ requiring them to understand specific CLI commands.
 from fastmcp import FastMCP
 
 from khive.services.dev.dev_service import DevServiceGroup
-from khive.services.dev.parts import DevRequest, DevMode, StackType
+from khive.services.dev.parts import DevMode, DevRequest, StackType
 
 # Agent-friendly description that emphasizes enhancement
 instruction = """

@@ -31,7 +31,7 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from khive.cli.base import (
     CLIResult,
@@ -190,14 +190,14 @@ class CICommand(ConfigurableCLICommand):
             command_name="ci",
             description="Run continuous integration checks with nested configuration support",
         )
-        self._execution_result: Optional[CIExecutionResult] = None
+        self._execution_result: CIExecutionResult | None = None
 
     @property
     def config_filename(self) -> str:
         return "ci.toml"
 
     @property
-    def default_config(self) -> Dict[str, Any]:
+    def default_config(self) -> dict[str, Any]:
         return {
             "timeout": 300,
             "enable": ["python", "rust"],
@@ -382,9 +382,7 @@ class CICommand(ConfigurableCLICommand):
 
         return result
 
-    async def _check_custom_script(
-        self, config: CIConfig
-    ) -> Optional[CIExecutionResult]:
+    async def _check_custom_script(self, config: CIConfig) -> CIExecutionResult | None:
         """Check for and execute custom CI script."""
         script_path = config.khive_config_dir / "scripts" / "khive_ci.sh"
 
@@ -490,7 +488,7 @@ class CICommand(ConfigurableCLICommand):
 
     def _discover_projects(
         self, project_root: Path, config: CIConfig
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """Discover test projects in the given directory."""
         projects = {}
 
@@ -533,7 +531,7 @@ class CICommand(ConfigurableCLICommand):
 
         return projects
 
-    def _validate_tools(self, projects: Dict[str, Dict[str, Any]]) -> List[str]:
+    def _validate_tools(self, projects: dict[str, dict[str, Any]]) -> list[str]:
         """Validate that required tools are available."""
         missing_tools = []
         for project_type, config in projects.items():
@@ -546,7 +544,7 @@ class CICommand(ConfigurableCLICommand):
         self,
         project_root: Path,
         project_type: str,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         timeout: int,
         verbose: bool,
     ) -> CITestResult:
@@ -635,7 +633,7 @@ class CICommand(ConfigurableCLICommand):
                 success=False,
             )
 
-    async def _process_nested_projects(self, config: CIConfig) -> List[Dict[str, Any]]:
+    async def _process_nested_projects(self, config: CIConfig) -> list[dict[str, Any]]:
         """Process nested projects with their own CI configurations."""
         nested_results = []
 
@@ -808,7 +806,7 @@ class CICommand(ConfigurableCLICommand):
         else:
             return "CI failed"
 
-    def _format_result_data(self) -> Dict[str, Any]:
+    def _format_result_data(self) -> dict[str, Any]:
         """Format execution result as data dictionary."""
         if not self._execution_result:
             return {}

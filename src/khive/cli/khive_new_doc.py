@@ -31,7 +31,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from khive.cli.base import CLIResult, ConfigurableCLICommand, cli_command
 from khive.utils import BaseConfig, ensure_directory, log_msg, safe_write_file, warn_msg
@@ -48,13 +48,13 @@ class Template:
     description: str
     output_subdir: str
     filename_prefix: str
-    meta: Dict[str, str]
+    meta: dict[str, str]
     body_template: str
 
     # AI-specific fields
-    ai_context: Optional[str] = None  # Context for AI to understand template purpose
-    variables: List[str] = field(default_factory=list)  # Expected variables
-    tags: List[str] = field(default_factory=list)  # For categorization
+    ai_context: str | None = None  # Context for AI to understand template purpose
+    variables: list[str] = field(default_factory=list)  # Expected variables
+    tags: list[str] = field(default_factory=list)  # For categorization
 
 
 @dataclass
@@ -62,15 +62,15 @@ class NewDocConfig(BaseConfig):
     """Configuration for document creation."""
 
     default_destination_base_dir: str = ".khive/docs"
-    custom_template_dirs: List[str] = field(default_factory=list)
-    default_search_paths: List[str] = field(
+    custom_template_dirs: list[str] = field(default_factory=list)
+    default_search_paths: list[str] = field(
         default_factory=lambda: [
             ".khive/templates",
             ".khive/prompts/templates",
             "docs/templates",
         ]
     )
-    default_vars: Dict[str, str] = field(default_factory=dict)
+    default_vars: dict[str, str] = field(default_factory=dict)
     ai_mode: bool = True  # Enable AI-specific features
 
     # Template creation
@@ -93,7 +93,7 @@ class NewDocCommand(ConfigurableCLICommand):
         return "new_doc.toml"
 
     @property
-    def default_config(self) -> Dict[str, Any]:
+    def default_config(self) -> dict[str, Any]:
         return {
             "default_destination_base_dir": ".khive/docs",
             "custom_template_dirs": [],
@@ -225,7 +225,7 @@ class NewDocCommand(ConfigurableCLICommand):
         )
 
     def _list_templates(
-        self, config: NewDocConfig, additional_dir: Optional[Path] = None
+        self, config: NewDocConfig, additional_dir: Path | None = None
     ) -> CLIResult:
         """List all available templates."""
         templates = self._discover_templates(config, additional_dir)
@@ -266,7 +266,7 @@ class NewDocCommand(ConfigurableCLICommand):
     def _create_template(
         self,
         name: str,
-        description: Optional[str],
+        description: str | None,
         config: NewDocConfig,
         ai_enhance: bool,
     ) -> CLIResult:
@@ -315,10 +315,10 @@ class NewDocCommand(ConfigurableCLICommand):
         type_or_template: str,
         identifier: str,
         config: NewDocConfig,
-        dest_override: Optional[Path],
-        custom_vars: Dict[str, str],
+        dest_override: Path | None,
+        custom_vars: dict[str, str],
         force: bool,
-        additional_template_dir: Optional[Path],
+        additional_template_dir: Path | None,
     ) -> CLIResult:
         """Create a document from a template."""
         # Find template
@@ -398,8 +398,8 @@ class NewDocCommand(ConfigurableCLICommand):
             )
 
     def _discover_templates(
-        self, config: NewDocConfig, additional_dir: Optional[Path] = None
-    ) -> List[Template]:
+        self, config: NewDocConfig, additional_dir: Path | None = None
+    ) -> list[Template]:
         """Discover all available templates."""
         search_dirs = []
 
@@ -505,8 +505,8 @@ class NewDocCommand(ConfigurableCLICommand):
         )
 
     def _find_template(
-        self, type_or_name: str, templates: List[Template]
-    ) -> Optional[Template]:
+        self, type_or_name: str, templates: list[Template]
+    ) -> Template | None:
         """Find a template by type or filename."""
         # Try exact filename match
         for tpl in templates:
@@ -529,7 +529,7 @@ class NewDocCommand(ConfigurableCLICommand):
 
         return None
 
-    def _render_template(self, template: Template, variables: Dict[str, str]) -> str:
+    def _render_template(self, template: Template, variables: dict[str, str]) -> str:
         """Render a template with variables."""
         # Render body
         content = template.body_template
@@ -568,7 +568,7 @@ class NewDocCommand(ConfigurableCLICommand):
 
         return "\n".join(lines)
 
-    def _substitute_vars(self, text: str, variables: Dict[str, str]) -> str:
+    def _substitute_vars(self, text: str, variables: dict[str, str]) -> str:
         """Substitute variables in text."""
         for key, value in variables.items():
             text = text.replace(f"{{{{{key}}}}}", str(value))
@@ -586,7 +586,7 @@ class NewDocCommand(ConfigurableCLICommand):
             return os.environ.get("USER", "Unknown")
 
     def _generate_template_content(
-        self, name: str, description: Optional[str], ai_enhance: bool
+        self, name: str, description: str | None, ai_enhance: bool
     ) -> str:
         """Generate content for a new template."""
         if ai_enhance:
@@ -606,9 +606,9 @@ ai_context: |
 
 # {{{{title}}}}
 
-**Date**: {{{{DATE}}}}  
-**Author**: {{{{AUTHOR}}}}  
-**Project**: {{{{PROJECT}}}}  
+**Date**: {{{{DATE}}}}
+**Author**: {{{{AUTHOR}}}}
+**Project**: {{{{PROJECT}}}}
 **Identifier**: {{{{IDENTIFIER}}}}
 
 ## Overview
@@ -625,9 +625,9 @@ ai_context: |
 
 ### Key Points
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## Metadata
 
@@ -652,7 +652,7 @@ title: {name} - {{{{IDENTIFIER}}}}
 
 # {{{{title}}}}
 
-**Date**: {{{{DATE}}}}  
+**Date**: {{{{DATE}}}}
 **Identifier**: {{{{IDENTIFIER}}}}
 
 ## Content
@@ -661,7 +661,7 @@ title: {name} - {{{{IDENTIFIER}}}}
 
 """
 
-    def _get_builtin_ai_templates(self) -> List[Template]:
+    def _get_builtin_ai_templates(self) -> list[Template]:
         """Get built-in AI-specific templates."""
         builtin = []
 
@@ -834,7 +834,7 @@ You are an AI assistant with the following capabilities and constraints:
         return builtin
 
 
-def main(argv: Optional[List[str]] = None) -> None:
+def main(argv: list[str] | None = None) -> None:
     """Entry point for khive CLI integration."""
     cmd = NewDocCommand()
     cmd.run(argv)

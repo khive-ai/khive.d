@@ -19,7 +19,6 @@ except ModuleNotFoundError:  # pragma: no cover
 # Make the src directory importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from khive.cli.khive_init import main_entry  # or _cli if that's the final entry point
 from khive.cli.khive_init import (  # Import other necessary items from khive_init
     CustomStepCfg,
     InitConfig,
@@ -27,6 +26,7 @@ from khive.cli.khive_init import (  # Import other necessary items from khive_in
     cond_ok,
     determine_steps_to_run,
     load_init_config,
+    main_entry,  # or _cli if that's the final entry point
     sh,
     step_python,
     step_tools,

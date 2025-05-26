@@ -29,7 +29,7 @@ import asyncio
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastmcp import Client
 from fastmcp.client.transports import PythonStdioTransport, SSETransport
@@ -45,21 +45,21 @@ class MCPServerConfig:
 
     name: str
     command: str
-    args: List[str] = field(default_factory=list)
-    env: Dict[str, str] = field(default_factory=dict)
-    always_allow: List[str] = field(default_factory=list)
+    args: list[str] = field(default_factory=list)
+    env: dict[str, str] = field(default_factory=dict)
+    always_allow: list[str] = field(default_factory=list)
     disabled: bool = False
     timeout: int = 30
     # New field for transport type
     transport: str = "stdio"  # stdio or sse
-    url: Optional[str] = None  # For SSE transport
+    url: str | None = None  # For SSE transport
 
 
 @dataclass
 class MCPConfig(BaseConfig):
     """Configuration for MCP command."""
 
-    servers: Dict[str, MCPServerConfig] = field(default_factory=dict)
+    servers: dict[str, MCPServerConfig] = field(default_factory=dict)
 
     @property
     def mcps_config_file(self) -> Path:
@@ -77,7 +77,7 @@ class MCPCommand(BaseCLICommand):
         )
         self._check_fastmcp()
         # Store active clients
-        self._clients: Dict[str, Client] = {}
+        self._clients: dict[str, Client] = {}
 
     def _check_fastmcp(self):
         """Check if FastMCP is installed."""
@@ -264,7 +264,7 @@ class MCPCommand(BaseCLICommand):
         )
 
     async def _cmd_server_status(
-        self, config: MCPConfig, server_name: Optional[str] = None
+        self, config: MCPConfig, server_name: str | None = None
     ) -> CLIResult:
         """Get status of one or all MCP servers."""
         if server_name:
@@ -378,7 +378,7 @@ class MCPCommand(BaseCLICommand):
         config: MCPConfig,
         server_name: str,
         tool_name: str,
-        arguments: Dict[str, Any],
+        arguments: dict[str, Any],
     ) -> CLIResult:
         """Call a tool on a specific server."""
         if server_name not in config.servers:
@@ -446,7 +446,7 @@ class MCPCommand(BaseCLICommand):
                 exit_code=1,
             )
 
-    def _parse_tool_arguments(self, args: argparse.Namespace) -> Dict[str, Any]:
+    def _parse_tool_arguments(self, args: argparse.Namespace) -> dict[str, Any]:
         """Parse tool arguments from CLI flags."""
         arguments = {}
 
@@ -545,7 +545,7 @@ class MCPCommand(BaseCLICommand):
             error_msg(result.message)
 
 
-def main(argv: Optional[List[str]] = None) -> None:
+def main(argv: list[str] | None = None) -> None:
     """Entry point for khive CLI integration."""
     cmd = MCPCommand()
     cmd.run(argv)

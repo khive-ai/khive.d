@@ -9,7 +9,6 @@ Tests for the enhanced rate limiting functionality in RateLimitedExecutor.
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from khive.clients.executor import RateLimitedExecutor
 from khive.clients.rate_limiter import (
     AdaptiveRateLimiter,

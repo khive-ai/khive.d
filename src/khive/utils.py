@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from functools import cache
 from pathlib import Path
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel

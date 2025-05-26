@@ -8,25 +8,25 @@ MCP (Model Context Protocol) server for the Git Service.
 Exposes git operations as tools that AI agents can use naturally.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
-from khive.services.git import GitService, GitRequest, WorkContext
+from khive.services.git import GitRequest, GitService, WorkContext
 
 # Initialize MCP server
 mcp = FastMCP(
     name="khive_git",
     instructions="""
     Natural language git operations designed for AI agents.
-    
+
     You don't need to understand git commands - just express what you want to do:
-    - "Save my progress" 
+    - "Save my progress"
     - "Share this for review"
     - "What changed recently?"
     - "Help me understand the codebase"
-    
+
     The service maintains context across operations and provides intelligent recommendations.
     """,
     tags=["git", "development", "collaboration", "version-control"],
@@ -51,24 +51,22 @@ class GitOperationParams(BaseModel):
     )
 
     # Optional context
-    task_description: Optional[str] = Field(None, description="What you're working on")
+    task_description: str | None = Field(None, description="What you're working on")
 
-    related_issues: Optional[List[str]] = Field(
+    related_issues: list[str] | None = Field(
         None, description="Issue numbers this relates to"
     )
 
-    requirements: Optional[List[str]] = Field(
+    requirements: list[str] | None = Field(
         None, description="Requirements or constraints for your work"
     )
 
-    design_decisions: Optional[List[str]] = Field(
+    design_decisions: list[str] | None = Field(
         None, description="Key decisions you've made"
     )
 
     # Session management
-    session_id: Optional[str] = Field(
-        None, description="Continue a previous git session"
-    )
+    session_id: str | None = Field(None, description="Continue a previous git session")
 
 
 class GitAnalysisParams(BaseModel):
@@ -84,13 +82,13 @@ class GitAnalysisParams(BaseModel):
         ],
     )
 
-    focus: Optional[List[str]] = Field(
+    focus: list[str] | None = Field(
         None,
         description="Specific areas to analyze",
         examples=["quality", "security", "performance", "patterns"],
     )
 
-    time_range: Optional[str] = Field(
+    time_range: str | None = Field(
         None,
         description="Time period to analyze",
         examples=["last week", "since yesterday", "past month"],
@@ -103,7 +101,7 @@ class GitAnalysisParams(BaseModel):
     description="Perform git operations using natural language",
     tags=["git", "save", "commit", "share", "collaborate"],
 )
-async def git_operation(params: GitOperationParams) -> Dict[str, Any]:
+async def git_operation(params: GitOperationParams) -> dict[str, Any]:
     """
     Perform git operations by expressing what you want to do.
 
@@ -169,7 +167,7 @@ async def git_operation(params: GitOperationParams) -> Dict[str, Any]:
     description="Analyze repository history, code quality, or patterns",
     tags=["git", "analysis", "history", "quality"],
 )
-async def git_analyze(params: GitAnalysisParams) -> Dict[str, Any]:
+async def git_analyze(params: GitAnalysisParams) -> dict[str, Any]:
     """
     Understand what's happening in the repository.
 
@@ -231,7 +229,7 @@ async def git_analyze(params: GitAnalysisParams) -> Dict[str, Any]:
     description="Get current git repository status and workflow state",
     tags=["git", "status", "state"],
 )
-async def git_status() -> Dict[str, Any]:
+async def git_status() -> dict[str, Any]:
     """
     Get a quick overview of the current repository state.
 
@@ -271,10 +269,8 @@ async def git_collaborate(
             "find reviewers",
         ],
     ),
-    context: Optional[str] = Field(
-        None, description="Additional context for the action"
-    ),
-) -> Dict[str, Any]:
+    context: str | None = Field(None, description="Additional context for the action"),
+) -> dict[str, Any]:
     """
     Help with collaboration workflows like creating PRs and handling reviews.
 
@@ -327,10 +323,10 @@ async def get_git_session() -> str:
     # For now, return a helpful message
     return """
     Git sessions maintain context across operations.
-    
+
     When you perform a git operation, you receive a session_id.
     Use this session_id in subsequent operations to maintain context.
-    
+
     This allows the service to:
     - Remember what you're working on
     - Generate better commit messages
@@ -349,41 +345,41 @@ async def git_workflow_prompt() -> str:
     """
     return """
     # Git Workflow Guide
-    
+
     ## Basic Development Flow
-    
+
     1. **Start Work**: "I'm starting work on [feature description]"
        - Creates/switches to appropriate branch
        - Sets up context for future operations
-    
+
     2. **Save Progress**: "Save my progress" or "I've implemented [what you did]"
        - Intelligently stages relevant files
        - Creates semantic commit with context
-    
+
     3. **Share for Review**: "Ready to share this for review"
        - Ensures changes are committed
        - Pushes to remote
        - Creates pull request
        - Assigns reviewers
-    
+
     4. **Address Feedback**: "The reviewers suggested [feedback]"
        - Helps implement changes
        - Creates appropriate commits
        - Updates PR
-    
+
     5. **Complete**: "All feedback addressed"
        - Ensures everything is ready
        - Helps with merge
-    
+
     ## Best Practices
-    
+
     - Provide context early (what you're working on, related issues)
     - Use the session_id to maintain context
     - Follow the recommendations provided
     - Be specific about what you've accomplished
-    
+
     ## Examples
-    
+
     - "I'm implementing OAuth authentication for issue #123"
     - "Added token refresh with 24-hour expiry"
     - "Fixed the security issues the reviewer mentioned"

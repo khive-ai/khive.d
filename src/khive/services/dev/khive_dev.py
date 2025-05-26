@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 
 from khive.services.dev.dev_service import DevServiceGroup
-from khive.services.dev.parts import DevRequest, DevMode, StackType
+from khive.services.dev.parts import DevMode, DevRequest, StackType
 
 
 async def run_dev_operation(args) -> None:

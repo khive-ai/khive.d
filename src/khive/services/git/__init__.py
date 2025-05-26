@@ -51,25 +51,25 @@ Architecture:
 
 from khive.services.git.git_service import GitService
 from khive.services.git.parts import (
+    # Insights and recommendations
+    CodeInsight,
+    # Collaboration
+    CollaborationContext,
+    FileUnderstanding,
+    # Errors
+    GitError,
     # Core request/response
     GitRequest,
     GitResponse,
+    GitSession,
+    PatternRecognition,
+    # Quality and patterns
+    QualityAssessment,
+    Recommendation,
+    RepositoryUnderstanding,
     # Context and state
     WorkContext,
     WorkIntent,
-    RepositoryUnderstanding,
-    GitSession,
-    # Insights and recommendations
-    CodeInsight,
-    FileUnderstanding,
-    Recommendation,
-    # Collaboration
-    CollaborationContext,
-    # Quality and patterns
-    QualityAssessment,
-    PatternRecognition,
-    # Errors
-    GitError,
 )
 
 # Version info

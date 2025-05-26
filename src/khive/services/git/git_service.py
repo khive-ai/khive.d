@@ -12,7 +12,7 @@ natural language understanding, contextual awareness, and workflow intelligence.
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from khive.services.git.nlp import IntentDetector, ResponseGenerator
@@ -57,7 +57,7 @@ class GitService(Service):
 
     def __init__(self):
         """Initialize the Git service."""
-        self._sessions: Dict[str, GitSession] = {}
+        self._sessions: dict[str, GitSession] = {}
         self._llm_endpoint = None
 
         # Core components
@@ -915,7 +915,7 @@ class GitService(Service):
         )
 
     def _get_or_create_session(
-        self, agent_id: str, conversation_id: Optional[str] = None
+        self, agent_id: str, conversation_id: str | None = None
     ) -> GitSession:
         """Get or create a session for continuity."""
         session_id = conversation_id or f"git-{agent_id}-{uuid4().hex[:8]}"
@@ -965,7 +965,7 @@ class GitService(Service):
 class PatternAnalyzer:
     """Analyzes patterns in repository usage."""
 
-    async def analyze(self, repository_knowledge: Dict[str, Any]) -> PatternRecognition:
+    async def analyze(self, repository_knowledge: dict[str, Any]) -> PatternRecognition:
         """Identify patterns in the codebase and workflow."""
         # Analyze commit patterns
         commit_patterns = self._analyze_commit_patterns(repository_knowledge)
@@ -986,7 +986,7 @@ class PatternAnalyzer:
             collaboration_graph=team_patterns.get("collaboration_graph", {}),
         )
 
-    def _analyze_commit_patterns(self, knowledge: Dict[str, Any]) -> Dict[str, Any]:
+    def _analyze_commit_patterns(self, knowledge: dict[str, Any]) -> dict[str, Any]:
         """Analyze patterns in commit history."""
         # This would analyze actual commit data
         return {
@@ -995,14 +995,14 @@ class PatternAnalyzer:
             "commit_frequency": "daily",
         }
 
-    def _analyze_code_patterns(self, knowledge: Dict[str, Any]) -> Dict[str, Any]:
+    def _analyze_code_patterns(self, knowledge: dict[str, Any]) -> dict[str, Any]:
         """Analyze patterns in code structure."""
         return {
             "common": ["dependency injection", "factory pattern", "observer pattern"],
             "anti": ["god objects", "copy-paste code", "magic numbers"],
         }
 
-    def _analyze_team_patterns(self, knowledge: Dict[str, Any]) -> Dict[str, Any]:
+    def _analyze_team_patterns(self, knowledge: dict[str, Any]) -> dict[str, Any]:
         """Analyze team collaboration patterns."""
         return {
             "avg_review_time": "2-4 hours",
@@ -1110,7 +1110,7 @@ class QualityAnalyzer:
 
     async def _find_quality_issues(
         self, state: RepositoryUnderstanding
-    ) -> List[QualityIssue]:
+    ) -> list[QualityIssue]:
         """Find specific quality issues."""
         issues = []
 
@@ -1150,7 +1150,7 @@ class QualityAnalyzer:
 
         return issues
 
-    def _identify_quick_wins(self, issues: List[QualityIssue]) -> List[str]:
+    def _identify_quick_wins(self, issues: list[QualityIssue]) -> list[str]:
         """Identify quick improvements."""
         quick_wins = []
 
@@ -1169,7 +1169,7 @@ class QualityAnalyzer:
 
     def _identify_long_term_improvements(
         self, state: RepositoryUnderstanding
-    ) -> List[str]:
+    ) -> list[str]:
         """Identify long-term improvements."""
         improvements = []
 
@@ -1189,7 +1189,7 @@ class CollaborationOptimizer:
 
     async def suggest_reviewers(
         self, state: RepositoryUnderstanding, session: GitSession
-    ) -> List[str]:
+    ) -> list[str]:
         """Suggest optimal reviewers based on expertise and availability."""
         reviewers = []
 
@@ -1209,7 +1209,7 @@ class CollaborationOptimizer:
         # Sort by expertise match (would be more sophisticated)
         return unique_reviewers[:3]  # Max 3 reviewers
 
-    def _identify_affected_areas(self, files: List[FileUnderstanding]) -> List[str]:
+    def _identify_affected_areas(self, files: list[FileUnderstanding]) -> list[str]:
         """Identify which areas of code are affected."""
         areas = set()
 

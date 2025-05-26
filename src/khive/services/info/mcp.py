@@ -19,7 +19,7 @@ Khive Info enhances your intelligence with real-time insights and comprehensive 
 
 This is NOT about asking other agents - it's about augmenting YOUR capabilities with:
 - Real-time information synthesis from multiple sources
-- Deep analytical perspectives on complex topics  
+- Deep analytical perspectives on complex topics
 - Fact-checking and verification capabilities
 - Comprehensive research synthesis
 

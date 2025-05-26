@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from khive.services.git.parts import (
     GitSession,
@@ -30,9 +30,9 @@ class IntentSignal:
 
     pattern: str
     weight: float = 1.0
-    requires_context: List[str] = None  # Required context keys
+    requires_context: list[str] = None  # Required context keys
 
-    def matches(self, text: str, context: Optional[WorkContext] = None) -> float:
+    def matches(self, text: str, context: WorkContext | None = None) -> float:
         """Check if this signal matches the input."""
         if re.search(self.pattern, text, re.IGNORECASE):
             # Check context requirements
@@ -151,10 +151,10 @@ class IntentDetector:
     def detect_intent(
         self,
         text: str,
-        context: Optional[WorkContext] = None,
-        state: Optional[RepositoryUnderstanding] = None,
-        session: Optional[GitSession] = None,
-    ) -> Tuple[WorkIntent, float]:
+        context: WorkContext | None = None,
+        state: RepositoryUnderstanding | None = None,
+        session: GitSession | None = None,
+    ) -> tuple[WorkIntent, float]:
         """
         Detect intent with confidence score.
 
@@ -205,8 +205,8 @@ class IntentDetector:
         return False
 
     def _adjust_for_history(
-        self, scores: Dict[WorkIntent, float], session: GitSession
-    ) -> Dict[WorkIntent, float]:
+        self, scores: dict[WorkIntent, float], session: GitSession
+    ) -> dict[WorkIntent, float]:
         """Adjust scores based on conversation history."""
         recent_requests = session.request_history[-3:]  # Last 3 requests
 
@@ -226,7 +226,7 @@ class ContextExtractor:
     """Extract rich context from natural language requests."""
 
     def extract_context(
-        self, text: str, existing_context: Optional[WorkContext] = None
+        self, text: str, existing_context: WorkContext | None = None
     ) -> WorkContext:
         """Extract work context from request text."""
         context = existing_context or WorkContext()
@@ -294,8 +294,8 @@ class ResponseGenerator:
         self,
         intent: WorkIntent,
         state: RepositoryUnderstanding,
-        session: Optional[GitSession] = None,
-    ) -> List[str]:
+        session: GitSession | None = None,
+    ) -> list[str]:
         """Generate contextual follow-up prompts."""
         prompts = []
 
@@ -333,8 +333,8 @@ class ResponseGenerator:
         self,
         intent: WorkIntent,
         state: RepositoryUnderstanding,
-        context: Dict[str, Any],
-    ) -> List[Recommendation]:
+        context: dict[str, Any],
+    ) -> list[Recommendation]:
         """Generate intelligent recommendations based on context."""
         recommendations = []
 

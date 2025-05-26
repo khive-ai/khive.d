@@ -20,7 +20,7 @@ import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, TypeVar
+from typing import Any, TypeVar
 
 from khive.utils import (
     BaseConfig,
@@ -30,7 +30,6 @@ from khive.utils import (
     load_toml_config,
     print_json_result,
     validate_directory,
-    verbose_mode,
 )
 
 # Type variables
@@ -45,14 +44,14 @@ class CLIResult:
 
     status: str  # success, failure, error, skipped, dry_run
     message: str
-    data: Dict[str, Any] | None = None
+    data: dict[str, Any] | None = None
     exit_code: int = 0
 
     def is_success(self) -> bool:
         """Check if the result represents success."""
         return self.status in ["success", "skipped", "dry_run"]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary for JSON output."""
         result = {
             "status": self.status,
@@ -80,7 +79,7 @@ class BaseCLICommand(ABC):
         self.command_name = command_name
         self.description = description
         self.parser = self._create_parser()
-        self.config: Optional[BaseConfig] = None
+        self.config: BaseConfig | None = None
 
     def _create_parser(self) -> argparse.ArgumentParser:
         """Create the argument parser with standard options."""
@@ -113,24 +112,21 @@ class BaseCLICommand(ABC):
     @abstractmethod
     def _add_arguments(self, parser: argparse.ArgumentParser) -> None:
         """Add command-specific arguments to the parser."""
-        pass
 
     @abstractmethod
     def _create_config(self, args: argparse.Namespace) -> BaseConfig:
         """Create and return the configuration object for this command."""
-        pass
 
     @abstractmethod
     def _execute(self, args: argparse.Namespace, config: BaseConfig) -> CLIResult:
         """Execute the main command logic."""
-        pass
 
     def _validate_args(self, args: argparse.Namespace) -> None:
         """Validate command-line arguments. Override in subclasses if needed."""
         # Validate project root
         validate_directory(args.project_root, "project root")
 
-    def _load_config_file(self, config_path: Path) -> Dict[str, Any]:
+    def _load_config_file(self, config_path: Path) -> dict[str, Any]:
         """Load configuration from TOML file."""
         return load_toml_config(config_path)
 
@@ -148,7 +144,7 @@ class BaseCLICommand(ABC):
         if not result.is_success():
             sys.exit(result.exit_code)
 
-    def run(self, argv: Optional[List[str]] = None) -> int:
+    def run(self, argv: list[str] | None = None) -> int:
         """
         Main entry point for the command.
 
@@ -224,15 +220,13 @@ class ConfigurableCLICommand(BaseCLICommand):
     @abstractmethod
     def config_filename(self) -> str:
         """Return the name of the configuration file (e.g., 'commit.toml')."""
-        pass
 
     @property
     @abstractmethod
-    def default_config(self) -> Dict[str, Any]:
+    def default_config(self) -> dict[str, Any]:
         """Return the default configuration dictionary."""
-        pass
 
-    def _load_command_config(self, project_root: Path) -> Dict[str, Any]:
+    def _load_command_config(self, project_root: Path) -> dict[str, Any]:
         """Load command-specific configuration from .khive/{config_filename}."""
         config_path = project_root / ".khive" / self.config_filename
         file_config = self._load_config_file(config_path)
@@ -285,10 +279,10 @@ class GitBasedCLICommand(ConfigurableCLICommand):
 class CLICommandFactory:
     """Factory for creating and registering CLI commands."""
 
-    _commands: Dict[str, Type[BaseCLICommand]] = {}
+    _commands: dict[str, type[BaseCLICommand]] = {}
 
     @classmethod
-    def register(cls, name: str, command_class: Type[BaseCLICommand]) -> None:
+    def register(cls, name: str, command_class: type[BaseCLICommand]) -> None:
         """Register a command class with a name."""
         cls._commands[name] = command_class
 
@@ -300,7 +294,7 @@ class CLICommandFactory:
         return cls._commands[name](*args, **kwargs)
 
     @classmethod
-    def list_commands(cls) -> List[str]:
+    def list_commands(cls) -> list[str]:
         """List all registered command names."""
         return list(cls._commands.keys())
 
@@ -309,7 +303,7 @@ class CLICommandFactory:
 def cli_command(name: str):
     """Decorator to register a CLI command class."""
 
-    def decorator(cls: Type[BaseCLICommand]) -> Type[BaseCLICommand]:
+    def decorator(cls: type[BaseCLICommand]) -> type[BaseCLICommand]:
         CLICommandFactory.register(name, cls)
         return cls
 
@@ -325,7 +319,7 @@ class WorkflowStep:
         self.description = description
         self.required = required
         self.completed = False
-        self.error: Optional[str] = None
+        self.error: str | None = None
 
 
 class CommandWorkflow:
@@ -333,7 +327,7 @@ class CommandWorkflow:
 
     def __init__(self, name: str):
         self.name = name
-        self.steps: List[WorkflowStep] = []
+        self.steps: list[WorkflowStep] = []
         self.current_step = 0
 
     def add_step(self, step: WorkflowStep) -> None:
@@ -393,7 +387,7 @@ class CommandWorkflow:
                 return False
         return True
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get the current workflow status."""
         return {
             "name": self.name,

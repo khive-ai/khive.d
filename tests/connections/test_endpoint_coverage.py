@@ -9,7 +9,6 @@ Additional tests for the Endpoint class to increase coverage.
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from khive.connections.endpoint import Endpoint, EndpointConfig
 
 

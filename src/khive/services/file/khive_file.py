@@ -133,7 +133,7 @@ def format_output(response, operation: str) -> None:
     elif operation == "info":
         if response.file_info:
             info = response.file_info
-            print(f"📋 File Information")
+            print("📋 File Information")
             print(f"Path:     {info.path}")
             print(f"Type:     {info.type}")
             print(f"Size:     {info.size_human} ({info.size:,} bytes)")

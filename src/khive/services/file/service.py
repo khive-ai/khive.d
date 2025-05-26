@@ -613,7 +613,7 @@ class FileServiceGroup(Service):
                 and mime_type.startswith("text")
             ):
                 try:
-                    with open(path, "r", encoding="utf-8") as f:
+                    with open(path, encoding="utf-8") as f:
                         line_count = sum(1 for _ in f)
                     encoding = "utf-8"
                 except Exception:
@@ -645,7 +645,7 @@ class FileServiceGroup(Service):
                 item_count=item_count,
                 total_size=size if file_type == FileType.DIRECTORY else None,
             )
-        except Exception as e:
+        except Exception:
             # Return minimal info on error
             return FileInfo(
                 path=str(path),

@@ -336,7 +336,7 @@ khive new-doc RR 123
 ### 3. Design Phase
 
 ```bash
-# Architect  
+# Architect
 khive info "Validate token file storage security for CLI applications"
 khive new-doc TDS 123
 # Service provides evidence, architect creates design

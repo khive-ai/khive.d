@@ -8,7 +8,6 @@ import asyncio
 import re
 from typing import Any
 
-
 from khive.clients.executor import AsyncExecutor
 from khive.connections.match_endpoint import match_endpoint
 from khive.services.info.parts import (
@@ -38,7 +37,7 @@ class InfoServiceGroup(Service):
         self._executor = AsyncExecutor(max_concurrency=10)
 
         # Synthesis prompt for creating coherent narratives
-        self._synthesis_prompt = """You are an insight synthesis expert. 
+        self._synthesis_prompt = """You are an insight synthesis expert.
 Given multiple pieces of information, create a coherent narrative that:
 1. Directly answers the user's query
 2. Integrates all relevant findings
@@ -87,7 +86,7 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
         except Exception as e:
             return InfoResponse(
                 success=False,
-                summary=f"Unable to gather insights: {str(e)}",
+                summary=f"Unable to gather insights: {e!s}",
                 error=str(e),
                 mode_used=request.mode or InsightMode.QUICK,
                 confidence=0.0,

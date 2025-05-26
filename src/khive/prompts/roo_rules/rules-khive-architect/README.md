@@ -60,7 +60,7 @@ khive new-doc TDS 123
 # Design for service intelligence
 class AuthenticationService:
     """Works with khive services for implementation"""
-    
+
     async def authenticate(self, credentials: Credentials) -> Token:
         """Implementer will use khive git and khive dev for this"""
         pass

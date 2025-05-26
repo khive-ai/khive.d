@@ -28,9 +28,10 @@ import json
 import os
 import stat
 from collections import OrderedDict
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any
 
 from khive.cli.base import CLIResult, ConfigurableCLICommand, WorkflowStep, cli_command
 from khive.utils import (
@@ -48,9 +49,9 @@ from khive.utils import (
 class CustomStepConfig:
     """Configuration for a custom initialization step."""
 
-    cmd: Optional[str] = None
-    run_if: Optional[str] = None
-    cwd: Optional[str] = None  # Relative to project_root
+    cmd: str | None = None
+    run_if: str | None = None
+    cwd: str | None = None  # Relative to project_root
 
 
 @dataclass
@@ -58,12 +59,12 @@ class InitConfig(BaseConfig):
     """Configuration for the init command."""
 
     ignore_missing_optional_tools: bool = False
-    disable_auto_stacks: List[str] = field(default_factory=list)
-    force_enable_steps: List[str] = field(default_factory=list)
-    custom_steps: Dict[str, CustomStepConfig] = field(default_factory=dict)
-    steps_to_run_explicitly: Optional[List[str]] = None
-    stack: Optional[str] = None  # Specific stack to initialize
-    extra: Optional[str] = None  # Extra dependencies to include
+    disable_auto_stacks: list[str] = field(default_factory=list)
+    force_enable_steps: list[str] = field(default_factory=list)
+    custom_steps: dict[str, CustomStepConfig] = field(default_factory=dict)
+    steps_to_run_explicitly: list[str] | None = None
+    stack: str | None = None  # Specific stack to initialize
+    extra: str | None = None  # Extra dependencies to include
 
 
 class AsyncWorkflowStep(WorkflowStep):
@@ -73,13 +74,13 @@ class AsyncWorkflowStep(WorkflowStep):
         self,
         name: str,
         description: str,
-        func: Callable[[InitConfig], Awaitable[Dict[str, Any]]],
+        func: Callable[[InitConfig], Awaitable[dict[str, Any]]],
         required: bool = True,
     ):
         super().__init__(name, description, required)
         self.func = func
 
-    async def execute(self, config: InitConfig) -> Dict[str, Any]:
+    async def execute(self, config: InitConfig) -> dict[str, Any]:
         """Execute the async step function."""
         try:
             result = await self.func(config)
@@ -112,7 +113,7 @@ class InitCommand(ConfigurableCLICommand):
         return "init.toml"
 
     @property
-    def default_config(self) -> Dict[str, Any]:
+    def default_config(self) -> dict[str, Any]:
         """Default configuration for init command."""
         return {
             "ignore_missing_optional_tools": False,
@@ -235,7 +236,7 @@ force_enable_steps = []
             exit_code=1 if overall_status == "failure" else 0,
         )
 
-    async def _run_async(self, config: InitConfig) -> List[Dict[str, Any]]:
+    async def _run_async(self, config: InitConfig) -> list[dict[str, Any]]:
         """Run the async initialization workflow."""
         # Check for custom init script first
         custom_results = await self._check_and_run_custom_script_async(config)
@@ -335,13 +336,15 @@ force_enable_steps = []
                 if name == "tools":
                     should_run = True
                 elif (
-                    name == "python"
-                    and (config.project_root / "pyproject.toml").exists()
+                    (
+                        name == "python"
+                        and (config.project_root / "pyproject.toml").exists()
+                    )
+                    or name == "npm"
+                    and (config.project_root / "package.json").exists()
+                    or name == "rust"
+                    and (config.project_root / "Cargo.toml").exists()
                 ):
-                    should_run = name not in config.disable_auto_stacks
-                elif name == "npm" and (config.project_root / "package.json").exists():
-                    should_run = name not in config.disable_auto_stacks
-                elif name == "rust" and (config.project_root / "Cargo.toml").exists():
                     should_run = name not in config.disable_auto_stacks
                 elif (
                     name == "husky" and (config.project_root / "package.json").exists()
@@ -360,7 +363,7 @@ force_enable_steps = []
 
     def _dry_run_step(
         self, step_name: str, step_type: str, step_action: Any, config: InitConfig
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate dry-run result for a step."""
         cmd_info = "N/A (builtin function)"
         cwd_info = ""
@@ -380,7 +383,7 @@ force_enable_steps = []
 
     async def _run_custom_step(
         self, step_name: str, custom_cfg: CustomStepConfig, config: InitConfig
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run a custom initialization step."""
         # Check run_if condition
         if not self._check_condition(custom_cfg.run_if, config.project_root):
@@ -407,7 +410,7 @@ force_enable_steps = []
             custom_cfg.cmd, cwd=cwd, step_name=step_name
         )
 
-    def _check_condition(self, expr: Optional[str], project_root: Path) -> bool:
+    def _check_condition(self, expr: str | None, project_root: Path) -> bool:
         """Check if a run_if condition is met."""
         if not expr:
             return True
@@ -428,7 +431,7 @@ force_enable_steps = []
 
     async def _run_shell_command_async(
         self, cmd: str, cwd: Path, step_name: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run a shell command asynchronously."""
         log_msg(f"[{step_name}] $ {cmd} (in {cwd})")
 
@@ -470,7 +473,7 @@ force_enable_steps = []
 
     async def _check_and_run_custom_script_async(
         self, config: InitConfig
-    ) -> Optional[List[Dict[str, Any]]]:
+    ) -> list[dict[str, Any]] | None:
         """Check for and run custom initialization script."""
         custom_script_path = config.khive_config_dir / "scripts" / "khive_init.sh"
 
@@ -598,7 +601,7 @@ force_enable_steps = []
                 }
             ]
 
-    def _prepare_custom_script_env(self, config: InitConfig) -> Dict[str, str]:
+    def _prepare_custom_script_env(self, config: InitConfig) -> dict[str, str]:
         """Prepare environment variables for custom script."""
         # Detect stacks
         detected_stacks = []
@@ -644,7 +647,7 @@ force_enable_steps = []
         ])
 
     # Built-in step implementations
-    async def _step_tools(self, config: InitConfig) -> Dict[str, Any]:
+    async def _step_tools(self, config: InitConfig) -> dict[str, Any]:
         """Check for required and optional tools."""
         messages = []
         overall_status = "OK"
@@ -701,7 +704,7 @@ force_enable_steps = []
             ),
         }
 
-    async def _step_python(self, config: InitConfig) -> Dict[str, Any]:
+    async def _step_python(self, config: InitConfig) -> dict[str, Any]:
         """Initialize Python dependencies with uv."""
         if not (config.project_root / "pyproject.toml").exists():
             return {
@@ -730,7 +733,7 @@ force_enable_steps = []
             " ".join(cmd), cwd=config.project_root, step_name="python"
         )
 
-    async def _step_npm(self, config: InitConfig) -> Dict[str, Any]:
+    async def _step_npm(self, config: InitConfig) -> dict[str, Any]:
         """Initialize Node.js dependencies with pnpm."""
         if not (config.project_root / "package.json").exists():
             return {
@@ -763,7 +766,7 @@ force_enable_steps = []
             " ".join(cmd), cwd=config.project_root, step_name="npm"
         )
 
-    async def _step_rust(self, config: InitConfig) -> Dict[str, Any]:
+    async def _step_rust(self, config: InitConfig) -> dict[str, Any]:
         """Initialize Rust project with cargo."""
         if not (config.project_root / "Cargo.toml").exists():
             return {
@@ -798,7 +801,7 @@ force_enable_steps = []
             " ".join(cmd), cwd=config.project_root, step_name="rust"
         )
 
-    async def _step_husky(self, config: InitConfig) -> Dict[str, Any]:
+    async def _step_husky(self, config: InitConfig) -> dict[str, Any]:
         """Set up Husky git hooks."""
         if not (config.project_root / "package.json").exists():
             return {
@@ -845,7 +848,7 @@ force_enable_steps = []
         return result
 
 
-def main(argv: Optional[List[str]] = None) -> None:
+def main(argv: list[str] | None = None) -> None:
     """Entry point for khive CLI integration."""
     cmd = InitCommand()
     cmd.run(argv)

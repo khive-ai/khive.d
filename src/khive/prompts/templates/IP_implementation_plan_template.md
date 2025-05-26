@@ -205,7 +205,7 @@ description: "Service-assisted code review template"
 
 # Guidance
 
-**Purpose**  
+**Purpose**
 Review code quality beyond what services automatically check.
 
 **Service Integration**

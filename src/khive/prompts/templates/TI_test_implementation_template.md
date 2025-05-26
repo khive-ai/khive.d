@@ -57,14 +57,14 @@ khive ci          # Full test suite
 ```python
 class TestAuthService:
     """Tests designed to work with khive services"""
-    
+
     def test_token_storage(self):
         """khive dev will validate this test"""
         # Clear, focused test
         service = AuthService()
         token = service.store_token("test-token")
         assert token.is_stored
-        
+
     def test_performance(self):
         """khive dev automatically benchmarks this"""
         # Service provides timing metrics
@@ -80,14 +80,14 @@ class TestAuthService:
 def test_refresh_logic():
     """Test token refresh with backoff"""
     service = AuthService()
-    
+
     # Mock external service
     with patch('auth.external_api') as mock:
         mock.return_value = new_token()
-        
+
         result = service.refresh_token()
         assert result.is_valid
-        
+
     # khive dev ensures this is covered
 ```
 
@@ -97,13 +97,13 @@ def test_refresh_logic():
 async def test_full_auth_flow():
     """End-to-end authentication test"""
     # khive ci handles test database setup
-    
+
     async with test_client() as client:
         # Test complete flow
-        response = await client.post("/auth/login", 
+        response = await client.post("/auth/login",
                                    json={"user": "test"})
         assert response.status == 200
-        
+
         # Verify token works
         token = response.json()["token"]
         auth_response = await client.get("/protected",
@@ -129,7 +129,7 @@ coverage:
 # Service tracks these automatically
 performance_targets = {
     "auth_request": "< 100ms",
-    "token_refresh": "< 200ms", 
+    "token_refresh": "< 200ms",
     "batch_operation": "< 1s for 100 items"
 }
 ```
@@ -158,7 +158,7 @@ def valid_user():
 # Write test
 # edit test_auth.py
 
-# Validate immediately  
+# Validate immediately
 khive dev "test this module"
 
 # Fix issues
