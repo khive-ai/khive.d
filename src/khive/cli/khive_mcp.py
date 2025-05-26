@@ -340,28 +340,41 @@ class MCPCommand(BaseCLICommand):
         except ImportError:
             log_msg("nest_asyncio not available, using standard asyncio")
 
+        result = None
         try:
             if args.subcommand == "list":
-                return await self._cmd_list_servers(config)
+                result = await self._cmd_list_servers(config)
             elif args.subcommand == "status":
                 server_name = getattr(args, "server", None)
-                return await self._cmd_server_status(config, server_name)
+                result = await self._cmd_server_status(config, server_name)
             elif args.subcommand == "tools":
-                return await self._cmd_list_tools(config, args.server)
+                result = await self._cmd_list_tools(config, args.server)
             elif args.subcommand == "call":
                 arguments = self._parse_tool_arguments(args)
-                return await self._cmd_call_tool(
+                result = await self._cmd_call_tool(
                     config, args.server, args.tool, arguments
                 )
             else:
-                return CLIResult(
+                result = CLIResult(
                     status="failure",
                     message=f"Unknown subcommand: {args.subcommand}",
                     exit_code=1,
                 )
-        finally:
-            # Cleanup all clients
-            await self._cleanup_all_clients()
+        except Exception as e:
+            # If we get an exception, try to cleanup but don't let cleanup errors mask the original error
+            try:
+                await self._safe_cleanup_all_clients()
+            except Exception as cleanup_error:
+                log_msg(f"Cleanup error (ignoring): {cleanup_error}")
+            raise e
+        else:
+            # Normal cleanup only if command succeeded
+            try:
+                await self._safe_cleanup_all_clients()
+            except Exception as cleanup_error:
+                log_msg(f"Cleanup error (ignoring): {cleanup_error}")
+
+        return result
 
     def _resolve_command_path(self, command: str) -> str:
         """Resolve command to full path if it's a system command."""
@@ -555,25 +568,77 @@ class MCPCommand(BaseCLICommand):
 
     async def _cleanup_all_clients(self):
         """Clean up all active clients."""
+        if not self._active_clients:
+            return
+
+        # Create a list to hold actual tasks
         cleanup_tasks = []
 
         for client_key, client in list(self._active_clients.items()):
 
             async def cleanup_client(key, c):
                 try:
-                    async with asyncio.timeout(CLEANUP_TIMEOUT):
-                        await c.__aexit__(None, None, None)
+                    # Use wait_for instead of timeout context to avoid CancelledError
+                    await asyncio.wait_for(
+                        c.__aexit__(None, None, None), timeout=CLEANUP_TIMEOUT
+                    )
+                except asyncio.TimeoutError:
+                    log_msg(f"Timeout cleaning up client {key}")
                 except Exception as e:
                     log_msg(f"Error cleaning up client {key}: {e}")
                 finally:
-                    if key in self._active_clients:
-                        del self._active_clients[key]
+                    # Always remove from active clients
+                    self._active_clients.pop(key, None)
 
-            cleanup_tasks.append(cleanup_client(client_key, client))
+            # Create actual tasks, not just coroutines
+            task = asyncio.create_task(cleanup_client(client_key, client))
+            cleanup_tasks.append(task)
 
         if cleanup_tasks:
-            await asyncio.gather(*cleanup_tasks, return_exceptions=True)
+            # Shield the gather operation from cancellation and wait for all tasks
+            try:
+                await asyncio.shield(
+                    asyncio.gather(*cleanup_tasks, return_exceptions=True)
+                )
+            except Exception as e:
+                log_msg(f"Error during client cleanup: {e}")
 
+        # Final cleanup
+        self._active_clients.clear()
+        self._client_locks.clear()
+
+    async def _safe_cleanup_all_clients(self):
+        """Safely clean up all active clients, ignoring cancellation and other errors."""
+        if not self._active_clients:
+            return
+
+        # Make a copy of the clients to avoid modification during iteration
+        clients_to_cleanup = list(self._active_clients.items())
+
+        for client_key, client in clients_to_cleanup:
+            try:
+                # Try to close the client without any timeout context that could cause cancellation
+                # Just fire and forget - don't wait for complex cleanup
+                if hasattr(client, "_session_cm") and client._session_cm:
+                    # For FastMCP clients, try to close the session directly
+                    try:
+                        await asyncio.wait_for(
+                            client.__aexit__(None, None, None), timeout=0.5
+                        )
+                    except (asyncio.TimeoutError, asyncio.CancelledError):
+                        # Ignore timeout and cancellation errors
+                        pass
+                    except Exception:
+                        # Ignore all other errors during cleanup
+                        pass
+            except Exception:
+                # Ignore all cleanup errors
+                pass
+            finally:
+                # Always remove from tracking, regardless of cleanup success
+                self._active_clients.pop(client_key, None)
+
+        # Clear everything
         self._active_clients.clear()
         self._client_locks.clear()
 

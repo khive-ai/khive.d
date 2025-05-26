@@ -219,7 +219,11 @@ class BaseCLICommand(ABC):
                             )
                             result_container["result"] = result
                         finally:
-                            new_loop.close()
+                            # Ensure proper cleanup
+                            try:
+                                new_loop.close()
+                            except Exception:
+                                pass
                             asyncio.set_event_loop(None)
                     except Exception as e:
                         exception_container["exception"] = e
@@ -234,9 +238,13 @@ class BaseCLICommand(ABC):
 
                 return result_container["result"]
 
-            except RuntimeError:
+            except RuntimeError as e:
                 # No event loop running, safe to use asyncio.run()
-                return asyncio.run(self._execute(args, config))
+                if "no running event loop" in str(e).lower():
+                    return asyncio.run(self._execute(args, config))
+                else:
+                    # Some other RuntimeError, re-raise
+                    raise
         else:
             # Run sync method
             return self._execute(args, config)
