@@ -27,12 +27,13 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from fastmcp import Client
-from fastmcp.client.transports import PythonStdioTransport, SSETransport
+from fastmcp.client.transports import PythonStdioTransport, SSETransport, StdioTransport
 
 from khive.utils import BaseConfig, die, error_msg, info_msg, log_msg, warn_msg
 
@@ -206,6 +207,43 @@ class MCPCommand(BaseCLICommand):
                 message=f"Unknown subcommand: {args.subcommand}",
                 exit_code=1,
             )
+    def _resolve_command_path(self, command: str) -> str:
+        """Resolve command to full path if it's a system command."""
+        # If command is already an absolute path, use it as-is
+        if Path(command).is_absolute():
+            return command
+        
+        # If command exists as a relative path, use it as-is
+        if Path(command).exists():
+            return command
+            
+        # Try to find the command in PATH
+        resolved_path = shutil.which(command)
+        if resolved_path:
+            return resolved_path
+            
+        # If not found, return original command and let the transport handle the error
+        return command
+
+    def _is_python_script(self, path: str) -> bool:
+        """Check if a file is a Python script."""
+        path_obj = Path(path)
+        
+        # Check file extension
+        if path_obj.suffix == '.py':
+            return True
+            
+        # Check if it's executable and has python shebang
+        if path_obj.exists() and path_obj.is_file():
+            try:
+                with open(path_obj, 'rb') as f:
+                    first_line = f.readline().decode('utf-8', errors='ignore')
+                    if first_line.startswith('#!') and 'python' in first_line:
+                        return True
+            except (OSError, UnicodeDecodeError):
+                pass
+                
+        return False
 
     async def _get_client(self, server_config: MCPServerConfig) -> Client:
         """Get or create a FastMCP client for a server."""
@@ -216,12 +254,23 @@ class MCPCommand(BaseCLICommand):
         if server_config.transport == "sse" and server_config.url:
             transport = SSETransport(server_config.url)
         else:
-            # Default to stdio transport
-            transport = PythonStdioTransport(
-                script_path=server_config.command,
-                args=server_config.args,
-                env=server_config.env,
-            )
+            # Default to stdio transport - resolve command path first
+            resolved_command = self._resolve_command_path(server_config.command)
+            
+            # Choose appropriate transport based on command type
+            if self._is_python_script(resolved_command):
+                transport = PythonStdioTransport(
+                    script_path=resolved_command,
+                    args=server_config.args,
+                    env=server_config.env,
+                )
+            else:
+                # Use generic StdioTransport for non-Python executables
+                transport = StdioTransport(
+                    command=resolved_command,
+                    args=server_config.args,
+                    env=server_config.env,
+                )
 
         # Create client
         client = Client(transport)
