@@ -197,6 +197,9 @@ class MCPCommand(BaseCLICommand):
         config = MCPConfig(project_root=args.project_root)
         config.update_from_cli_args(args)
 
+        # Load environment variables from .env file
+        env_vars = self._load_environment_variables(config.project_root)
+
         # Load MCP server configurations
         if config.mcps_config_file.exists():
             log_msg(f"Loading MCP config from {config.mcps_config_file}")
@@ -208,11 +211,18 @@ class MCPCommand(BaseCLICommand):
                     # Intelligently detect transport type
                     transport, url = self._detect_transport_type(server_config)
 
+                    # Merge environment variables with priority: config env > .env file > system env
+                    merged_env = self._merge_environment_variables(
+                        server_config.get("env", {}),
+                        env_vars,
+                        server_name
+                    )
+
                     config.servers[server_name] = MCPServerConfig(
                         name=server_name,
                         command=server_config.get("command", ""),
                         args=server_config.get("args", []),
-                        env=server_config.get("env", {}),
+                        env=merged_env,
                         always_allow=server_config.get("alwaysAllow", []),
                         disabled=server_config.get("disabled", False),
                         timeout=server_config.get(
@@ -227,6 +237,85 @@ class MCPCommand(BaseCLICommand):
                 warn_msg(f"Could not parse MCP config: {e}")
 
         return config
+
+    def _load_environment_variables(self, project_root: Path) -> dict[str, str]:
+        """Load environment variables from .env file and system environment."""
+        env_vars = {}
+        
+        # Load from .env file if it exists
+        env_file = project_root / ".env"
+        if env_file.exists():
+            try:
+                log_msg(f"Loading environment variables from {env_file}")
+                with open(env_file, 'r') as f:
+                    for line_num, line in enumerate(f, 1):
+                        line = line.strip()
+                        # Skip empty lines and comments
+                        if not line or line.startswith('#'):
+                            continue
+                        
+                        if '=' in line:
+                            key, value = line.split('=', 1)
+                            env_vars[key.strip()] = value.strip()
+                        else:
+                            warn_msg(f"Invalid .env line {line_num}: {line}")
+                            
+                log_msg(f"Loaded {len(env_vars)} environment variables from .env file")
+            except Exception as e:
+                warn_msg(f"Error reading .env file: {e}")
+        
+        return env_vars
+
+    def _merge_environment_variables(
+        self,
+        config_env: dict[str, str],
+        dotenv_vars: dict[str, str],
+        server_name: str
+    ) -> dict[str, str]:
+        """
+        Merge environment variables with proper priority and mapping.
+        
+        Priority order:
+        1. Config file env section (highest priority)
+        2. .env file variables
+        3. System environment variables (lowest priority)
+        
+        Also handles common environment variable name mappings.
+        """
+        merged_env = {}
+        
+        # Define common environment variable mappings for different servers
+        env_mappings = {
+            "github": {
+                "GITHUB_PERSONAL_ACCESS_TOKEN": ["GITHUB_TOKEN", "GITHUB_PERSONAL_ACCESS_TOKEN"],
+                "GITHUB_TOKEN": ["GITHUB_TOKEN", "GITHUB_PERSONAL_ACCESS_TOKEN"],
+            },
+            # Add more server-specific mappings as needed
+        }
+        
+        # Start with system environment
+        merged_env.update(os.environ)
+        
+        # Apply .env file variables (overrides system env)
+        merged_env.update(dotenv_vars)
+        
+        # Apply config env variables (highest priority)
+        merged_env.update(config_env)
+        
+        # Handle environment variable mappings for this server
+        if server_name in env_mappings:
+            server_mappings = env_mappings[server_name]
+            
+            for target_var, source_vars in server_mappings.items():
+                # If target variable is not set, try to find it from source variables
+                if target_var not in merged_env or not merged_env[target_var]:
+                    for source_var in source_vars:
+                        if source_var in merged_env and merged_env[source_var]:
+                            merged_env[target_var] = merged_env[source_var]
+                            log_msg(f"Mapped {source_var} -> {target_var} for server '{server_name}'")
+                            break
+        
+        return merged_env
 
     def _get_default_timeout(self, server_config: dict) -> float:
         """Get appropriate default timeout based on server configuration."""
