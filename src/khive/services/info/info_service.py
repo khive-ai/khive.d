@@ -63,6 +63,14 @@ Information Sources:
 
 Provide a clear, comprehensive synthesis that enhances understanding."""
 
+    async def search(self, request: InfoRequest) -> InfoResponse:
+        """
+        Search for information based on the request.
+        
+        This is an alias for handle_request for backward compatibility.
+        """
+        return await self.handle_request(request)
+
     async def handle_request(self, request: InfoRequest) -> InfoResponse:
         """
         Handle information request with intelligent routing.

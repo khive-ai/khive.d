@@ -309,7 +309,7 @@ class TestAsyncAPIClient:
     async def test_url_construction(self):
         """Test URL construction with base_url."""
         base_url = "https://api.example.com/v1"
-        client = APIClient(base_url=base_url)
+        client = AsyncAPIClient(base_url=base_url)
 
         # Test absolute URL construction
         full_url = client._build_url("/users")
@@ -322,7 +322,7 @@ class TestAsyncAPIClient:
     def test_header_merging(self):
         """Test merging of default and request headers."""
         default_headers = {"Authorization": "Bearer token", "User-Agent": "test"}
-        client = APIClient(default_headers=default_headers)
+        client = AsyncAPIClient(default_headers=default_headers)
 
         request_headers = {"Content-Type": "application/json", "X-Custom": "value"}
 
@@ -338,7 +338,7 @@ class TestAsyncAPIClient:
     def test_request_timeout_configuration(self):
         """Test timeout configuration."""
         timeout = 45.0
-        client = APIClient(timeout=timeout)
+        client = AsyncAPIClient(timeout=timeout)
 
         assert client.timeout == timeout
 

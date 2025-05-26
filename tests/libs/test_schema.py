@@ -115,11 +115,18 @@ class TestSchemaUtil:
         mock_module.__dict__ = {"TestModel": MockTestModel}
 
         with patch("tempfile.TemporaryDirectory") as mock_temp_dir:
-            mock_temp_path = Mock()
-            mock_temp_path.__truediv__ = lambda self, other: Mock(
-                stem="testmodel_model_123", exists=lambda: True
-            )
-            mock_temp_dir.return_value.__enter__.return_value = mock_temp_path
+            # Mock the temporary directory path as a string
+            temp_dir_path = "/tmp/test_temp_dir"
+            mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
+            
+            # Mock Path operations
+            with patch("pathlib.Path") as mock_path_class:
+                mock_temp_path = MagicMock()
+                mock_output_file = MagicMock()
+                mock_output_file.stem = "testmodel_model_123"
+                mock_output_file.exists.return_value = True
+                mock_temp_path.__truediv__.return_value = mock_output_file
+                mock_path_class.return_value = mock_temp_path
 
             result = SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
 
@@ -162,11 +169,18 @@ class TestSchemaUtil:
         mock_module.__dict__ = {"TestModel": MockTestModel}
 
         with patch("tempfile.TemporaryDirectory") as mock_temp_dir:
-            mock_temp_path = Mock()
-            mock_temp_path.__truediv__ = lambda self, other: Mock(
-                stem="testmodel_model_123", exists=lambda: True
-            )
-            mock_temp_dir.return_value.__enter__.return_value = mock_temp_path
+            # Mock the temporary directory path as a string
+            temp_dir_path = "/tmp/test_temp_dir"
+            mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
+            
+            # Mock Path operations
+            with patch("pathlib.Path") as mock_path_class:
+                mock_temp_path = MagicMock()
+                mock_output_file = MagicMock()
+                mock_output_file.stem = "testmodel_model_123"
+                mock_output_file.exists.return_value = True
+                mock_temp_path.__truediv__.return_value = mock_output_file
+                mock_path_class.return_value = mock_temp_path
 
             result = SchemaUtil.load_pydantic_model_from_schema(simple_schema_str)
 
@@ -230,14 +244,18 @@ class TestSchemaUtil:
                         }
 
                         with patch("tempfile.TemporaryDirectory") as mock_temp_dir:
-                            mock_temp_path = Mock()
-                            mock_temp_path.__truediv__ = lambda self, other: Mock(
-                                stem="userprofilemodel2024_model_123",
-                                exists=lambda: True,
-                            )
-                            mock_temp_dir.return_value.__enter__.return_value = (
-                                mock_temp_path
-                            )
+                            # Mock the temporary directory path as a string
+                            temp_dir_path = "/tmp/test_temp_dir"
+                            mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
+                            
+                            # Mock Path operations
+                            with patch("pathlib.Path") as mock_path_class:
+                                mock_temp_path = MagicMock()
+                                mock_output_file = MagicMock()
+                                mock_output_file.stem = "userprofilemodel2024_model_123"
+                                mock_output_file.exists.return_value = True
+                                mock_temp_path.__truediv__.return_value = mock_output_file
+                                mock_path_class.return_value = mock_temp_path
 
                             result = SchemaUtil.load_pydantic_model_from_schema(
                                 schema_with_special_title
@@ -258,11 +276,17 @@ class TestSchemaUtil:
     def test_missing_output_file(self, mock_generate, simple_schema_dict):
         """Test handling when generated file doesn't exist."""
         with patch("tempfile.TemporaryDirectory") as mock_temp_dir:
-            mock_temp_path = Mock()
-            mock_output_file = Mock()
-            mock_output_file.exists.return_value = False
-            mock_temp_path.__truediv__ = lambda self, other: mock_output_file
-            mock_temp_dir.return_value.__enter__.return_value = mock_temp_path
+            # Mock the temporary directory path as a string
+            temp_dir_path = "/tmp/test_temp_dir"
+            mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
+            
+            # Mock Path operations
+            with patch("pathlib.Path") as mock_path_class:
+                mock_temp_path = MagicMock()
+                mock_output_file = MagicMock()
+                mock_output_file.exists.return_value = False
+                mock_temp_path.__truediv__.return_value = mock_output_file
+                mock_path_class.return_value = mock_temp_path
 
             with pytest.raises(
                 FileNotFoundError, match="Generated model file was not created"
@@ -279,11 +303,18 @@ class TestSchemaUtil:
         mock_spec_from_file.return_value = None
 
         with patch("tempfile.TemporaryDirectory") as mock_temp_dir:
-            mock_temp_path = Mock()
-            mock_temp_path.__truediv__ = lambda self, other: Mock(
-                stem="testmodel_model_123", exists=lambda: True
-            )
-            mock_temp_dir.return_value.__enter__.return_value = mock_temp_path
+            # Mock the temporary directory path as a string
+            temp_dir_path = "/tmp/test_temp_dir"
+            mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
+            
+            # Mock Path operations
+            with patch("pathlib.Path") as mock_path_class:
+                mock_temp_path = MagicMock()
+                mock_output_file = MagicMock()
+                mock_output_file.stem = "testmodel_model_123"
+                mock_output_file.exists.return_value = True
+                mock_temp_path.__truediv__.return_value = mock_output_file
+                mock_path_class.return_value = mock_temp_path
 
             with pytest.raises(ImportError, match="Could not create module spec"):
                 SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
@@ -314,11 +345,18 @@ class TestSchemaUtil:
         mock_module.__dict__ = {}
 
         with patch("tempfile.TemporaryDirectory") as mock_temp_dir:
-            mock_temp_path = Mock()
-            mock_temp_path.__truediv__ = lambda self, other: Mock(
-                stem="testmodel_model_123", exists=lambda: True
-            )
-            mock_temp_dir.return_value.__enter__.return_value = mock_temp_path
+            # Mock the temporary directory path as a string
+            temp_dir_path = "/tmp/test_temp_dir"
+            mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
+            
+            # Mock Path operations
+            with patch("pathlib.Path") as mock_path_class:
+                mock_temp_path = MagicMock()
+                mock_output_file = MagicMock()
+                mock_output_file.stem = "testmodel_model_123"
+                mock_output_file.exists.return_value = True
+                mock_temp_path.__truediv__.return_value = mock_output_file
+                mock_path_class.return_value = mock_temp_path
 
             with pytest.raises(
                 AttributeError, match="Could not find expected model class"
@@ -356,11 +394,18 @@ class TestSchemaUtil:
         mock_module.__dict__ = {"TestModel": MockTestModel}
 
         with patch("tempfile.TemporaryDirectory") as mock_temp_dir:
-            mock_temp_path = Mock()
-            mock_temp_path.__truediv__ = lambda self, other: Mock(
-                stem="testmodel_model_123", exists=lambda: True
-            )
-            mock_temp_dir.return_value.__enter__.return_value = mock_temp_path
+            # Mock the temporary directory path as a string
+            temp_dir_path = "/tmp/test_temp_dir"
+            mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
+            
+            # Mock Path operations
+            with patch("pathlib.Path") as mock_path_class:
+                mock_temp_path = MagicMock()
+                mock_output_file = MagicMock()
+                mock_output_file.stem = "testmodel_model_123"
+                mock_output_file.exists.return_value = True
+                mock_temp_path.__truediv__.return_value = mock_output_file
+                mock_path_class.return_value = mock_temp_path
 
             with pytest.raises(RuntimeError, match="Error during model_rebuild"):
                 SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
@@ -398,13 +443,18 @@ class TestSchemaUtil:
                         mock_module.__dict__ = {"CustomModel": MockCustomModel}
 
                         with patch("tempfile.TemporaryDirectory") as mock_temp_dir:
-                            mock_temp_path = Mock()
-                            mock_temp_path.__truediv__ = lambda self, other: Mock(
-                                stem="custommodel_model_123", exists=lambda: True
-                            )
-                            mock_temp_dir.return_value.__enter__.return_value = (
-                                mock_temp_path
-                            )
+                            # Mock the temporary directory path as a string
+                            temp_dir_path = "/tmp/test_temp_dir"
+                            mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
+                            
+                            # Mock Path operations
+                            with patch("pathlib.Path") as mock_path_class:
+                                mock_temp_path = MagicMock()
+                                mock_output_file = MagicMock()
+                                mock_output_file.stem = "custommodel_model_123"
+                                mock_output_file.exists.return_value = True
+                                mock_temp_path.__truediv__.return_value = mock_output_file
+                                mock_path_class.return_value = mock_temp_path
 
                             result = SchemaUtil.load_pydantic_model_from_schema(
                                 schema_without_title, model_name="CustomModel"
@@ -443,13 +493,18 @@ class TestSchemaUtil:
                             mock_module.__dict__ = {"Model": MockModel}
 
                             with patch("tempfile.TemporaryDirectory") as mock_temp_dir:
-                                mock_temp_path = Mock()
-                                mock_temp_path.__truediv__ = lambda self, other: Mock(
-                                    stem="testmodel_model_123", exists=lambda: True
-                                )
-                                mock_temp_dir.return_value.__enter__.return_value = (
-                                    mock_temp_path
-                                )
+                                # Mock the temporary directory path as a string
+                                temp_dir_path = "/tmp/test_temp_dir"
+                                mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
+                                
+                                # Mock Path operations
+                                with patch("pathlib.Path") as mock_path_class:
+                                    mock_temp_path = MagicMock()
+                                    mock_output_file = MagicMock()
+                                    mock_output_file.stem = "testmodel_model_123"
+                                    mock_output_file.exists.return_value = True
+                                    mock_temp_path.__truediv__.return_value = mock_output_file
+                                    mock_path_class.return_value = mock_temp_path
 
                                 result = SchemaUtil.load_pydantic_model_from_schema(
                                     simple_schema_dict
