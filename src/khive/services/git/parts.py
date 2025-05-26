@@ -217,6 +217,16 @@ class GitResponse(BaseModel):
     conversation_id: str
     follow_up_prompts: list[str]  # Suggested follow-up questions
 
+    # Success indicator
+    success: bool = Field(
+        default=True, description="Whether the operation was successful"
+    )
+
+    # Summary message
+    summary: str | None = Field(
+        default=None, description="Optional summary message"
+    )
+
 
 class Recommendation(BaseModel):
     """A recommended next action with full context."""
