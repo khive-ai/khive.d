@@ -36,7 +36,9 @@ class TestAPIClient:
         timeout = 30.0
         headers = {"Authorization": "Bearer token"}
 
-        client = AsyncAPIClient(base_url=base_url, timeout=timeout, default_headers=headers)
+        client = AsyncAPIClient(
+            base_url=base_url, timeout=timeout, default_headers=headers
+        )
 
         assert client.base_url == base_url
         assert client.timeout == timeout

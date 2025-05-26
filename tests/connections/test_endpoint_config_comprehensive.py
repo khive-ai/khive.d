@@ -20,9 +20,9 @@ class TestEndpointConfig:
         """Test EndpointConfig initialization with basic parameters."""
         config = EndpointConfig(
             name="test_endpoint",
-            provider="openai", 
+            provider="openai",
             endpoint="v1/chat/completions",
-            base_url="https://api.openai.com"
+            base_url="https://api.openai.com",
         )
 
         assert config.name == "test_endpoint"
@@ -77,7 +77,7 @@ class TestEndpointConfig:
                 name="invalid",
                 provider="custom",
                 endpoint="v1/test",
-                transport_type="invalid_transport"  # Should only accept "http" or "sdk"
+                transport_type="invalid_transport",  # Should only accept "http" or "sdk"
             )
 
     def test_endpoint_config_default_values(self):
@@ -86,7 +86,7 @@ class TestEndpointConfig:
             name="defaults",
             provider="custom",
             endpoint="v1/test",
-            base_url="https://api.example.com"
+            base_url="https://api.example.com",
         )
 
         # Check default values
@@ -104,7 +104,7 @@ class TestEndpointConfig:
             name="test",
             provider="openai",
             endpoint="v1/chat/completions",
-            base_url="https://api.openai.com"
+            base_url="https://api.openai.com",
         )
 
         assert config.full_url == "https://api.openai.com/v1/chat/completions"
@@ -117,7 +117,7 @@ class TestEndpointConfig:
             endpoint="v1/models/{model_id}",
             base_url="https://api.example.com",
             endpoint_params=["model_id"],
-            params={"model_id": "gpt-4"}
+            params={"model_id": "gpt-4"},
         )
 
         assert config.full_url == "https://api.example.com/v1/models/gpt-4"
@@ -128,11 +128,11 @@ class TestEndpointConfig:
             name="test",
             provider="custom",
             endpoint="v1/test",
-            base_url="https://api.example.com"
+            base_url="https://api.example.com",
         )
 
         config.update(timeout=120, custom_param="value")
-        
+
         assert config.timeout == 120
         assert config.kwargs["custom_param"] == "value"
 
@@ -144,21 +144,21 @@ class TestEndpointConfig:
                 provider="custom",
                 endpoint="v1/test",
                 base_url="https://api.example.com",
-                api_key="TEST_API_KEY"
+                api_key="TEST_API_KEY",
             )
-            
+
             assert config._api_key == "secret123"
 
     def test_endpoint_config_api_key_handling_direct_value(self):
         """Test API key handling with direct value."""
         config = EndpointConfig(
             name="test",
-            provider="custom", 
+            provider="custom",
             endpoint="v1/test",
             base_url="https://api.example.com",
-            api_key="direct_key_value"
+            api_key="direct_key_value",
         )
-        
+
         # Should use the direct value if not found in env
         assert config._api_key == "direct_key_value"
 
@@ -170,7 +170,7 @@ class TestEndpointConfig:
                 provider="openai",
                 endpoint="v1/chat/completions",
                 transport_type="sdk",
-                api_key=None
+                api_key=None,
             )
 
     def test_endpoint_config_ollama_exception(self):
@@ -178,11 +178,11 @@ class TestEndpointConfig:
         config = EndpointConfig(
             name="test",
             provider="ollama",
-            endpoint="v1/chat/completions", 
+            endpoint="v1/chat/completions",
             transport_type="sdk",
-            api_key=None
+            api_key=None,
         )
-        
+
         assert config._api_key == "ollama_key"
 
     def test_endpoint_config_validate_payload_no_options(self):
@@ -191,12 +191,12 @@ class TestEndpointConfig:
             name="test",
             provider="custom",
             endpoint="v1/test",
-            base_url="https://api.example.com"
+            base_url="https://api.example.com",
         )
-        
+
         test_data = {"message": "hello", "temperature": 0.7}
         result = config.validate_payload(test_data)
-        
+
         assert result == test_data
 
     def test_endpoint_config_kwargs_handling(self):
@@ -207,24 +207,24 @@ class TestEndpointConfig:
             endpoint="v1/test",
             base_url="https://api.example.com",
             unknown_field="value",
-            another_unknown=123
+            another_unknown=123,
         )
-        
+
         assert config.kwargs["unknown_field"] == "value"
         assert config.kwargs["another_unknown"] == 123
 
     def test_endpoint_config_client_kwargs(self):
         """Test client_kwargs field."""
         client_kwargs = {"verify_ssl": False, "connect_timeout": 30}
-        
+
         config = EndpointConfig(
             name="test",
             provider="custom",
             endpoint="v1/test",
             base_url="https://api.example.com",
-            client_kwargs=client_kwargs
+            client_kwargs=client_kwargs,
         )
-        
+
         assert config.client_kwargs == client_kwargs
 
     def test_endpoint_config_serialization(self):
@@ -235,7 +235,7 @@ class TestEndpointConfig:
             endpoint="v1/chat/completions",
             base_url="https://api.openai.com",
             timeout=30,
-            max_retries=5
+            max_retries=5,
         )
 
         config_dict = config.model_dump()
@@ -260,7 +260,7 @@ class TestEndpointConfigIntegration:
             base_url="https://api.anthropic.com",
             timeout=30,
             max_retries=3,
-            default_headers={"X-Test": "value"}
+            default_headers={"X-Test": "value"},
         )
 
         # Serialize to dict
@@ -296,7 +296,7 @@ class TestEndpointConfigIntegration:
             max_retries=5,
             openai_compatible=True,
             client_kwargs={"verify": False},
-            custom_field="custom_value"
+            custom_field="custom_value",
         )
 
         # Verify all fields are set correctly
@@ -330,5 +330,5 @@ class TestEndpointConfigIntegration:
                 name="test",
                 provider="custom",
                 endpoint="v1/test",
-                transport_type="invalid"
+                transport_type="invalid",
             )

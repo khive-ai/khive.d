@@ -11,7 +11,12 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from khive.services.git.git_service import GitService, PatternAnalyzer, QualityAnalyzer, CollaborationOptimizer
+from khive.services.git.git_service import (
+    GitService,
+    PatternAnalyzer,
+    QualityAnalyzer,
+    CollaborationOptimizer,
+)
 from khive.services.git.parts import (
     GitRequest,
     GitResponse,
@@ -46,7 +51,7 @@ class TestGitService:
         return GitRequest(
             request="save my progress",
             agent_id="test-agent",
-            conversation_id="test-conv-123"
+            conversation_id="test-conv-123",
         )
 
     @pytest.fixture
@@ -71,7 +76,7 @@ class TestGitService:
                     path=Path("src/test.py"),
                     role="core",
                     change_summary="Added new feature functionality",
-                    change_magnitude="significant"
+                    change_magnitude="significant",
                 )
             ],
             code_insights=CodeInsight(
@@ -152,21 +157,28 @@ class TestGitService:
         assert "old-session" not in git_service._sessions
         assert "recent-session" in git_service._sessions
 
-    @patch('khive.services.git.git_service.GitService._get_repository_state')
-    @patch('khive.services.git.git_service.GitService._intent_detector')
-    async def test_handle_request_explore(self, mock_intent_detector, mock_get_repo_state, git_service, sample_request, sample_repo_state):
+    @patch("khive.services.git.git_service.GitService._get_repository_state")
+    @patch("khive.services.git.git_service.GitService._intent_detector")
+    async def test_handle_request_explore(
+        self,
+        mock_intent_detector,
+        mock_get_repo_state,
+        git_service,
+        sample_request,
+        sample_repo_state,
+    ):
         """Test handling explore requests."""
         # Setup mocks
         mock_intent_detector.detect_intent.return_value = (WorkIntent.EXPLORE, 0.9)
         mock_get_repo_state.return_value = sample_repo_state
 
         # Mock the _handle_explore method
-        with patch.object(git_service, '_handle_explore') as mock_handle_explore:
+        with patch.object(git_service, "_handle_explore") as mock_handle_explore:
             expected_response = GitResponse(
                 understood_as="Exploring repository state",
                 actions_taken=["Analyzed current state"],
                 repository_state=sample_repo_state,
-                conversation_id="test-conv-123"
+                conversation_id="test-conv-123",
             )
             mock_handle_explore.return_value = expected_response
 
@@ -177,21 +189,28 @@ class TestGitService:
             assert response == expected_response
             mock_handle_explore.assert_called_once()
 
-    @patch('khive.services.git.git_service.GitService._get_repository_state')
-    @patch('khive.services.git.git_service.GitService._intent_detector')
-    async def test_handle_request_implement(self, mock_intent_detector, mock_get_repo_state, git_service, sample_request, sample_repo_state):
+    @patch("khive.services.git.git_service.GitService._get_repository_state")
+    @patch("khive.services.git.git_service.GitService._intent_detector")
+    async def test_handle_request_implement(
+        self,
+        mock_intent_detector,
+        mock_get_repo_state,
+        git_service,
+        sample_request,
+        sample_repo_state,
+    ):
         """Test handling implement requests."""
         # Setup mocks
         mock_intent_detector.detect_intent.return_value = (WorkIntent.IMPLEMENT, 0.95)
         mock_get_repo_state.return_value = sample_repo_state
 
         # Mock the _handle_implement method
-        with patch.object(git_service, '_handle_implement') as mock_handle_implement:
+        with patch.object(git_service, "_handle_implement") as mock_handle_implement:
             expected_response = GitResponse(
                 understood_as="Saving implementation progress",
                 actions_taken=["Staged files", "Created commit"],
                 repository_state=sample_repo_state,
-                conversation_id="test-conv-123"
+                conversation_id="test-conv-123",
             )
             mock_handle_implement.return_value = expected_response
 
@@ -205,11 +224,11 @@ class TestGitService:
     async def test_handle_request_error(self, git_service, sample_request):
         """Test error handling in handle_request."""
         # Mock intent detector to raise an exception
-        with patch.object(git_service, '_intent_detector') as mock_intent_detector:
+        with patch.object(git_service, "_intent_detector") as mock_intent_detector:
             mock_intent_detector.detect_intent.side_effect = Exception("Test error")
 
             # Mock _handle_error
-            with patch.object(git_service, '_handle_error') as mock_handle_error:
+            with patch.object(git_service, "_handle_error") as mock_handle_error:
                 expected_response = GitResponse(
                     understood_as="Attempted to save my progress but encountered an error",
                     actions_taken=["Analyzed error"],
@@ -217,7 +236,7 @@ class TestGitService:
                     conversation_id="test-conv-123",
                     repository_state=sample_repo_state,
                     recommendations=[],
-                    follow_up_prompts=["Should I try again?"]
+                    follow_up_prompts=["Should I try again?"],
                 )
                 mock_handle_error.return_value = expected_response
 
@@ -309,28 +328,63 @@ class TestGitService:
             )
             phase = git_service._determine_work_phase([], empty_insight)
             assert phase == "exploring"
-    
+
             # Test with mostly test files - should be testing
             test_files = [
-                FileUnderstanding(path=Path("test_1.py"), role="test", change_summary="Added tests", change_magnitude="minor"),
-                FileUnderstanding(path=Path("test_2.py"), role="test", change_summary="Added tests", change_magnitude="minor"),
-                FileUnderstanding(path=Path("src.py"), role="core", change_summary="Updated code", change_magnitude="minor"),
+                FileUnderstanding(
+                    path=Path("test_1.py"),
+                    role="test",
+                    change_summary="Added tests",
+                    change_magnitude="minor",
+                ),
+                FileUnderstanding(
+                    path=Path("test_2.py"),
+                    role="test",
+                    change_summary="Added tests",
+                    change_magnitude="minor",
+                ),
+                FileUnderstanding(
+                    path=Path("src.py"),
+                    role="core",
+                    change_summary="Updated code",
+                    change_magnitude="minor",
+                ),
             ]
             phase = git_service._determine_work_phase(test_files, empty_insight)
             assert phase == "testing"
-    
+
             # Test with mostly doc files - should be polishing
             doc_files = [
-                FileUnderstanding(path=Path("README.md"), role="docs", change_summary="Updated docs", change_magnitude="minor"),
-                FileUnderstanding(path=Path("docs.md"), role="docs", change_summary="Updated docs", change_magnitude="minor"),
-                FileUnderstanding(path=Path("src.py"), role="core", change_summary="Updated code", change_magnitude="minor"),
+                FileUnderstanding(
+                    path=Path("README.md"),
+                    role="docs",
+                    change_summary="Updated docs",
+                    change_magnitude="minor",
+                ),
+                FileUnderstanding(
+                    path=Path("docs.md"),
+                    role="docs",
+                    change_summary="Updated docs",
+                    change_magnitude="minor",
+                ),
+                FileUnderstanding(
+                    path=Path("src.py"),
+                    role="core",
+                    change_summary="Updated code",
+                    change_magnitude="minor",
+                ),
             ]
             phase = git_service._determine_work_phase(doc_files, empty_insight)
             assert phase == "polishing"
-    
+
             # Test with complex code - should be implementing
             code_files = [
-                FileUnderstanding(path=Path("src.py"), role="core", change_summary="Complex changes", change_magnitude="major"),
+                FileUnderstanding(
+                    path=Path("src.py"),
+                    role="core",
+                    change_summary="Complex changes",
+                    change_magnitude="major",
+                ),
             ]
             complex_insight = CodeInsight(
                 primary_changes=["Major refactoring"],
@@ -348,6 +402,7 @@ class TestGitService:
             )
             phase = git_service._determine_work_phase(code_files, complex_insight)
             assert phase == "implementing"
+
     async def test_branch_purpose_inference(self, git_service):
         """Test branch purpose inference."""
         test_cases = [
@@ -358,9 +413,42 @@ class TestGitService:
             ("docs/update", [], "Documentation updates"),
             ("main", [], "Main development branch"),
             ("develop", [], "Main development branch"),
-            ("custom-branch", [FileUnderstanding(path=Path("test_auth.py"), role="test", change_summary="Added tests", change_magnitude="minor")], "Testing work"),
-            ("custom-branch", [FileUnderstanding(path=Path("auth.py"), role="core", change_summary="Updated auth", change_magnitude="minor")], "Authentication feature"),
-            ("custom-branch", [FileUnderstanding(path=Path("api.py"), role="core", change_summary="Updated API", change_magnitude="minor")], "API development"),
+            (
+                "custom-branch",
+                [
+                    FileUnderstanding(
+                        path=Path("test_auth.py"),
+                        role="test",
+                        change_summary="Added tests",
+                        change_magnitude="minor",
+                    )
+                ],
+                "Testing work",
+            ),
+            (
+                "custom-branch",
+                [
+                    FileUnderstanding(
+                        path=Path("auth.py"),
+                        role="core",
+                        change_summary="Updated auth",
+                        change_magnitude="minor",
+                    )
+                ],
+                "Authentication feature",
+            ),
+            (
+                "custom-branch",
+                [
+                    FileUnderstanding(
+                        path=Path("api.py"),
+                        role="core",
+                        change_summary="Updated API",
+                        change_magnitude="minor",
+                    )
+                ],
+                "API development",
+            ),
         ]
 
         for branch, files, expected in test_cases:
@@ -371,25 +459,29 @@ class TestGitService:
         """Test intelligent file staging logic."""
         test_cases = [
             (Path("test_file.py"), True),  # Test files should be staged
-            (Path("README.md"), True),     # Documentation should be staged
-            (Path("src/main.py"), True),   # Code files should be staged
-            (Path("src/main.js"), True),   # JS files should be staged
-            (Path("src/main.ts"), True),   # TS files should be staged
-            (Path(".temp_file"), False),   # Hidden files should not be staged
-            (Path("backup.bak"), False),   # Backup files should not be staged
-            (Path("temp.tmp"), False),     # Temp files should not be staged
+            (Path("README.md"), True),  # Documentation should be staged
+            (Path("src/main.py"), True),  # Code files should be staged
+            (Path("src/main.js"), True),  # JS files should be staged
+            (Path("src/main.ts"), True),  # TS files should be staged
+            (Path(".temp_file"), False),  # Hidden files should not be staged
+            (Path("backup.bak"), False),  # Backup files should not be staged
+            (Path("temp.tmp"), False),  # Temp files should not be staged
         ]
 
         request = GitRequest(request="test", agent_id="test")
-        
+
         for path, should_stage in test_cases:
             result = git_service._should_auto_stage(path, sample_repo_state, request)
             assert result == should_stage
 
-    async def test_recommendation_generation(self, git_service, sample_repo_state, sample_session):
+    async def test_recommendation_generation(
+        self, git_service, sample_repo_state, sample_session
+    ):
         """Test recommendation generation for different scenarios."""
         # Test explore recommendations
-        recommendations = git_service._build_explore_recommendations(sample_repo_state, sample_session)
+        recommendations = git_service._build_explore_recommendations(
+            sample_repo_state, sample_session
+        )
         assert isinstance(recommendations, list)
         assert all(isinstance(rec, Recommendation) for rec in recommendations)
         assert len(recommendations) <= 3
@@ -403,13 +495,17 @@ class TestGitService:
         assert len(recommendations) >= 0
 
         # Test collaborate recommendations
-        pr_result = {"success": True, "number": 123, "url": "https://github.com/test/repo/pull/123"}
+        pr_result = {
+            "success": True,
+            "number": 123,
+            "url": "https://github.com/test/repo/pull/123",
+        }
         recommendations = git_service._build_collaborate_recommendations(
             sample_repo_state, sample_session, pr_result
         )
         assert isinstance(recommendations, list)
 
-    @patch('khive.services.git.git_service.GitService._get_repository_state')
+    @patch("khive.services.git.git_service.GitService._get_repository_state")
     async def test_close_cleanup(self, mock_get_repo_state, git_service):
         """Test proper cleanup when closing the service."""
         # Mock the git operations executor
@@ -448,7 +544,7 @@ class TestPatternAnalyzer:
     async def test_pattern_analysis(self, pattern_analyzer, sample_knowledge):
         """Test pattern analysis functionality."""
         result = await pattern_analyzer.analyze(sample_knowledge)
-        
+
         assert isinstance(result, PatternRecognition)
         assert isinstance(result.common_patterns, list)
         assert isinstance(result.anti_patterns, list)
@@ -461,7 +557,7 @@ class TestPatternAnalyzer:
     async def test_commit_pattern_analysis(self, pattern_analyzer, sample_knowledge):
         """Test commit pattern analysis."""
         patterns = pattern_analyzer._analyze_commit_patterns(sample_knowledge)
-        
+
         assert isinstance(patterns, dict)
         assert "avg_pr_size" in patterns
         assert "common_types" in patterns
@@ -470,7 +566,7 @@ class TestPatternAnalyzer:
     async def test_code_pattern_analysis(self, pattern_analyzer, sample_knowledge):
         """Test code pattern analysis."""
         patterns = pattern_analyzer._analyze_code_patterns(sample_knowledge)
-        
+
         assert isinstance(patterns, dict)
         assert "common" in patterns
         assert "anti" in patterns
@@ -480,7 +576,7 @@ class TestPatternAnalyzer:
     async def test_team_pattern_analysis(self, pattern_analyzer, sample_knowledge):
         """Test team collaboration pattern analysis."""
         patterns = pattern_analyzer._analyze_team_patterns(sample_knowledge)
-        
+
         assert isinstance(patterns, dict)
         assert "avg_review_time" in patterns
         assert "avg_iterations" in patterns
@@ -504,9 +600,24 @@ class TestQualityAnalyzer:
             branch_purpose="Feature development",
             work_phase="implementing",
             files_changed=[
-                FileUnderstanding(path=Path("src/test.py"), role="core", change_summary="Updated core logic", change_magnitude="significant"),
-                FileUnderstanding(path=Path("tests/test_test.py"), role="test", change_summary="Added tests", change_magnitude="minor"),
-                FileUnderstanding(path=Path("README.md"), role="docs", change_summary="Updated docs", change_magnitude="minor"),
+                FileUnderstanding(
+                    path=Path("src/test.py"),
+                    role="core",
+                    change_summary="Updated core logic",
+                    change_magnitude="significant",
+                ),
+                FileUnderstanding(
+                    path=Path("tests/test_test.py"),
+                    role="test",
+                    change_summary="Added tests",
+                    change_magnitude="minor",
+                ),
+                FileUnderstanding(
+                    path=Path("README.md"),
+                    role="docs",
+                    change_summary="Updated docs",
+                    change_magnitude="minor",
+                ),
             ],
             code_insights=CodeInsight(
                 primary_changes=["Updated core functionality"],
@@ -533,7 +644,7 @@ class TestQualityAnalyzer:
     async def test_quality_assessment(self, quality_analyzer, sample_repo_state):
         """Test comprehensive quality assessment."""
         assessment = await quality_analyzer.assess(sample_repo_state)
-        
+
         assert isinstance(assessment, QualityAssessment)
         assert isinstance(assessment.test_coverage, float)
         assert isinstance(assessment.documentation_coverage, float)
@@ -551,20 +662,25 @@ class TestQualityAnalyzer:
         sample_repo_state.changes_summary = MagicMock()
         sample_repo_state.changes_summary.code_files = ["file1.py", "file2.py"]
         sample_repo_state.changes_summary.test_files = ["test1.py"]
-        
+
         coverage = await quality_analyzer._calculate_test_coverage(sample_repo_state)
-        
+
         assert isinstance(coverage, float)
         assert 0.0 <= coverage <= 1.0
 
     async def test_quality_issue_detection(self, quality_analyzer, sample_repo_state):
         """Test quality issue detection."""
         issues = await quality_analyzer._find_quality_issues(sample_repo_state)
-        
+
         assert isinstance(issues, list)
         for issue in issues:
             assert isinstance(issue, QualityIssue)
-            assert issue.type in ["maintainability", "reliability", "security", "performance"]
+            assert issue.type in [
+                "maintainability",
+                "reliability",
+                "security",
+                "performance",
+            ]
             assert issue.severity in ["info", "warning", "error", "critical"]
             assert isinstance(issue.location, str)
             assert isinstance(issue.description, str)
@@ -578,19 +694,19 @@ class TestQualityAnalyzer:
                 severity="warning",
                 location="test.py",
                 description="Missing docstrings",
-                suggestion="Add docstrings to public methods"
+                suggestion="Add docstrings to public methods",
             ),
             QualityIssue(
                 type="maintainability",
                 severity="critical",
                 location="core.py",
                 description="Critical security issue",
-                suggestion="Fix security vulnerability"
+                suggestion="Fix security vulnerability",
             ),
         ]
-        
+
         quick_wins = quality_analyzer._identify_quick_wins(sample_issues)
-        
+
         assert isinstance(quick_wins, list)
         assert len(quick_wins) <= 3
         # Should not include critical issues in quick wins
@@ -613,9 +729,24 @@ class TestCollaborationOptimizer:
             branch_purpose="Authentication feature",
             work_phase="implementing",
             files_changed=[
-                FileUnderstanding(path=Path("src/auth/login.py"), role="core", change_summary="Updated login logic", change_magnitude="significant"),
-                FileUnderstanding(path=Path("src/api/users.py"), role="core", change_summary="Updated user API", change_magnitude="minor"),
-                FileUnderstanding(path=Path("tests/test_auth.py"), role="test", change_summary="Added auth tests", change_magnitude="minor"),
+                FileUnderstanding(
+                    path=Path("src/auth/login.py"),
+                    role="core",
+                    change_summary="Updated login logic",
+                    change_magnitude="significant",
+                ),
+                FileUnderstanding(
+                    path=Path("src/api/users.py"),
+                    role="core",
+                    change_summary="Updated user API",
+                    change_magnitude="minor",
+                ),
+                FileUnderstanding(
+                    path=Path("tests/test_auth.py"),
+                    role="test",
+                    change_summary="Added auth tests",
+                    change_magnitude="minor",
+                ),
             ],
             code_insights=CodeInsight(
                 primary_changes=["Authentication improvements"],
@@ -657,28 +788,36 @@ class TestCollaborationOptimizer:
         )
         return session
 
-    async def test_reviewer_suggestion(self, collaboration_optimizer, sample_repo_state, sample_session_with_patterns):
+    async def test_reviewer_suggestion(
+        self, collaboration_optimizer, sample_repo_state, sample_session_with_patterns
+    ):
         """Test reviewer suggestion based on expertise."""
         reviewers = await collaboration_optimizer.suggest_reviewers(
             sample_repo_state, sample_session_with_patterns
         )
-        
+
         assert isinstance(reviewers, list)
         assert len(reviewers) <= 3
         # Should suggest reviewers based on affected areas
         expected_reviewers = {"alice", "bob", "charlie", "diana", "eve"}
         assert all(reviewer in expected_reviewers for reviewer in reviewers)
 
-    async def test_affected_areas_identification(self, collaboration_optimizer, sample_repo_state):
+    async def test_affected_areas_identification(
+        self, collaboration_optimizer, sample_repo_state
+    ):
         """Test identification of affected code areas."""
-        areas = collaboration_optimizer._identify_affected_areas(sample_repo_state.files_changed)
-        
+        areas = collaboration_optimizer._identify_affected_areas(
+            sample_repo_state.files_changed
+        )
+
         assert isinstance(areas, list)
         # Should identify auth and api areas based on file paths
         assert "auth" in areas or "src" in areas
         assert len(areas) > 0
 
-    async def test_reviewer_suggestion_no_patterns(self, collaboration_optimizer, sample_repo_state):
+    async def test_reviewer_suggestion_no_patterns(
+        self, collaboration_optimizer, sample_repo_state
+    ):
         """Test reviewer suggestion when no patterns are learned."""
         session_no_patterns = GitSession(
             id="test-session",
@@ -686,11 +825,11 @@ class TestCollaborationOptimizer:
             started_at=datetime.utcnow(),
             last_activity=datetime.utcnow(),
         )
-        
+
         reviewers = await collaboration_optimizer.suggest_reviewers(
             sample_repo_state, session_no_patterns
         )
-        
+
         # Should return empty list when no patterns are available
         assert isinstance(reviewers, list)
         assert len(reviewers) == 0
@@ -710,17 +849,23 @@ class TestGitServiceIntegration:
         with patch.multiple(
             git_service._git_ops,
             get_current_branch=AsyncMock(return_value="feature/test"),
-            get_changed_files=AsyncMock(return_value=[
-                {"path": "src/test.py", "staged": False, "status": "modified"}
-            ]),
+            get_changed_files=AsyncMock(
+                return_value=[
+                    {"path": "src/test.py", "staged": False, "status": "modified"}
+                ]
+            ),
             get_file_diff=AsyncMock(return_value="+ added line\n- removed line"),
             stage_files=AsyncMock(return_value=True),
-            create_commit=AsyncMock(return_value={"success": True, "sha": "abc123def456"}),
+            create_commit=AsyncMock(
+                return_value={"success": True, "sha": "abc123def456"}
+            ),
         ):
             yield
 
     @pytest.mark.asyncio
-    async def test_end_to_end_implement_workflow(self, git_service, mock_git_operations):
+    async def test_end_to_end_implement_workflow(
+        self, git_service, mock_git_operations
+    ):
         """Test end-to-end implementation workflow."""
         # Mock additional dependencies
         with patch.multiple(
@@ -735,9 +880,9 @@ class TestGitServiceIntegration:
                 path=Path("src/test.py"),
                 role="core",
                 change_summary="Added new functionality",
-                change_magnitude="significant"
+                change_magnitude="significant",
             )
-            
+
             git_service._code_analyzer.analyze_changes.return_value = CodeInsight(
                 primary_changes=["Added new feature"],
                 side_effects=["Updated configuration"],
@@ -752,15 +897,20 @@ class TestGitServiceIntegration:
                 requires_migration=False,
                 breaks_compatibility=False,
             )
-            
-            git_service._commit_generator.generate.return_value = "feat: add new functionality\n\nImplemented feature X with tests"
-            git_service._intent_detector.detect_intent.return_value = (WorkIntent.IMPLEMENT, 0.95)
+
+            git_service._commit_generator.generate.return_value = (
+                "feat: add new functionality\n\nImplemented feature X with tests"
+            )
+            git_service._intent_detector.detect_intent.return_value = (
+                WorkIntent.IMPLEMENT,
+                0.95,
+            )
 
             # Create request
             request = GitRequest(
                 request="save my implementation progress",
                 agent_id="test-agent",
-                conversation_id="test-conv"
+                conversation_id="test-conv",
             )
 
             # Execute workflow

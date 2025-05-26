@@ -19,7 +19,7 @@ class TestInfoServiceGroup:
         service = InfoServiceGroup()
 
         # Assert
-        assert hasattr(service, '_executor')
+        assert hasattr(service, "_executor")
         assert isinstance(service._executor, AsyncExecutor)
 
     @pytest.mark.asyncio
@@ -27,9 +27,9 @@ class TestInfoServiceGroup:
         """Test basic search functionality."""
         # Arrange
         mock_endpoint = mocker.Mock()
-        mock_endpoint.call = AsyncMock(return_value={
-            "choices": [{"message": {"content": "Test response"}}]
-        })
+        mock_endpoint.call = AsyncMock(
+            return_value={"choices": [{"message": {"content": "Test response"}}]}
+        )
 
         # Mock the match_endpoint function
         mocker.patch(
@@ -52,9 +52,9 @@ class TestInfoServiceGroup:
         """Test search with additional context."""
         # Arrange
         mock_endpoint = mocker.Mock()
-        mock_endpoint.call = AsyncMock(return_value={
-            "choices": [{"message": {"content": "Contextual response"}}]
-        })
+        mock_endpoint.call = AsyncMock(
+            return_value={"choices": [{"message": {"content": "Contextual response"}}]}
+        )
 
         mocker.patch(
             "khive.connections.match_endpoint.match_endpoint",
@@ -64,7 +64,7 @@ class TestInfoServiceGroup:
         service = InfoServiceGroup()
         request = InfoRequest(
             query="How to optimize performance?",
-            context="Working on a web application with slow response times"
+            context="Working on a web application with slow response times",
         )
 
         # Act
@@ -102,9 +102,11 @@ class TestInfoServiceGroup:
         """Test that mode is auto-detected when not provided."""
         # Arrange
         mock_endpoint = mocker.Mock()
-        mock_endpoint.call = AsyncMock(return_value={
-            "choices": [{"message": {"content": "Auto-detected mode response"}}]
-        })
+        mock_endpoint.call = AsyncMock(
+            return_value={
+                "choices": [{"message": {"content": "Auto-detected mode response"}}]
+            }
+        )
 
         mocker.patch(
             "khive.connections.match_endpoint.match_endpoint",
@@ -119,16 +121,18 @@ class TestInfoServiceGroup:
 
         # Assert
         assert isinstance(response, InfoResponse)
-        assert hasattr(response, 'mode_used')
+        assert hasattr(response, "mode_used")
 
     @pytest.mark.asyncio
     async def test_time_budget_respected(self, mocker):
         """Test that time budget is considered in search."""
         # Arrange
         mock_endpoint = mocker.Mock()
-        mock_endpoint.call = AsyncMock(return_value={
-            "choices": [{"message": {"content": "Budget-aware response"}}]
-        })
+        mock_endpoint.call = AsyncMock(
+            return_value={
+                "choices": [{"message": {"content": "Budget-aware response"}}]
+            }
+        )
 
         mocker.patch(
             "khive.connections.match_endpoint.match_endpoint",
@@ -137,8 +141,7 @@ class TestInfoServiceGroup:
 
         service = InfoServiceGroup()
         request = InfoRequest(
-            query="Complex research question",
-            time_budget_seconds=30.0
+            query="Complex research question", time_budget_seconds=30.0
         )
 
         # Act
@@ -151,14 +154,14 @@ class TestInfoServiceGroup:
     def test_insight_source_creation(self):
         """Test creating InsightSource objects."""
         from khive.services.info.parts import InsightSource
-        
+
         source = InsightSource(
             type="search",
             provider="test_provider",
             confidence=0.85,
-            url="https://example.com"
+            url="https://example.com",
         )
-        
+
         assert source.type == "search"
         assert source.provider == "test_provider"
         assert source.confidence == 0.85
@@ -167,20 +170,16 @@ class TestInfoServiceGroup:
     def test_insight_creation(self):
         """Test creating Insight objects."""
         from khive.services.info.parts import Insight, InsightSource
-        
-        source = InsightSource(
-            type="analysis",
-            provider="test",
-            confidence=0.9
-        )
-        
+
+        source = InsightSource(type="analysis", provider="test", confidence=0.9)
+
         insight = Insight(
             summary="Test insight",
             details="Detailed explanation",
             sources=[source],
-            relevance=0.95
+            relevance=0.95,
         )
-        
+
         assert insight.summary == "Test insight"
         assert insight.details == "Detailed explanation"
         assert len(insight.sources) == 1
@@ -200,7 +199,7 @@ class TestInfoServiceGroup:
             query="Complex query",
             context="Test context",
             mode=InsightMode.COMPREHENSIVE,
-            time_budget_seconds=45.0
+            time_budget_seconds=45.0,
         )
         assert request_full.query == "Complex query"
         assert request_full.context == "Test context"
@@ -210,18 +209,18 @@ class TestInfoServiceGroup:
     def test_info_response_creation(self):
         """Test InfoResponse creation."""
         from khive.services.info.parts import Insight, InsightSource
-        
+
         source = InsightSource(type="search", provider="test", confidence=0.8)
         insight = Insight(summary="Test insight", sources=[source])
-        
+
         response = InfoResponse(
             success=True,
             summary="Test summary",
             insights=[insight],
             confidence=0.85,
-            mode_used=InsightMode.QUICK
+            mode_used=InsightMode.QUICK,
         )
-        
+
         assert response.success is True
         assert response.summary == "Test summary"
         assert len(response.insights) == 1
@@ -237,9 +236,13 @@ class TestInfoServiceIntegration:
         """Test complete search flow from request to response."""
         # Arrange
         mock_endpoint = mocker.Mock()
-        mock_endpoint.call = AsyncMock(return_value={
-            "choices": [{"message": {"content": "Comprehensive answer about the topic"}}]
-        })
+        mock_endpoint.call = AsyncMock(
+            return_value={
+                "choices": [
+                    {"message": {"content": "Comprehensive answer about the topic"}}
+                ]
+            }
+        )
 
         mocker.patch(
             "khive.connections.match_endpoint.match_endpoint",
@@ -251,7 +254,7 @@ class TestInfoServiceIntegration:
             query="Explain machine learning basics",
             context="Preparing for a technical presentation",
             mode=InsightMode.COMPREHENSIVE,
-            time_budget_seconds=30.0
+            time_budget_seconds=30.0,
         )
 
         # Act
@@ -261,7 +264,7 @@ class TestInfoServiceIntegration:
         assert isinstance(response, InfoResponse)
         assert response.success is True
         assert response.summary is not None
-        assert hasattr(response, 'mode_used')
+        assert hasattr(response, "mode_used")
 
     def test_insight_mode_enum_values(self):
         """Test that all InsightMode enum values are accessible."""
@@ -273,14 +276,14 @@ class TestInfoServiceIntegration:
     def test_service_interface_completeness(self):
         """Test that the service has the expected interface."""
         service = InfoServiceGroup()
-        
+
         # Check that required methods exist
-        assert hasattr(service, 'search')
-        assert callable(getattr(service, 'search'))
-        
+        assert hasattr(service, "search")
+        assert callable(getattr(service, "search"))
+
         # Check that the service can be used as an async context manager
-        assert hasattr(service, '__aenter__')
-        assert hasattr(service, '__aexit__')
+        assert hasattr(service, "__aenter__")
+        assert hasattr(service, "__aexit__")
 
 
 class TestInsightModeDetection:
@@ -291,9 +294,9 @@ class TestInsightModeDetection:
         quick_queries = [
             "What is Python?",
             "Define machine learning",
-            "How many days in a year?"
+            "How many days in a year?",
         ]
-        
+
         for query in quick_queries:
             request = InfoRequest(query=query)
             # The actual mode detection logic would be in the service
@@ -305,9 +308,9 @@ class TestInsightModeDetection:
         comprehensive_queries = [
             "Compare different web frameworks for Python",
             "Analyze the pros and cons of microservices architecture",
-            "Research the latest trends in AI development"
+            "Research the latest trends in AI development",
         ]
-        
+
         for query in comprehensive_queries:
             request = InfoRequest(query=query)
             assert InsightMode.COMPREHENSIVE == "comprehensive"
@@ -317,9 +320,9 @@ class TestInsightModeDetection:
         analytical_queries = [
             "What are the trade-offs between SQL and NoSQL databases?",
             "Evaluate different approaches to handling authentication",
-            "Analyze the security implications of cloud deployment"
+            "Analyze the security implications of cloud deployment",
         ]
-        
+
         for query in analytical_queries:
             request = InfoRequest(query=query)
             assert InsightMode.ANALYTICAL == "analytical"

@@ -125,6 +125,8 @@ class DevIssue(BaseModel):
 class TestResult(BaseModel):
     """Results from test execution."""
 
+    __test__ = False  # Prevent pytest from collecting this as a test class
+
     stack: StackType = Field(..., description="Which stack was tested")
 
     total_tests: int = Field(0, description="Total number of tests")

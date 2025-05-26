@@ -30,10 +30,7 @@ class TestCacheConfig:
     def test_cache_config_initialization_with_values(self):
         """Test CacheConfig initialization with custom values."""
         config = CacheConfig(
-            ttl=600,
-            key="test_key",
-            namespace="test_namespace",
-            alias="test_alias"
+            ttl=600, key="test_key", namespace="test_namespace", alias="test_alias"
         )
 
         assert config.ttl == 600
@@ -43,19 +40,15 @@ class TestCacheConfig:
 
     def test_cache_config_as_kwargs(self):
         """Test CacheConfig as_kwargs method."""
-        config = CacheConfig(
-            ttl=600,
-            key="test_key",
-            namespace="test_namespace"
-        )
+        config = CacheConfig(ttl=600, key="test_key", namespace="test_namespace")
 
         kwargs = config.as_kwargs()
-        
+
         assert isinstance(kwargs, dict)
         assert kwargs["ttl"] == 600
         assert kwargs["key"] == "test_key"
         assert kwargs["namespace"] == "test_namespace"
-        
+
         # Should exclude unserialisable callables
         assert "key_builder" not in kwargs
         assert "skip_cache_func" not in kwargs
@@ -73,13 +66,13 @@ class TestAppSettings:
 
         # Check cache config
         assert isinstance(app_settings.aiocache_config, CacheConfig)
-        
+
         # Check default model settings
         assert app_settings.KHIVE_EMBEDDING_PROVIDER == "openai"
         assert app_settings.KHIVE_EMBEDDING_MODEL == "text-embedding-3-small"
         assert app_settings.KHIVE_CHAT_PROVIDER == "anthropic"
         assert app_settings.KHIVE_CHAT_MODEL == "claude-3-7-sonnet-20250219"
-        
+
         # Check storage settings
         assert app_settings.KHIVE_AUTO_STORE_EVENT is False
         assert app_settings.KHIVE_STORAGE_PROVIDER == "async_qdrant"
@@ -95,7 +88,7 @@ class TestAppSettings:
             "KHIVE_AUTO_STORE_EVENT": "true",
             "KHIVE_QDRANT_URL": "http://custom.qdrant.com:6333",
             "OPENAI_API_KEY": "test_openai_key",
-            "ANTHROPIC_API_KEY": "test_anthropic_key"
+            "ANTHROPIC_API_KEY": "test_anthropic_key",
         }
 
         with patch.dict(os.environ, env_vars):
@@ -105,7 +98,7 @@ class TestAppSettings:
             assert app_settings.KHIVE_CHAT_MODEL == "custom-model"
             assert app_settings.KHIVE_AUTO_STORE_EVENT is True
             assert app_settings.KHIVE_QDRANT_URL == "http://custom.qdrant.com:6333"
-            
+
             # Check that API keys are loaded as SecretStr
             assert isinstance(app_settings.OPENAI_API_KEY, SecretStr)
             assert isinstance(app_settings.ANTHROPIC_API_KEY, SecretStr)
@@ -114,22 +107,22 @@ class TestAppSettings:
         """Test successful secret retrieval."""
         env_vars = {
             "OPENAI_API_KEY": "test_openai_secret",
-            "ANTHROPIC_API_KEY": "test_anthropic_secret"
+            "ANTHROPIC_API_KEY": "test_anthropic_secret",
         }
 
         with patch.dict(os.environ, env_vars):
             app_settings = AppSettings()
-            
+
             openai_secret = app_settings.get_secret("OPENAI_API_KEY")
             anthropic_secret = app_settings.get_secret("ANTHROPIC_API_KEY")
-            
+
             assert openai_secret == "test_openai_secret"
             assert anthropic_secret == "test_anthropic_secret"
 
     def test_app_settings_get_secret_ollama_special_case(self):
         """Test special case for Ollama API key."""
         app_settings = AppSettings()
-        
+
         # Should return "ollama" for any key containing "ollama"
         ollama_secret = app_settings.get_secret("OLLAMA_API_KEY")
         assert ollama_secret == "ollama"
@@ -137,14 +130,16 @@ class TestAppSettings:
     def test_app_settings_get_secret_not_found(self):
         """Test get_secret with non-existent key."""
         app_settings = AppSettings()
-        
-        with pytest.raises(AttributeError, match="Secret key 'NON_EXISTENT_KEY' not found"):
+
+        with pytest.raises(
+            AttributeError, match="Secret key 'NON_EXISTENT_KEY' not found"
+        ):
             app_settings.get_secret("NON_EXISTENT_KEY")
 
     def test_app_settings_get_secret_none_value(self):
         """Test get_secret with None value."""
         app_settings = AppSettings()
-        
+
         # All API keys default to None
         with pytest.raises(ValueError, match="Secret key 'OPENAI_API_KEY' is not set"):
             app_settings.get_secret("OPENAI_API_KEY")
@@ -152,7 +147,7 @@ class TestAppSettings:
     def test_app_settings_frozen(self):
         """Test that AppSettings is frozen (immutable)."""
         app_settings = AppSettings()
-        
+
         # Should not be able to modify settings after creation
         with pytest.raises(Exception):  # ValidationError or similar
             app_settings.KHIVE_EMBEDDING_PROVIDER = "modified_provider"
@@ -160,25 +155,23 @@ class TestAppSettings:
     def test_app_settings_model_config(self):
         """Test AppSettings model configuration."""
         app_settings = AppSettings()
-        
+
         # Check that model config is properly set
-        assert hasattr(app_settings, 'model_config')
+        assert hasattr(app_settings, "model_config")
         config = app_settings.model_config
-        
+
         # Should be case insensitive
-        assert config.get('case_sensitive') is False
+        assert config.get("case_sensitive") is False
         # Should ignore extra fields
-        assert config.get('extra') == 'ignore'
+        assert config.get("extra") == "ignore"
 
     def test_app_settings_with_custom_cache_config(self):
         """Test AppSettings with custom cache configuration."""
-        env_vars = {
-            "AIOCACHE_CONFIG__TTL": "600"
-        }
-        
+        env_vars = {"AIOCACHE_CONFIG__TTL": "600"}
+
         with patch.dict(os.environ, env_vars):
             app_settings = AppSettings()
-            
+
             # Cache config should still be a CacheConfig instance
             assert isinstance(app_settings.aiocache_config, CacheConfig)
 
@@ -187,16 +180,16 @@ class TestAppSettings:
         env_vars = {
             "OPENAI_API_KEY": "secret123",
             "GROQ_API_KEY": "groq_secret",
-            "EXA_API_KEY": "exa_secret"
+            "EXA_API_KEY": "exa_secret",
         }
 
         with patch.dict(os.environ, env_vars):
             app_settings = AppSettings()
-            
+
             assert isinstance(app_settings.OPENAI_API_KEY, SecretStr)
             assert isinstance(app_settings.GROQ_API_KEY, SecretStr)
             assert isinstance(app_settings.EXA_API_KEY, SecretStr)
-            
+
             # Verify the actual secret values
             assert app_settings.OPENAI_API_KEY.get_secret_value() == "secret123"
             assert app_settings.GROQ_API_KEY.get_secret_value() == "groq_secret"
@@ -235,36 +228,36 @@ class TestAppSettingsIntegration:
             "ANTHROPIC_API_KEY": "anthropic_test_key",
             "GROQ_API_KEY": "groq_test_key",
             "PERPLEXITY_API_KEY": "perplexity_test_key",
-            
             # Model settings
             "KHIVE_EMBEDDING_PROVIDER": "test_embedding_provider",
             "KHIVE_EMBEDDING_MODEL": "test-embedding-model",
             "KHIVE_CHAT_PROVIDER": "test_chat_provider",
             "KHIVE_CHAT_MODEL": "test-chat-model",
-            
             # Storage settings
             "KHIVE_AUTO_STORE_EVENT": "true",
             "KHIVE_STORAGE_PROVIDER": "test_storage",
             "KHIVE_AUTO_EMBED_LOG": "true",
             "KHIVE_QDRANT_URL": "http://test.qdrant.com:6333",
-            "KHIVE_DEFAULT_QDRANT_COLLECTION": "test_collection"
+            "KHIVE_DEFAULT_QDRANT_COLLECTION": "test_collection",
         }
 
         with patch.dict(os.environ, env_vars):
             app_settings = AppSettings()
-            
+
             # Verify API keys
             assert app_settings.get_secret("OPENAI_API_KEY") == "openai_test_key"
             assert app_settings.get_secret("ANTHROPIC_API_KEY") == "anthropic_test_key"
             assert app_settings.get_secret("GROQ_API_KEY") == "groq_test_key"
-            assert app_settings.get_secret("PERPLEXITY_API_KEY") == "perplexity_test_key"
-            
+            assert (
+                app_settings.get_secret("PERPLEXITY_API_KEY") == "perplexity_test_key"
+            )
+
             # Verify model settings
             assert app_settings.KHIVE_EMBEDDING_PROVIDER == "test_embedding_provider"
             assert app_settings.KHIVE_EMBEDDING_MODEL == "test-embedding-model"
             assert app_settings.KHIVE_CHAT_PROVIDER == "test_chat_provider"
             assert app_settings.KHIVE_CHAT_MODEL == "test-chat-model"
-            
+
             # Verify storage settings
             assert app_settings.KHIVE_AUTO_STORE_EVENT is True
             assert app_settings.KHIVE_STORAGE_PROVIDER == "test_storage"
@@ -282,7 +275,7 @@ class TestAppSettingsIntegration:
             ("false", False),
             ("False", False),
             ("FALSE", False),
-            ("0", False)
+            ("0", False),
         ]
 
         for env_value, expected in test_cases:
@@ -294,12 +287,12 @@ class TestAppSettingsIntegration:
         """Test that settings support .env file loading."""
         # This tests the configuration for env file support
         app_settings = AppSettings()
-        
+
         # Check that model_config includes env_file settings
         config = app_settings.model_config
-        assert 'env_file' in config
-        env_files = config['env_file']
-        
+        assert "env_file" in config
+        env_files = config["env_file"]
+
         # Should support multiple env files
         assert isinstance(env_files, (list, tuple))
-        assert '.env' in env_files
+        assert ".env" in env_files

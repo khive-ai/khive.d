@@ -69,9 +69,7 @@ class TestCustomStepConfig:
 
     def test_custom_step_config_creation(self):
         config = CustomStepConfig(
-            cmd="echo hello",
-            run_if="file_exists:README.md",
-            cwd="subdir"
+            cmd="echo hello", run_if="file_exists:README.md", cwd="subdir"
         )
         assert config.cmd == "echo hello"
         assert config.run_if == "file_exists:README.md"
@@ -105,7 +103,7 @@ class TestInitCommand:
         assert default["custom_steps"] == {}
 
     def test_create_config_basic(self, init_command, mock_cli_args_default):
-        with patch.object(init_command, '_load_command_config', return_value={}):
+        with patch.object(init_command, "_load_command_config", return_value={}):
             config = init_command._create_config(mock_cli_args_default)
             assert isinstance(config, InitConfig)
             assert config.project_root == mock_cli_args_default.project_root
@@ -116,11 +114,13 @@ class TestInitCommand:
                 "test_step": {
                     "cmd": "echo test",
                     "run_if": "file_exists:test.txt",
-                    "cwd": "test_dir"
+                    "cwd": "test_dir",
                 }
             }
         }
-        with patch.object(init_command, '_load_command_config', return_value=mock_loaded_config):
+        with patch.object(
+            init_command, "_load_command_config", return_value=mock_loaded_config
+        ):
             config = init_command._create_config(mock_cli_args_default)
             assert "test_step" in config.custom_steps
             assert isinstance(config.custom_steps["test_step"], CustomStepConfig)
@@ -132,14 +132,20 @@ class TestInitCommand:
         assert init_command._check_condition("file_exists:test.txt", tmp_path) is True
 
     def test_check_condition_file_exists_false(self, init_command, tmp_path):
-        assert init_command._check_condition("file_exists:nonexistent.txt", tmp_path) is False
+        assert (
+            init_command._check_condition("file_exists:nonexistent.txt", tmp_path)
+            is False
+        )
 
     def test_check_condition_tool_exists(self, init_command, tmp_path):
         with patch("khive.utils.check_tool_available", return_value=True):
             assert init_command._check_condition("tool_exists:python", tmp_path) is True
 
         with patch("khive.utils.check_tool_available", return_value=False):
-            assert init_command._check_condition("tool_exists:nonexistent", tmp_path) is False
+            assert (
+                init_command._check_condition("tool_exists:nonexistent", tmp_path)
+                is False
+            )
 
     def test_check_condition_no_expression(self, init_command, tmp_path):
         assert init_command._check_condition(None, tmp_path) is True
@@ -153,8 +159,7 @@ class TestInitCommand:
 
     def test_determine_steps_explicit(self, init_command, mock_project_root):
         config = InitConfig(
-            project_root=mock_project_root,
-            steps_to_run_explicitly=["tools", "python"]
+            project_root=mock_project_root, steps_to_run_explicitly=["tools", "python"]
         )
         steps = init_command._determine_steps_to_run(config)
         assert list(steps.keys()) == ["tools", "python"]
@@ -168,12 +173,14 @@ class TestInitCommand:
             assert "tools" in steps
             assert "python" in steps
 
-    def test_determine_steps_auto_detection_python(self, init_command, mock_project_root):
+    def test_determine_steps_auto_detection_python(
+        self, init_command, mock_project_root
+    ):
         config = InitConfig(project_root=mock_project_root)
-        
+
         def mock_exists(self):
             return str(self).endswith("pyproject.toml")
-        
+
         with patch.object(Path, "exists", mock_exists):
             steps = init_command._determine_steps_to_run(config)
             assert "tools" in steps
@@ -181,10 +188,10 @@ class TestInitCommand:
 
     def test_determine_steps_auto_detection_npm(self, init_command, mock_project_root):
         config = InitConfig(project_root=mock_project_root)
-        
+
         def mock_exists(self):
             return str(self).endswith("package.json")
-        
+
         with patch.object(Path, "exists", mock_exists):
             steps = init_command._determine_steps_to_run(config)
             assert "tools" in steps
@@ -193,13 +200,12 @@ class TestInitCommand:
 
     def test_determine_steps_disabled_stacks(self, init_command, mock_project_root):
         config = InitConfig(
-            project_root=mock_project_root,
-            disable_auto_stacks=["python"]
+            project_root=mock_project_root, disable_auto_stacks=["python"]
         )
-        
+
         def mock_exists(self):
             return str(self).endswith("pyproject.toml")
-        
+
         with patch.object(Path, "exists", mock_exists):
             steps = init_command._determine_steps_to_run(config)
             assert "tools" in steps
@@ -230,12 +236,12 @@ class TestAsyncMethods:
         mock_process = AsyncMock()
         mock_process.communicate.return_value = (b"success output", b"")
         mock_process.returncode = 0
-        
+
         with patch("asyncio.create_subprocess_shell", return_value=mock_process):
             result = await init_command._run_shell_command_async(
                 "echo hello", cwd=tmp_path, step_name="test"
             )
-        
+
         assert result["name"] == "test"
         assert result["status"] == "OK"
         assert result["stdout"] == "success output"
@@ -246,24 +252,28 @@ class TestAsyncMethods:
         mock_process = AsyncMock()
         mock_process.communicate.return_value = (b"", b"error output")
         mock_process.returncode = 1
-        
+
         with patch("asyncio.create_subprocess_shell", return_value=mock_process):
             result = await init_command._run_shell_command_async(
                 "exit 1", cwd=tmp_path, step_name="test"
             )
-        
+
         assert result["name"] == "test"
         assert result["status"] == "FAILED"
         assert result["stderr"] == "error output"
         assert result["return_code"] == 1
 
     @pytest.mark.asyncio
-    async def test_run_custom_step_condition_not_met(self, init_command, mock_project_root):
+    async def test_run_custom_step_condition_not_met(
+        self, init_command, mock_project_root
+    ):
         config = InitConfig(project_root=mock_project_root)
-        custom_cfg = CustomStepConfig(cmd="echo hello", run_if="file_exists:nonexistent.txt")
-        
+        custom_cfg = CustomStepConfig(
+            cmd="echo hello", run_if="file_exists:nonexistent.txt"
+        )
+
         result = await init_command._run_custom_step("test", custom_cfg, config)
-        
+
         assert result["name"] == "test"
         assert result["status"] == "SKIPPED"
         assert "Condition" in result["message"]
@@ -272,9 +282,9 @@ class TestAsyncMethods:
     async def test_run_custom_step_no_command(self, init_command, mock_project_root):
         config = InitConfig(project_root=mock_project_root)
         custom_cfg = CustomStepConfig(cmd=None)
-        
+
         result = await init_command._run_custom_step("test", custom_cfg, config)
-        
+
         assert result["name"] == "test"
         assert result["status"] == "SKIPPED"
         assert "No command defined" in result["message"]
@@ -282,28 +292,28 @@ class TestAsyncMethods:
     @pytest.mark.asyncio
     async def test_step_tools_all_present(self, init_command, mock_project_root):
         config = InitConfig(project_root=mock_project_root)
-        
+
         with patch("khive.utils.check_tool_available", return_value=True):
             with patch.object(Path, "exists", return_value=False):  # No project files
                 result = await init_command._step_tools(config)
-        
+
         assert result["name"] == "tools"
         assert result["status"] == "OK"
 
     @pytest.mark.asyncio
     async def test_step_tools_missing_required(self, init_command, mock_project_root):
         config = InitConfig(project_root=mock_project_root)
-        
+
         def mock_tool_check(tool):
             return tool != "uv"  # uv is missing
-        
+
         def mock_exists(self):
             return str(self).endswith("pyproject.toml")  # Python project detected
-        
+
         with patch("khive.utils.check_tool_available", side_effect=mock_tool_check):
             with patch.object(Path, "exists", mock_exists):
                 result = await init_command._step_tools(config)
-        
+
         assert result["name"] == "tools"
         assert result["status"] == "FAILED"
         assert "Missing required tools" in result["message"]
@@ -311,10 +321,10 @@ class TestAsyncMethods:
     @pytest.mark.asyncio
     async def test_step_python_no_pyproject(self, init_command, mock_project_root):
         config = InitConfig(project_root=mock_project_root)
-        
+
         with patch.object(Path, "exists", return_value=False):
             result = await init_command._step_python(config)
-        
+
         assert result["name"] == "python"
         assert result["status"] == "SKIPPED"
         assert "No pyproject.toml found" in result["message"]
@@ -322,31 +332,29 @@ class TestAsyncMethods:
     @pytest.mark.asyncio
     async def test_step_python_success(self, init_command, mock_project_root):
         config = InitConfig(project_root=mock_project_root)
-        
+
         def mock_exists(self):
             return str(self).endswith("pyproject.toml")
-        
-        mock_result = {
-            "name": "python",
-            "status": "OK",
-            "message": "uv sync completed"
-        }
-        
+
+        mock_result = {"name": "python", "status": "OK", "message": "uv sync completed"}
+
         with patch.object(Path, "exists", mock_exists):
             with patch("khive.utils.check_tool_available", return_value=True):
-                with patch.object(init_command, "_run_shell_command_async", return_value=mock_result):
+                with patch.object(
+                    init_command, "_run_shell_command_async", return_value=mock_result
+                ):
                     result = await init_command._step_python(config)
-        
+
         assert result["name"] == "python"
         assert result["status"] == "OK"
 
     @pytest.mark.asyncio
     async def test_step_npm_no_package_json(self, init_command, mock_project_root):
         config = InitConfig(project_root=mock_project_root)
-        
+
         with patch.object(Path, "exists", return_value=False):
             result = await init_command._step_npm(config)
-        
+
         assert result["name"] == "npm"
         assert result["status"] == "SKIPPED"
         assert "No package.json found" in result["message"]
@@ -354,10 +362,10 @@ class TestAsyncMethods:
     @pytest.mark.asyncio
     async def test_step_rust_no_cargo_toml(self, init_command, mock_project_root):
         config = InitConfig(project_root=mock_project_root)
-        
+
         with patch.object(Path, "exists", return_value=False):
             result = await init_command._step_rust(config)
-        
+
         assert result["name"] == "rust"
         assert result["status"] == "SKIPPED"
         assert "No Cargo.toml found" in result["message"]
@@ -370,12 +378,12 @@ class TestMainFunction:
         # Just verify the main function can be called
         assert callable(main)
 
-    @patch('khive.cli.khive_init.InitCommand')
+    @patch("khive.cli.khive_init.InitCommand")
     def test_main_calls_init_command(self, mock_init_command_class):
         mock_command = MagicMock()
         mock_init_command_class.return_value = mock_command
-        
+
         main(["--help"])
-        
+
         mock_init_command_class.assert_called_once()
         mock_command.run.assert_called_once_with(["--help"])

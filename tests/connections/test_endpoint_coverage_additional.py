@@ -43,6 +43,8 @@ def sdk_endpoint_config():
 class TestRequestOptions(BaseModel):
     """Test request options model for testing."""
 
+    __test__ = False  # Prevent pytest from collecting this as a test class
+
     option1: str = Field(default=None)
     option2: int = Field(default=None)
     option3: bool = Field(default=None)

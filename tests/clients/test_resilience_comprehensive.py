@@ -31,18 +31,14 @@ class TestCircuitBreaker:
     def circuit_breaker(self):
         """Create a CircuitBreaker instance for testing."""
         return CircuitBreaker(
-            failure_threshold=3,
-            recovery_timeout=1.0,
-            expected_exception=APIClientError
+            failure_threshold=3, recovery_timeout=1.0, expected_exception=APIClientError
         )
 
     @pytest.fixture
     def fast_recovery_breaker(self):
         """Create a CircuitBreaker with fast recovery for testing."""
         return CircuitBreaker(
-            failure_threshold=2,
-            recovery_timeout=0.1,
-            expected_exception=Exception
+            failure_threshold=2, recovery_timeout=0.1, expected_exception=Exception
         )
 
     async def test_initialization(self, circuit_breaker):
@@ -56,36 +52,39 @@ class TestCircuitBreaker:
 
     async def test_successful_execution_closed_state(self, circuit_breaker):
         """Test successful execution in closed state."""
+
         async def successful_operation():
             return "success"
 
         result = await circuit_breaker.execute(successful_operation)
-        
+
         assert result == "success"
         assert circuit_breaker.state == CircuitState.CLOSED
         assert circuit_breaker.failure_count == 0
 
     async def test_failure_increments_count(self, circuit_breaker):
         """Test that failures increment the failure count."""
+
         async def failing_operation():
             raise APIClientError("Test error")
 
         # First failure
         with pytest.raises(APIClientError):
             await circuit_breaker.execute(failing_operation)
-        
+
         assert circuit_breaker.failure_count == 1
         assert circuit_breaker.state == CircuitState.CLOSED
 
         # Second failure
         with pytest.raises(APIClientError):
             await circuit_breaker.execute(failing_operation)
-        
+
         assert circuit_breaker.failure_count == 2
         assert circuit_breaker.state == CircuitState.CLOSED
 
     async def test_circuit_opens_after_threshold(self, circuit_breaker):
         """Test that circuit opens after reaching failure threshold."""
+
         async def failing_operation():
             raise APIClientError("Test error")
 
@@ -101,6 +100,7 @@ class TestCircuitBreaker:
 
     async def test_open_circuit_rejects_calls(self, circuit_breaker):
         """Test that open circuit rejects calls immediately."""
+
         async def failing_operation():
             raise APIClientError("Test error")
 
@@ -118,6 +118,7 @@ class TestCircuitBreaker:
 
     async def test_circuit_transitions_to_half_open(self, fast_recovery_breaker):
         """Test circuit transitions to half-open after recovery timeout."""
+
         async def failing_operation():
             raise Exception("Test error")
 
@@ -136,13 +137,14 @@ class TestCircuitBreaker:
             return "test"
 
         result = await fast_recovery_breaker.execute(test_operation)
-        
+
         assert result == "test"
         assert fast_recovery_breaker.state == CircuitState.CLOSED
         assert fast_recovery_breaker.failure_count == 0
 
     async def test_half_open_success_closes_circuit(self, fast_recovery_breaker):
         """Test that successful call in half-open state closes circuit."""
+
         async def failing_operation():
             raise Exception("Test error")
 
@@ -159,13 +161,14 @@ class TestCircuitBreaker:
             return "success"
 
         result = await fast_recovery_breaker.execute(successful_operation)
-        
+
         assert result == "success"
         assert fast_recovery_breaker.state == CircuitState.CLOSED
         assert fast_recovery_breaker.failure_count == 0
 
     async def test_half_open_failure_reopens_circuit(self, fast_recovery_breaker):
         """Test that failure in half-open state reopens circuit."""
+
         async def failing_operation():
             raise Exception("Test error")
 
@@ -185,6 +188,7 @@ class TestCircuitBreaker:
 
     async def test_unexpected_exception_not_counted(self, circuit_breaker):
         """Test that unexpected exceptions are not counted as failures."""
+
         async def unexpected_error():
             raise ValueError("Unexpected error")
 
@@ -197,6 +201,7 @@ class TestCircuitBreaker:
 
     async def test_mixed_exceptions(self, circuit_breaker):
         """Test handling of mixed expected and unexpected exceptions."""
+
         async def api_error():
             raise APIClientError("API error")
 
@@ -220,6 +225,7 @@ class TestCircuitBreaker:
 
     async def test_reset_functionality(self, circuit_breaker):
         """Test manual reset functionality."""
+
         async def failing_operation():
             raise APIClientError("Test error")
 
@@ -239,6 +245,7 @@ class TestCircuitBreaker:
 
     async def test_concurrent_executions(self, circuit_breaker):
         """Test concurrent executions through circuit breaker."""
+
         async def slow_operation(delay, should_fail=False):
             await asyncio.sleep(delay)
             if should_fail:
@@ -253,7 +260,7 @@ class TestCircuitBreaker:
         ]
 
         results = await asyncio.gather(*tasks)
-        
+
         assert len(results) == 3
         assert all("completed after" in result for result in results)
         assert circuit_breaker.state == CircuitState.CLOSED
@@ -264,12 +271,7 @@ class TestRetryConfig:
 
     def test_retry_config_initialization(self):
         """Test RetryConfig initialization."""
-        config = RetryConfig(
-            max_retries=5,
-            base_delay=1.0,
-            max_delay=60.0,
-            jitter=True
-        )
+        config = RetryConfig(max_retries=5, base_delay=1.0, max_delay=60.0, jitter=True)
 
         assert config.max_retries == 5
         assert config.base_delay == 1.0
@@ -279,30 +281,27 @@ class TestRetryConfig:
     def test_retry_config_as_kwargs(self):
         """Test RetryConfig as_kwargs method."""
         config = RetryConfig(
-            max_retries=3,
-            base_delay=0.5,
-            max_delay=10.0,
-            jitter=False
+            max_retries=3, base_delay=0.5, max_delay=10.0, jitter=False
         )
 
         kwargs = config.as_kwargs()
-        
+
         expected_kwargs = {
-            'max_retries': 3,
-            'base_delay': 0.5,
-            'max_delay': 10.0,
-            'backoff_factor': 2.0,
-            'jitter': False,
-            'retry_exceptions': (Exception,),
-            'exclude_exceptions': (),
+            "max_retries": 3,
+            "base_delay": 0.5,
+            "max_delay": 10.0,
+            "backoff_factor": 2.0,
+            "jitter": False,
+            "retry_exceptions": (Exception,),
+            "exclude_exceptions": (),
         }
-        
+
         assert kwargs == expected_kwargs
 
     def test_retry_config_defaults(self):
         """Test RetryConfig default values."""
         config = RetryConfig()
-        
+
         assert config.max_retries == 3
         assert config.base_delay == 1.0
         assert config.max_delay == 60.0
@@ -315,16 +314,14 @@ class TestRetryWithBackoff:
     async def test_successful_operation_no_retry(self):
         """Test successful operation requires no retry."""
         call_count = 0
-        
+
         async def successful_operation():
             nonlocal call_count
             call_count += 1
             return "success"
 
         result = await retry_with_backoff(
-            successful_operation,
-            max_retries=3,
-            base_delay=0.1
+            successful_operation, max_retries=3, base_delay=0.1
         )
 
         assert result == "success"
@@ -333,7 +330,7 @@ class TestRetryWithBackoff:
     async def test_retry_on_failure(self):
         """Test retry behavior on failures."""
         call_count = 0
-        
+
         async def failing_then_success():
             nonlocal call_count
             call_count += 1
@@ -344,7 +341,7 @@ class TestRetryWithBackoff:
         result = await retry_with_backoff(
             failing_then_success,
             max_retries=5,
-            base_delay=0.01  # Very short delay for testing
+            base_delay=0.01,  # Very short delay for testing
         )
 
         assert result == "success"
@@ -353,18 +350,14 @@ class TestRetryWithBackoff:
     async def test_max_attempts_exceeded(self):
         """Test behavior when max attempts are exceeded."""
         call_count = 0
-        
+
         async def always_failing():
             nonlocal call_count
             call_count += 1
             raise APIConnectionError("Always fails")
 
         with pytest.raises(APIConnectionError):
-            await retry_with_backoff(
-                always_failing,
-                max_attempts=3,
-                base_delay=0.01
-            )
+            await retry_with_backoff(always_failing, max_attempts=3, base_delay=0.01)
 
         assert call_count == 3
 
@@ -372,7 +365,7 @@ class TestRetryWithBackoff:
         """Test different backoff strategies."""
         call_count = 0
         start_time = time.time()
-        
+
         async def failing_operation():
             nonlocal call_count
             call_count += 1
@@ -381,12 +374,9 @@ class TestRetryWithBackoff:
             return "success"
 
         # Test with linear backoff
-                result = await retry_with_backoff(
-                    failing_operation,
-                    max_retries=5,
-                    base_delay=0.01,
-                    jitter=False
-                )
+        result = await retry_with_backoff(
+            failing_operation, max_retries=5, base_delay=0.01, jitter=False
+        )
 
         duration = time.time() - start_time
         assert result == "success"
@@ -397,7 +387,7 @@ class TestRetryWithBackoff:
     async def test_non_retryable_exception(self):
         """Test that some exceptions are not retried."""
         call_count = 0
-        
+
         async def auth_error():
             nonlocal call_count
             call_count += 1
@@ -405,11 +395,7 @@ class TestRetryWithBackoff:
             raise ValueError("Invalid credentials")
 
         with pytest.raises(ValueError):
-            await retry_with_backoff(
-                auth_error,
-                max_attempts=3,
-                base_delay=0.01
-            )
+            await retry_with_backoff(auth_error, max_attempts=3, base_delay=0.01)
 
         # Should only be called once (no retries for ValueError)
         assert call_count == 1
@@ -417,7 +403,7 @@ class TestRetryWithBackoff:
     async def test_retry_with_rate_limit(self):
         """Test retry behavior with rate limiting."""
         call_count = 0
-        
+
         async def rate_limited_operation():
             nonlocal call_count
             call_count += 1
@@ -428,7 +414,7 @@ class TestRetryWithBackoff:
         result = await retry_with_backoff(
             rate_limited_operation,
             max_attempts=5,
-            base_delay=0.001  # Very short base delay
+            base_delay=0.001,  # Very short base delay
         )
 
         assert result == "success"
@@ -437,7 +423,7 @@ class TestRetryWithBackoff:
     async def test_retry_with_server_error(self):
         """Test retry behavior with server errors."""
         call_count = 0
-        
+
         async def server_error_operation():
             nonlocal call_count
             call_count += 1
@@ -446,9 +432,7 @@ class TestRetryWithBackoff:
             return "recovered"
 
         result = await retry_with_backoff(
-            server_error_operation,
-            max_attempts=3,
-            base_delay=0.01
+            server_error_operation, max_attempts=3, base_delay=0.01
         )
 
         assert result == "recovered"
@@ -457,7 +441,7 @@ class TestRetryWithBackoff:
     async def test_retry_with_mixed_exceptions(self):
         """Test retry with mixed retryable and non-retryable exceptions."""
         call_count = 0
-        
+
         async def mixed_errors():
             nonlocal call_count
             call_count += 1
@@ -471,11 +455,7 @@ class TestRetryWithBackoff:
             return "should not reach here"
 
         with pytest.raises(ValueError):
-            await retry_with_backoff(
-                mixed_errors,
-                max_attempts=5,
-                base_delay=0.01
-            )
+            await retry_with_backoff(mixed_errors, max_attempts=5, base_delay=0.01)
 
         assert call_count == 3
 
@@ -483,7 +463,7 @@ class TestRetryWithBackoff:
         """Test that retry timing is reasonably accurate."""
         call_count = 0
         start_time = time.time()
-        
+
         async def failing_operation():
             nonlocal call_count
             call_count += 1
@@ -491,13 +471,13 @@ class TestRetryWithBackoff:
                 raise APIConnectionError("Connection failed")
             return "success"
 
-                result = await retry_with_backoff(
-                    failing_operation,
-                    max_retries=3,
-                    base_delay=0.05,  # 50ms delay
-                    backoff_factor=1.0,  # Fixed delay
-                    jitter=False
-                )
+        result = await retry_with_backoff(
+            failing_operation,
+            max_retries=3,
+            base_delay=0.05,  # 50ms delay
+            backoff_factor=1.0,  # Fixed delay
+            jitter=False,
+        )
 
         duration = time.time() - start_time
         assert result == "success"
@@ -511,13 +491,11 @@ class TestResilienceIntegration:
     async def test_circuit_breaker_with_retry(self):
         """Test circuit breaker combined with retry logic."""
         circuit_breaker = CircuitBreaker(
-            failure_threshold=2,
-            recovery_timeout=0.1,
-            expected_exception=APIClientError
+            failure_threshold=2, recovery_timeout=0.1, expected_exception=APIClientError
         )
-        
+
         call_count = 0
-        
+
         async def unreliable_operation():
             nonlocal call_count
             call_count += 1
@@ -530,7 +508,7 @@ class TestResilienceIntegration:
             await retry_with_backoff(
                 lambda: circuit_breaker.execute(unreliable_operation),
                 max_attempts=3,
-                base_delay=0.01
+                base_delay=0.01,
             )
 
         # Circuit should be open now
@@ -551,11 +529,11 @@ class TestResilienceIntegration:
         """Test resilience mechanisms in a real-world-like scenario."""
         # Simulate a service that's initially down, then flaky, then stable
         call_count = 0
-        
+
         async def flaky_service():
             nonlocal call_count
             call_count += 1
-            
+
             if call_count <= 3:
                 # Initially down
                 raise APIConnectionError("Service down")
@@ -569,9 +547,7 @@ class TestResilienceIntegration:
                 return f"stable_response_{call_count}"
 
         circuit_breaker = CircuitBreaker(
-            failure_threshold=3,
-            recovery_timeout=0.1,
-            expected_exception=Exception
+            failure_threshold=3, recovery_timeout=0.1, expected_exception=Exception
         )
 
         # First few attempts should fail and open circuit
@@ -580,7 +556,7 @@ class TestResilienceIntegration:
                 await retry_with_backoff(
                     lambda: circuit_breaker.execute(flaky_service),
                     max_attempts=2,
-                    base_delay=0.01
+                    base_delay=0.01,
                 )
 
         # Wait for circuit recovery
@@ -590,7 +566,7 @@ class TestResilienceIntegration:
         result = await retry_with_backoff(
             lambda: circuit_breaker.execute(flaky_service),
             max_attempts=5,
-            base_delay=0.01
+            base_delay=0.01,
         )
 
         assert "response_" in result

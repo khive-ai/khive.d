@@ -22,7 +22,7 @@ class TestTokenBucketRateLimiter:
         return TokenBucketRateLimiter(
             rate=10.0,  # 10 tokens per second
             capacity=20,  # 20 token capacity
-            initial_tokens=20  # Start with full bucket
+            initial_tokens=20,  # Start with full bucket
         )
 
     @pytest.fixture
@@ -31,7 +31,7 @@ class TestTokenBucketRateLimiter:
         return TokenBucketRateLimiter(
             rate=2.0,  # 2 tokens per second
             capacity=5,  # 5 token capacity
-            initial_tokens=5  # Start with full bucket
+            initial_tokens=5,  # Start with full bucket
         )
 
     @pytest.fixture
@@ -40,7 +40,7 @@ class TestTokenBucketRateLimiter:
         return TokenBucketRateLimiter(
             rate=100.0,  # 100 tokens per second
             capacity=200,  # 200 token capacity
-            initial_tokens=200  # Start with full bucket
+            initial_tokens=200,  # Start with full bucket
         )
 
     def test_initialization(self, rate_limiter):
@@ -53,7 +53,7 @@ class TestTokenBucketRateLimiter:
     def test_initialization_with_defaults(self):
         """Test initialization with default parameters."""
         limiter = TokenBucketRateLimiter()
-        
+
         assert limiter.rate == 1.0
         assert limiter.capacity == 10
         assert limiter.tokens == 10
@@ -125,7 +125,7 @@ class TestTokenBucketRateLimiter:
 
         # Wait for some refill (2 tokens per second, so 0.6 seconds should give ~1 token)
         await asyncio.sleep(0.6)
-        
+
         # Should be able to acquire at least 1 token
         result = await slow_rate_limiter.acquire(1)
         assert result is True
@@ -145,6 +145,7 @@ class TestTokenBucketRateLimiter:
 
     async def test_concurrent_token_acquisition(self, rate_limiter):
         """Test concurrent token acquisition."""
+
         async def acquire_tokens(count):
             return await rate_limiter.acquire(count)
 
@@ -157,11 +158,11 @@ class TestTokenBucketRateLimiter:
         ]
 
         results = await asyncio.gather(*tasks)
-        
+
         # Some should succeed, some might fail depending on timing
         successful_acquisitions = sum(1 for result in results if result)
         assert successful_acquisitions >= 1  # At least one should succeed
-        
+
         # Total tokens acquired should not exceed what was available
         total_acquired = sum(
             count for count, result in zip([3, 4, 5, 6], results) if result
@@ -175,10 +176,10 @@ class TestTokenBucketRateLimiter:
         assert slow_rate_limiter.tokens == 0
 
         start_time = time.time()
-        
+
         # Wait for 1 token (should take ~0.5 seconds at 2 tokens/second)
         result = await slow_rate_limiter.wait_for_tokens(1, timeout=2.0)
-        
+
         end_time = time.time()
         elapsed = end_time - start_time
 
@@ -193,10 +194,10 @@ class TestTokenBucketRateLimiter:
         assert slow_rate_limiter.tokens == 0
 
         start_time = time.time()
-        
+
         # Try to wait for more tokens than can be generated in timeout period
         result = await slow_rate_limiter.wait_for_tokens(10, timeout=0.5)
-        
+
         end_time = time.time()
         elapsed = end_time - start_time
 
@@ -206,9 +207,9 @@ class TestTokenBucketRateLimiter:
     async def test_wait_for_tokens_immediate_availability(self, rate_limiter):
         """Test waiting for tokens when they're immediately available."""
         start_time = time.time()
-        
+
         result = await rate_limiter.wait_for_tokens(5, timeout=1.0)
-        
+
         end_time = time.time()
         elapsed = end_time - start_time
 
@@ -228,6 +229,7 @@ class TestTokenBucketRateLimiter:
 
     async def test_enforce_rate_limit_success(self, rate_limiter):
         """Test enforce_rate_limit with successful acquisition."""
+
         async def test_operation():
             return "success"
 
@@ -249,6 +251,7 @@ class TestTokenBucketRateLimiter:
 
     async def test_enforce_rate_limit_with_operation_exception(self, rate_limiter):
         """Test enforce_rate_limit when operation raises exception."""
+
         async def failing_operation():
             raise ValueError("Operation failed")
 
@@ -260,6 +263,7 @@ class TestTokenBucketRateLimiter:
 
     async def test_enforce_rate_limit_default_tokens(self, rate_limiter):
         """Test enforce_rate_limit with default token count."""
+
         async def test_operation():
             return "success"
 
@@ -292,7 +296,7 @@ class TestTokenBucketRateLimiter:
 
         # Drain tokens
         await slow_rate_limiter.acquire(5)
-        
+
         # Should need time to generate tokens
         time_needed = slow_rate_limiter.time_until_available(2)
         assert 0.8 <= time_needed <= 1.2  # ~1 second at 2 tokens/second
@@ -304,11 +308,11 @@ class TestTokenBucketRateLimiter:
         assert rate_limiter.tokens == 10
 
         # Manually trigger refill (simulates time passing)
-        with patch('time.time') as mock_time:
+        with patch("time.time") as mock_time:
             # Simulate 1 second passing
             mock_time.side_effect = [
                 rate_limiter.last_update,  # Current time
-                rate_limiter.last_update + 1.0  # 1 second later
+                rate_limiter.last_update + 1.0,  # 1 second later
             ]
             rate_limiter._refill_tokens()
 
@@ -341,7 +345,7 @@ class TestTokenBucketRateLimiter:
     async def test_rate_adjustment(self, rate_limiter):
         """Test adjusting the rate dynamically."""
         original_rate = rate_limiter.rate
-        
+
         # Change rate
         rate_limiter.rate = 20.0  # Double the rate
         assert rate_limiter.rate == 20.0
@@ -350,11 +354,11 @@ class TestTokenBucketRateLimiter:
     async def test_capacity_adjustment(self, rate_limiter):
         """Test adjusting capacity (should be careful with this)."""
         original_capacity = rate_limiter.capacity
-        
+
         # Increase capacity
         rate_limiter.capacity = 30
         assert rate_limiter.capacity == 30
-        
+
         # Decrease capacity below current tokens
         await rate_limiter.acquire(5)  # Now at 15 tokens
         rate_limiter.capacity = 10
@@ -368,11 +372,7 @@ class TestRateLimiterIntegration:
     async def test_realistic_api_scenario(self):
         """Test rate limiter in a realistic API scenario."""
         # API allows 5 requests per second, burst up to 10
-        rate_limiter = TokenBucketRateLimiter(
-            rate=5.0,
-            capacity=10,
-            initial_tokens=10
-        )
+        rate_limiter = TokenBucketRateLimiter(rate=5.0, capacity=10, initial_tokens=10)
 
         async def api_call(request_id):
             """Simulate an API call."""
@@ -399,7 +399,7 @@ class TestRateLimiterIntegration:
 
         # Wait for refill and try again
         await asyncio.sleep(1.2)  # Allow ~6 tokens to refill
-        
+
         refilled_requests = 0
         for i in range(20, 30):
             if await rate_limiter.acquire(1):
@@ -410,11 +410,7 @@ class TestRateLimiterIntegration:
     async def test_sustained_load_scenario(self):
         """Test rate limiter under sustained load."""
         # Allow 2 requests per second
-        rate_limiter = TokenBucketRateLimiter(
-            rate=2.0,
-            capacity=4,
-            initial_tokens=4
-        )
+        rate_limiter = TokenBucketRateLimiter(rate=2.0, capacity=4, initial_tokens=4)
 
         successful_requests = 0
         start_time = time.time()
@@ -431,11 +427,7 @@ class TestRateLimiterIntegration:
     async def test_concurrent_clients_scenario(self):
         """Test rate limiter with multiple concurrent clients."""
         # Shared rate limiter
-        rate_limiter = TokenBucketRateLimiter(
-            rate=10.0,
-            capacity=20,
-            initial_tokens=20
-        )
+        rate_limiter = TokenBucketRateLimiter(rate=10.0, capacity=20, initial_tokens=20)
 
         async def client_requests(client_id, num_requests):
             """Simulate a client making requests."""
@@ -447,10 +439,7 @@ class TestRateLimiterIntegration:
             return successful
 
         # Start multiple clients
-        client_tasks = [
-            client_requests(f"client_{i}", 10)
-            for i in range(5)
-        ]
+        client_tasks = [client_requests(f"client_{i}", 10) for i in range(5)]
 
         results = await asyncio.gather(*client_tasks)
         total_successful = sum(results)
@@ -460,11 +449,7 @@ class TestRateLimiterIntegration:
 
     async def test_error_handling_with_rate_limiter(self):
         """Test error handling when using rate limiter."""
-        rate_limiter = TokenBucketRateLimiter(
-            rate=5.0,
-            capacity=10,
-            initial_tokens=10
-        )
+        rate_limiter = TokenBucketRateLimiter(rate=5.0, capacity=10, initial_tokens=10)
 
         async def failing_operation():
             raise ValueError("Simulated failure")
@@ -479,11 +464,7 @@ class TestRateLimiterIntegration:
 
     async def test_rate_limiter_with_different_token_costs(self):
         """Test rate limiter with operations requiring different token costs."""
-        rate_limiter = TokenBucketRateLimiter(
-            rate=10.0,
-            capacity=20,
-            initial_tokens=20
-        )
+        rate_limiter = TokenBucketRateLimiter(rate=10.0, capacity=20, initial_tokens=20)
 
         # Cheap operation (1 token)
         result1 = await rate_limiter.acquire(1)
