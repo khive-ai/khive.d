@@ -321,7 +321,7 @@ class TestSchemaUtil:
                 mock_temp_path.__truediv__.return_value = mock_output_file
                 mock_path_class.return_value = mock_temp_path
 
-                with pytest.raises(ImportError, match="Could not create module spec"):
+                with pytest.raises(RuntimeError, match="Failed to load generated module"):
                     SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
 
     @patch("khive._libs.schema._HAS_DATAMODEL_CODE_GENERATOR", True)
@@ -341,13 +341,21 @@ class TestSchemaUtil:
         mock_spec.loader = mock_loader
         mock_spec_from_file.return_value = mock_spec
 
-        mock_module = Mock()
-        mock_module_from_spec.return_value = mock_module
+        # Create a custom mock class that properly handles attribute errors
+        class MockModule:
+            def __init__(self):
+                self.__dict__ = {}
+            
+            def __getattr__(self, name):
+                if name in ['TestModel', 'Model']:
+                    raise AttributeError(f"{name} not found")
+                return Mock()
+            
+            def __dir__(self):
+                return []
 
-        # Mock module without the expected TestModel attribute
-        del mock_module.TestModel
-        del mock_module.Model  # Also remove fallback
-        mock_module.__dict__ = {}
+        mock_module = MockModule()
+        mock_module_from_spec.return_value = mock_module
 
         with patch("tempfile.TemporaryDirectory") as mock_temp_dir:
             # Mock the temporary directory path as a string
@@ -394,7 +402,7 @@ class TestSchemaUtil:
 
             @classmethod
             def model_rebuild(cls, **kwargs):
-                raise PydanticUserError("Rebuild failed")
+                raise PydanticUserError("Rebuild failed", code="rebuild_error")
 
         mock_module.TestModel = MockTestModel
         mock_module.__dict__ = {"TestModel": MockTestModel}

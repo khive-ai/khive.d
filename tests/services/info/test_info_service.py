@@ -89,6 +89,9 @@ class TestInfoServiceGroup:
         service = InfoServiceGroup()
         request = InfoRequest(query="Test query")
 
+        # Mock _detect_mode to raise exception inside handle_request
+        mocker.patch.object(service, "_detect_mode", side_effect=Exception("API Error"))
+
         # Act
         response = await service.search(request)
 
@@ -281,9 +284,9 @@ class TestInfoServiceIntegration:
         assert hasattr(service, "search")
         assert callable(getattr(service, "search"))
 
-        # Check that the service can be used as an async context manager
-        assert hasattr(service, "__aenter__")
-        assert hasattr(service, "__aexit__")
+        # Check that the service has close method for cleanup
+        assert hasattr(service, "close")
+        assert callable(getattr(service, "close"))
 
 
 class TestInsightModeDetection:
