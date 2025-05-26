@@ -49,6 +49,7 @@ COMMAND_DESCRIPTIONS: dict[str, str] = {
     "git": "Natural language git operations for humans and AI",
 }
 
+
 # --- Helper Functions ---
 def _get_full_module_path(module_name: str) -> str:
     """
