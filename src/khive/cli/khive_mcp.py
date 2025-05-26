@@ -216,13 +216,8 @@ class MCPCommand(BaseCLICommand):
                 mcp_servers = config_data.get("mcpServers", {})
 
                 for server_name, server_config in mcp_servers.items():
-                    # Determine transport type
-                    transport = "stdio"
-                    url = None
-
-                    if "url" in server_config:
-                        transport = "sse"
-                        url = server_config["url"]
+                    # Intelligently detect transport type
+                    transport, url = self._detect_transport_type(server_config)
 
                     config.servers[server_name] = MCPServerConfig(
                         name=server_name,
@@ -241,6 +236,79 @@ class MCPCommand(BaseCLICommand):
                 warn_msg(f"Could not parse MCP config: {e}")
 
         return config
+
+    def _detect_transport_type(self, server_config: dict) -> tuple[str, str | None]:
+        """Intelligently detect the transport type based on server configuration."""
+        # 1. Explicit transport specification takes precedence
+        if "transport" in server_config:
+            transport = server_config["transport"].lower()
+            if transport in ["sse", "http", "https"]:
+                url = server_config.get("url")
+                if not url:
+                    warn_msg(f"Transport '{transport}' specified but no URL provided")
+                return transport, url
+            elif transport in ["stdio", "pipe"]:
+                return "stdio", None
+            else:
+                warn_msg(f"Unknown transport type '{transport}', defaulting to stdio")
+
+        # 2. URL presence indicates SSE/HTTP transport
+        if "url" in server_config and server_config["url"]:
+            url = server_config["url"]
+            if url.startswith(("http://", "https://")):
+                return "sse", url
+            elif url.startswith(("ws://", "wss://")):
+                return "websocket", url
+            else:
+                warn_msg(f"Unrecognized URL scheme in '{url}', treating as SSE")
+                return "sse", url
+
+        # 3. Command-based detection for stdio transport
+        command = server_config.get("command", "")
+        if not command:
+            warn_msg("No command specified, defaulting to stdio transport")
+            return "stdio", None
+
+        # 4. Analyze command to determine best stdio transport
+        # Check if it's a Docker command
+        if command == "docker" or command.startswith("docker "):
+            log_msg(f"Detected Docker command, using stdio transport")
+            return "stdio", None
+
+        # Check if it's a Python script or module
+        if (
+            command in ["python", "python3", "py"]
+            or command.startswith(("python ", "python3 ", "py "))
+            or command.endswith(".py")
+        ):
+            log_msg(f"Detected Python command, using stdio transport")
+            return "stdio", None
+
+        # Check if it's a Node.js command
+        if (
+            command in ["node", "npm", "npx", "yarn"]
+            or command.startswith(("node ", "npm ", "npx ", "yarn "))
+            or command.endswith(".js")
+        ):
+            log_msg(f"Detected Node.js command, using stdio transport")
+            return "stdio", None
+
+        # Check if it's an executable file
+        resolved_command = self._resolve_command_path(command)
+        if Path(resolved_command).exists() and os.access(resolved_command, os.X_OK):
+            log_msg(f"Detected executable file, using stdio transport")
+            return "stdio", None
+
+        # Check if it's a system command
+        if shutil.which(command.split()[0] if " " in command else command):
+            log_msg(f"Detected system command, using stdio transport")
+            return "stdio", None
+
+        # Default to stdio with warning
+        warn_msg(
+            f"Could not determine transport type for command '{command}', defaulting to stdio"
+        )
+        return "stdio", None
 
     def _execute(self, args: argparse.Namespace, config: MCPConfig) -> CLIResult:
         """Execute the MCP command using nest_asyncio for compatibility."""
@@ -385,27 +453,120 @@ class MCPCommand(BaseCLICommand):
         return command
 
     def _create_transport(self, server_config: MCPServerConfig):
-        """Create appropriate transport based on configuration."""
-        if server_config.transport == "sse" and server_config.url:
+        """Create appropriate transport based on detected configuration."""
+        transport_type = server_config.transport.lower()
+
+        # Handle HTTP/SSE transports
+        if transport_type in ["sse", "http", "https"]:
+            if not server_config.url:
+                raise ValueError(f"URL required for {transport_type} transport")
+            log_msg(f"Creating SSE transport for {server_config.url}")
             return SSETransport(server_config.url)
+
+        # Handle WebSocket transport (if supported by FastMCP)
+        elif transport_type in ["websocket", "ws", "wss"]:
+            if not server_config.url:
+                raise ValueError(f"URL required for {transport_type} transport")
+            # Note: WebSocket transport may not be available in all FastMCP versions
+            try:
+                from fastmcp.client.transports import WebSocketTransport
+
+                log_msg(f"Creating WebSocket transport for {server_config.url}")
+                return WebSocketTransport(server_config.url)
+            except ImportError:
+                warn_msg("WebSocket transport not available, falling back to SSE")
+                return SSETransport(server_config.url)
+
+        # Handle stdio/pipe transports (default)
+        elif transport_type in ["stdio", "pipe"]:
+            return self._create_stdio_transport(server_config)
+
         else:
-            # Resolve command
-            resolved_command = self._resolve_command_path(server_config.command)
+            warn_msg(f"Unknown transport type '{transport_type}', using stdio")
+            return self._create_stdio_transport(server_config)
 
-            # Prepare environment
-            env = os.environ.copy()
-            env.update(server_config.env)
+    def _create_stdio_transport(self, server_config: MCPServerConfig):
+        """Create the appropriate stdio transport based on command type."""
+        # Resolve command
+        resolved_command = self._resolve_command_path(server_config.command)
 
-            # Force unbuffered output for Python
-            env["PYTHONUNBUFFERED"] = "1"
+        # Prepare environment
+        env = os.environ.copy()
+        env.update(server_config.env)
 
-            # Use our fixed transport
-            return StdioTransportFixed(
-                command=resolved_command,
-                args=server_config.args,
-                env=env,
-                buffer_size=server_config.buffer_size,
-            )
+        # Force unbuffered output for Python scripts
+        env["PYTHONUNBUFFERED"] = "1"
+
+        # Detect if this is a Python script for PythonStdioTransport
+        if self._is_python_command(server_config.command, server_config.args):
+            if PythonStdioTransport is not None:
+                # Extract Python script path from command/args
+                script_path = self._extract_python_script_path(
+                    server_config.command, server_config.args
+                )
+                if script_path:
+                    log_msg(f"Creating PythonStdioTransport for {script_path}")
+                    return PythonStdioTransport(
+                        script_path=script_path,
+                        args=self._extract_python_script_args(server_config.args),
+                        env=env,
+                    )
+
+        # Use our enhanced StdioTransport for all other cases
+        log_msg(f"Creating StdioTransport for {resolved_command}")
+        return StdioTransportFixed(
+            command=resolved_command,
+            args=server_config.args,
+            env=env,
+            buffer_size=server_config.buffer_size,
+        )
+
+    def _is_python_command(self, command: str, args: list[str]) -> bool:
+        """Check if this is a Python command that should use PythonStdioTransport."""
+        # Direct Python interpreter calls
+        if command in ["python", "python3", "py"]:
+            return True
+
+        # Python with flags (e.g., "python -m module")
+        if command.startswith(("python ", "python3 ", "py ")):
+            return True
+
+        # Direct .py file execution
+        if command.endswith(".py"):
+            return True
+
+        # Check if first arg is a .py file when using python interpreter
+        if command in ["python", "python3", "py"] and args and args[0].endswith(".py"):
+            return True
+
+        return False
+
+    def _extract_python_script_path(self, command: str, args: list[str]) -> str | None:
+        """Extract the Python script path from command and args."""
+        # Direct .py file execution
+        if command.endswith(".py"):
+            return self._resolve_command_path(command)
+
+        # Python interpreter with script as first argument
+        if command in ["python", "python3", "py"] and args:
+            first_arg = args[0]
+            # Skip flags like -m, -c, etc.
+            if not first_arg.startswith("-") and first_arg.endswith(".py"):
+                return self._resolve_command_path(first_arg)
+
+        return None
+
+    def _extract_python_script_args(self, args: list[str]) -> list[str]:
+        """Extract arguments for the Python script (excluding the script path itself)."""
+        if not args:
+            return []
+
+        # If first arg is a .py file, return the rest
+        if args[0].endswith(".py"):
+            return args[1:]
+
+        # Otherwise return all args (for cases like python -m module)
+        return args
 
     @asynccontextmanager
     async def _get_client(self, server_config: MCPServerConfig):
