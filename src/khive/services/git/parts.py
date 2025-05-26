@@ -241,9 +241,7 @@ class GitResponse(BaseModel):
     )
 
     # Summary message
-    summary: str | None = Field(
-        default=None, description="Optional summary message"
-    )
+    summary: str | None = Field(default=None, description="Optional summary message")
 
 
 class Recommendation(BaseModel):
