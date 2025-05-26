@@ -37,13 +37,13 @@ class InfoServiceGroup(Service):
         self._exa = None
         self._openrouter = None
         self._executor = AsyncExecutor(max_concurrency=10)
-        
+
         # Project knowledge sources
         self._project_root = Path.cwd()
         self._docs_path = self._project_root / "docs"
         self._readme_path = self._project_root / "README.md"
         self._project_files = self._project_root / "src"
-        
+
         # Knowledge sources are implemented as methods:
         # _search_project_knowledge, _search_technical_knowledge, _search_with_exa
 
@@ -120,7 +120,7 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
             "this codebase",
             "our codebase",
             "this application",
-            "our application"
+            "our application",
         ]
         if any(keyword in query_lower for keyword in project_keywords):
             return InsightMode.COMPREHENSIVE
@@ -137,7 +137,7 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
             "design patterns",
             "how to implement",
             "tutorial",
-            "guide"
+            "guide",
         ]
         if any(keyword in query_lower for keyword in technical_keywords):
             return InsightMode.COMPREHENSIVE
@@ -474,9 +474,23 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
     def _is_technical_query(self, query: str) -> bool:
         """Check if the query is technical in nature."""
         technical_indicators = [
-            "best practices", "testing", "pytest", "python", "cli", "implementation",
-            "architecture", "design patterns", "how to", "tutorial", "guide",
-            "framework", "library", "api", "configuration", "setup", "install"
+            "best practices",
+            "testing",
+            "pytest",
+            "python",
+            "cli",
+            "implementation",
+            "architecture",
+            "design patterns",
+            "how to",
+            "tutorial",
+            "guide",
+            "framework",
+            "library",
+            "api",
+            "configuration",
+            "setup",
+            "install",
         ]
         query_lower = query.lower()
         return any(indicator in query_lower for indicator in technical_indicators)
@@ -491,11 +505,13 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
             if "khive" in query.lower() or "this project" in query.lower():
                 # Read README.md for project overview
                 if self._readme_path.exists():
-                    readme_content = self._readme_path.read_text(encoding='utf-8')
+                    readme_content = self._readme_path.read_text(encoding="utf-8")
                     insights.append(
                         Insight(
                             summary="Khive Project Overview from README",
-                            details=readme_content[:1000] + "..." if len(readme_content) > 1000 else readme_content,
+                            details=readme_content[:1000] + "..."
+                            if len(readme_content) > 1000
+                            else readme_content,
                             sources=[
                                 InsightSource(
                                     type="search",
@@ -528,19 +544,21 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
         try:
             # Search through markdown files in docs/
             for doc_file in self._docs_path.rglob("*.md"):
-                content = doc_file.read_text(encoding='utf-8')
-                
+                content = doc_file.read_text(encoding="utf-8")
+
                 # Simple relevance scoring based on keyword matches
                 relevance_score = 0.0
                 for word in query_lower.split():
                     if word in content.lower():
                         relevance_score += 0.1
-                
+
                 if relevance_score > 0.1:  # Only include if somewhat relevant
                     insights.append(
                         Insight(
                             summary=f"Documentation: {doc_file.name}",
-                            details=content[:800] + "..." if len(content) > 800 else content,
+                            details=content[:800] + "..."
+                            if len(content) > 800
+                            else content,
                             sources=[
                                 InsightSource(
                                     type="search",
@@ -561,12 +579,12 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
     async def _search_technical_knowledge(self, query: str) -> dict[str, Any]:
         """Search technical knowledge sources for best practices and guides."""
         insights = []
-        
+
         try:
             # Use Perplexity with technical context for better results
             if self._perplexity is None:
                 self._perplexity = match_endpoint("perplexity", "chat")
-            
+
             if self._perplexity is not None:
                 technical_prompt = f"""You are a technical expert. Provide comprehensive guidance on: {query}
 
@@ -582,14 +600,17 @@ Query: {query}"""
                 response = await self._perplexity.call({
                     "model": "sonar-pro",
                     "messages": [
-                        {"role": "system", "content": "You are a technical expert providing practical guidance."},
+                        {
+                            "role": "system",
+                            "content": "You are a technical expert providing practical guidance.",
+                        },
                         {"role": "user", "content": technical_prompt},
                     ],
                     "temperature": 0.3,
                 })
 
                 content = self._extract_content(response)
-                
+
                 if content:
                     insights.append(
                         Insight(
@@ -732,32 +753,33 @@ Query: {query}"""
 
         # Separate project-specific insights from external ones
         project_insights = [
-            insight for insight in insights
-            if insight.sources and any(
+            insight
+            for insight in insights
+            if insight.sources
+            and any(
                 source.provider.startswith(("project-", "khive-"))
                 for source in insight.sources
             )
         ]
         external_insights = [
-            insight for insight in insights
-            if insight not in project_insights
+            insight for insight in insights if insight not in project_insights
         ]
 
         # Prepare synthesis prompt with project-first structure
         sources_text_parts = []
-        
+
         if project_insights:
             sources_text_parts.append("=== PROJECT-SPECIFIC SOURCES (PRIORITY) ===")
             for i, insight in enumerate(project_insights[:3]):
-                provider = insight.sources[0].provider if insight.sources else 'unknown'
+                provider = insight.sources[0].provider if insight.sources else "unknown"
                 sources_text_parts.append(
                     f"Project Source {i + 1} ({provider}):\n{insight.summary}\n{insight.details or ''}"
                 )
-        
+
         if external_insights:
             sources_text_parts.append("\n=== EXTERNAL SOURCES (SUPPLEMENTARY) ===")
             for i, insight in enumerate(external_insights[:3]):
-                provider = insight.sources[0].provider if insight.sources else 'unknown'
+                provider = insight.sources[0].provider if insight.sources else "unknown"
                 sources_text_parts.append(
                     f"External Source {i + 1} ({provider}):\n{insight.summary}\n{insight.details or ''}"
                 )
@@ -779,7 +801,10 @@ Query: {query}"""
                 response = await self._openrouter.call({
                     "model": "anthropic/claude-3-5-sonnet",
                     "messages": [
-                        {"role": "system", "content": "You are a synthesis expert. Prioritize project-specific information over external sources."},
+                        {
+                            "role": "system",
+                            "content": "You are a synthesis expert. Prioritize project-specific information over external sources.",
+                        },
                         {"role": "user", "content": prompt},
                     ],
                     "temperature": 0.6,
@@ -789,28 +814,37 @@ Query: {query}"""
                 return self._extract_content(response)
             else:
                 # Fallback if openrouter is not available
-                return self._create_simple_synthesis(query, project_insights, external_insights)
+                return self._create_simple_synthesis(
+                    query, project_insights, external_insights
+                )
 
         except Exception:
             # Fallback to simple synthesis
-            return self._create_simple_synthesis(query, project_insights, external_insights)
+            return self._create_simple_synthesis(
+                query, project_insights, external_insights
+            )
 
-    def _create_simple_synthesis(self, query: str, project_insights: list[Insight], external_insights: list[Insight]) -> str:
+    def _create_simple_synthesis(
+        self,
+        query: str,
+        project_insights: list[Insight],
+        external_insights: list[Insight],
+    ) -> str:
         """Create a simple synthesis when LLM synthesis fails."""
         parts = []
-        
+
         if project_insights:
             parts.append("Based on project documentation:")
             parts.extend([insight.summary for insight in project_insights[:2]])
-        
+
         if external_insights:
             if project_insights:
                 parts.append("\nAdditional context from external sources:")
             parts.extend([insight.summary for insight in external_insights[:2]])
-        
+
         if not parts:
             parts.append("No specific information found for this query.")
-        
+
         return " ".join(parts)
 
     async def _synthesize_analytical_insights(
@@ -884,30 +918,30 @@ Query: {query}"""
             suggestions.extend([
                 "Would you like to explore specific khive commands or services?",
                 "Need information about khive architecture or implementation details?",
-                "Want to know about khive's development workflow or contribution guidelines?"
+                "Want to know about khive's development workflow or contribution guidelines?",
             ])
-        
+
         # Technical query suggestions
         elif self._is_technical_query(query):
             if "testing" in query_lower:
                 suggestions.extend([
                     "Would you like examples of test implementation patterns?",
                     "Need information about test configuration and setup?",
-                    "Want to explore advanced testing strategies?"
+                    "Want to explore advanced testing strategies?",
                 ])
             elif "python" in query_lower or "cli" in query_lower:
                 suggestions.extend([
                     "Would you like to see code examples and implementation patterns?",
                     "Need information about CLI framework comparisons?",
-                    "Want to explore deployment and distribution strategies?"
+                    "Want to explore deployment and distribution strategies?",
                 ])
             else:
                 suggestions.extend([
                     "Would you like specific implementation examples?",
                     "Need information about related tools and frameworks?",
-                    "Want to explore advanced techniques and patterns?"
+                    "Want to explore advanced techniques and patterns?",
                 ])
-        
+
         # General query suggestions
         else:
             # Based on query type
@@ -924,19 +958,24 @@ Query: {query}"""
 
             # Always helpful fallback
             if not suggestions:
-                suggestions.append("Is there a particular angle you'd like to explore further?")
+                suggestions.append(
+                    "Is there a particular angle you'd like to explore further?"
+                )
 
         # Check if we have project insights to suggest diving deeper
         has_project_insights = any(
-            insight.sources and any(
+            insight.sources
+            and any(
                 source.provider.startswith(("project-", "khive-"))
                 for source in insight.sources
             )
             for insight in insights
         )
-        
+
         if has_project_insights and "khive" not in query_lower:
-            suggestions.append("Would you like to see how this relates to the khive project specifically?")
+            suggestions.append(
+                "Would you like to see how this relates to the khive project specifically?"
+            )
 
         return suggestions[:3]
 

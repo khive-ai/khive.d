@@ -102,6 +102,8 @@ class CircuitBreakerOpenError(APIClientError):
 class TestError(APIClientError):
     """Exception raised for testing purposes."""
 
+    __test__ = False  # Prevent pytest from collecting this as a test class
+
     def __init__(self, message: str = "Test exception"):
         """
         Initialize the test error.
