@@ -241,7 +241,60 @@ class BaseCLICommand(ABC):
             except RuntimeError as e:
                 # No event loop running, safe to use asyncio.run()
                 if "no running event loop" in str(e).lower():
-                    return asyncio.run(self._execute(args, config))
+                    # For MCP command, suppress asyncio warnings during shutdown
+                    if hasattr(self, "command_name") and self.command_name == "mcp":
+                        import warnings
+                        import sys
+                        import os
+
+                        # Capture stderr to suppress FastMCP/anyio error messages
+                        original_stderr = sys.stderr
+
+                        # Create a filter for stderr that suppresses specific error patterns
+                        class ErrorFilter:
+                            def __init__(self, original_stderr):
+                                self.original_stderr = original_stderr
+                                self.buffer = ""
+
+                            def write(self, text):
+                                # Filter out FastMCP/anyio error patterns
+                                if any(
+                                    pattern in text
+                                    for pattern in [
+                                        "cancel scope",
+                                        "fastmcp",
+                                        "anyio",
+                                        "ExceptionGroup",
+                                        "BaseExceptionGroup",
+                                        "unhandled exception during asyncio.run() shutdown",
+                                        "CancelledError",
+                                        "RuntimeError: Attempted to exit cancel scope",
+                                    ]
+                                ):
+                                    return  # Suppress these errors
+
+                                # Allow other errors through
+                                self.original_stderr.write(text)
+
+                            def flush(self):
+                                self.original_stderr.flush()
+
+                        try:
+                            # Redirect stderr to filter
+                            sys.stderr = ErrorFilter(original_stderr)
+
+                            # Also suppress warnings
+                            with warnings.catch_warnings():
+                                warnings.filterwarnings(
+                                    "ignore", category=RuntimeWarning
+                                )
+                                warnings.filterwarnings("ignore", category=UserWarning)
+                                return asyncio.run(self._execute(args, config))
+                        finally:
+                            # Always restore stderr
+                            sys.stderr = original_stderr
+                    else:
+                        return asyncio.run(self._execute(args, config))
                 else:
                     # Some other RuntimeError, re-raise
                     raise

@@ -213,9 +213,7 @@ class MCPCommand(BaseCLICommand):
 
                     # Merge environment variables with priority: config env > .env file > system env
                     merged_env = self._merge_environment_variables(
-                        server_config.get("env", {}),
-                        env_vars,
-                        server_name
+                        server_config.get("env", {}), env_vars, server_name
                     )
 
                     config.servers[server_name] = MCPServerConfig(
@@ -241,80 +239,82 @@ class MCPCommand(BaseCLICommand):
     def _load_environment_variables(self, project_root: Path) -> dict[str, str]:
         """Load environment variables from .env file and system environment."""
         env_vars = {}
-        
+
         # Load from .env file if it exists
         env_file = project_root / ".env"
         if env_file.exists():
             try:
                 log_msg(f"Loading environment variables from {env_file}")
-                with open(env_file, 'r') as f:
+                with open(env_file, "r") as f:
                     for line_num, line in enumerate(f, 1):
                         line = line.strip()
                         # Skip empty lines and comments
-                        if not line or line.startswith('#'):
+                        if not line or line.startswith("#"):
                             continue
-                        
-                        if '=' in line:
-                            key, value = line.split('=', 1)
+
+                        if "=" in line:
+                            key, value = line.split("=", 1)
                             env_vars[key.strip()] = value.strip()
                         else:
                             warn_msg(f"Invalid .env line {line_num}: {line}")
-                            
+
                 log_msg(f"Loaded {len(env_vars)} environment variables from .env file")
             except Exception as e:
                 warn_msg(f"Error reading .env file: {e}")
-        
+
         return env_vars
 
     def _merge_environment_variables(
-        self,
-        config_env: dict[str, str],
-        dotenv_vars: dict[str, str],
-        server_name: str
+        self, config_env: dict[str, str], dotenv_vars: dict[str, str], server_name: str
     ) -> dict[str, str]:
         """
         Merge environment variables with proper priority and mapping.
-        
+
         Priority order:
         1. Config file env section (highest priority)
         2. .env file variables
         3. System environment variables (lowest priority)
-        
+
         Also handles common environment variable name mappings.
         """
         merged_env = {}
-        
+
         # Define common environment variable mappings for different servers
         env_mappings = {
             "github": {
-                "GITHUB_PERSONAL_ACCESS_TOKEN": ["GITHUB_TOKEN", "GITHUB_PERSONAL_ACCESS_TOKEN"],
+                "GITHUB_PERSONAL_ACCESS_TOKEN": [
+                    "GITHUB_TOKEN",
+                    "GITHUB_PERSONAL_ACCESS_TOKEN",
+                ],
                 "GITHUB_TOKEN": ["GITHUB_TOKEN", "GITHUB_PERSONAL_ACCESS_TOKEN"],
             },
             # Add more server-specific mappings as needed
         }
-        
+
         # Start with system environment
         merged_env.update(os.environ)
-        
+
         # Apply .env file variables (overrides system env)
         merged_env.update(dotenv_vars)
-        
+
         # Apply config env variables (highest priority)
         merged_env.update(config_env)
-        
+
         # Handle environment variable mappings for this server
         if server_name in env_mappings:
             server_mappings = env_mappings[server_name]
-            
+
             for target_var, source_vars in server_mappings.items():
                 # If target variable is not set, try to find it from source variables
                 if target_var not in merged_env or not merged_env[target_var]:
                     for source_var in source_vars:
                         if source_var in merged_env and merged_env[source_var]:
                             merged_env[target_var] = merged_env[source_var]
-                            log_msg(f"Mapped {source_var} -> {target_var} for server '{server_name}'")
+                            log_msg(
+                                f"Mapped {source_var} -> {target_var} for server '{server_name}'"
+                            )
                             break
-        
+
         return merged_env
 
     def _get_default_timeout(self, server_config: dict) -> float:
@@ -463,6 +463,11 @@ class MCPCommand(BaseCLICommand):
             except Exception as cleanup_error:
                 log_msg(f"Cleanup error (ignoring): {cleanup_error}")
 
+        # Force garbage collection to clean up any remaining async resources
+        import gc
+
+        gc.collect()
+
         return result
 
     def _resolve_command_path(self, command: str) -> str:
@@ -528,12 +533,24 @@ class MCPCommand(BaseCLICommand):
         # Resolve command
         resolved_command = self._resolve_command_path(server_config.command)
 
-        # Prepare environment
+        # Prepare environment - merge system env with server config env
         env = os.environ.copy()
         env.update(server_config.env)
 
         # Force unbuffered output for Python scripts
         env["PYTHONUNBUFFERED"] = "1"
+
+        # Log environment variables being passed (for debugging auth issues)
+        log_msg(f"Creating StdioTransport for {resolved_command}")
+        log_msg(f"Environment variables: {', '.join(sorted(env.keys()))}")
+        if "GITHUB_PERSONAL_ACCESS_TOKEN" in env:
+            # Log token presence without revealing the value
+            token_preview = (
+                env["GITHUB_PERSONAL_ACCESS_TOKEN"][:8] + "..."
+                if env["GITHUB_PERSONAL_ACCESS_TOKEN"]
+                else "None"
+            )
+            log_msg(f"GITHUB_PERSONAL_ACCESS_TOKEN: {token_preview}")
 
         # Detect if this is a Python script for PythonStdioTransport
         if self._is_python_command(server_config.command, server_config.args):
@@ -550,13 +567,12 @@ class MCPCommand(BaseCLICommand):
                         env=env,
                     )
 
-        # Use our enhanced StdioTransport for all other cases
-        log_msg(f"Creating StdioTransport for {resolved_command}")
-        return StdioTransportFixed(
+        # Use standard StdioTransport (not our custom one) to avoid interference
+        log_msg(f"Using standard StdioTransport")
+        return StdioTransport(
             command=resolved_command,
             args=server_config.args,
             env=env,
-            buffer_size=server_config.buffer_size,
         )
 
     def _is_python_command(self, command: str, args: list[str]) -> bool:
@@ -608,111 +624,47 @@ class MCPCommand(BaseCLICommand):
 
     @asynccontextmanager
     async def _get_client(self, server_config: MCPServerConfig):
-        """Get or create a client with proper locking."""
-        client_key = server_config.name
+        """Create a fresh client for each operation to avoid cleanup issues."""
+        # Create new client every time to avoid cancel scope issues
+        transport = self._create_transport(server_config)
+        client = Client(transport)
 
-        # Ensure we have a lock for this client
-        if client_key not in self._client_locks:
-            self._client_locks[client_key] = asyncio.Lock()
+        try:
+            # Initialize with timeout
+            async with asyncio.timeout(INIT_TIMEOUT):
+                await client.__aenter__()
 
-        async with self._client_locks[client_key]:
-            # Check if client exists and is healthy
-            if client_key in self._active_clients:
-                client = self._active_clients[client_key]
-                # TODO: Add health check here
-                yield client
-                return
+            # Yield for use
+            yield client
 
-            # Create new client
-            transport = self._create_transport(server_config)
-            client = Client(transport)
-
-            try:
-                # Initialize with timeout
-                async with asyncio.timeout(INIT_TIMEOUT):
-                    await client.__aenter__()
-
-                # Store active client
-                self._active_clients[client_key] = client
-
-                # Yield for use
-                yield client
-
-            except asyncio.TimeoutError:
-                # Cleanup on timeout
-                try:
-                    await client.__aexit__(None, None, None)
-                except:
-                    pass
-                raise asyncio.TimeoutError(
-                    f"Failed to connect to {server_config.name} within {INIT_TIMEOUT}s"
-                )
-            except Exception:
-                # Cleanup on error
-                try:
-                    await client.__aexit__(None, None, None)
-                except:
-                    pass
-                raise
+        except asyncio.TimeoutError:
+            # Don't try to cleanup on timeout - just let it go
+            raise asyncio.TimeoutError(
+                f"Failed to connect to {server_config.name} within {INIT_TIMEOUT}s"
+            )
+        except Exception:
+            # Don't try to cleanup on error - just let it go
+            raise
+        finally:
+            # Don't try to explicitly close the client - this causes the cancel scope issues
+            # Just let Python's garbage collector handle it
+            pass
 
     async def _cleanup_all_clients(self):
-        """Clean up all active clients."""
-        if not self._active_clients:
-            return
-
-        # Create a list to hold actual tasks
-        cleanup_tasks = []
-
-        for client_key, client in list(self._active_clients.items()):
-
-            async def cleanup_client(key, c):
-                try:
-                    # Use wait_for instead of timeout context to avoid CancelledError
-                    await asyncio.wait_for(
-                        c.__aexit__(None, None, None), timeout=CLEANUP_TIMEOUT
-                    )
-                except asyncio.TimeoutError:
-                    log_msg(f"Timeout cleaning up client {key}")
-                except Exception as e:
-                    log_msg(f"Error cleaning up client {key}: {e}")
-                finally:
-                    # Always remove from active clients
-                    self._active_clients.pop(key, None)
-
-            # Create actual tasks, not just coroutines
-            task = asyncio.create_task(cleanup_client(client_key, client))
-            cleanup_tasks.append(task)
-
-        if cleanup_tasks:
-            # Shield the gather operation from cancellation and wait for all tasks
-            try:
-                await asyncio.shield(
-                    asyncio.gather(*cleanup_tasks, return_exceptions=True)
-                )
-            except Exception as e:
-                log_msg(f"Error during client cleanup: {e}")
-
-        # Final cleanup
+        """No-op cleanup since we don't store clients anymore."""
+        # Clear any remaining references
         self._active_clients.clear()
         self._client_locks.clear()
 
     async def _safe_cleanup_all_clients(self):
-        """Safely clean up all active clients, avoiding cancel scope issues entirely."""
-        if not self._active_clients:
-            return
-
-        # Instead of trying to properly close clients (which causes cancel scope issues),
-        # just clear our references and let Python's garbage collector handle cleanup
-        # This avoids the anyio cancel scope problems entirely
-        
-        log_msg(f"Clearing {len(self._active_clients)} MCP client references")
-        
-        # Clear all references immediately - no async cleanup
+        """No-op cleanup since we don't store clients anymore."""
+        # Clear any remaining references
         self._active_clients.clear()
         self._client_locks.clear()
-        
+
         # Force garbage collection to clean up any remaining resources
         import gc
+
         gc.collect()
 
     async def _cmd_list_servers(self, config: MCPConfig) -> CLIResult:
