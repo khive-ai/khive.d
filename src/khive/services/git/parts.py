@@ -3,215 +3,413 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Data models for the Git Service.
+Data models for the agent-centric Git Service.
+
+Designed from scratch for AI agents - no legacy constraints.
 """
 
+from __future__ import annotations
+
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional, Set
 
 from pydantic import BaseModel, Field
 
 
-class GitAction(str, Enum):
-    """Available actions for the Git service."""
-
-    GENERATE_COMMIT_MESSAGE = "generate_commit_message"
-    GENERATE_PR_DESCRIPTION = "generate_pr_description"
-    GENERATE_CHANGELOG = "generate_changelog"
-    GENERATE_RELEASE_NOTES = "generate_release_notes"
-    SUGGEST_REVIEWERS = "suggest_reviewers"
-    ANALYZE_DIFF = "analyze_diff"
-    SUGGEST_BRANCH_NAME = "suggest_branch_name"
-    GENERATE_REVIEW_COMMENTS = "generate_review_comments"
+# --- Core Concepts ---
 
 
-class ChangelogFormat(str, Enum):
-    """Changelog format options."""
+class WorkIntent(str, Enum):
+    """What the agent wants to accomplish."""
 
-    MARKDOWN = "markdown"
-    CONVENTIONAL = "conventional"
-    KEEP_A_CHANGELOG = "keep_a_changelog"
+    # Development flow
+    EXPLORE = "explore"  # Understand codebase state
+    IMPLEMENT = "implement"  # Save implementation work
+    COLLABORATE = "collaborate"  # Share work for feedback
+    INTEGRATE = "integrate"  # Merge changes from others
+    RELEASE = "release"  # Publish a version
 
-
-class SemverBumpType(str, Enum):
-    """Semantic version bump types."""
-
-    MAJOR = "major"
-    MINOR = "minor"
-    PATCH = "patch"
-    NONE = "none"
-
-
-# Request parameter models
-class CommitMessageParams(BaseModel):
-    """Parameters for generating a commit message."""
-
-    diff: Optional[str] = Field(None, description="Git diff content")
-    file_changes: Optional[str] = Field(
-        None, description="File change summary from git"
-    )
-    conventional: bool = Field(True, description="Use conventional commit format")
-    context: Optional[str] = Field(
-        None, description="Additional context for the commit"
-    )
-    include_stats: bool = Field(False, description="Include file change statistics")
-    closes_issues: Optional[List[str]] = Field(None, description="Issue IDs to close")
-    co_authors: Optional[List[str]] = Field(None, description="Co-author emails")
-    repo_path: Optional[Path] = Field(Path.cwd(), description="Repository path")
+    # Meta operations
+    UNDERSTAND = "understand"  # Analyze what happened
+    UNDO = "undo"  # Revert/fix mistakes
+    ORGANIZE = "organize"  # Clean up branches/commits
 
 
-class PRDescriptionParams(BaseModel):
-    """Parameters for generating a PR description."""
+class WorkContext(BaseModel):
+    """Rich context about what the agent is working on."""
 
-    title: Optional[str] = Field(None, description="PR title")
-    source_branch: Optional[str] = Field(None, description="Source branch name")
-    target_branch: Optional[str] = Field(None, description="Target branch name")
-    commits: Optional[List[str]] = Field(None, description="List of commit messages")
-    diff_summary: Optional[str] = Field(None, description="Summary of changes")
-    template: Optional[str] = Field(None, description="PR template to follow")
-    include_checklist: bool = Field(True, description="Include standard checklist")
-    repo_path: Optional[Path] = Field(Path.cwd(), description="Repository path")
+    # Current focus
+    task_description: Optional[str] = None
+    related_issues: List[str] = Field(default_factory=list)
 
+    # Knowledge sources
+    research_findings: Dict[str, Any] = Field(default_factory=dict)
+    design_decisions: List[str] = Field(default_factory=list)
 
-class ChangelogParams(BaseModel):
-    """Parameters for generating a changelog."""
+    # Constraints
+    requirements: List[str] = Field(default_factory=list)
+    avoid: List[str] = Field(default_factory=list)
 
-    from_ref: Optional[str] = Field(None, description="Starting git ref (tag/commit)")
-    to_ref: Optional[str] = Field("HEAD", description="Ending git ref")
-    version: Optional[str] = Field(None, description="Version number for changelog")
-    format: ChangelogFormat = Field(
-        ChangelogFormat.MARKDOWN, description="Output format"
-    )
-    include_author: bool = Field(False, description="Include commit authors")
-    include_date: bool = Field(True, description="Include commit dates")
-    group_by_type: bool = Field(True, description="Group commits by type")
-    commit_url_template: Optional[str] = Field(
-        None, description="URL template for commit links (use {hash} placeholder)"
-    )
-    repo_path: Optional[Path] = Field(Path.cwd(), description="Repository path")
+    # Progress tracking
+    completed_steps: List[str] = Field(default_factory=list)
+    next_todos: List[str] = Field(default_factory=list)
+
+    # Evidence trail
+    search_ids: List[str] = Field(default_factory=list)
+    references: List[str] = Field(default_factory=list)
 
 
-class ReleaseNotesParams(BaseModel):
-    """Parameters for generating release notes."""
+class CodeInsight(BaseModel):
+    """Semantic understanding of code changes."""
 
-    version: str = Field(..., description="Version being released")
-    from_version: Optional[str] = Field(None, description="Previous version")
-    to_version: Optional[str] = Field("HEAD", description="Current version ref")
-    highlights: Optional[List[str]] = Field(
-        None, description="Key highlights to feature"
-    )
-    breaking_changes: Optional[List[str]] = Field(None, description="Breaking changes")
-    include_contributors: bool = Field(True, description="Include contributor list")
-    include_stats: bool = Field(True, description="Include statistics")
-    include_upgrade_instructions: bool = Field(
-        True, description="Include upgrade guide"
-    )
-    repo_path: Optional[Path] = Field(Path.cwd(), description="Repository path")
+    # What changed
+    primary_changes: List[str]  # Main modifications in plain language
+    side_effects: List[str]  # Indirect impacts
 
+    # Quality indicators
+    adds_tests: bool
+    updates_docs: bool
+    follows_patterns: bool
+    introduces_tech_debt: bool
 
-class AnalyzeDiffParams(BaseModel):
-    """Parameters for analyzing a diff."""
+    # Semantic classification
+    change_type: Literal["feature", "fix", "refactor", "perf", "style", "docs"]
+    complexity: Literal["trivial", "simple", "moderate", "complex"]
+    risk_level: Literal["safe", "low", "medium", "high"]
 
-    diff: Optional[str] = Field(None, description="Git diff content")
-    base_ref: Optional[str] = Field(None, description="Base reference")
-    head_ref: Optional[str] = Field(None, description="Head reference")
-    staged: bool = Field(True, description="Analyze staged changes")
-    include_ai_summary: bool = Field(True, description="Include AI-generated summary")
-    repo_path: Optional[Path] = Field(Path.cwd(), description="Repository path")
+    # Dependencies
+    affects_public_api: bool
+    requires_migration: bool
+    breaks_compatibility: bool
 
 
-class SuggestBranchParams(BaseModel):
-    """Parameters for suggesting a branch name."""
+class CollaborationContext(BaseModel):
+    """Information about collaboration state."""
 
-    description: str = Field(..., description="Description of the work")
-    branch_prefix: Optional[str] = Field(
-        "feature", description="Branch prefix (feature/fix/chore/etc)"
-    )
-    max_length: int = Field(50, description="Maximum branch name length")
+    # Team awareness
+    active_reviewers: List[str] = Field(default_factory=list)
+    blocked_by: List[str] = Field(default_factory=list)
+    blocking: List[str] = Field(default_factory=list)
 
+    # Review state
+    feedback_received: List[Dict[str, str]] = Field(default_factory=list)
+    feedback_addressed: List[str] = Field(default_factory=list)
+    open_questions: List[str] = Field(default_factory=list)
 
-class ReviewCommentsParams(BaseModel):
-    """Parameters for generating review comments."""
-
-    diff: Optional[str] = Field(None, description="Code diff to review")
-    pr_number: Optional[int] = Field(None, description="PR number to fetch diff")
-    focus_areas: Optional[List[str]] = Field(
-        None, description="Specific areas to focus on (security, performance, etc)"
-    )
-    severity_threshold: Optional[str] = Field(
-        None,
-        description="Minimum severity to report (info/suggestion/warning/critical)",
-    )
-    repo_path: Optional[Path] = Field(Path.cwd(), description="Repository path")
+    # Social signals
+    reviewer_expertise: Dict[str, List[str]] = Field(default_factory=dict)
+    optimal_review_time: Optional[str] = None
+    team_availability: Dict[str, str] = Field(default_factory=dict)
 
 
-# Request/Response models
+# --- Request Model ---
+
+
 class GitRequest(BaseModel):
-    """Request to the Git service."""
+    """Single, unified request model for all git operations."""
 
-    action: GitAction = Field(..., description="The action to perform")
-    params: Any = Field(..., description="Parameters for the action")
+    # Natural language is primary
+    request: str = Field(
+        ...,
+        description="What you want to do, in your own words",
+        examples=[
+            "I've implemented the OAuth feature and need feedback",
+            "What changed while I was working on this?",
+            "Help me understand the recent commits in the auth module",
+        ],
+    )
 
-    def model_post_init(self, __context):
-        """Validate params match the action."""
-        # Map actions to their parameter types
-        param_types = {
-            GitAction.GENERATE_COMMIT_MESSAGE: CommitMessageParams,
-            GitAction.GENERATE_PR_DESCRIPTION: PRDescriptionParams,
-            GitAction.GENERATE_CHANGELOG: ChangelogParams,
-            GitAction.GENERATE_RELEASE_NOTES: ReleaseNotesParams,
-            GitAction.ANALYZE_DIFF: AnalyzeDiffParams,
-            GitAction.SUGGEST_BRANCH_NAME: SuggestBranchParams,
-            GitAction.GENERATE_REVIEW_COMMENTS: ReviewCommentsParams,
-        }
+    # Rich context
+    context: Optional[WorkContext] = None
 
-        # Validate and convert params if needed
-        if self.action in param_types:
-            expected_type = param_types[self.action]
-            if not isinstance(self.params, expected_type):
-                if isinstance(self.params, dict):
-                    self.params = expected_type(**self.params)
-                else:
-                    self.params = expected_type.model_validate(self.params)
+    # Identity & continuity
+    agent_id: Optional[str] = None
+    conversation_id: Optional[str] = None
+
+    # Preferences
+    preferences: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Agent-specific preferences",
+        examples=[
+            {
+                "commit_style": "detailed",
+                "auto_stage_tests": True,
+                "require_test_coverage": True,
+            }
+        ],
+    )
+
+
+# --- State Understanding ---
+
+
+class FileUnderstanding(BaseModel):
+    """Deep understanding of a file's role and changes."""
+
+    path: Path
+    role: Literal["core", "test", "config", "docs", "example", "generated"]
+
+    # Change analysis
+    change_summary: str  # What changed in plain language
+    change_magnitude: Literal["cosmetic", "minor", "significant", "major"]
+
+    # Relationships
+    tests_this: List[Path] = Field(default_factory=list)
+    tested_by: List[Path] = Field(default_factory=list)
+    depends_on: List[Path] = Field(default_factory=list)
+
+    # Quality signals
+    has_todo_comments: bool = False
+    has_fixme_comments: bool = False
+    follows_conventions: bool = True
+
+
+class RepositoryUnderstanding(BaseModel):
+    """Complete understanding of repository state."""
+
+    # Work context
+    current_branch: str
+    branch_purpose: str  # Inferred or declared purpose
+    work_phase: Literal[
+        "exploring", "implementing", "testing", "polishing", "reviewing"
+    ]
+
+    # Change analysis
+    files_changed: List[FileUnderstanding]
+    code_insights: CodeInsight
+
+    # Collaboration state
+    collaboration: CollaborationContext
+
+    # Health indicators
+    can_build: bool
+    tests_passing: bool
+    lint_clean: bool
+
+    # Recommendations
+    recommended_actions: List[str]
+    potential_issues: List[str]
+
+
+# --- Response Model ---
 
 
 class GitResponse(BaseModel):
-    """Response from the Git service."""
+    """Single, unified response model focused on agent needs."""
 
-    success: bool = Field(..., description="Whether the operation succeeded")
-    action_performed: Optional[GitAction] = Field(
-        None, description="The action that was performed"
-    )
-    content: Optional[Dict[str, Any]] = Field(
-        None, description="The response content (varies by action)"
-    )
-    error: Optional[str] = Field(None, description="Error message if failed")
+    # What happened
+    understood_as: str  # How we interpreted the request
+    actions_taken: List[str]  # What we did in plain language
 
-    class Config:
-        json_schema_extra = {
-            "examples": [
-                {
-                    "success": True,
-                    "action_performed": "generate_commit_message",
-                    "content": {
-                        "message": "feat(auth): add OAuth2 support",
-                        "type": "feat",
-                        "scope": "auth",
-                        "breaking_change": False,
-                    },
-                },
-                {
-                    "success": True,
-                    "action_performed": "analyze_diff",
-                    "content": {
-                        "files_changed": 5,
-                        "insertions": 150,
-                        "deletions": 30,
-                        "languages": ["Python", "TypeScript"],
-                        "suggested_version_bump": "minor",
-                        "ai_summary": "Added new authentication module...",
-                    },
-                },
-            ]
-        }
+    # Current state
+    repository_state: RepositoryUnderstanding
+
+    # What's next
+    recommendations: List[Recommendation]
+
+    # Knowledge gained
+    learned: Dict[str, Any] = Field(
+        default_factory=dict, description="New information discovered during operations"
+    )
+
+    # Conversation continuity
+    conversation_id: str
+    follow_up_prompts: List[str]  # Suggested follow-up questions
+
+
+class Recommendation(BaseModel):
+    """A recommended next action with full context."""
+
+    action: str  # What to do in plain language
+    reason: str  # Why this makes sense now
+    impact: str  # What this will accomplish
+
+    urgency: Literal["whenever", "soon", "now", "urgent"]
+    effort: Literal["trivial", "quick", "moderate", "substantial"]
+
+    # How to do it
+    example_request: str
+    prerequisites: List[str] = Field(default_factory=list)
+
+    # Consequences
+    will_enable: List[str] = Field(default_factory=list)
+    will_block: List[str] = Field(default_factory=list)
+
+
+# --- Workflow Types ---
+
+
+class ImplementationFlow(BaseModel):
+    """Workflow for implementation tasks."""
+
+    # Planning
+    task: str
+    approach: List[str]
+    success_criteria: List[str]
+
+    # Progress
+    started_at: datetime
+    checkpoints: List[Dict[str, Any]] = Field(default_factory=list)
+
+    # Quality gates
+    has_tests: bool = False
+    has_docs: bool = False
+    peer_reviewed: bool = False
+
+    def add_checkpoint(self, description: str, code_insight: CodeInsight):
+        """Record progress checkpoint."""
+        self.checkpoints.append({
+            "time": datetime.utcnow(),
+            "description": description,
+            "insight": code_insight,
+            "cumulative_changes": len(self.checkpoints) + 1,
+        })
+
+
+class CollaborationFlow(BaseModel):
+    """Workflow for collaboration."""
+
+    # Sharing context
+    pr_title: str
+    pr_body: str
+
+    # Review optimization
+    suggested_reviewers: List[str]
+    review_focus_areas: List[str]
+    expected_feedback_types: List[str]
+
+    # Iteration tracking
+    review_rounds: int = 0
+    total_comments: int = 0
+    resolved_comments: int = 0
+
+
+class ReleaseFlow(BaseModel):
+    """Workflow for releases."""
+
+    version: str
+    release_type: Literal["major", "minor", "patch", "preview"]
+
+    # Content
+    highlights: List[str]
+    breaking_changes: List[str]
+
+    # Automation
+    auto_generated_notes: str
+    manual_notes: Optional[str] = None
+
+    # Distribution
+    publish_targets: List[str] = Field(default_factory=list)
+
+
+# --- Intelligence Models ---
+
+
+class PatternRecognition(BaseModel):
+    """Recognized patterns in the codebase."""
+
+    # Coding patterns
+    common_patterns: List[str]
+    anti_patterns: List[str]
+
+    # Workflow patterns
+    typical_pr_size: int
+    typical_review_time: str
+    typical_iteration_count: int
+
+    # Team patterns
+    expertise_map: Dict[str, List[str]]
+    collaboration_graph: Dict[str, List[str]]
+
+
+class QualityAssessment(BaseModel):
+    """Assessment of code quality."""
+
+    # Objective metrics
+    test_coverage: float
+    documentation_coverage: float
+    complexity_score: float
+
+    # Subjective assessments
+    readability: Literal["excellent", "good", "fair", "poor"]
+    maintainability: Literal["excellent", "good", "fair", "poor"]
+    consistency: Literal["excellent", "good", "fair", "poor"]
+
+    # Specific issues
+    issues: List[QualityIssue]
+
+    # Improvements
+    quick_wins: List[str]
+    long_term_improvements: List[str]
+
+
+class QualityIssue(BaseModel):
+    """A specific quality issue."""
+
+    type: Literal["bug_risk", "security", "performance", "maintainability", "style"]
+    severity: Literal["info", "warning", "error", "critical"]
+    location: str
+    description: str
+    suggestion: str
+
+
+# --- Session Model ---
+
+
+class GitSession(BaseModel):
+    """Stateful session maintaining context across operations."""
+
+    id: str
+    agent_id: str
+    started_at: datetime
+    last_activity: datetime
+
+    # Accumulated understanding
+    repository_knowledge: Dict[str, Any] = Field(default_factory=dict)
+    learned_patterns: Optional[PatternRecognition] = None
+
+    # Active workflows
+    implementation_flow: Optional[ImplementationFlow] = None
+    collaboration_flow: Optional[CollaborationFlow] = None
+    release_flow: Optional[ReleaseFlow] = None
+
+    # History
+    request_history: List[str] = Field(default_factory=list)
+    action_history: List[str] = Field(default_factory=list)
+
+    # Preferences learned
+    inferred_preferences: Dict[str, Any] = Field(default_factory=dict)
+
+    def add_request(self, request: str):
+        """Track request for context."""
+        self.request_history.append(request)
+        self.last_activity = datetime.utcnow()
+
+    def add_action(self, action: str):
+        """Track action taken."""
+        self.action_history.append(action)
+        self.last_activity = datetime.utcnow()
+
+
+# --- Error Handling ---
+
+
+class GitError(BaseModel):
+    """Rich error information for agent understanding."""
+
+    error_type: str
+    description: str
+
+    # Context
+    what_failed: str
+    why_failed: str
+
+    # Recovery
+    can_retry: bool
+    fix_suggestions: List[str]
+    workarounds: List[str]
+
+    # Learning
+    prevention_tips: List[str]

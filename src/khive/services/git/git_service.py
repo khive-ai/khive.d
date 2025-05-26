@@ -3,1265 +3,1230 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Git Service - AI-powered git operations and intelligence.
+Agent-centric Git Service implementation.
 
-This service provides high-level git operations like commit message generation,
-PR descriptions, changelog creation, and more.
+A git service designed from the ground up for AI agents, focusing on
+natural language understanding, contextual awareness, and workflow intelligence.
 """
 
-import re
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
 
-from khive.clients.executor import AsyncExecutor
-from khive.connections.match_endpoint import match_endpoint
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+from uuid import uuid4
+
+from khive.services.git.nlp import IntentDetector, ResponseGenerator
 from khive.services.git.parts import (
-    AnalyzeDiffParams,
-    ChangelogFormat,
-    ChangelogParams,
-    CommitMessageParams,
-    GitAction,
+    CollaborationFlow,
+    FileUnderstanding,
+    GitError,
     GitRequest,
     GitResponse,
-    PRDescriptionParams,
-    ReleaseNotesParams,
-    ReviewCommentsParams,
-    SemverBumpType,
-    SuggestBranchParams,
+    GitSession,
+    ImplementationFlow,
+    PatternRecognition,
+    QualityAssessment,
+    QualityIssue,
+    Recommendation,
+    ReleaseFlow,
+    RepositoryUnderstanding,
+    WorkIntent,
+)
+from khive.services.git.workflows import (
+    CodeAnalyzer,
+    CommitMessageGenerator,
+    FileAnalyzer,
+    GitOperations,
+    PRManager,
 )
 from khive.types import Service
-from khive.utils import CommandResult, git_run
+from khive.utils import log_msg
 
 
-class GitServiceGroup(Service):
+class GitService(Service):
     """
-    AI-powered Git service for intelligent git operations.
+    Git service optimized for AI agents.
 
-    Provides:
-    - Commit message generation
-    - PR description creation
-    - Changelog generation
-    - Release notes
-    - Code review comments
-    - Branch name suggestions
-    - Semantic version analysis
+    Key principles:
+    - Natural language is the primary interface
+    - Maintains context across operations
+    - Provides rich semantic understanding
+    - Offers intelligent recommendations
+    - Learns from usage patterns
     """
 
-    def __init__(self, default_provider: str = "openai"):
-        """
-        Initialize the Git Service.
-
-        Args:
-            default_provider: Default LLM provider for git operations
-        """
+    def __init__(self):
+        """Initialize the Git service."""
+        self._sessions: Dict[str, GitSession] = {}
         self._llm_endpoint = None
-        self._default_provider = default_provider
-        self._executor = AsyncExecutor(max_concurrency=5)
 
-        # Commit message templates by type
-        self._commit_types = {
-            "feat": "A new feature",
-            "fix": "A bug fix",
-            "docs": "Documentation only changes",
-            "style": "Changes that do not affect the meaning of the code",
-            "refactor": "A code change that neither fixes a bug nor adds a feature",
-            "perf": "A code change that improves performance",
-            "test": "Adding missing tests or correcting existing tests",
-            "build": "Changes that affect the build system or external dependencies",
-            "ci": "Changes to our CI configuration files and scripts",
-            "chore": "Other changes that don't modify src or test files",
-            "revert": "Reverts a previous commit",
-        }
+        # Core components
+        self._git_ops = GitOperations()
+        self._file_analyzer = FileAnalyzer()
+        self._code_analyzer = CodeAnalyzer()
+        self._pr_manager = PRManager()
+        self._commit_generator = CommitMessageGenerator()
+
+        # Intelligence components
+        self._intent_detector = IntentDetector()
+        self._response_generator = ResponseGenerator()
+        self._pattern_analyzer = PatternAnalyzer()
+        self._quality_analyzer = QualityAnalyzer()
+        self._collaboration_optimizer = CollaborationOptimizer()
 
     async def handle_request(self, request: GitRequest) -> GitResponse:
         """
-        Handle a git service request.
+        Handle a git request with natural language understanding.
 
-        Args:
-            request: The git request to handle
-
-        Returns:
-            GitResponse with the result or error
+        This is the single entry point for all git operations.
         """
-        if isinstance(request, str):
-            request = GitRequest.model_validate_json(request)
-        if isinstance(request, dict):
-            request = GitRequest.model_validate(request)
-
-        try:
-            if request.action == GitAction.GENERATE_COMMIT_MESSAGE:
-                return await self._generate_commit_message(request.params)
-            elif request.action == GitAction.GENERATE_PR_DESCRIPTION:
-                return await self._generate_pr_description(request.params)
-            elif request.action == GitAction.GENERATE_CHANGELOG:
-                return await self._generate_changelog(request.params)
-            elif request.action == GitAction.GENERATE_RELEASE_NOTES:
-                return await self._generate_release_notes(request.params)
-            elif request.action == GitAction.SUGGEST_REVIEWERS:
-                return await self._suggest_reviewers(request.params)
-            elif request.action == GitAction.ANALYZE_DIFF:
-                return await self._analyze_diff(request.params)
-            elif request.action == GitAction.SUGGEST_BRANCH_NAME:
-                return await self._suggest_branch_name(request.params)
-            elif request.action == GitAction.GENERATE_REVIEW_COMMENTS:
-                return await self._generate_review_comments(request.params)
-            else:
-                return GitResponse(
-                    success=False,
-                    error=f"Unsupported action: {request.action}",
-                )
-        except Exception as e:
-            return GitResponse(
-                success=False,
-                error=f"Git service error: {str(e)}",
-                action_performed=request.action,
-            )
-
-    async def _get_llm_endpoint(self):
-        """Get or initialize the LLM endpoint."""
-        if self._llm_endpoint is None:
-            if self._default_provider == "anthropic":
-                self._llm_endpoint = match_endpoint("anthropic", "messages")
-            elif self._default_provider == "openrouter":
-                self._llm_endpoint = match_endpoint("openrouter", "chat")
-            else:
-                self._llm_endpoint = match_endpoint("openai", "chat")
-        return self._llm_endpoint
-
-    async def _generate_commit_message(
-        self, params: CommitMessageParams
-    ) -> GitResponse:
-        """Generate a commit message based on diff or changes."""
-        try:
-            # Get diff if not provided
-            if not params.diff and not params.file_changes:
-                diff_result = git_run(
-                    ["diff", "--cached", "--name-status"],
-                    capture=True,
-                    check=False,
-                    cwd=params.repo_path,
-                )
-
-                if isinstance(diff_result, CommandResult) and diff_result.stdout:
-                    params.file_changes = diff_result.stdout.strip()
-
-                # Get detailed diff
-                detailed_diff = git_run(
-                    ["diff", "--cached"],
-                    capture=True,
-                    check=False,
-                    cwd=params.repo_path,
-                )
-
-                if isinstance(detailed_diff, CommandResult) and detailed_diff.stdout:
-                    params.diff = detailed_diff.stdout.strip()
-
-            # Build prompt
-            prompt = self._build_commit_prompt(params)
-
-            # Call LLM
-            llm = await self._get_llm_endpoint()
-            response = await self._call_llm(llm, prompt, temperature=0.3)
-
-            if not response:
-                # Fallback to rule-based generation
-                commit_message = self._generate_rule_based_commit(params)
-            else:
-                commit_message = response.strip()
-
-                # Validate conventional commit format
-                if params.conventional and not self._validate_conventional_commit(
-                    commit_message
-                ):
-                    # Try to fix it
-                    commit_message = self._fix_conventional_format(commit_message)
-
-            # Add additional context if requested
-            if params.include_stats and params.file_changes:
-                stats = self._calculate_change_stats(params.file_changes)
-                commit_message += f"\n\n{stats}"
-
-            if params.closes_issues:
-                footer = "\n".join(f"Closes #{issue}" for issue in params.closes_issues)
-                commit_message += f"\n\n{footer}"
-
-            if params.co_authors:
-                co_author_lines = "\n".join(
-                    f"Co-authored-by: {author}" for author in params.co_authors
-                )
-                commit_message += f"\n\n{co_author_lines}"
-
-            return GitResponse(
-                success=True,
-                action_performed=GitAction.GENERATE_COMMIT_MESSAGE,
-                content={
-                    "message": commit_message,
-                    "type": self._extract_commit_type(commit_message),
-                    "scope": self._extract_commit_scope(commit_message),
-                    "breaking_change": (
-                        "!" in commit_message.split(":")[0]
-                        if ":" in commit_message
-                        else False
-                    ),
-                },
-            )
-
-        except Exception as e:
-            return GitResponse(
-                success=False,
-                error=f"Failed to generate commit message: {str(e)}",
-                action_performed=GitAction.GENERATE_COMMIT_MESSAGE,
-            )
-
-    async def _generate_pr_description(
-        self, params: PRDescriptionParams
-    ) -> GitResponse:
-        """Generate a PR description."""
-        try:
-            # Get commits if not provided
-            if not params.commits and params.source_branch and params.target_branch:
-                commits_result = git_run(
-                    [
-                        "log",
-                        f"{params.target_branch}..{params.source_branch}",
-                        "--oneline",
-                    ],
-                    capture=True,
-                    check=False,
-                    cwd=params.repo_path,
-                )
-
-                if isinstance(commits_result, CommandResult) and commits_result.stdout:
-                    params.commits = commits_result.stdout.strip().split("\n")
-
-            # Get diff summary if not provided
-            if (
-                not params.diff_summary
-                and params.source_branch
-                and params.target_branch
-            ):
-                diff_result = git_run(
-                    [
-                        "diff",
-                        f"{params.target_branch}...{params.source_branch}",
-                        "--stat",
-                    ],
-                    capture=True,
-                    check=False,
-                    cwd=params.repo_path,
-                )
-
-                if isinstance(diff_result, CommandResult) and diff_result.stdout:
-                    params.diff_summary = diff_result.stdout.strip()
-
-            # Build prompt
-            prompt = self._build_pr_prompt(params)
-
-            # Call LLM
-            llm = await self._get_llm_endpoint()
-            response = await self._call_llm(llm, prompt, temperature=0.5)
-
-            if not response:
-                # Fallback generation
-                pr_description = self._generate_basic_pr_description(params)
-            else:
-                pr_description = response.strip()
-
-            # Parse sections
-            sections = self._parse_pr_sections(pr_description)
-
-            return GitResponse(
-                success=True,
-                action_performed=GitAction.GENERATE_PR_DESCRIPTION,
-                content={
-                    "description": pr_description,
-                    "title": sections.get("title", params.title or "Update"),
-                    "summary": sections.get("summary", ""),
-                    "changes": sections.get("changes", []),
-                    "testing": sections.get("testing", ""),
-                    "checklist": sections.get("checklist", []),
-                },
-            )
-
-        except Exception as e:
-            return GitResponse(
-                success=False,
-                error=f"Failed to generate PR description: {str(e)}",
-                action_performed=GitAction.GENERATE_PR_DESCRIPTION,
-            )
-
-    async def _generate_changelog(self, params: ChangelogParams) -> GitResponse:
-        """Generate a changelog."""
-        try:
-            # Get commits between versions
-            if params.from_ref and params.to_ref:
-                commits_result = git_run(
-                    [
-                        "log",
-                        f"{params.from_ref}..{params.to_ref}",
-                        "--pretty=format:%H|%s|%b|%an|%ae|%ad",
-                    ],
-                    capture=True,
-                    check=False,
-                    cwd=params.repo_path,
-                )
-
-                commits = []
-                if isinstance(commits_result, CommandResult) and commits_result.stdout:
-                    for line in commits_result.stdout.strip().split("\n"):
-                        if line:
-                            parts = line.split("|", 5)
-                            if len(parts) >= 6:
-                                commits.append({
-                                    "hash": parts[0],
-                                    "subject": parts[1],
-                                    "body": parts[2],
-                                    "author_name": parts[3],
-                                    "author_email": parts[4],
-                                    "date": parts[5],
-                                })
-            else:
-                commits = []
-
-            # Group commits by type
-            grouped_commits = self._group_commits_by_type(commits)
-
-            # Generate changelog based on format
-            if params.format == ChangelogFormat.MARKDOWN:
-                changelog = self._generate_markdown_changelog(grouped_commits, params)
-            elif params.format == ChangelogFormat.CONVENTIONAL:
-                changelog = self._generate_conventional_changelog(
-                    grouped_commits, params
-                )
-            else:  # KEEP_A_CHANGELOG
-                changelog = self._generate_keep_changelog(grouped_commits, params)
-
-            return GitResponse(
-                success=True,
-                action_performed=GitAction.GENERATE_CHANGELOG,
-                content={
-                    "changelog": changelog,
-                    "version": params.version or "Unreleased",
-                    "date": datetime.now().strftime("%Y-%m-%d"),
-                    "commit_count": len(commits),
-                    "contributors": list(set(c["author_name"] for c in commits)),
-                },
-            )
-
-        except Exception as e:
-            return GitResponse(
-                success=False,
-                error=f"Failed to generate changelog: {str(e)}",
-                action_performed=GitAction.GENERATE_CHANGELOG,
-            )
-
-    async def _analyze_diff(self, params: AnalyzeDiffParams) -> GitResponse:
-        """Analyze a diff for various insights."""
-        try:
-            # Get diff if not provided
-            if not params.diff:
-                diff_cmd = ["diff"]
-                if params.base_ref and params.head_ref:
-                    diff_cmd.append(f"{params.base_ref}...{params.head_ref}")
-                elif not params.staged:
-                    diff_cmd.append("HEAD")
-
-                diff_result = git_run(
-                    diff_cmd,
-                    capture=True,
-                    check=False,
-                    cwd=params.repo_path,
-                )
-
-                if isinstance(diff_result, CommandResult) and diff_result.stdout:
-                    params.diff = diff_result.stdout.strip()
-
-            # Analyze the diff
-            analysis = {
-                "files_changed": self._count_changed_files(params.diff),
-                "insertions": self._count_insertions(params.diff),
-                "deletions": self._count_deletions(params.diff),
-                "languages": self._detect_languages(params.diff),
-                "patterns": self._detect_patterns(params.diff),
-            }
-
-            # Get AI insights if requested
-            if params.include_ai_summary:
-                prompt = f"""Analyze this git diff and provide insights:
-                
-{params.diff[:3000]}  # Truncate for token limits
-
-Provide:
-1. Summary of changes
-2. Potential impact
-3. Suggested commit type (feat/fix/refactor/etc)
-4. Any concerns or suggestions
-"""
-
-                llm = await self._get_llm_endpoint()
-                ai_response = await self._call_llm(llm, prompt, temperature=0.3)
-
-                if ai_response:
-                    analysis["ai_summary"] = ai_response.strip()
-
-            # Determine semantic version bump
-            analysis["suggested_version_bump"] = self._suggest_version_bump(params.diff)
-
-            return GitResponse(
-                success=True,
-                action_performed=GitAction.ANALYZE_DIFF,
-                content=analysis,
-            )
-
-        except Exception as e:
-            return GitResponse(
-                success=False,
-                error=f"Failed to analyze diff: {str(e)}",
-                action_performed=GitAction.ANALYZE_DIFF,
-            )
-
-    # Helper methods
-    def _build_commit_prompt(self, params: CommitMessageParams) -> str:
-        """Build prompt for commit message generation."""
-        prompt = f"""Generate a {"conventional " if params.conventional else ""}commit message for these changes:
-
-"""
-
-        if params.diff:
-            prompt += f"Diff:\n{params.diff[:2000]}\n\n"  # Truncate for token limits
-
-        if params.file_changes:
-            prompt += f"Files changed:\n{params.file_changes}\n\n"
-
-        if params.conventional:
-            prompt += f"""Use conventional commit format: type(scope): subject
-
-Valid types: {", ".join(self._commit_types.keys())}
-
-Rules:
-- Keep subject under 72 characters
-- Use imperative mood
-- Don't end with period
-- Include body for complex changes
-- Add 'BREAKING CHANGE:' footer if applicable
-"""
-        else:
-            prompt += """Write a clear, concise commit message following best practices:
-- First line: summary under 72 characters
-- Blank line
-- Detailed explanation if needed
-- Use imperative mood
-"""
-
-        if params.context:
-            prompt += f"\nAdditional context: {params.context}\n"
-
-        prompt += "\nReturn ONLY the commit message, no explanation."
-
-        return prompt
-
-    def _build_pr_prompt(self, params: PRDescriptionParams) -> str:
-        """Build prompt for PR description generation."""
-        prompt = f"""Generate a pull request description for merging {params.source_branch or "feature branch"} into {params.target_branch or "main"}.
-
-"""
-
-        if params.commits:
-            prompt += (
-                f"Commits:\n{chr(10).join(params.commits[:20])}\n\n"  # Limit commits
-            )
-
-        if params.diff_summary:
-            prompt += f"Changes summary:\n{params.diff_summary}\n\n"
-
-        prompt += """Create a well-structured PR description with:
-1. Clear title (if not provided)
-2. Summary of changes
-3. List of specific changes
-4. Testing instructions
-5. Checklist items
-
-Use markdown formatting."""
-
-        if params.template:
-            prompt += f"\n\nUse this template as a guide:\n{params.template}"
-
-        return prompt
-
-    async def _call_llm(
-        self, endpoint, prompt: str, temperature: float = 0.5
-    ) -> Optional[str]:
-        """Call LLM endpoint with error handling."""
-        try:
-            if self._default_provider == "anthropic":
-                response = await endpoint.call({
-                    "messages": [{"role": "user", "content": prompt}],
-                    "model": "claude-3-haiku-20240307",
-                    "max_tokens": 1000,
-                    "temperature": temperature,
-                })
-                if hasattr(response, "content") and response.content:
-                    return response.content[0].text
-            else:
-                # OpenAI-compatible
-                response = await endpoint.call({
-                    "messages": [{"role": "user", "content": prompt}],
-                    "model": "gpt-4o-mini",
-                    "max_tokens": 1000,
-                    "temperature": temperature,
-                })
-                if hasattr(response, "choices") and response.choices:
-                    return response.choices[0].message.content
-
-            return None
-        except Exception as e:
-            # Log error and return None for fallback
-            print(f"LLM call failed: {e}")
-            return None
-
-    def _validate_conventional_commit(self, message: str) -> bool:
-        """Validate if message follows conventional commit format."""
-        lines = message.split("\n")
-        if not lines:
-            return False
-
-        # Check header format
-        header = lines[0]
-        pattern = rf"^({'|'.join(self._commit_types.keys())})(\([^)]+\))?!?: .+"
-        return bool(re.match(pattern, header))
-
-    def _fix_conventional_format(self, message: str) -> str:
-        """Try to fix a message to conventional format."""
-        lines = message.split("\n", 1)
-        header = lines[0]
-
-        # Try to detect type from content
-        header_lower = header.lower()
-        detected_type = "chore"  # default
-
-        for commit_type, description in self._commit_types.items():
-            if commit_type in header_lower or description.lower() in header_lower:
-                detected_type = commit_type
-                break
-
-        # Extract scope if present
-        scope_match = re.search(r"\(([^)]+)\)", header)
-        scope = f"({scope_match.group(1)})" if scope_match else ""
-
-        # Clean subject
-        subject = re.sub(
-            r"^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)[:\s]*",
-            "",
-            header,
-            flags=re.IGNORECASE,
+        # Get or create session
+        session = self._get_or_create_session(
+            request.agent_id or "anonymous", request.conversation_id
         )
-        subject = re.sub(r"^\([^)]+\)[:\s]*", "", subject)  # Remove scope
-        subject = subject.strip()
 
-        # Reconstruct
-        new_header = f"{detected_type}{scope}: {subject}"
+        # Track request
+        session.add_request(request.request)
 
-        if len(lines) > 1:
-            return f"{new_header}\n{lines[1]}"
-        return new_header
+        try:
+            # Understand intent
+            intent, confidence = self._intent_detector.detect_intent(
+                request.request,
+                request.context,
+                await self._get_repository_state(),
+                session,
+            )
+            log_msg(f"Understood intent: {intent} (confidence: {confidence:.2f})")
 
-    def _extract_commit_type(self, message: str) -> Optional[str]:
-        """Extract commit type from message."""
-        match = re.match(r"^([a-z]+)(?:\([^)]+\))?!?:", message)
-        return match.group(1) if match else None
+            # Route to appropriate workflow
+            if intent == WorkIntent.EXPLORE:
+                return await self._handle_explore(request, session)
+            elif intent == WorkIntent.IMPLEMENT:
+                return await self._handle_implement(request, session)
+            elif intent == WorkIntent.COLLABORATE:
+                return await self._handle_collaborate(request, session)
+            elif intent == WorkIntent.INTEGRATE:
+                return await self._handle_integrate(request, session)
+            elif intent == WorkIntent.RELEASE:
+                return await self._handle_release(request, session)
+            elif intent == WorkIntent.UNDERSTAND:
+                return await self._handle_understand(request, session)
+            elif intent == WorkIntent.UNDO:
+                return await self._handle_undo(request, session)
+            elif intent == WorkIntent.ORGANIZE:
+                return await self._handle_organize(request, session)
 
-    def _extract_commit_scope(self, message: str) -> Optional[str]:
-        """Extract commit scope from message."""
-        match = re.match(r"^[a-z]+\(([^)]+)\)!?:", message)
-        return match.group(1) if match else None
+        except Exception as e:
+            return await self._handle_error(e, request, session)
 
-    def _calculate_change_stats(self, file_changes: str) -> str:
-        """Calculate statistics from file changes."""
-        lines = file_changes.strip().split("\n")
-        added = sum(1 for line in lines if line.startswith("A\t"))
-        modified = sum(1 for line in lines if line.startswith("M\t"))
-        deleted = sum(1 for line in lines if line.startswith("D\t"))
+    # --- Workflow Handlers ---
 
-        parts = []
-        if added:
-            parts.append(f"{added} added")
-        if modified:
-            parts.append(f"{modified} modified")
-        if deleted:
-            parts.append(f"{deleted} deleted")
+    async def _handle_explore(
+        self, request: GitRequest, session: GitSession
+    ) -> GitResponse:
+        """Handle exploration requests."""
+        state = await self._get_repository_state()
 
-        return f"Files: {', '.join(parts)}" if parts else ""
+        # Analyze patterns if enough history
+        if len(session.action_history) > 10:
+            session.learned_patterns = await self._pattern_analyzer.analyze(
+                session.repository_knowledge
+            )
 
-    def _generate_rule_based_commit(self, params: CommitMessageParams) -> str:
-        """Generate a simple rule-based commit message as fallback."""
-        if not params.file_changes:
-            return "chore: update project files"
+        # Build recommendations based on state
+        recommendations = self._build_explore_recommendations(state, session)
 
-        lines = params.file_changes.strip().split("\n")
+        # Track action
+        session.add_action("explored repository state")
 
-        # Analyze changes
-        added = [line[2:] for line in lines if line.startswith("A\t")]
-        modified = [line[2:] for line in lines if line.startswith("M\t")]
-        deleted = [line[2:] for line in lines if line.startswith("D\t")]
-
-        # Determine type and message
-        if added and not modified and not deleted:
-            if any("test" in f for f in added):
-                return f"test: add {Path(added[0]).stem if len(added) == 1 else f'{len(added)} test files'}"
-            elif any("doc" in f.lower() or "readme" in f.lower() for f in added):
-                return f"docs: add {Path(added[0]).name if len(added) == 1 else 'documentation'}"
-            else:
-                return f"feat: add {Path(added[0]).stem if len(added) == 1 else f'{len(added)} new files'}"
-
-        elif deleted and not added and not modified:
-            return f"chore: remove {Path(deleted[0]).name if len(deleted) == 1 else f'{len(deleted)} files'}"
-
-        elif modified:
-            if any("fix" in f or "bug" in f for f in modified):
-                return f"fix: update {Path(modified[0]).stem if len(modified) == 1 else f'{len(modified)} files'}"
-            elif any("test" in f for f in modified):
-                return f"test: update {Path(modified[0]).stem if len(modified) == 1 else 'tests'}"
-            else:
-                return f"refactor: update {Path(modified[0]).stem if len(modified) == 1 else f'{len(modified)} files'}"
-
-        return "chore: update project files"
-
-    def _parse_pr_sections(self, description: str) -> Dict[str, Any]:
-        """Parse PR description into sections."""
-        sections = {
-            "title": "",
-            "summary": "",
-            "changes": [],
-            "testing": "",
-            "checklist": [],
-        }
-
-        # Try to extract title (first line or # heading)
-        lines = description.split("\n")
-        for i, line in enumerate(lines):
-            if line.startswith("# "):
-                sections["title"] = line[2:].strip()
-                break
-            elif i == 0 and line.strip():
-                sections["title"] = line.strip()
-
-        # Extract other sections using common patterns
-        current_section = None
-        current_content = []
-
-        for line in lines:
-            # Check for section headers
-            if re.match(r"^#+\s*(summary|description|overview)", line, re.IGNORECASE):
-                current_section = "summary"
-                current_content = []
-            elif re.match(
-                r"^#+\s*(changes|what changed|modifications)", line, re.IGNORECASE
-            ):
-                current_section = "changes"
-                current_content = []
-            elif re.match(r"^#+\s*(testing|how to test|test)", line, re.IGNORECASE):
-                current_section = "testing"
-                current_content = []
-            elif re.match(r"^#+\s*(checklist|tasks|todo)", line, re.IGNORECASE):
-                current_section = "checklist"
-                current_content = []
-            elif current_section:
-                if line.strip():
-                    current_content.append(line)
-                elif current_content:  # Empty line ends section
-                    if current_section == "summary":
-                        sections["summary"] = "\n".join(current_content).strip()
-                    elif current_section == "testing":
-                        sections["testing"] = "\n".join(current_content).strip()
-                    elif current_section == "changes":
-                        # Extract list items
-                        for item in current_content:
-                            if item.strip().startswith(("- ", "* ", "+ ")):
-                                sections["changes"].append(item.strip()[2:])
-                    elif current_section == "checklist":
-                        # Extract checklist items
-                        for item in current_content:
-                            if "[ ]" in item or "[x]" in item:
-                                sections["checklist"].append(item.strip())
-                    current_section = None
-                    current_content = []
-
-        return sections
-
-    def _group_commits_by_type(self, commits: List[Dict]) -> Dict[str, List[Dict]]:
-        """Group commits by conventional commit type."""
-        grouped = {
-            "feat": [],
-            "fix": [],
-            "docs": [],
-            "perf": [],
-            "refactor": [],
-            "test": [],
-            "build": [],
-            "ci": [],
-            "chore": [],
-            "other": [],
-        }
-
-        for commit in commits:
-            subject = commit["subject"]
-            commit_type = self._extract_commit_type(subject)
-
-            if commit_type in grouped:
-                grouped[commit_type].append(commit)
-            else:
-                grouped["other"].append(commit)
-
-        # Remove empty groups
-        return {k: v for k, v in grouped.items() if v}
-
-    def _generate_markdown_changelog(
-        self, grouped_commits: Dict[str, List[Dict]], params: ChangelogParams
-    ) -> str:
-        """Generate markdown format changelog."""
-        lines = []
-
-        # Header
-        version = params.version or "Unreleased"
-        date = datetime.now().strftime("%Y-%m-%d")
-        lines.append(f"## [{version}] - {date}")
-        lines.append("")
-
-        # Sections
-        type_labels = {
-            "feat": "### 🚀 Features",
-            "fix": "### 🐛 Bug Fixes",
-            "docs": "### 📚 Documentation",
-            "perf": "### ⚡ Performance",
-            "refactor": "### ♻️ Refactoring",
-            "test": "### ✅ Tests",
-            "build": "### 📦 Build",
-            "ci": "### 👷 CI",
-            "chore": "### 🔧 Chores",
-        }
-
-        for commit_type, commits in grouped_commits.items():
-            if commit_type in type_labels:
-                lines.append(type_labels[commit_type])
-                lines.append("")
-
-                for commit in commits:
-                    subject = commit["subject"]
-                    # Remove type prefix
-                    subject = re.sub(r"^[a-z]+(\([^)]+\))?!?:\s*", "", subject)
-
-                    # Add commit link if URL template provided
-                    if params.commit_url_template:
-                        commit_link = params.commit_url_template.format(
-                            hash=commit["hash"][:7]
-                        )
-                        lines.append(
-                            f"- {subject} ([{commit['hash'][:7]}]({commit_link}))"
-                        )
-                    else:
-                        lines.append(f"- {subject} ({commit['hash'][:7]})")
-
-                lines.append("")
-
-        return "\n".join(lines)
-
-    def _count_changed_files(self, diff: str) -> int:
-        """Count number of changed files in diff."""
-        return len(re.findall(r"^diff --git", diff, re.MULTILINE))
-
-    def _count_insertions(self, diff: str) -> int:
-        """Count number of insertions in diff."""
-        return len(re.findall(r"^\+[^+]", diff, re.MULTILINE))
-
-    def _count_deletions(self, diff: str) -> int:
-        """Count number of deletions in diff."""
-        return len(re.findall(r"^-[^-]", diff, re.MULTILINE))
-
-    def _detect_languages(self, diff: str) -> List[str]:
-        """Detect programming languages from file extensions in diff."""
-        extensions = re.findall(r"diff --git a/.*\.(\w+)", diff)
-
-        language_map = {
-            "py": "Python",
-            "js": "JavaScript",
-            "ts": "TypeScript",
-            "java": "Java",
-            "cpp": "C++",
-            "c": "C",
-            "go": "Go",
-            "rs": "Rust",
-            "rb": "Ruby",
-            "php": "PHP",
-            "swift": "Swift",
-            "kt": "Kotlin",
-            "scala": "Scala",
-            "r": "R",
-            "m": "MATLAB",
-            "jl": "Julia",
-            "sh": "Shell",
-            "ps1": "PowerShell",
-        }
-
-        languages = set()
-        for ext in extensions:
-            if ext in language_map:
-                languages.add(language_map[ext])
-            elif ext in ["h", "hpp"]:
-                languages.add("C/C++")
-            elif ext in ["jsx", "tsx"]:
-                languages.add("React")
-            elif ext in ["vue"]:
-                languages.add("Vue")
-            elif ext in ["yaml", "yml"]:
-                languages.add("YAML")
-            elif ext in ["json"]:
-                languages.add("JSON")
-            elif ext in ["xml"]:
-                languages.add("XML")
-            elif ext in ["md", "markdown"]:
-                languages.add("Markdown")
-
-        return sorted(list(languages))
-
-    def _detect_patterns(self, diff: str) -> Dict[str, bool]:
-        """Detect common patterns in diff."""
-        return {
-            "has_tests": bool(re.search(r"test_|_test\.|\.test\.|/tests?/", diff)),
-            "has_docs": bool(
-                re.search(r"README|CHANGELOG|/docs?/|\.md", diff, re.IGNORECASE)
-            ),
-            "has_config": bool(
-                re.search(
-                    r"config|\.env|settings|\.ini|\.toml|\.yaml", diff, re.IGNORECASE
-                )
-            ),
-            "has_dependencies": bool(
-                re.search(
-                    r"requirements\.txt|package\.json|Cargo\.toml|go\.mod|pom\.xml",
-                    diff,
-                )
-            ),
-            "has_migrations": bool(re.search(r"migrations?/|alembic/", diff)),
-            "has_api_changes": bool(
-                re.search(r"api/|endpoint|route|controller", diff, re.IGNORECASE)
-            ),
-            "has_ui_changes": bool(
-                re.search(
-                    r"\.css|\.scss|\.html|component|template|view", diff, re.IGNORECASE
-                )
-            ),
-        }
-
-    def _suggest_version_bump(self, diff: str) -> SemverBumpType:
-        """Suggest semantic version bump based on diff."""
-        # Check for breaking changes
-        if re.search(r"BREAKING CHANGE|breaking:", diff, re.IGNORECASE):
-            return SemverBumpType.MAJOR
-
-        # Check commit messages in diff
-        feat_count = len(re.findall(r"^feat(\([^)]+\))?:", diff, re.MULTILINE))
-        fix_count = len(re.findall(r"^fix(\([^)]+\))?:", diff, re.MULTILINE))
-
-        if feat_count > 0:
-            return SemverBumpType.MINOR
-        elif fix_count > 0:
-            return SemverBumpType.PATCH
-
-        # Check for API changes
-        if re.search(
-            r"api/|endpoint|route|interface|public\s+\w+", diff, re.IGNORECASE
-        ):
-            return SemverBumpType.MINOR
-
-        # Default to patch
-        return SemverBumpType.PATCH
-
-    def _generate_basic_pr_description(self, params: PRDescriptionParams) -> str:
-        """Generate basic PR description without AI."""
-        lines = []
-
-        # Title
-        title = (
-            params.title
-            or f"Merge {params.source_branch or 'feature'} into {params.target_branch or 'main'}"
-        )
-        lines.append(f"# {title}")
-        lines.append("")
-
-        # Summary
-        lines.append("## Summary")
-        lines.append("")
-        lines.append("This PR includes the following changes:")
-        lines.append("")
-
-        # Changes from commits
-        if params.commits:
-            lines.append("## Changes")
-            lines.append("")
-            for commit in params.commits[:20]:  # Limit commits
-                lines.append(f"- {commit}")
-            if len(params.commits) > 20:
-                lines.append(f"- ... and {len(params.commits) - 20} more commits")
-            lines.append("")
-
-        # File changes
-        if params.diff_summary:
-            lines.append("## Files Changed")
-            lines.append("")
-            lines.append("```")
-            lines.append(params.diff_summary)
-            lines.append("```")
-            lines.append("")
-
-        # Standard sections
-        lines.append("## Testing")
-        lines.append("")
-        lines.append("- [ ] Tests pass locally")
-        lines.append("- [ ] New tests added for changes")
-        lines.append("")
-
-        lines.append("## Checklist")
-        lines.append("")
-        lines.append("- [ ] Code follows project style guidelines")
-        lines.append("- [ ] Self-review completed")
-        lines.append("- [ ] Documentation updated")
-        lines.append("- [ ] No new warnings")
-
-        return "\n".join(lines)
-
-    def _generate_conventional_changelog(
-        self, grouped_commits: Dict[str, List[Dict]], params: ChangelogParams
-    ) -> str:
-        """Generate conventional changelog format."""
-        # Similar to markdown but follows conventional changelog spec
-        return self._generate_markdown_changelog(grouped_commits, params)
-
-    def _generate_keep_changelog(
-        self, grouped_commits: Dict[str, List[Dict]], params: ChangelogParams
-    ) -> str:
-        """Generate Keep a Changelog format."""
-        lines = []
-
-        # Header
-        version = params.version or "Unreleased"
-        date = datetime.now().strftime("%Y-%m-%d")
-        lines.append(f"## [{version}] - {date}")
-        lines.append("")
-
-        # Keep a Changelog categories
-        categories = {
-            "feat": "Added",
-            "fix": "Fixed",
-            "docs": "Changed",  # Docs usually go under Changed
-            "perf": "Changed",
-            "refactor": "Changed",
-            "test": "Changed",
-            "build": "Changed",
-            "ci": "Changed",
-            "chore": "Changed",
-        }
-
-        # Group by Keep a Changelog categories
-        keep_grouped = {
-            "Added": [],
-            "Changed": [],
-            "Deprecated": [],
-            "Removed": [],
-            "Fixed": [],
-            "Security": [],
-        }
-
-        for commit_type, commits in grouped_commits.items():
-            category = categories.get(commit_type, "Changed")
-            keep_grouped[category].extend(commits)
-
-        # Write sections
-        for category, commits in keep_grouped.items():
-            if commits:
-                lines.append(f"### {category}")
-                for commit in commits:
-                    subject = commit["subject"]
-                    subject = re.sub(r"^[a-z]+(\([^)]+\))?!?:\s*", "", subject)
-                    lines.append(f"- {subject}")
-                lines.append("")
-
-        return "\n".join(lines)
-
-    async def _suggest_reviewers(self, params: Dict[str, Any]) -> GitResponse:
-        """Suggest code reviewers based on file changes and history."""
-        # This would analyze git blame, recent commits, and code ownership
-        # Placeholder for now
         return GitResponse(
-            success=False,
-            error="Reviewer suggestion not yet implemented",
-            action_performed=GitAction.SUGGEST_REVIEWERS,
+            understood_as="Exploring repository state and available actions",
+            actions_taken=[
+                "Analyzed current branch and changes",
+                "Identified work phase and context",
+                "Generated personalized recommendations",
+            ],
+            repository_state=state,
+            recommendations=recommendations,
+            learned={
+                "work_phase": state.work_phase,
+                "change_summary": self._summarize_changes(state),
+                "health_status": self._assess_health(state),
+            },
+            conversation_id=session.id,
+            follow_up_prompts=self._generate_explore_prompts(state),
         )
 
-    async def _suggest_branch_name(self, params: SuggestBranchParams) -> GitResponse:
-        """Suggest a branch name based on the work description."""
-        try:
-            # Build prompt
-            prompt = f"""Suggest a git branch name for: {params.description}
-
-Rules:
-- Use lowercase and hyphens
-- Keep it concise but descriptive
-- Follow the pattern: {params.branch_prefix or "feature"}/description
-- Max 50 characters total
-- No special characters except hyphens
-
-Return ONLY the branch name, no explanation."""
-
-            # Call LLM
-            llm = await self._get_llm_endpoint()
-            response = await self._call_llm(llm, prompt, temperature=0.3)
-
-            if response:
-                branch_name = response.strip()
-            else:
-                # Fallback: create from description
-                branch_name = self._create_branch_name_from_description(
-                    params.description, params.branch_prefix
-                )
-
-            return GitResponse(
-                success=True,
-                action_performed=GitAction.SUGGEST_BRANCH_NAME,
-                content={
-                    "branch_name": branch_name,
-                    "prefix": params.branch_prefix or "feature",
-                },
-            )
-
-        except Exception as e:
-            return GitResponse(
-                success=False,
-                error=f"Failed to suggest branch name: {str(e)}",
-                action_performed=GitAction.SUGGEST_BRANCH_NAME,
-            )
-
-    async def _generate_review_comments(
-        self, params: ReviewCommentsParams
+    async def _handle_implement(
+        self, request: GitRequest, session: GitSession
     ) -> GitResponse:
-        """Generate code review comments."""
-        try:
-            # Get diff
-            if not params.diff and params.pr_number:
-                # Would fetch from GitHub/GitLab API
-                pass
+        """Handle implementation save requests."""
+        state = await self._get_repository_state()
 
-            if not params.diff:
-                return GitResponse(
-                    success=False,
-                    error="No diff provided for review",
-                    action_performed=GitAction.GENERATE_REVIEW_COMMENTS,
+        # Initialize or update implementation flow
+        if not session.implementation_flow:
+            session.implementation_flow = ImplementationFlow(
+                task=request.context.task_description
+                if request.context
+                else "Current implementation",
+                approach=request.context.design_decisions if request.context else [],
+                success_criteria=request.context.requirements
+                if request.context
+                else [],
+                started_at=datetime.utcnow(),
+            )
+
+        actions_taken = []
+
+        # Smart staging based on changes
+        staged_files = await self._smart_stage_files(state, request)
+        actions_taken.append(f"Staged {len(staged_files)} files intelligently")
+
+        # Generate commit message with context
+        commit_message = await self._generate_contextual_commit(state, request, session)
+
+        # Perform commit
+        commit_result = await self._perform_commit(commit_message)
+        actions_taken.append(f"Created commit: {commit_result['sha'][:8]}")
+
+        # Update flow
+        session.implementation_flow.add_checkpoint(
+            commit_message.split("\n")[0], state.code_insights
+        )
+
+        # Update state
+        state = await self._get_repository_state()
+
+        # Build next recommendations
+        recommendations = self._build_implement_recommendations(
+            state, session, commit_result
+        )
+
+        session.add_action(f"saved implementation progress: {commit_result['sha'][:8]}")
+
+        return GitResponse(
+            understood_as="Saving implementation progress with intelligent commit",
+            actions_taken=actions_taken,
+            repository_state=state,
+            recommendations=recommendations,
+            learned={
+                "commit_sha": commit_result["sha"],
+                "commit_message": commit_message,
+                "files_staged": staged_files,
+                "next_phase": self._suggest_next_phase(state, session),
+            },
+            conversation_id=session.id,
+            follow_up_prompts=[
+                "Should I push these changes?",
+                "Ready to create a pull request?",
+                "Want me to run the tests?",
+                "Continue with the next part?",
+            ],
+        )
+
+    async def _handle_collaborate(
+        self, request: GitRequest, session: GitSession
+    ) -> GitResponse:
+        """Handle collaboration requests."""
+        state = await self._get_repository_state()
+        actions_taken = []
+
+        # Ensure changes are committed
+        if state.has_uncommitted_changes or state.has_staged_changes:
+            commit_response = await self._handle_implement(request, session)
+            actions_taken.extend(commit_response.actions_taken)
+            state = commit_response.repository_state
+
+        # Push branch
+        push_result = await self._push_branch(state.current_branch)
+        actions_taken.append(f"Pushed branch '{state.current_branch}' to remote")
+
+        # Create or update PR
+        if state.existing_pr:
+            # Update existing PR
+            pr_result = await self._update_pull_request(state, request, session)
+            actions_taken.append(f"Updated pull request #{pr_result['number']}")
+        else:
+            # Create new PR
+            pr_result = await self._create_pull_request(state, request, session)
+            actions_taken.append(f"Created pull request #{pr_result['number']}")
+
+            # Initialize collaboration flow
+            session.collaboration_flow = CollaborationFlow(
+                pr_title=pr_result["title"],
+                pr_body=pr_result["body"],
+                suggested_reviewers=pr_result.get("reviewers", []),
+                review_focus_areas=await self._identify_review_focus(state),
+                expected_feedback_types=["code quality", "design", "tests"],
+            )
+
+        # Get updated state with PR info
+        state = await self._get_repository_state()
+
+        # Optimize reviewer assignment
+        if not state.collaboration.active_reviewers:
+            reviewers = await self._collaboration_optimizer.suggest_reviewers(
+                state, session
+            )
+            if reviewers:
+                await self._assign_reviewers(pr_result["number"], reviewers)
+                actions_taken.append(
+                    f"Assigned optimal reviewers: {', '.join(reviewers)}"
                 )
 
-            # Build prompt
-            prompt = f"""Review this code diff and provide constructive feedback:
+        recommendations = self._build_collaborate_recommendations(
+            state, session, pr_result
+        )
 
-{params.diff[:5000]}  # Truncate for token limits
+        session.add_action(f"initiated collaboration via PR #{pr_result['number']}")
 
-Focus on:
-{chr(10).join("- " + f for f in params.focus_areas) if params.focus_areas else "- Code quality, bugs, performance, security, maintainability"}
+        return GitResponse(
+            understood_as="Sharing work for collaborative review",
+            actions_taken=actions_taken,
+            repository_state=state,
+            recommendations=recommendations,
+            learned={
+                "pr_url": pr_result["url"],
+                "pr_number": pr_result["number"],
+                "reviewers": pr_result.get("reviewers", []),
+                "estimated_review_time": await self._estimate_review_time(
+                    state, session
+                ),
+            },
+            conversation_id=session.id,
+            follow_up_prompts=[
+                "Check review status?",
+                "Add more context to the PR?",
+                "Notify specific reviewers?",
+                "Continue with another task while waiting?",
+            ],
+        )
 
-Provide specific, actionable comments with line numbers where applicable.
-Be constructive and explain why changes would be beneficial.
-Format as a list of comments."""
+    async def _handle_integrate(
+        self, request: GitRequest, session: GitSession
+    ) -> GitResponse:
+        """Handle integration requests."""
+        state = await self._get_repository_state()
+        actions_taken = []
 
-            # Call LLM
-            llm = await self._get_llm_endpoint()
-            response = await self._call_llm(llm, prompt, temperature=0.5)
+        # Determine integration strategy
+        if "feedback" in request.request.lower():
+            # Incorporating review feedback
+            if state.collaboration.feedback_received:
+                changes_made = await self._apply_feedback(
+                    state.collaboration.feedback_received, request
+                )
+                actions_taken.extend(changes_made)
 
-            if response:
-                comments = self._parse_review_comments(response)
+                # Commit feedback changes
+                commit_msg = await self._generate_feedback_commit(
+                    state.collaboration.feedback_received
+                )
+                await self._perform_commit(commit_msg)
+                actions_taken.append("Committed feedback changes")
+        else:
+            # Syncing with upstream
+            sync_result = await self._sync_with_upstream(state.current_branch)
+            actions_taken.extend(sync_result["actions"])
+
+            if sync_result["conflicts"]:
+                # Handle merge conflicts
+                resolution = await self._suggest_conflict_resolution(
+                    sync_result["conflicts"]
+                )
+                return GitResponse(
+                    understood_as="Attempting to integrate changes but found conflicts",
+                    actions_taken=actions_taken,
+                    repository_state=await self._get_repository_state(),
+                    recommendations=[
+                        Recommendation(
+                            action="Resolve merge conflicts",
+                            reason="Cannot proceed until conflicts are resolved",
+                            impact="Will allow branch to be merged",
+                            urgency="urgent",
+                            effort="moderate",
+                            example_request="Help me resolve these conflicts",
+                            prerequisites=[],
+                        )
+                    ],
+                    learned={
+                        "conflicts": sync_result["conflicts"],
+                        "resolution_suggestions": resolution,
+                    },
+                    conversation_id=session.id,
+                    follow_up_prompts=["Help me resolve the conflicts?"],
+                )
+
+        # Get final state
+        state = await self._get_repository_state()
+        recommendations = self._build_integrate_recommendations(state, session)
+
+        session.add_action("integrated changes successfully")
+
+        return GitResponse(
+            understood_as="Integrating changes from collaboration",
+            actions_taken=actions_taken,
+            repository_state=state,
+            recommendations=recommendations,
+            learned={
+                "integration_type": "feedback"
+                if "feedback" in request.request.lower()
+                else "upstream_sync",
+                "changes_integrated": len(actions_taken),
+                "branch_status": "up_to_date",
+            },
+            conversation_id=session.id,
+            follow_up_prompts=[
+                "Push the integrated changes?",
+                "Update the pull request?",
+                "Run tests to verify integration?",
+            ],
+        )
+
+    async def _handle_release(
+        self, request: GitRequest, session: GitSession
+    ) -> GitResponse:
+        """Handle release requests."""
+        state = await self._get_repository_state()
+        actions_taken = []
+
+        # Initialize release flow
+        if not session.release_flow:
+            # Extract version from request
+            version = self._extract_version(request.request)
+            if not version:
+                # Generate next version based on changes
+                version = await self._suggest_next_version(state)
+
+            session.release_flow = ReleaseFlow(
+                version=version,
+                release_type=self._determine_release_type(version),
+                highlights=[],
+                breaking_changes=[],
+            )
+
+        # Ensure all changes are committed
+        if state.has_uncommitted_changes:
+            commit_response = await self._handle_implement(request, session)
+            actions_taken.extend(commit_response.actions_taken)
+            state = commit_response.repository_state
+
+        # Ensure we're on the main branch
+        if state.current_branch != "main":
+            # Create PR if needed
+            if not state.existing_pr:
+                pr_response = await self._handle_collaborate(request, session)
+                actions_taken.extend(pr_response.actions_taken)
+
+            # Switch to main
+            await self._git_ops.checkout_branch("main")
+            await self._git_ops.pull_latest()
+            actions_taken.append("Switched to main branch and pulled latest")
+
+            # Merge feature branch
+            merge_result = await self._git_ops.merge_branch(state.current_branch)
+            if merge_result["success"]:
+                actions_taken.append(f"Merged {state.current_branch} into main")
             else:
-                comments = []
+                return self._handle_merge_conflicts(merge_result, request, session)
 
-            return GitResponse(
-                success=True,
-                action_performed=GitAction.GENERATE_REVIEW_COMMENTS,
-                content={
-                    "comments": comments,
-                    "summary": f"Generated {len(comments)} review comments",
-                    "severity_counts": self._count_comment_severities(comments),
-                },
+        # Generate release artifacts
+        release_artifacts = await self._generate_release_artifacts(
+            session.release_flow, state
+        )
+
+        # Create git tag
+        tag_result = await self._git_ops.create_tag(
+            session.release_flow.version,
+            f"Release {session.release_flow.version}\n\n{release_artifacts['changelog']}",
+        )
+        actions_taken.append(f"Created tag {session.release_flow.version}")
+
+        # Push tag
+        await self._git_ops.push_tag(session.release_flow.version)
+        actions_taken.append("Pushed tag to remote")
+
+        # Create GitHub release if available
+        if await self._github_available():
+            release_url = await self._create_github_release(
+                session.release_flow, release_artifacts
             )
+            actions_taken.append(f"Created GitHub release: {release_url}")
 
-        except Exception as e:
-            return GitResponse(
-                success=False,
-                error=f"Failed to generate review comments: {str(e)}",
-                action_performed=GitAction.GENERATE_REVIEW_COMMENTS,
+        # Update version files
+        version_updates = await self._update_version_files(session.release_flow.version)
+        if version_updates:
+            actions_taken.extend(version_updates)
+
+            # Commit version updates
+            await self._git_ops.create_commit(
+                f"chore: bump version to {session.release_flow.version}"
             )
+            await self._git_ops.push_branch("main")
 
-    async def _generate_release_notes(self, params: ReleaseNotesParams) -> GitResponse:
-        """Generate release notes."""
-        try:
-            # Get commits/changelog
-            changelog_params = ChangelogParams(
-                from_ref=params.from_version,
-                to_ref=params.to_version,
-                version=params.version,
-                format=ChangelogFormat.MARKDOWN,
-                repo_path=params.repo_path,
+        # Get final state
+        state = await self._get_repository_state()
+
+        recommendations = [
+            Recommendation(
+                action="Announce the release",
+                reason="Let users know about the new version",
+                impact="Increases adoption of new features",
+                urgency="recommended",
+                effort="quick",
+                example_request="Draft a release announcement",
+                prerequisites=[],
+            ),
+            Recommendation(
+                action="Monitor for issues",
+                reason="Catch any problems early",
+                impact="Maintains user trust",
+                urgency="recommended",
+                effort="moderate",
+                example_request="Set up monitoring for the new release",
+                prerequisites=[],
+            ),
+        ]
+
+        session.add_action(f"released version {session.release_flow.version}")
+
+        return GitResponse(
+            understood_as=f"Creating release {session.release_flow.version}",
+            actions_taken=actions_taken,
+            repository_state=state,
+            recommendations=recommendations,
+            learned={
+                "version": session.release_flow.version,
+                "tag": session.release_flow.version,
+                "changelog": release_artifacts["changelog"],
+                "release_notes": release_artifacts["release_notes"],
+                "release_url": release_artifacts.get("url"),
+                "next_version_suggestion": self._suggest_next_dev_version(
+                    session.release_flow.version
+                ),
+            },
+            conversation_id=session.id,
+            follow_up_prompts=[
+                "Start working on the next version?",
+                "Create release announcement?",
+                "Update documentation for the release?",
+            ],
+        )
+
+    async def _handle_understand(
+        self, request: GitRequest, session: GitSession
+    ) -> GitResponse:
+        """Handle understanding/analysis requests."""
+        state = await self._get_repository_state()
+
+        # Determine what to analyze
+        focus = self._extract_analysis_focus(request.request)
+
+        analysis_results = {}
+        actions_taken = []
+
+        if "commit" in focus["focus"] or "history" in focus["focus"]:
+            # Analyze commit history
+            history_analysis = await self._analyze_commit_history(
+                branch=state.current_branch, limit=focus.get("limit", 20)
             )
+            analysis_results["history"] = history_analysis
+            actions_taken.append("Analyzed commit history")
 
-            changelog_response = await self._generate_changelog(changelog_params)
+        if "quality" in focus["focus"]:
+            # Perform quality assessment
+            quality = await self._quality_analyzer.assess(state)
+            analysis_results["quality"] = quality
+            actions_taken.append("Assessed code quality")
 
-            if not changelog_response.success:
+        if "patterns" in focus["focus"]:
+            # Identify patterns
+            patterns = await self._pattern_analyzer.analyze(
+                session.repository_knowledge
+            )
+            analysis_results["patterns"] = patterns
+            actions_taken.append("Identified codebase patterns")
+
+        # Generate insights
+        insights = await self._generate_insights(analysis_results, state)
+
+        recommendations = self._build_understand_recommendations(
+            insights, state, session
+        )
+
+        session.add_action(f"analyzed {', '.join(focus['focus'])}")
+
+        return GitResponse(
+            understood_as=f"Analyzing {', '.join(focus['focus'])} to provide insights",
+            actions_taken=actions_taken,
+            repository_state=state,
+            recommendations=recommendations,
+            learned={
+                **analysis_results,
+                "key_insights": insights,
+                "actionable_findings": self._extract_actionable_findings(
+                    analysis_results
+                ),
+            },
+            conversation_id=session.id,
+            follow_up_prompts=[
+                "Want me to fix any of the issues found?",
+                "Should I document these findings?",
+                "Interested in more detailed analysis?",
+                "Ready to act on these insights?",
+            ],
+        )
+
+    async def _handle_undo(
+        self, request: GitRequest, session: GitSession
+    ) -> GitResponse:
+        """Handle undo/revert requests."""
+        state = await self._get_repository_state()
+        actions_taken = []
+
+        # Determine what to undo
+        undo_target = self._identify_undo_target(request.request, session)
+
+        if undo_target["type"] == "last_commit":
+            # Undo last commit
+            if state.last_commit:
+                # Check if commit was pushed
+                if await self._is_commit_pushed(state.last_commit.sha):
+                    # Need to revert instead of reset
+                    revert_result = await self._git_ops.revert_commit(
+                        state.last_commit.sha
+                    )
+                    actions_taken.append(
+                        f"Created revert commit for {state.last_commit.sha[:8]}"
+                    )
+
+                    # Push the revert
+                    await self._git_ops.push_branch(state.current_branch)
+                    actions_taken.append("Pushed revert commit")
+                else:
+                    # Can safely reset
+                    await self._git_ops.reset_to_commit("HEAD~1", soft=True)
+                    actions_taken.append(
+                        "Reset to previous commit (changes preserved in working directory)"
+                    )
+            else:
                 return GitResponse(
-                    success=False,
-                    error="Failed to generate changelog for release notes",
-                    action_performed=GitAction.GENERATE_RELEASE_NOTES,
+                    understood_as="Attempting to undo last commit",
+                    actions_taken=[],
+                    repository_state=state,
+                    recommendations=[],
+                    learned={"error": "No commits to undo"},
+                    conversation_id=session.id,
+                    follow_up_prompts=["What would you like to do instead?"],
                 )
 
-            # Build release notes
-            lines = []
+        elif undo_target["type"] == "specific_commit":
+            # Revert specific commit
+            commit_sha = undo_target["sha"]
+            revert_result = await self._git_ops.revert_commit(commit_sha)
+            actions_taken.append(f"Created revert commit for {commit_sha[:8]}")
 
-            # Title
-            lines.append(f"# Release {params.version}")
-            lines.append("")
+        elif undo_target["type"] == "unstaged_changes":
+            # Discard unstaged changes
+            if state.has_uncommitted_changes:
+                # Save current changes to stash first
+                stash_result = await self._git_ops.stash_changes("Backup before undo")
+                actions_taken.append(
+                    "Saved current changes to stash (can be recovered)"
+                )
 
-            # Date
-            lines.append(f"**Released:** {datetime.now().strftime('%B %d, %Y')}")
-            lines.append("")
+                # Clean working directory
+                await self._git_ops.clean_working_directory()
+                actions_taken.append("Restored working directory to last commit")
 
-            # Summary (from highlights or generate)
-            if params.highlights:
-                lines.append("## Highlights")
-                lines.append("")
-                for highlight in params.highlights:
-                    lines.append(f"- {highlight}")
-                lines.append("")
+        elif undo_target["type"] == "merge":
+            # Undo a merge
+            if await self._is_merge_commit(state.last_commit.sha):
+                # Reset to before merge
+                await self._git_ops.reset_to_commit("ORIG_HEAD", hard=True)
+                actions_taken.append("Undid merge, restored to pre-merge state")
+            else:
+                return GitResponse(
+                    understood_as="Attempting to undo merge",
+                    actions_taken=[],
+                    repository_state=state,
+                    recommendations=[],
+                    learned={"error": "Last commit is not a merge"},
+                    conversation_id=session.id,
+                    follow_up_prompts=["What would you like to undo?"],
+                )
 
-            # Changelog
-            lines.append("## What's Changed")
-            lines.append("")
-            lines.append(changelog_response.content["changelog"])
+        # Get updated state
+        state = await self._get_repository_state()
 
-            # Contributors
-            if changelog_response.content.get("contributors"):
-                lines.append("## Contributors")
-                lines.append("")
-                lines.append("Thanks to all contributors:")
-                for contributor in changelog_response.content["contributors"]:
-                    lines.append(f"- {contributor}")
-                lines.append("")
+        # Build recommendations based on what was undone
+        recommendations = []
 
-            # Breaking changes
-            if params.breaking_changes:
-                lines.append("## ⚠️ Breaking Changes")
-                lines.append("")
-                for change in params.breaking_changes:
-                    lines.append(f"- {change}")
-                lines.append("")
-
-            # Upgrade instructions
-            if params.include_upgrade_instructions:
-                lines.append("## Upgrade Instructions")
-                lines.append("")
-                lines.append("To upgrade to this version:")
-                lines.append("")
-                lines.append("```bash")
-                lines.append(f"pip install khive=={params.version}")
-                lines.append("```")
-
-            release_notes = "\n".join(lines)
-
-            return GitResponse(
-                success=True,
-                action_performed=GitAction.GENERATE_RELEASE_NOTES,
-                content={
-                    "release_notes": release_notes,
-                    "version": params.version,
-                    "commit_count": changelog_response.content.get("commit_count", 0),
-                },
+        if undo_target["type"] in ["last_commit", "specific_commit"]:
+            recommendations.append(
+                Recommendation(
+                    action="Review the reverted changes",
+                    reason="Ensure the undo achieved what you wanted",
+                    impact="Prevents accidental loss of wanted changes",
+                    urgency="recommended",
+                    effort="quick",
+                    example_request="Show me what was undone",
+                    prerequisites=[],
+                )
             )
 
-        except Exception as e:
-            return GitResponse(
-                success=False,
-                error=f"Failed to generate release notes: {str(e)}",
-                action_performed=GitAction.GENERATE_RELEASE_NOTES,
+        if "stash" in " ".join(actions_taken).lower():
+            recommendations.append(
+                Recommendation(
+                    action="Recover stashed changes if needed",
+                    reason="Your changes are safely stored in git stash",
+                    impact="Can restore work if undo was mistaken",
+                    urgency="optional",
+                    effort="trivial",
+                    example_request="Restore my stashed changes",
+                    prerequisites=[],
+                )
             )
 
-    def _create_branch_name_from_description(
-        self, description: str, prefix: Optional[str] = None
-    ) -> str:
-        """Create branch name from description without AI."""
-        # Clean and format description
-        words = re.findall(r"\w+", description.lower())[:5]  # Max 5 words
-        branch_suffix = "-".join(words)
+        session.add_action(f"undid {undo_target['type']}")
 
-        # Add prefix
-        prefix = prefix or "feature"
-        branch_name = f"{prefix}/{branch_suffix}"
+        return GitResponse(
+            understood_as=f"Undoing {undo_target['description']}",
+            actions_taken=actions_taken,
+            repository_state=state,
+            recommendations=recommendations,
+            learned={
+                "undo_type": undo_target["type"],
+                "can_recover": "stash" in " ".join(actions_taken).lower(),
+                "next_action": "Continue with development"
+                if state.has_uncommitted_changes
+                else "Make new changes",
+            },
+            conversation_id=session.id,
+            follow_up_prompts=[
+                "Show me what changed?",
+                "Continue working on something else?",
+                "Need to undo something else?",
+            ],
+        )
 
-        # Ensure max length
-        if len(branch_name) > 50:
-            branch_name = branch_name[:50].rstrip("-")
+    async def _handle_organize(
+        self, request: GitRequest, session: GitSession
+    ) -> GitResponse:
+        """Handle repository organization requests."""
+        state = await self._get_repository_state()
+        actions_taken = []
 
-        return branch_name
+        # Determine organization scope
+        org_scope = self._determine_organization_scope(request.request)
 
-    def _parse_review_comments(self, response: str) -> List[Dict[str, Any]]:
-        """Parse review comments from LLM response."""
-        comments = []
+        organized_items = {
+            "branches_deleted": [],
+            "branches_archived": [],
+            "tags_created": [],
+            "stashes_cleaned": [],
+            "files_cleaned": [],
+        }
 
-        # Simple parsing - could be enhanced
-        lines = response.strip().split("\n")
-        current_comment = None
+        if "branches" in org_scope or "all" in org_scope:
+            # Clean up merged branches
+            merged_branches = await self._git_ops.get_merged_branches()
 
-        for line in lines:
-            if line.strip().startswith(("-", "*", "•", "1.", "2.", "3.")):
-                if current_comment:
-                    comments.append(current_comment)
+            for branch in merged_branches:
+                if branch not in ["main", "master", "develop", state.current_branch]:
+                    # Check if branch has been merged
+                    if await self._is_branch_fully_merged(branch):
+                        # Delete local branch
+                        await self._git_ops.delete_branch(branch, force=False)
+                        organized_items["branches_deleted"].append(branch)
 
-                # Extract severity if present
-                severity = "info"
-                if any(word in line.lower() for word in ["critical", "severe", "bug"]):
-                    severity = "critical"
-                elif any(
-                    word in line.lower() for word in ["warning", "issue", "problem"]
-                ):
-                    severity = "warning"
-                elif any(
-                    word in line.lower() for word in ["suggest", "consider", "optional"]
-                ):
-                    severity = "suggestion"
+                        # Delete remote branch if exists
+                        if await self._git_ops.remote_branch_exists(branch):
+                            await self._git_ops.delete_remote_branch(branch)
+                            actions_taken.append(
+                                f"Deleted merged branch '{branch}' (local and remote)"
+                            )
+                        else:
+                            actions_taken.append(
+                                f"Deleted merged branch '{branch}' (local only)"
+                            )
 
-                current_comment = {
-                    "comment": line.strip().lstrip("-*•0123456789. "),
-                    "severity": severity,
-                    "line": None,  # Would need to parse from comment
-                }
-            elif current_comment and line.strip():
-                # Continue previous comment
-                current_comment["comment"] += " " + line.strip()
+        if "stashes" in org_scope or "all" in org_scope:
+            # Clean old stashes
+            stashes = await self._git_ops.list_stashes()
+            old_stashes = [s for s in stashes if self._is_stash_old(s)]
 
-        if current_comment:
-            comments.append(current_comment)
+            for stash in old_stashes:
+                await self._git_ops.drop_stash(stash["index"])
+                organized_items["stashes_cleaned"].append(stash["message"])
 
-        return comments
+            if organized_items["stashes_cleaned"]:
+                actions_taken.append(
+                    f"Cleaned {len(organized_items['stashes_cleaned'])} old stashes"
+                )
 
-    def _count_comment_severities(
-        self, comments: List[Dict[str, Any]]
-    ) -> Dict[str, int]:
-        """Count comments by severity."""
-        severities = {"critical": 0, "warning": 0, "suggestion": 0, "info": 0}
+        if "tags" in org_scope:
+            # Organize tags (create missing release tags)
+            version_commits = await self._find_version_commits()
 
-        for comment in comments:
-            severity = comment.get("severity", "info")
-            if severity in severities:
-                severities[severity] += 1
+            for commit in version_commits:
+                if not commit["has_tag"]:
+                    tag_name = f"v{commit['version']}"
+                    await self._git_ops.create_tag(
+                        tag_name, f"Release {commit['version']}", commit["sha"]
+                    )
+                    organized_items["tags_created"].append(tag_name)
 
-        return severities
+            if organized_items["tags_created"]:
+                actions_taken.append(
+                    f"Created {len(organized_items['tags_created'])} missing version tags"
+                )
+
+        if "files" in org_scope or "all" in org_scope:
+            # Clean up common junk files
+            junk_patterns = [
+                ".DS_Store",
+                "Thumbs.db",
+                "*.pyc",
+                "__pycache__",
+                ".pytest_cache",
+                "*.swp",
+                "*.swo",
+                "*~",
+            ]
+
+            for pattern in junk_patterns:
+                removed = await self._git_ops.remove_files_by_pattern(
+                    pattern, track=True
+                )
+                organized_items["files_cleaned"].extend(removed)
+
+            if organized_items["files_cleaned"]:
+                actions_taken.append(
+                    f"Removed {len(organized_items['files_cleaned'])} junk files"
+                )
+
+                # Commit the cleanup
+                await self._git_ops.create_commit(
+                    "chore: clean up repository\n\nRemoved common junk files and artifacts"
+                )
+                actions_taken.append("Committed cleanup changes")
+
+        # Get final state
+        state = await self._get_repository_state()
+
+        # Build summary
+        total_cleaned = sum(len(items) for items in organized_items.values())
+
+        recommendations = []
+
+        if total_cleaned > 0:
+            recommendations.append(
+                Recommendation(
+                    action="Push cleanup changes",
+                    reason="Share the organized repository with team",
+                    impact="Keeps repository clean for everyone",
+                    urgency="recommended",
+                    effort="trivial",
+                    example_request="Push these cleanup changes",
+                    prerequisites=[],
+                )
+            )
+
+        recommendations.append(
+            Recommendation(
+                action="Set up automated cleanup",
+                reason="Prevent junk accumulation in future",
+                impact="Maintains clean repository automatically",
+                urgency="optional",
+                effort="moderate",
+                example_request="Help me set up git hooks for cleanup",
+                prerequisites=[],
+            )
+        )
+
+        session.add_action(f"organized repository ({total_cleaned} items cleaned)")
+
+        return GitResponse(
+            understood_as=f"Organizing repository by cleaning {', '.join(org_scope)}",
+            actions_taken=actions_taken,
+            repository_state=state,
+            recommendations=recommendations,
+            learned={
+                "organization_scope": org_scope,
+                "items_cleaned": organized_items,
+                "total_cleaned": total_cleaned,
+                "repository_health": "improved"
+                if total_cleaned > 0
+                else "already good",
+            },
+            conversation_id=session.id,
+            follow_up_prompts=[
+                "Show me what was cleaned up?",
+                "Set up regular cleanup schedule?",
+                "Any other maintenance needed?",
+            ],
+        )
+
+    # --- Helper Methods (continued) ---
+
+    async def _handle_error(
+        self, error: Exception, request: GitRequest, session: GitSession
+    ) -> GitResponse:
+        """Handle errors gracefully with recovery suggestions."""
+        error_type = type(error).__name__
+        error_msg = str(error)
+
+        # Analyze error
+        git_error = GitError(
+            error_type=error_type,
+            description=error_msg,
+            what_failed=self._identify_failure_point(error_msg),
+            why_failed=self._explain_failure_reason(error_msg),
+            can_retry=self._is_retryable(error_type),
+            fix_suggestions=self._suggest_fixes(error_type, error_msg),
+            workarounds=self._suggest_workarounds(error_type),
+            prevention_tips=self._suggest_prevention(error_type),
+        )
+
+        return GitResponse(
+            understood_as=f"Attempted to {request.request} but encountered an error",
+            actions_taken=["Analyzed error", "Generated recovery suggestions"],
+            repository_state=await self._get_repository_state(),
+            recommendations=[
+                Recommendation(
+                    action=fix,
+                    reason="This should resolve the error",
+                    impact="Allow operation to complete successfully",
+                    urgency="now",
+                    effort="quick",
+                    example_request=f"Please {fix.lower()}",
+                    prerequisites=[],
+                )
+                for fix in git_error.fix_suggestions[:2]  # Top 2 fixes
+            ],
+            learned={"error": git_error.model_dump(), "can_retry": git_error.can_retry},
+            conversation_id=session.id,
+            follow_up_prompts=[
+                "Should I try again?",
+                "Want me to try a different approach?",
+                "Need help with the fix?",
+            ],
+        )
+
+    def _get_or_create_session(
+        self, agent_id: str, conversation_id: Optional[str] = None
+    ) -> GitSession:
+        """Get or create a session for continuity."""
+        session_id = conversation_id or f"git-{agent_id}-{uuid4().hex[:8]}"
+
+        # Clean up old sessions
+        self._cleanup_old_sessions()
+
+        if session_id in self._sessions:
+            session = self._sessions[session_id]
+            session.last_activity = datetime.utcnow()
+            return session
+
+        # Create new session
+        session = GitSession(
+            id=session_id,
+            agent_id=agent_id,
+            started_at=datetime.utcnow(),
+            last_activity=datetime.utcnow(),
+        )
+
+        self._sessions[session_id] = session
+        return session
+
+    def _cleanup_old_sessions(self):
+        """Remove sessions older than 2 hours."""
+        cutoff = datetime.utcnow() - timedelta(hours=2)
+
+        expired_sessions = [
+            session_id
+            for session_id, session in self._sessions.items()
+            if session.last_activity < cutoff
+        ]
+
+        for session_id in expired_sessions:
+            del self._sessions[session_id]
 
     async def close(self) -> None:
-        """Close the service and release resources."""
-        if hasattr(self, "_executor") and self._executor is not None:
-            await self._executor.shutdown()
+        """Clean up resources."""
+        # Clean up any open connections or resources
+        if hasattr(self, "_executor") and hasattr(self._git_ops._executor, "shutdown"):
+            await self._git_ops._executor.shutdown()
 
-        if self._llm_endpoint and hasattr(self._llm_endpoint, "aclose"):
-            await self._llm_endpoint.aclose()
+
+# --- Supporting Classes ---
+
+
+class PatternAnalyzer:
+    """Analyzes patterns in repository usage."""
+
+    async def analyze(self, repository_knowledge: Dict[str, Any]) -> PatternRecognition:
+        """Identify patterns in the codebase and workflow."""
+        # Analyze commit patterns
+        commit_patterns = self._analyze_commit_patterns(repository_knowledge)
+
+        # Analyze code patterns
+        code_patterns = self._analyze_code_patterns(repository_knowledge)
+
+        # Analyze team patterns
+        team_patterns = self._analyze_team_patterns(repository_knowledge)
+
+        return PatternRecognition(
+            common_patterns=code_patterns["common"],
+            anti_patterns=code_patterns["anti"],
+            typical_pr_size=commit_patterns.get("avg_pr_size", 150),
+            typical_review_time=team_patterns.get("avg_review_time", "2-4 hours"),
+            typical_iteration_count=team_patterns.get("avg_iterations", 2),
+            expertise_map=team_patterns.get("expertise_map", {}),
+            collaboration_graph=team_patterns.get("collaboration_graph", {}),
+        )
+
+    def _analyze_commit_patterns(self, knowledge: Dict[str, Any]) -> Dict[str, Any]:
+        """Analyze patterns in commit history."""
+        # This would analyze actual commit data
+        return {
+            "avg_pr_size": 150,
+            "common_types": ["feat", "fix", "refactor"],
+            "commit_frequency": "daily",
+        }
+
+    def _analyze_code_patterns(self, knowledge: Dict[str, Any]) -> Dict[str, Any]:
+        """Analyze patterns in code structure."""
+        return {
+            "common": ["dependency injection", "factory pattern", "observer pattern"],
+            "anti": ["god objects", "copy-paste code", "magic numbers"],
+        }
+
+    def _analyze_team_patterns(self, knowledge: Dict[str, Any]) -> Dict[str, Any]:
+        """Analyze team collaboration patterns."""
+        return {
+            "avg_review_time": "2-4 hours",
+            "avg_iterations": 2,
+            "expertise_map": {
+                "auth": ["alice", "bob"],
+                "database": ["charlie"],
+                "frontend": ["diana", "eve"],
+            },
+            "collaboration_graph": {
+                "alice": ["bob", "charlie"],
+                "bob": ["alice", "diana"],
+                "charlie": ["alice", "eve"],
+            },
+        }
+
+
+class QualityAnalyzer:
+    """Analyzes code quality."""
+
+    async def assess(self, state: RepositoryUnderstanding) -> QualityAssessment:
+        """Assess code quality."""
+        # Run quality checks
+        test_coverage = await self._calculate_test_coverage(state)
+        doc_coverage = await self._calculate_doc_coverage(state)
+        complexity = await self._calculate_complexity(state)
+
+        # Assess subjective qualities
+        readability = self._assess_readability(state)
+        maintainability = self._assess_maintainability(state)
+        consistency = self._assess_consistency(state)
+
+        # Find specific issues
+        issues = await self._find_quality_issues(state)
+
+        # Generate recommendations
+        quick_wins = self._identify_quick_wins(issues)
+        long_term = self._identify_long_term_improvements(state)
+
+        return QualityAssessment(
+            test_coverage=test_coverage,
+            documentation_coverage=doc_coverage,
+            complexity_score=complexity,
+            readability=readability,
+            maintainability=maintainability,
+            consistency=consistency,
+            issues=issues,
+            quick_wins=quick_wins,
+            long_term_improvements=long_term,
+        )
+
+    async def _calculate_test_coverage(self, state: RepositoryUnderstanding) -> float:
+        """Calculate test coverage percentage."""
+        if not state.changes_summary:
+            return 0.0
+
+        # Simple heuristic: ratio of test files to code files
+        code_count = len(state.changes_summary.code_files)
+        test_count = len(state.changes_summary.test_files)
+
+        if code_count == 0:
+            return 1.0
+
+        return (
+            min(test_count / code_count, 1.0) * 0.75
+        )  # Assume 75% coverage per test file
+
+    async def _calculate_doc_coverage(self, state: RepositoryUnderstanding) -> float:
+        """Calculate documentation coverage."""
+        if not state.changes_summary:
+            return 0.0
+
+        # Check for documentation files
+        has_readme = any("readme" in str(f.path).lower() for f in state.files_changed)
+        has_docs = len(state.changes_summary.doc_files) > 0
+
+        base_score = 0.3 if has_readme else 0.0
+        doc_score = min(len(state.changes_summary.doc_files) * 0.2, 0.5)
+
+        return base_score + doc_score
+
+    async def _calculate_complexity(self, state: RepositoryUnderstanding) -> float:
+        """Calculate average complexity score."""
+        # Simplified - would use actual complexity metrics
+        return 12.5
+
+    def _assess_readability(self, state: RepositoryUnderstanding) -> str:
+        """Assess code readability."""
+        if state.code_insights.follows_patterns:
+            return "good"
+        return "fair"
+
+    def _assess_maintainability(self, state: RepositoryUnderstanding) -> str:
+        """Assess code maintainability."""
+        if state.code_insights.introduces_tech_debt:
+            return "fair"
+        elif state.code_insights.adds_tests:
+            return "good"
+        return "fair"
+
+    def _assess_consistency(self, state: RepositoryUnderstanding) -> str:
+        """Assess code consistency."""
+        # Would check style consistency
+        return "excellent"
+
+    async def _find_quality_issues(
+        self, state: RepositoryUnderstanding
+    ) -> List[QualityIssue]:
+        """Find specific quality issues."""
+        issues = []
+
+        # Check for common issues
+        if state.code_insights.introduces_tech_debt:
+            issues.append(
+                QualityIssue(
+                    type="maintainability",
+                    severity="warning",
+                    location="See TODO comments",
+                    description="Code contains TODOs that should be addressed",
+                    suggestion="Create tickets for TODOs or address them now",
+                )
+            )
+
+        if not state.code_insights.adds_tests:
+            issues.append(
+                QualityIssue(
+                    type="maintainability",
+                    severity="warning",
+                    location="New code files",
+                    description="New code lacks test coverage",
+                    suggestion="Add unit tests for new functionality",
+                )
+            )
+
+        if state.code_insights.complexity == "complex":
+            issues.append(
+                QualityIssue(
+                    type="maintainability",
+                    severity="warning",
+                    location="Complex functions",
+                    description="Some functions have high complexity",
+                    suggestion="Consider breaking complex functions into smaller ones",
+                )
+            )
+
+        return issues
+
+    def _identify_quick_wins(self, issues: List[QualityIssue]) -> List[str]:
+        """Identify quick improvements."""
+        quick_wins = []
+
+        for issue in issues:
+            if issue.severity != "critical" and "Add" in issue.suggestion:
+                quick_wins.append(issue.suggestion)
+
+        # Add general quick wins
+        quick_wins.extend([
+            "Add docstrings to public methods",
+            "Remove commented-out code",
+            "Fix linting warnings",
+        ])
+
+        return quick_wins[:3]  # Top 3
+
+    def _identify_long_term_improvements(
+        self, state: RepositoryUnderstanding
+    ) -> List[str]:
+        """Identify long-term improvements."""
+        improvements = []
+
+        if state.code_insights.affects_public_api:
+            improvements.append("Create comprehensive API documentation")
+
+        if state.code_insights.complexity == "complex":
+            improvements.append("Refactor complex modules for better maintainability")
+
+        improvements.append("Set up automated quality checks in CI/CD")
+
+        return improvements
+
+
+class CollaborationOptimizer:
+    """Optimizes collaboration workflows."""
+
+    async def suggest_reviewers(
+        self, state: RepositoryUnderstanding, session: GitSession
+    ) -> List[str]:
+        """Suggest optimal reviewers based on expertise and availability."""
+        reviewers = []
+
+        # Get affected code areas
+        affected_areas = self._identify_affected_areas(state.files_changed)
+
+        # Match with expertise
+        if session.learned_patterns and session.learned_patterns.expertise_map:
+            for area in affected_areas:
+                if area in session.learned_patterns.expertise_map:
+                    area_experts = session.learned_patterns.expertise_map[area]
+                    reviewers.extend(area_experts)
+
+        # Remove duplicates and limit
+        unique_reviewers = list(set(reviewers))
+
+        # Sort by expertise match (would be more sophisticated)
+        return unique_reviewers[:3]  # Max 3 reviewers
+
+    def _identify_affected_areas(self, files: List[FileUnderstanding]) -> List[str]:
+        """Identify which areas of code are affected."""
+        areas = set()
+
+        for file in files:
+            # Extract top-level directory as area
+            parts = file.path.parts
+            if len(parts) > 1:
+                areas.add(parts[0])
+            else:
+                # File at root - check file name patterns
+                if "auth" in str(file.path).lower():
+                    areas.add("auth")
+                elif (
+                    "db" in str(file.path).lower() or "model" in str(file.path).lower()
+                ):
+                    areas.add("database")
+                elif "api" in str(file.path).lower():
+                    areas.add("api")
+
+        return list(areas)
