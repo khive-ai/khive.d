@@ -50,7 +50,7 @@ class MCPServerConfig:
     env: dict[str, str] = field(default_factory=dict)
     always_allow: list[str] = field(default_factory=list)
     disabled: bool = False
-    timeout: int = 30
+    timeout: int = 10  # Reduce default timeout for faster feedback
     # New field for transport type
     transport: str = "stdio"  # stdio or sse
     url: str | None = None  # For SSE transport
@@ -144,7 +144,7 @@ class MCPCommand(BaseCLICommand):
                         env=server_config.get("env", {}),
                         always_allow=server_config.get("alwaysAllow", []),
                         disabled=server_config.get("disabled", False),
-                        timeout=server_config.get("timeout", 30),
+                        timeout=server_config.get("timeout", 10),
                         transport=transport,
                         url=url,
                     )
@@ -162,9 +162,20 @@ class MCPCommand(BaseCLICommand):
                 exit_code=1,
             )
 
-        # Run async command
+        # Run async command with proper event loop handling
         try:
-            result = asyncio.run(self._execute_async(args, config))
+            # Check if there's already an event loop running
+            try:
+                loop = asyncio.get_running_loop()
+                # If we're already in an async context, we need to handle this differently
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(self._run_async_command, args, config)
+                    result = future.result()
+            except RuntimeError:
+                # No event loop running, safe to use asyncio.run()
+                result = asyncio.run(self._execute_async(args, config))
+            
             return result
         except Exception as e:
             return CLIResult(
@@ -172,7 +183,15 @@ class MCPCommand(BaseCLICommand):
             )
         finally:
             # Clean up any active clients
-            asyncio.run(self._cleanup_clients())
+            try:
+                asyncio.run(self._cleanup_clients())
+            except RuntimeError:
+                # If there's already a loop running, skip cleanup
+                pass
+
+    def _run_async_command(self, args: argparse.Namespace, config: MCPConfig) -> CLIResult:
+        """Run the async command in a new event loop."""
+        return asyncio.run(self._execute_async(args, config))
 
     async def _execute_async(
         self, args: argparse.Namespace, config: MCPConfig
@@ -280,12 +299,37 @@ class MCPCommand(BaseCLICommand):
 
     async def _cleanup_clients(self):
         """Clean up all active clients."""
+        cleanup_tasks = []
+        
         for client in self._clients.values():
             try:
-                if hasattr(client, "_context_manager") and client._context_manager:
-                    await client.__aexit__(None, None, None)
+                # Create cleanup task with timeout
+                async def cleanup_client(c):
+                    try:
+                        if hasattr(c, "_context_manager") and c._context_manager:
+                            await c.__aexit__(None, None, None)
+                        elif hasattr(c, "close"):
+                            await c.close()
+                    except Exception:
+                        pass
+                
+                cleanup_tasks.append(asyncio.create_task(cleanup_client(client)))
             except Exception:
                 pass
+        
+        # Wait for all cleanup tasks with timeout
+        if cleanup_tasks:
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*cleanup_tasks, return_exceptions=True),
+                    timeout=5.0  # 5 second timeout for cleanup
+                )
+            except asyncio.TimeoutError:
+                # Force cancel remaining tasks
+                for task in cleanup_tasks:
+                    if not task.done():
+                        task.cancel()
+        
         self._clients.clear()
 
     async def _cmd_list_servers(self, config: MCPConfig) -> CLIResult:
@@ -340,15 +384,19 @@ class MCPCommand(BaseCLICommand):
             if not server_config.disabled:
                 try:
                     client = await self._get_client(server_config)
-                    async with client:
-                        # Get server capabilities
-                        tools = await client.list_tools()
-                        server_info["status"] = "connected"
-                        server_info["tools_count"] = len(tools)
-                        server_info["tools"] = [
-                            {"name": tool.name, "description": tool.description}
-                            for tool in tools
-                        ]
+                    async with asyncio.timeout(server_config.timeout):
+                        async with client:
+                            # Get server capabilities
+                            tools = await client.list_tools()
+                            server_info["status"] = "connected"
+                            server_info["tools_count"] = len(tools)
+                            server_info["tools"] = [
+                                {"name": tool.name, "description": tool.description}
+                                for tool in tools
+                            ]
+                except asyncio.TimeoutError:
+                    server_info["status"] = "error"
+                    server_info["error"] = f"Timeout after {server_config.timeout}s"
                 except Exception as e:
                     server_info["status"] = "error"
                     server_info["error"] = str(e)
@@ -392,28 +440,38 @@ class MCPCommand(BaseCLICommand):
 
         try:
             client = await self._get_client(server_config)
-            async with client:
-                tools = await client.list_tools()
+            
+            # Add timeout to prevent hanging
+            async with asyncio.timeout(server_config.timeout):
+                async with client:
+                    tools = await client.list_tools()
 
-                tools_info = []
-                for tool in tools:
-                    tool_info = {"name": tool.name, "description": tool.description}
+                    tools_info = []
+                    for tool in tools:
+                        tool_info = {"name": tool.name, "description": tool.description}
 
-                    # Add parameter info if available
-                    if hasattr(tool, "inputSchema") and tool.inputSchema:
-                        if "properties" in tool.inputSchema:
-                            tool_info["parameters"] = list(
-                                tool.inputSchema["properties"].keys()
-                            )
+                        # Add parameter info if available
+                        if hasattr(tool, "inputSchema") and tool.inputSchema:
+                            if "properties" in tool.inputSchema:
+                                tool_info["parameters"] = list(
+                                    tool.inputSchema["properties"].keys()
+                                )
 
-                    tools_info.append(tool_info)
+                        tools_info.append(tool_info)
 
-                return CLIResult(
-                    status="success",
-                    message=f"Found {len(tools_info)} tools on server '{server_name}'",
-                    data={"server": server_name, "tools": tools_info},
-                )
+                    return CLIResult(
+                        status="success",
+                        message=f"Found {len(tools_info)} tools on server '{server_name}'",
+                        data={"server": server_name, "tools": tools_info},
+                    )
 
+        except asyncio.TimeoutError:
+            return CLIResult(
+                status="failure",
+                message=f"Timeout connecting to server '{server_name}' after {server_config.timeout}s",
+                data={"server": server_name},
+                exit_code=1,
+            )
         except Exception as e:
             return CLIResult(
                 status="failure",
@@ -469,24 +527,34 @@ class MCPCommand(BaseCLICommand):
 
         try:
             client = await self._get_client(server_config)
-            async with client:
-                # Call the tool
-                result = await client.call_tool(tool_name, arguments)
+            
+            # Add timeout to prevent hanging
+            async with asyncio.timeout(server_config.timeout):
+                async with client:
+                    # Call the tool
+                    result = await client.call_tool(tool_name, arguments)
 
-                # Format result based on content type
-                formatted_result = self._format_tool_result(result)
+                    # Format result based on content type
+                    formatted_result = self._format_tool_result(result)
 
-                return CLIResult(
-                    status="success",
-                    message=f"Tool '{tool_name}' executed successfully",
-                    data={
-                        "server": server_name,
-                        "tool": tool_name,
-                        "arguments": arguments,
-                        "result": formatted_result,
-                    },
-                )
+                    return CLIResult(
+                        status="success",
+                        message=f"Tool '{tool_name}' executed successfully",
+                        data={
+                            "server": server_name,
+                            "tool": tool_name,
+                            "arguments": arguments,
+                            "result": formatted_result,
+                        },
+                    )
 
+        except asyncio.TimeoutError:
+            return CLIResult(
+                status="failure",
+                message=f"Timeout calling tool '{tool_name}' after {server_config.timeout}s",
+                data={"server": server_name, "tool": tool_name, "arguments": arguments},
+                exit_code=1,
+            )
         except Exception as e:
             return CLIResult(
                 status="failure",
