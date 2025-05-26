@@ -9,7 +9,6 @@ import pytest
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
 
 from khive.services.git.git_service import (
     GitService,
@@ -170,9 +169,11 @@ class TestGitService:
         mock_get_repo_state.return_value = sample_repo_state
 
         # Mock the intent detector and _handle_explore method
-        with patch.object(git_service._intent_detector, "detect_intent") as mock_detect_intent:
+        with patch.object(
+            git_service._intent_detector, "detect_intent"
+        ) as mock_detect_intent:
             mock_detect_intent.return_value = (WorkIntent.EXPLORE, 0.9)
-            
+
             with patch.object(git_service, "_handle_explore") as mock_handle_explore:
                 expected_response = GitResponse(
                     understood_as="Exploring repository state",
@@ -204,10 +205,14 @@ class TestGitService:
         mock_get_repo_state.return_value = sample_repo_state
 
         # Mock the intent detector and _handle_implement method
-        with patch.object(git_service._intent_detector, "detect_intent") as mock_detect_intent:
+        with patch.object(
+            git_service._intent_detector, "detect_intent"
+        ) as mock_detect_intent:
             mock_detect_intent.return_value = (WorkIntent.IMPLEMENT, 0.95)
-            
-            with patch.object(git_service, "_handle_implement") as mock_handle_implement:
+
+            with patch.object(
+                git_service, "_handle_implement"
+            ) as mock_handle_implement:
                 expected_response = GitResponse(
                     understood_as="Saving implementation progress",
                     actions_taken=["Staged files", "Created commit"],
@@ -225,10 +230,14 @@ class TestGitService:
                 assert response == expected_response
                 mock_handle_implement.assert_called_once()
 
-    async def test_handle_request_error(self, git_service, sample_request, sample_repo_state):
+    async def test_handle_request_error(
+        self, git_service, sample_request, sample_repo_state
+    ):
         """Test error handling in handle_request."""
         # Mock intent detector to raise an exception
-        with patch.object(git_service._intent_detector, "detect_intent") as mock_detect_intent:
+        with patch.object(
+            git_service._intent_detector, "detect_intent"
+        ) as mock_detect_intent:
             mock_detect_intent.side_effect = Exception("Test error")
 
             # Mock _handle_error
@@ -514,7 +523,7 @@ class TestGitService:
         # Simply test that close doesn't crash - the actual GitService.close()
         # method may or may not have cleanup logic, but it should be callable
         await git_service.close()
-        
+
         # Test passes if no exception was raised
         assert True
 
@@ -793,7 +802,7 @@ class TestCollaborationOptimizer:
                 "alice": ["bob", "charlie"],
                 "bob": ["alice", "diana"],
                 "charlie": ["alice", "eve"],
-            }
+            },
         )
         return session
 
@@ -912,9 +921,11 @@ class TestGitServiceIntegration:
         )
 
         # Mock the _get_repository_state method to avoid the async file analyzer issue
-        with patch.object(git_service, "_get_repository_state", new_callable=AsyncMock) as mock_get_repo_state:
+        with patch.object(
+            git_service, "_get_repository_state", new_callable=AsyncMock
+        ) as mock_get_repo_state:
             mock_get_repo_state.return_value = sample_repo_state
-            
+
             # Mock additional dependencies
             with patch.multiple(
                 git_service,

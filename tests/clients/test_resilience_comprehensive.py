@@ -240,11 +240,11 @@ class TestCircuitBreaker:
         # Reset the circuit - manual reset not implemented, so let's test recovery instead
         # Wait for recovery time
         await asyncio.sleep(1.1)
-        
+
         # Test that circuit can recover
         async def test_operation():
             return "recovery test"
-        
+
         result = await circuit_breaker.execute(test_operation)
         assert result == "recovery test"
         assert circuit_breaker.state == CircuitState.CLOSED
@@ -406,7 +406,7 @@ class TestRetryWithBackoff:
                 auth_error,
                 max_retries=3,
                 base_delay=0.01,
-                exclude_exceptions=(ValueError,)
+                exclude_exceptions=(ValueError,),
             )
 
         # Should only be called once (no retries for ValueError)
@@ -471,7 +471,7 @@ class TestRetryWithBackoff:
                 mixed_errors,
                 max_retries=5,
                 base_delay=0.01,
-                exclude_exceptions=(ValueError,)
+                exclude_exceptions=(ValueError,),
             )
 
         assert call_count == 3

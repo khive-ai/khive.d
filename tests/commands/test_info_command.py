@@ -5,7 +5,6 @@ This module tests the CLI interface for the info service including
 argument parsing, service integration, and output formatting.
 """
 
-
 from unittest.mock import Mock, patch, AsyncMock
 import pytest
 from io import StringIO
@@ -35,7 +34,7 @@ class TestInfoCommand:
         # Setup mock service
         mock_service = AsyncMock()
         mock_service_class.return_value = mock_service
-        
+
         # Mock successful response
         mock_response = Mock()
         mock_response.success = True
@@ -50,7 +49,7 @@ class TestInfoCommand:
 
         # Verify service was called
         mock_service.handle_request.assert_called_once()
-        
+
         # Verify the request had the correct query
         call_args = mock_service.handle_request.call_args[0][0]
         assert call_args.query == "test query"
@@ -65,7 +64,7 @@ class TestInfoCommand:
         """Test handling of multi-word queries."""
         mock_service = AsyncMock()
         mock_service_class.return_value = mock_service
-        
+
         # Mock successful response
         mock_response = Mock()
         mock_response.success = True
@@ -105,7 +104,7 @@ class TestInfoCommand:
         """Test --context flag functionality."""
         mock_service = AsyncMock()
         mock_service_class.return_value = mock_service
-        
+
         # Mock successful response
         mock_response = Mock()
         mock_response.success = True
@@ -141,7 +140,7 @@ class TestInfoCommand:
         """Test mode option."""
         mock_service = AsyncMock()
         mock_service_class.return_value = mock_service
-        
+
         # Mock successful response
         mock_response = Mock()
         mock_response.success = True
@@ -165,7 +164,7 @@ class TestInfoCommand:
         """Test time budget option."""
         mock_service = AsyncMock()
         mock_service_class.return_value = mock_service
-        
+
         # Mock successful response
         mock_response = Mock()
         mock_response.success = True
@@ -212,7 +211,7 @@ def mock_info_service():
     with patch("khive.services.info.khive_info.InfoServiceGroup") as mock_service_class:
         mock_service = AsyncMock()
         mock_service_class.return_value = mock_service
-        
+
         # Default successful response
         mock_response = Mock()
         mock_response.success = True
@@ -221,7 +220,7 @@ def mock_info_service():
         mock_response.insights = []
         mock_response.suggestions = []
         mock_service.handle_request.return_value = mock_response
-        
+
         yield mock_service
 
 

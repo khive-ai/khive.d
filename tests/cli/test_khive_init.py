@@ -300,6 +300,7 @@ class TestAsyncMethods:
 
         assert result["name"] == "tools"
         assert result["status"] == "OK"
+
     @pytest.mark.asyncio
     async def test_step_tools_missing_required(self, init_command, mock_project_root):
         config = InitConfig(project_root=mock_project_root)
@@ -310,7 +311,9 @@ class TestAsyncMethods:
         def mock_exists(self):
             return str(self).endswith("pyproject.toml")  # Python project detected
 
-        with patch("khive.cli.khive_init.check_tool_available", side_effect=mock_tool_check):
+        with patch(
+            "khive.cli.khive_init.check_tool_available", side_effect=mock_tool_check
+        ):
             with patch.object(Path, "exists", mock_exists):
                 result = await init_command._step_tools(config)
 

@@ -51,7 +51,7 @@ class TestAsyncExecutor:
 
     async def test_execute_basic_function(self, executor):
         """Test executing a basic async function."""
-        
+
         async def async_function(x, y):
             return x + y
 
@@ -61,7 +61,7 @@ class TestAsyncExecutor:
     async def test_execute_with_semaphore(self, executor):
         """Test that semaphore limits concurrency."""
         call_count = 0
-        
+
         async def counting_function():
             nonlocal call_count
             call_count += 1
@@ -71,14 +71,14 @@ class TestAsyncExecutor:
         # Start multiple tasks
         tasks = [executor.execute(counting_function) for _ in range(5)]
         results = await asyncio.gather(*tasks)
-        
+
         # All should complete successfully
         assert len(results) == 5
 
     async def test_execute_no_semaphore(self):
         """Test execution without concurrency limit."""
         executor = AsyncExecutor(max_concurrency=None)
-        
+
         async def async_function(x):
             return x * 2
 
@@ -125,32 +125,35 @@ class TestAsyncExecutor:
 
         # AsyncExecutor should only handle async functions, not sync
         # Passing a sync function should raise a TypeError
-        with pytest.raises(TypeError, match="object str can't be used in 'await' expression"):
+        with pytest.raises(
+            TypeError, match="object str can't be used in 'await' expression"
+        ):
             await executor.execute(sync_function)
 
     async def test_execute_async_lambda(self, executor):
         """Test executing an async lambda function."""
         async_lambda = lambda x: asyncio.sleep(0.01) or x * 2
-        
+
         async def async_multiply(x):
             await asyncio.sleep(0.01)
             return x * 2
-            
+
         result = await executor.execute(async_multiply, 21)
         assert result == 42
 
     async def test_execute_async_builtin_wrapper(self, executor):
         """Test executing a wrapped builtin function."""
+
         async def async_len(lst):
             await asyncio.sleep(0.01)
             return len(lst)
-            
+
         result = await executor.execute(async_len, [1, 2, 3, 4, 5])
         assert result == 5
 
     async def test_execute_async_method_call(self, executor):
         """Test executing an async method call."""
-        
+
         async def async_sort(test_list):
             await asyncio.sleep(0.01)
             test_list.sort()
@@ -208,30 +211,30 @@ class TestAsyncExecutor:
 
     async def test_shutdown_executor(self, executor):
         """Test shutting down the executor."""
-        
+
         async def simple_task():
             await asyncio.sleep(0.1)
             return 42
 
         # Execute something to create active tasks
         task = asyncio.create_task(executor.execute(simple_task))
-        
+
         # Wait a bit to let it start
         await asyncio.sleep(0.05)
-        
+
         # Shutdown should wait for active tasks
         await executor.shutdown(timeout=1.0)
-        
+
         # Task should complete normally
         result = await task
         assert result == 42
 
     async def test_shutdown_executor_idempotent(self, executor):
         """Test that shutting down executor multiple times is safe."""
-        
+
         async def simple_task():
             return 42
-            
+
         await executor.execute(simple_task)
 
         # Shutdown multiple times
@@ -244,7 +247,7 @@ class TestAsyncExecutor:
 
     async def test_shutdown_with_timeout(self, executor):
         """Test shutdown with timeout cancels pending tasks."""
-        
+
         async def long_task():
             await asyncio.sleep(10)  # Very long task
             return "completed"
@@ -252,10 +255,10 @@ class TestAsyncExecutor:
         # Start a long task
         task = asyncio.create_task(executor.execute(long_task))
         await asyncio.sleep(0.1)  # Let it start
-        
+
         # Shutdown with short timeout should cancel the task
         await executor.shutdown(timeout=0.1)
-        
+
         # The task should be cancelled
         with pytest.raises(asyncio.CancelledError):
             await task
@@ -263,11 +266,11 @@ class TestAsyncExecutor:
     async def test_context_manager_success(self):
         """Test using AsyncExecutor as context manager successfully."""
         async with AsyncExecutor(max_concurrency=2) as executor:
-            
+
             async def async_multiply(x):
                 await asyncio.sleep(0.01)
                 return x * 2
-                
+
             result = await executor.execute(async_multiply, 21)
             assert result == 42
             # Executor should still be active during context
@@ -284,11 +287,11 @@ class TestAsyncExecutor:
         try:
             async with AsyncExecutor(max_concurrency=2) as exec_instance:
                 executor = exec_instance
-                
+
                 async def async_multiply(x):
                     await asyncio.sleep(0.01)
                     return x * 2
-                    
+
                 result = await executor.execute(async_multiply, 21)
                 assert result == 42
 
@@ -320,7 +323,7 @@ class TestAsyncExecutor:
         # Executor should still be usable
         async def quick_task():
             return "quick task"
-            
+
         result = await executor.execute(quick_task)
         assert result == "quick task"
 
@@ -332,10 +335,10 @@ class TestAsyncExecutor:
         # Execute tasks on both
         async def task1():
             return "executor1"
-            
+
         async def task2():
             return "executor2"
-            
+
         result1 = await executor1.execute(task1)
         result2 = await executor2.execute(task2)
 
@@ -344,10 +347,10 @@ class TestAsyncExecutor:
 
         # Shutdown one, other should still work
         await executor1.shutdown()
-        
+
         async def task3():
             return "still working"
-            
+
         result3 = await executor2.execute(task3)
         assert result3 == "still working"
 
@@ -362,9 +365,11 @@ class TestAsyncExecutor:
 
         async def return_object():
             await asyncio.sleep(0.01)
+
             class TestObject:
                 def __init__(self):
                     self.attr = "test"
+
             return TestObject()
 
         # Test dict return
@@ -443,6 +448,7 @@ class TestAsyncExecutorErrorHandling:
 
         async def import_nonexistent():
             import nonexistent_module  # This will fail
+
             return "should not reach here"
 
         with pytest.raises(ImportError):

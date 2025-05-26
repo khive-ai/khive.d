@@ -253,9 +253,21 @@ description = "Test project"
             summary="Completed project health assessment with mixed results",
             mode_used=DevMode.FULL_CHECK,
             issues_found=[
-                DevIssue(type=IssueType.FORMATTING, severity=IssueSeverity.MEDIUM, summary="Formatting issues found"),
-                DevIssue(type=IssueType.TEST_FAILURE, severity=IssueSeverity.HIGH, summary="Test failures detected"),
-                DevIssue(type=IssueType.CONFIGURATION, severity=IssueSeverity.CRITICAL, summary="Configuration problems"),
+                DevIssue(
+                    type=IssueType.FORMATTING,
+                    severity=IssueSeverity.MEDIUM,
+                    summary="Formatting issues found",
+                ),
+                DevIssue(
+                    type=IssueType.TEST_FAILURE,
+                    severity=IssueSeverity.HIGH,
+                    summary="Test failures detected",
+                ),
+                DevIssue(
+                    type=IssueType.CONFIGURATION,
+                    severity=IssueSeverity.CRITICAL,
+                    summary="Configuration problems",
+                ),
             ],
             test_results=[
                 TestResult(
@@ -327,8 +339,16 @@ description = "Test project"
         """Test various summary generation methods."""
         # Test fix summary
         issues = [
-            DevIssue(type=IssueType.FORMATTING, severity=IssueSeverity.MEDIUM, summary="Formatting issue 1"),
-            DevIssue(type=IssueType.FORMATTING, severity=IssueSeverity.MEDIUM, summary="Formatting issue 2"),
+            DevIssue(
+                type=IssueType.FORMATTING,
+                severity=IssueSeverity.MEDIUM,
+                summary="Formatting issue 1",
+            ),
+            DevIssue(
+                type=IssueType.FORMATTING,
+                severity=IssueSeverity.MEDIUM,
+                summary="Formatting issue 2",
+            ),
         ]
 
         summary = dev_service._generate_fix_summary(issues, 2)

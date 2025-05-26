@@ -61,12 +61,9 @@ class TestTokenBucketRateLimiter:
     def test_initialization_custom_parameters(self):
         """Test initialization with custom parameters."""
         limiter = TokenBucketRateLimiter(
-            rate=5.0,
-            period=2.0,
-            max_tokens=10.0,
-            initial_tokens=8.0
+            rate=5.0, period=2.0, max_tokens=10.0, initial_tokens=8.0
         )
-        
+
         assert limiter.rate == 5.0
         assert limiter.period == 2.0
         assert limiter.max_tokens == 10.0
@@ -113,10 +110,11 @@ class TestTokenBucketRateLimiter:
         # Drain all tokens
         await slow_rate_limiter.acquire(5)
         assert slow_rate_limiter.tokens == 0
-        
+
         # Request more tokens - should return wait time
         wait_time = await slow_rate_limiter.acquire(1)
         assert wait_time > 0  # Should need to wait for refill
+
     async def test_token_refill_over_time(self, slow_rate_limiter):
         """Test that tokens are refilled over time."""
         # Drain all tokens
@@ -167,7 +165,7 @@ class TestTokenBucketRateLimiter:
 
     async def test_execute_with_rate_limiting(self, rate_limiter):
         """Test execute method with rate limiting."""
-        
+
         async def test_operation(value):
             return f"result_{value}"
 
@@ -178,7 +176,7 @@ class TestTokenBucketRateLimiter:
 
     async def test_execute_with_custom_tokens(self, rate_limiter):
         """Test execute method with custom token count."""
-        
+
         async def test_operation():
             return "success"
 
@@ -266,7 +264,9 @@ class TestRateLimiterIntegration:
     async def test_realistic_api_scenario(self):
         """Test rate limiter in a realistic API scenario."""
         # API allows 5 requests per second, burst up to 10
-        rate_limiter = TokenBucketRateLimiter(rate=5.0, max_tokens=10, initial_tokens=10)
+        rate_limiter = TokenBucketRateLimiter(
+            rate=5.0, max_tokens=10, initial_tokens=10
+        )
 
         async def api_call(request_id):
             """Simulate an API call."""
@@ -325,7 +325,9 @@ class TestRateLimiterIntegration:
     async def test_concurrent_clients_scenario(self):
         """Test rate limiter with multiple concurrent clients."""
         # Shared rate limiter
-        rate_limiter = TokenBucketRateLimiter(rate=10.0, max_tokens=20, initial_tokens=20)
+        rate_limiter = TokenBucketRateLimiter(
+            rate=10.0, max_tokens=20, initial_tokens=20
+        )
 
         async def client_requests(client_id, num_requests):
             """Simulate a client making requests."""
@@ -348,7 +350,9 @@ class TestRateLimiterIntegration:
 
     async def test_error_handling_with_rate_limiter(self):
         """Test error handling when using rate limiter."""
-        rate_limiter = TokenBucketRateLimiter(rate=5.0, max_tokens=10, initial_tokens=10)
+        rate_limiter = TokenBucketRateLimiter(
+            rate=5.0, max_tokens=10, initial_tokens=10
+        )
 
         async def failing_operation():
             raise ValueError("Simulated failure")
@@ -363,7 +367,9 @@ class TestRateLimiterIntegration:
 
     async def test_rate_limiter_with_different_token_costs(self):
         """Test rate limiter with operations requiring different token costs."""
-        rate_limiter = TokenBucketRateLimiter(rate=10.0, max_tokens=20, initial_tokens=20)
+        rate_limiter = TokenBucketRateLimiter(
+            rate=10.0, max_tokens=20, initial_tokens=20
+        )
 
         # Cheap operation (1 token)
         wait_time1 = await rate_limiter.acquire(1)

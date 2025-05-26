@@ -118,14 +118,16 @@ class TestSchemaUtil:
             # Mock the temporary directory path as a string
             temp_dir_path = "/tmp/test_temp_dir"
             mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
-            
+
             # Mock Path operations
             with patch("khive._libs.schema.Path") as mock_path_class:
                 mock_temp_path = MagicMock()
                 mock_output_file = MagicMock()
                 mock_output_file.stem = "testmodel_model_123"
                 mock_output_file.exists.return_value = True
-                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/testmodel_model_123.py"
+                mock_output_file.__str__.return_value = (
+                    "/tmp/test_temp_dir/testmodel_model_123.py"
+                )
                 mock_temp_path.__truediv__.return_value = mock_output_file
                 mock_path_class.return_value = mock_temp_path
 
@@ -173,14 +175,16 @@ class TestSchemaUtil:
             # Mock the temporary directory path as a string
             temp_dir_path = "/tmp/test_temp_dir"
             mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
-            
+
             # Mock Path operations
             with patch("khive._libs.schema.Path") as mock_path_class:
                 mock_temp_path = MagicMock()
                 mock_output_file = MagicMock()
                 mock_output_file.stem = "testmodel_model_123"
                 mock_output_file.exists.return_value = True
-                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/testmodel_model_123.py"
+                mock_output_file.__str__.return_value = (
+                    "/tmp/test_temp_dir/testmodel_model_123.py"
+                )
                 mock_temp_path.__truediv__.return_value = mock_output_file
                 mock_path_class.return_value = mock_temp_path
 
@@ -248,8 +252,10 @@ class TestSchemaUtil:
                         with patch("tempfile.TemporaryDirectory") as mock_temp_dir:
                             # Mock the temporary directory path as a string
                             temp_dir_path = "/tmp/test_temp_dir"
-                            mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
-                            
+                            mock_temp_dir.return_value.__enter__.return_value = (
+                                temp_dir_path
+                            )
+
                             # Mock Path operations
                             with patch("khive._libs.schema.Path") as mock_path_class:
                                 mock_temp_path = MagicMock()
@@ -257,7 +263,9 @@ class TestSchemaUtil:
                                 mock_output_file.stem = "userprofilemodel2024_model_123"
                                 mock_output_file.exists.return_value = True
                                 mock_output_file.__str__.return_value = "/tmp/test_temp_dir/userprofilemodel2024_model_123.py"
-                                mock_temp_path.__truediv__.return_value = mock_output_file
+                                mock_temp_path.__truediv__.return_value = (
+                                    mock_output_file
+                                )
                                 mock_path_class.return_value = mock_temp_path
 
                                 result = SchemaUtil.load_pydantic_model_from_schema(
@@ -282,13 +290,15 @@ class TestSchemaUtil:
             # Mock the temporary directory path as a string
             temp_dir_path = "/tmp/test_temp_dir"
             mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
-            
+
             # Mock Path operations
             with patch("khive._libs.schema.Path") as mock_path_class:
                 mock_temp_path = MagicMock()
                 mock_output_file = MagicMock()
                 mock_output_file.exists.return_value = False
-                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/testmodel_model_123.py"
+                mock_output_file.__str__.return_value = (
+                    "/tmp/test_temp_dir/testmodel_model_123.py"
+                )
                 mock_temp_path.__truediv__.return_value = mock_output_file
                 mock_path_class.return_value = mock_temp_path
 
@@ -310,18 +320,22 @@ class TestSchemaUtil:
             # Mock the temporary directory path as a string
             temp_dir_path = "/tmp/test_temp_dir"
             mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
-            
+
             # Mock Path operations
             with patch("khive._libs.schema.Path") as mock_path_class:
                 mock_temp_path = MagicMock()
                 mock_output_file = MagicMock()
                 mock_output_file.stem = "testmodel_model_123"
                 mock_output_file.exists.return_value = True
-                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/testmodel_model_123.py"
+                mock_output_file.__str__.return_value = (
+                    "/tmp/test_temp_dir/testmodel_model_123.py"
+                )
                 mock_temp_path.__truediv__.return_value = mock_output_file
                 mock_path_class.return_value = mock_temp_path
 
-                with pytest.raises(RuntimeError, match="Failed to load generated module"):
+                with pytest.raises(
+                    RuntimeError, match="Failed to load generated module"
+                ):
                     SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
 
     @patch("khive._libs.schema._HAS_DATAMODEL_CODE_GENERATOR", True)
@@ -345,12 +359,12 @@ class TestSchemaUtil:
         class MockModule:
             def __init__(self):
                 self.__dict__ = {}
-            
+
             def __getattr__(self, name):
-                if name in ['TestModel', 'Model']:
+                if name in ["TestModel", "Model"]:
                     raise AttributeError(f"{name} not found")
                 return Mock()
-            
+
             def __dir__(self):
                 return []
 
@@ -361,14 +375,16 @@ class TestSchemaUtil:
             # Mock the temporary directory path as a string
             temp_dir_path = "/tmp/test_temp_dir"
             mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
-            
+
             # Mock Path operations
             with patch("khive._libs.schema.Path") as mock_path_class:
                 mock_temp_path = MagicMock()
                 mock_output_file = MagicMock()
                 mock_output_file.stem = "testmodel_model_123"
                 mock_output_file.exists.return_value = True
-                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/testmodel_model_123.py"
+                mock_output_file.__str__.return_value = (
+                    "/tmp/test_temp_dir/testmodel_model_123.py"
+                )
                 mock_temp_path.__truediv__.return_value = mock_output_file
                 mock_path_class.return_value = mock_temp_path
 
@@ -411,14 +427,16 @@ class TestSchemaUtil:
             # Mock the temporary directory path as a string
             temp_dir_path = "/tmp/test_temp_dir"
             mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
-            
+
             # Mock Path operations
             with patch("khive._libs.schema.Path") as mock_path_class:
                 mock_temp_path = MagicMock()
                 mock_output_file = MagicMock()
                 mock_output_file.stem = "testmodel_model_123"
                 mock_output_file.exists.return_value = True
-                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/testmodel_model_123.py"
+                mock_output_file.__str__.return_value = (
+                    "/tmp/test_temp_dir/testmodel_model_123.py"
+                )
                 mock_temp_path.__truediv__.return_value = mock_output_file
                 mock_path_class.return_value = mock_temp_path
 
@@ -460,16 +478,22 @@ class TestSchemaUtil:
                         with patch("tempfile.TemporaryDirectory") as mock_temp_dir:
                             # Mock the temporary directory path as a string
                             temp_dir_path = "/tmp/test_temp_dir"
-                            mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
-                            
+                            mock_temp_dir.return_value.__enter__.return_value = (
+                                temp_dir_path
+                            )
+
                             # Mock Path operations
                             with patch("khive._libs.schema.Path") as mock_path_class:
                                 mock_temp_path = MagicMock()
                                 mock_output_file = MagicMock()
                                 mock_output_file.stem = "custommodel_model_123"
                                 mock_output_file.exists.return_value = True
-                                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/custommodel_model_123.py"
-                                mock_temp_path.__truediv__.return_value = mock_output_file
+                                mock_output_file.__str__.return_value = (
+                                    "/tmp/test_temp_dir/custommodel_model_123.py"
+                                )
+                                mock_temp_path.__truediv__.return_value = (
+                                    mock_output_file
+                                )
                                 mock_path_class.return_value = mock_temp_path
 
                                 result = SchemaUtil.load_pydantic_model_from_schema(
@@ -511,16 +535,24 @@ class TestSchemaUtil:
                             with patch("tempfile.TemporaryDirectory") as mock_temp_dir:
                                 # Mock the temporary directory path as a string
                                 temp_dir_path = "/tmp/test_temp_dir"
-                                mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
-                                
+                                mock_temp_dir.return_value.__enter__.return_value = (
+                                    temp_dir_path
+                                )
+
                                 # Mock Path operations
-                                with patch("khive._libs.schema.Path") as mock_path_class:
+                                with patch(
+                                    "khive._libs.schema.Path"
+                                ) as mock_path_class:
                                     mock_temp_path = MagicMock()
                                     mock_output_file = MagicMock()
                                     mock_output_file.stem = "testmodel_model_123"
                                     mock_output_file.exists.return_value = True
-                                    mock_output_file.__str__.return_value = "/tmp/test_temp_dir/testmodel_model_123.py"
-                                    mock_temp_path.__truediv__.return_value = mock_output_file
+                                    mock_output_file.__str__.return_value = (
+                                        "/tmp/test_temp_dir/testmodel_model_123.py"
+                                    )
+                                    mock_temp_path.__truediv__.return_value = (
+                                        mock_output_file
+                                    )
                                     mock_path_class.return_value = mock_temp_path
 
                                     result = SchemaUtil.load_pydantic_model_from_schema(
