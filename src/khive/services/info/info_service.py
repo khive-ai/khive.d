@@ -5,7 +5,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
+from pathlib import Path
 from typing import Any
 
 from khive.clients.executor import AsyncExecutor
@@ -30,19 +32,29 @@ class InfoServiceGroup(Service):
     """
 
     def __init__(self):
-        """Initialize with lazy-loaded endpoints."""
+        """Initialize with lazy-loaded endpoints and knowledge sources."""
         self._perplexity = None
         self._exa = None
         self._openrouter = None
         self._executor = AsyncExecutor(max_concurrency=10)
+        
+        # Project knowledge sources
+        self._project_root = Path.cwd()
+        self._docs_path = self._project_root / "docs"
+        self._readme_path = self._project_root / "README.md"
+        self._project_files = self._project_root / "src"
+        
+        # Knowledge sources are implemented as methods:
+        # _search_project_knowledge, _search_technical_knowledge, _search_with_exa
 
         # Synthesis prompt for creating coherent narratives
-        self._synthesis_prompt = """You are an insight synthesis expert.
+        self._synthesis_prompt = """You are an insight synthesis expert with access to project-specific knowledge.
 Given multiple pieces of information, create a coherent narrative that:
 1. Directly answers the user's query
-2. Integrates all relevant findings
-3. Notes any contradictions or uncertainties
-4. Provides actionable insights
+2. Prioritizes project-specific information when available
+3. Integrates all relevant findings
+4. Notes any contradictions or uncertainties
+5. Provides actionable insights
 
 User Query: {query}
 Context: {context}
@@ -100,13 +112,43 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
         """
         query_lower = query.lower()
 
-        # Quick mode for simple factual questions
+        # Project-specific queries should use comprehensive mode for better synthesis
+        project_keywords = [
+            "khive",
+            "this project",
+            "our project",
+            "this codebase",
+            "our codebase",
+            "this application",
+            "our application"
+        ]
+        if any(keyword in query_lower for keyword in project_keywords):
+            return InsightMode.COMPREHENSIVE
+
+        # Technical queries need comprehensive analysis
+        technical_keywords = [
+            "best practices",
+            "testing",
+            "pytest",
+            "python",
+            "cli",
+            "implementation",
+            "architecture",
+            "design patterns",
+            "how to implement",
+            "tutorial",
+            "guide"
+        ]
+        if any(keyword in query_lower for keyword in technical_keywords):
+            return InsightMode.COMPREHENSIVE
+
+        # Quick mode for simple factual questions (but not project-related)
         quick_patterns = [
-            r"^what is",
+            r"^what is (?!khive)",  # Exclude "what is khive"
             r"^who is",
             r"^when did",
             r"^where is",
-            r"^define",
+            r"^define (?!khive)",
             r"^\w+ definition",
         ]
         if any(re.match(pattern, query_lower) for pattern in quick_patterns):
@@ -198,9 +240,9 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
         self, request: InfoRequest
     ) -> InfoResponse:
         """
-        Handle comprehensive research with multiple sources.
+        Handle comprehensive research with multiple sources including project knowledge.
 
-        This is the default mode that provides thorough insights.
+        This is the default mode that provides thorough insights with priority on project-specific information.
         """
         insights = []
         raw_sources = []
@@ -208,15 +250,24 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
         # Gather from multiple sources in parallel
         tasks = []
 
-        # Search task
+        # 1. Project knowledge (highest priority)
+        tasks.append(self._search_project_knowledge(request.query))
+
+        # 2. Technical knowledge for technical queries
+        if self._is_technical_query(request.query):
+            tasks.append(self._search_technical_knowledge(request.query))
+
+        # 3. External search (lower priority, for additional context)
         if self._exa is None:
             self._exa = match_endpoint("exa", "search")
-        tasks.append(self._search_with_exa(request.query))
+        if self._exa is not None:
+            tasks.append(self._search_with_exa(request.query))
 
-        # Analysis task
+        # 4. Analysis task (for synthesis)
         if self._perplexity is None:
             self._perplexity = match_endpoint("perplexity", "chat")
-        tasks.append(self._analyze_with_perplexity(request.query, request.context))
+        if self._perplexity is not None:
+            tasks.append(self._analyze_with_perplexity(request.query, request.context))
 
         # Execute all tasks with timeout
         try:
@@ -235,6 +286,22 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
                 insights.extend(result["insights"])
                 raw_sources.append(result.get("raw", ""))
 
+        # If no insights found, provide helpful fallback
+        if not insights:
+            fallback_insight = Insight(
+                summary="No specific information found for this query.",
+                details="Consider rephrasing your question or checking if the topic exists in the project documentation.",
+                sources=[
+                    InsightSource(
+                        type="analysis",
+                        provider="khive-fallback",
+                        confidence=0.5,
+                    )
+                ],
+                relevance=0.5,
+            )
+            insights.append(fallback_insight)
+
         # Synthesize all insights
         synthesis = await self._synthesize_insights(
             request.query, request.context, insights, raw_sources
@@ -243,11 +310,11 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
         # Create summary
         summary = (
             synthesis.split(".")[0] + "."
-            if synthesis
-            else "Unable to synthesize insights."
+            if synthesis and "Unable to" not in synthesis
+            else "Information gathered from available sources."
         )
 
-        # Sort insights by relevance
+        # Sort insights by relevance (project sources get higher relevance)
         insights.sort(key=lambda x: x.relevance, reverse=True)
 
         # Generate follow-up suggestions
@@ -404,6 +471,147 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
 
     # Helper methods
 
+    def _is_technical_query(self, query: str) -> bool:
+        """Check if the query is technical in nature."""
+        technical_indicators = [
+            "best practices", "testing", "pytest", "python", "cli", "implementation",
+            "architecture", "design patterns", "how to", "tutorial", "guide",
+            "framework", "library", "api", "configuration", "setup", "install"
+        ]
+        query_lower = query.lower()
+        return any(indicator in query_lower for indicator in technical_indicators)
+
+    async def _search_project_knowledge(self, query: str) -> dict[str, Any]:
+        """Search project-specific knowledge sources."""
+        insights = []
+        raw_content = []
+
+        try:
+            # Check if query is about khive specifically
+            if "khive" in query.lower() or "this project" in query.lower():
+                # Read README.md for project overview
+                if self._readme_path.exists():
+                    readme_content = self._readme_path.read_text(encoding='utf-8')
+                    insights.append(
+                        Insight(
+                            summary="Khive Project Overview from README",
+                            details=readme_content[:1000] + "..." if len(readme_content) > 1000 else readme_content,
+                            sources=[
+                                InsightSource(
+                                    type="search",
+                                    provider="project-readme",
+                                    confidence=0.95,
+                                    url=str(self._readme_path),
+                                )
+                            ],
+                            relevance=1.0,
+                        )
+                    )
+                    raw_content.append(readme_content)
+
+                # Search documentation
+                if self._docs_path.exists():
+                    doc_insights = self._search_documentation(query)
+                    insights.extend(doc_insights)
+
+            return {"insights": insights, "raw": "\n".join(raw_content)}
+
+        except Exception as e:
+            print(f"Project knowledge search error: {e}")
+            return {"insights": [], "raw": ""}
+
+    def _search_documentation(self, query: str) -> list[Insight]:
+        """Search through project documentation."""
+        insights = []
+        query_lower = query.lower()
+
+        try:
+            # Search through markdown files in docs/
+            for doc_file in self._docs_path.rglob("*.md"):
+                content = doc_file.read_text(encoding='utf-8')
+                
+                # Simple relevance scoring based on keyword matches
+                relevance_score = 0.0
+                for word in query_lower.split():
+                    if word in content.lower():
+                        relevance_score += 0.1
+                
+                if relevance_score > 0.1:  # Only include if somewhat relevant
+                    insights.append(
+                        Insight(
+                            summary=f"Documentation: {doc_file.name}",
+                            details=content[:800] + "..." if len(content) > 800 else content,
+                            sources=[
+                                InsightSource(
+                                    type="search",
+                                    provider="project-docs",
+                                    confidence=min(relevance_score, 0.9),
+                                    url=str(doc_file),
+                                )
+                            ],
+                            relevance=min(relevance_score, 1.0),
+                        )
+                    )
+
+        except Exception as e:
+            print(f"Documentation search error: {e}")
+
+        return insights
+
+    async def _search_technical_knowledge(self, query: str) -> dict[str, Any]:
+        """Search technical knowledge sources for best practices and guides."""
+        insights = []
+        
+        try:
+            # Use Perplexity with technical context for better results
+            if self._perplexity is None:
+                self._perplexity = match_endpoint("perplexity", "chat")
+            
+            if self._perplexity is not None:
+                technical_prompt = f"""You are a technical expert. Provide comprehensive guidance on: {query}
+
+Focus on:
+1. Best practices and industry standards
+2. Practical implementation steps
+3. Common pitfalls and how to avoid them
+4. Code examples where relevant
+5. Tool recommendations
+
+Query: {query}"""
+
+                response = await self._perplexity.call({
+                    "model": "sonar-pro",
+                    "messages": [
+                        {"role": "system", "content": "You are a technical expert providing practical guidance."},
+                        {"role": "user", "content": technical_prompt},
+                    ],
+                    "temperature": 0.3,
+                })
+
+                content = self._extract_content(response)
+                
+                if content:
+                    insights.append(
+                        Insight(
+                            summary="Technical Best Practices and Guidance",
+                            details=content,
+                            sources=[
+                                InsightSource(
+                                    type="analysis",
+                                    provider="perplexity-technical",
+                                    confidence=0.9,
+                                )
+                            ],
+                            relevance=0.9,
+                        )
+                    )
+
+            return {"insights": insights, "raw": content if insights else ""}
+
+        except Exception as e:
+            print(f"Technical knowledge search error: {e}")
+            return {"insights": [], "raw": ""}
+
     async def _search_with_exa(self, query: str) -> dict[str, Any]:
         """Perform search and convert to insights."""
         try:
@@ -518,15 +726,43 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
         insights: list[Insight],
         raw_sources: list[str],
     ) -> str:
-        """Create a coherent narrative from multiple insights."""
+        """Create a coherent narrative from multiple insights with project-first priority."""
         if not insights:
             return "Unable to gather sufficient insights for synthesis."
 
-        # Prepare synthesis prompt
-        sources_text = "\n\n".join([
-            f"Source {i + 1} ({insight.sources[0].provider if insight.sources else 'unknown'}):\n{insight.summary}\n{insight.details or ''}"
-            for i, insight in enumerate(insights[:5])  # Top 5 insights
-        ])
+        # Separate project-specific insights from external ones
+        project_insights = [
+            insight for insight in insights
+            if insight.sources and any(
+                source.provider.startswith(("project-", "khive-"))
+                for source in insight.sources
+            )
+        ]
+        external_insights = [
+            insight for insight in insights
+            if insight not in project_insights
+        ]
+
+        # Prepare synthesis prompt with project-first structure
+        sources_text_parts = []
+        
+        if project_insights:
+            sources_text_parts.append("=== PROJECT-SPECIFIC SOURCES (PRIORITY) ===")
+            for i, insight in enumerate(project_insights[:3]):
+                provider = insight.sources[0].provider if insight.sources else 'unknown'
+                sources_text_parts.append(
+                    f"Project Source {i + 1} ({provider}):\n{insight.summary}\n{insight.details or ''}"
+                )
+        
+        if external_insights:
+            sources_text_parts.append("\n=== EXTERNAL SOURCES (SUPPLEMENTARY) ===")
+            for i, insight in enumerate(external_insights[:3]):
+                provider = insight.sources[0].provider if insight.sources else 'unknown'
+                sources_text_parts.append(
+                    f"External Source {i + 1} ({provider}):\n{insight.summary}\n{insight.details or ''}"
+                )
+
+        sources_text = "\n\n".join(sources_text_parts)
 
         prompt = self._synthesis_prompt.format(
             query=query,
@@ -539,21 +775,43 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
             self._openrouter = match_endpoint("openrouter", "chat")
 
         try:
-            response = await self._openrouter.call({
-                "model": "anthropic/claude-3-5-sonnet",
-                "messages": [
-                    {"role": "system", "content": "You are a synthesis expert."},
-                    {"role": "user", "content": prompt},
-                ],
-                "temperature": 0.6,
-                "max_tokens": 800,
-            })
+            if self._openrouter is not None:
+                response = await self._openrouter.call({
+                    "model": "anthropic/claude-3-5-sonnet",
+                    "messages": [
+                        {"role": "system", "content": "You are a synthesis expert. Prioritize project-specific information over external sources."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "temperature": 0.6,
+                    "max_tokens": 800,
+                })
 
-            return self._extract_content(response)
+                return self._extract_content(response)
+            else:
+                # Fallback if openrouter is not available
+                return self._create_simple_synthesis(query, project_insights, external_insights)
 
         except Exception:
-            # Fallback to simple concatenation
-            return " ".join([insight.summary for insight in insights[:3]])
+            # Fallback to simple synthesis
+            return self._create_simple_synthesis(query, project_insights, external_insights)
+
+    def _create_simple_synthesis(self, query: str, project_insights: list[Insight], external_insights: list[Insight]) -> str:
+        """Create a simple synthesis when LLM synthesis fails."""
+        parts = []
+        
+        if project_insights:
+            parts.append("Based on project documentation:")
+            parts.extend([insight.summary for insight in project_insights[:2]])
+        
+        if external_insights:
+            if project_insights:
+                parts.append("\nAdditional context from external sources:")
+            parts.extend([insight.summary for insight in external_insights[:2]])
+        
+        if not parts:
+            parts.append("No specific information found for this query.")
+        
+        return " ".join(parts)
 
     async def _synthesize_analytical_insights(
         self, query: str, insights: list[Insight]
@@ -617,23 +875,68 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
         return min(weighted_confidence / total_weight, 1.0)
 
     def _generate_suggestions(self, query: str, insights: list[Insight]) -> list[str]:
-        """Generate intelligent follow-up suggestions."""
+        """Generate intelligent follow-up suggestions based on query type and available insights."""
         suggestions = []
+        query_lower = query.lower()
 
-        # Based on query type
-        if "how" in query.lower():
-            suggestions.append("Would you like specific implementation steps?")
-        elif "why" in query.lower():
-            suggestions.append("Would you like to explore underlying causes?")
-        elif "what" in query.lower():
-            suggestions.append("Would you like more specific examples?")
+        # Project-specific suggestions
+        if "khive" in query_lower or "this project" in query_lower:
+            suggestions.extend([
+                "Would you like to explore specific khive commands or services?",
+                "Need information about khive architecture or implementation details?",
+                "Want to know about khive's development workflow or contribution guidelines?"
+            ])
+        
+        # Technical query suggestions
+        elif self._is_technical_query(query):
+            if "testing" in query_lower:
+                suggestions.extend([
+                    "Would you like examples of test implementation patterns?",
+                    "Need information about test configuration and setup?",
+                    "Want to explore advanced testing strategies?"
+                ])
+            elif "python" in query_lower or "cli" in query_lower:
+                suggestions.extend([
+                    "Would you like to see code examples and implementation patterns?",
+                    "Need information about CLI framework comparisons?",
+                    "Want to explore deployment and distribution strategies?"
+                ])
+            else:
+                suggestions.extend([
+                    "Would you like specific implementation examples?",
+                    "Need information about related tools and frameworks?",
+                    "Want to explore advanced techniques and patterns?"
+                ])
+        
+        # General query suggestions
+        else:
+            # Based on query type
+            if "how" in query_lower:
+                suggestions.append("Would you like specific implementation steps?")
+            elif "why" in query_lower:
+                suggestions.append("Would you like to explore underlying causes?")
+            elif "what" in query_lower:
+                suggestions.append("Would you like more specific examples?")
 
-        # Based on insights
-        if len(insights) > 5:
-            suggestions.append("Would you like me to focus on a specific aspect?")
+            # Based on insights
+            if len(insights) > 5:
+                suggestions.append("Would you like me to focus on a specific aspect?")
 
-        # Always helpful
-        suggestions.append("Is there a particular angle you'd like to explore further?")
+            # Always helpful fallback
+            if not suggestions:
+                suggestions.append("Is there a particular angle you'd like to explore further?")
+
+        # Check if we have project insights to suggest diving deeper
+        has_project_insights = any(
+            insight.sources and any(
+                source.provider.startswith(("project-", "khive-"))
+                for source in insight.sources
+            )
+            for insight in insights
+        )
+        
+        if has_project_insights and "khive" not in query_lower:
+            suggestions.append("Would you like to see how this relates to the khive project specifically?")
 
         return suggestions[:3]
 
