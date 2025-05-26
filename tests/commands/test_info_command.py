@@ -5,7 +5,7 @@ This module tests the CLI interface for the info service including
 argument parsing, service integration, and output formatting.
 """
 
-import sys
+
 from unittest.mock import Mock, patch, AsyncMock
 import pytest
 from io import StringIO

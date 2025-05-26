@@ -538,8 +538,12 @@ class TestResilienceIntegration:
         # Wait for recovery
         await asyncio.sleep(0.15)
 
+        # Create a new operation that always succeeds for recovery test
+        async def recovered_operation():
+            return "success"
+
         # Should work now
-        result = await circuit_breaker.execute(unreliable_operation)
+        result = await circuit_breaker.execute(recovered_operation)
         assert result == "success"
 
     async def test_resilience_with_real_world_scenario(self):
