@@ -5,98 +5,130 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
-
-from khive.connections.providers.exa_ import ExaSearchRequest
-from khive.connections.providers.perplexity_ import PerplexityChatRequest
+from pydantic import BaseModel, Field
 
 
-class InfoAction(str, Enum):
-    """
-    Enumerates the primary actions the Information Service can perform.
+class InsightMode(str, Enum):
+    """How to gather insights - auto-selected based on query analysis."""
 
-    - search: Find information on a specific topic using web search providers.
-    - consult: Ask a specific question or present a problem to one or more LLMs.
-    """
-
-    SEARCH = "search"
-    CONSULT = "consult"
-
-
-class SearchProvider(str, Enum):
-    """
-    Enumerates the supported web search providers for the 'SEARCH' action.
-    """
-
-    PERPLEXITY = "perplexity"
-    EXA = "exa"
-
-
-class ConsultModel(str, Enum):
-    """
-    Enumerates supported Large Language Models for the 'CONSULT' action.
-    - openai/gpt-o4-mini
-    - google/gemini-2.5-pro-preview
-    - anthropic/claude-3.7-sonnet
-    """
-
-    GPT_O4_MINI = "openai/gpt-o4-mini"
-    GEMINI_2_5_PRO = "google/gemini-2.5-pro-preview"
-    CLAUDE_SONNET_4 = "anthropic/claude-sonnet-4"
-
-
-class InfoSearchParams(BaseModel):
-    provider: SearchProvider = SearchProvider.PERPLEXITY
-    provider_params: ExaSearchRequest | PerplexityChatRequest
-
-
-class InfoConsultParams(BaseModel):
-    """Parameters for the 'CONSULT' action."""
-
-    system_prompt: str | None = Field(
-        None, description="Optional system prompt to guide the LLM's behavior."
-    )
-    question: str = Field(
-        ..., description="The specific question or topic to consult the LLM(s) about."
-    )
-    models: list[ConsultModel] = Field(
-        description="A list of one or more LLMs to consult.",
-    )
-
-    @field_validator("models", mode="before")
-    def check_models(cls, v):
-        v = [v] if not isinstance(v, list) else v
-        return v
+    QUICK = "quick"  # Fast lookup for factual questions
+    COMPREHENSIVE = "comprehensive"  # Deep research with multiple sources
+    ANALYTICAL = "analytical"  # Multi-perspective analysis
+    REALTIME = "realtime"  # Latest information priority
 
 
 class InfoRequest(BaseModel):
     """
-    Request model for the Information Service (`InfoService`).
-    Specifies the action ('search' or 'consult') and its parameters.
+    Simplified request model - agents just ask questions naturally.
+
+    The service figures out how to best answer them.
     """
 
-    action: InfoAction = Field(
-        ..., description="The high-level action: 'search' or 'consult'."
+    query: str = Field(..., description="Natural language question or information need")
+
+    context: str | None = Field(
+        None, description="Optional context about what you're working on"
     )
-    params: InfoSearchParams | InfoConsultParams = Field(
-        ...,
-        description="Parameters for the action. Must be InfoSearchActionParams if action is 'search', or InfoConsultParams if action is 'consult'.",
+
+    mode: InsightMode | None = Field(
+        None,
+        description="Optional hint about depth needed (auto-detected if not provided)",
+    )
+
+    time_budget_seconds: float = Field(
+        10.0, description="How long to spend gathering insights", ge=1.0, le=60.0
+    )
+
+
+class InsightSource(BaseModel):
+    """Where an insight came from."""
+
+    type: Literal["search", "analysis", "synthesis"] = Field(
+        ..., description="How this insight was generated"
+    )
+
+    provider: str = Field(..., description="Which service provided this")
+
+    confidence: float = Field(
+        ..., description="Confidence in this insight (0-1)", ge=0.0, le=1.0
+    )
+
+    url: str | None = Field(None, description="Source URL if applicable")
+
+
+class Insight(BaseModel):
+    """A single insight or finding."""
+
+    summary: str = Field(..., description="Brief summary of the insight")
+
+    details: str | None = Field(None, description="Detailed explanation if needed")
+
+    sources: list[InsightSource] = Field(
+        default_factory=list, description="Where this insight comes from"
+    )
+
+    relevance: float = Field(
+        1.0, description="How relevant to the query (0-1)", ge=0.0, le=1.0
     )
 
 
 class InfoResponse(BaseModel):
-    """Response model from the Information Service (`InfoService`)."""
+    """
+    Response that provides synthesized insights, not raw data.
 
-    success: bool = Field(..., description="True if the action was successful.")
-    action_performed: InfoAction | None = Field(
-        None, description="The action processed."
+    Designed to feel like enhanced intelligence, not external consultation.
+    """
+
+    success: bool = Field(
+        ..., description="Whether insights were successfully gathered"
     )
-    error: str | None = Field(None, description="Error message if 'success' is False.")
-    content: dict[str, Any] | None = Field(
-        None,
-        description="Output of the action. Structure depends on 'action_performed'."
-        "For 'search', may contain 'provider_response' with data from Perplexity/Exa. "
-        "For 'consult', may map model slugs to their answers.",
+
+    summary: str = Field(
+        ..., description="Direct answer to your query in 1-2 sentences"
     )
+
+    insights: list[Insight] = Field(
+        default_factory=list,
+        description="Key insights discovered, ordered by relevance",
+    )
+
+    synthesis: str | None = Field(
+        None, description="Comprehensive narrative combining all insights"
+    )
+
+    confidence: float = Field(
+        0.0, description="Overall confidence in the response (0-1)", ge=0.0, le=1.0
+    )
+
+    mode_used: InsightMode = Field(..., description="Which insight mode was used")
+
+    suggestions: list[str] = Field(
+        default_factory=list,
+        description="Suggested follow-up questions or areas to explore",
+    )
+
+    error: str | None = Field(None, description="Error message if success is False")
+
+
+# For backward compatibility, keep minimal provider-specific models
+class SearchConfig(BaseModel):
+    """Configuration for search operations."""
+
+    max_results: int = Field(10, ge=1, le=50)
+    include_domains: list[str] = Field(default_factory=list)
+    exclude_domains: list[str] = Field(default_factory=list)
+    recency: Literal["day", "week", "month", "year", None] = None
+
+
+class AnalysisConfig(BaseModel):
+    """Configuration for analytical operations."""
+
+    perspectives: int = Field(
+        3, description="How many analytical perspectives to include", ge=1, le=5
+    )
+    include_examples: bool = Field(
+        True, description="Whether to include concrete examples"
+    )
+    technical_depth: Literal["basic", "intermediate", "advanced"] = "intermediate"

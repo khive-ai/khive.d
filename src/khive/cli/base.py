@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, TypeVar
 
-from .utils import (
+from khive.utils import (
     BaseConfig,
     die,
     get_project_root,
@@ -261,7 +261,7 @@ class GitBasedCLICommand(ConfigurableCLICommand):
 
     def _get_current_branch(self, project_root: Path) -> str:
         """Get the current Git branch name."""
-        from .utils import git_run
+        from khive.utils import git_run
 
         result = git_run(
             ["branch", "--show-current"], capture=True, check=False, cwd=project_root
@@ -357,7 +357,7 @@ class CommandWorkflow:
         step = self.steps[step_index]
 
         try:
-            from .utils import print_step
+            from khive.utils import print_step
 
             print_step(step.description, "running")
 

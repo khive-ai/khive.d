@@ -5,13 +5,10 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
+
 from khive.clients.executor import AsyncExecutor
 from khive.services.info.info_service import InfoServiceGroup
-from khive.services.info.parts import (
-    InfoAction,
-    InfoResponse,
-    SearchProvider,
-)
+from khive.services.info.parts import InfoAction, InfoResponse, SearchProvider
 
 
 class TestInfoServiceGroup:
