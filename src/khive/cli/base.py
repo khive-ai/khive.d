@@ -16,6 +16,8 @@ This module provides:
 from __future__ import annotations
 
 import argparse
+import asyncio
+import inspect
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -119,7 +121,7 @@ class BaseCLICommand(ABC):
 
     @abstractmethod
     def _execute(self, args: argparse.Namespace, config: BaseConfig) -> CLIResult:
-        """Execute the main command logic."""
+        """Execute the main command logic. Can be sync or async."""
 
     def _validate_args(self, args: argparse.Namespace) -> None:
         """Validate command-line arguments. Override in subclasses if needed."""
@@ -168,8 +170,8 @@ class BaseCLICommand(ABC):
             # Create configuration
             self.config = self._create_config(args)
 
-            # Execute command
-            result = self._execute(args, self.config)
+            # Execute command (handle both sync and async)
+            result = self._run_execute(args, self.config)
 
             # Handle result and exit
             self._handle_result(result, args.json_output)
@@ -190,6 +192,54 @@ class BaseCLICommand(ABC):
             else:
                 die(error_msg)
             return 1
+
+    def _run_execute(self, args: argparse.Namespace, config: BaseConfig) -> CLIResult:
+        """Run the _execute method, handling both sync and async implementations."""
+        # Check if _execute is a coroutine function (async)
+        if inspect.iscoroutinefunction(self._execute):
+            # Run async method
+            try:
+                # Try to get existing event loop
+                loop = asyncio.get_running_loop()
+                # If we're already in an event loop, we need to handle this differently
+                import concurrent.futures
+                import threading
+
+                result_container = {}
+                exception_container = {}
+
+                def run_in_thread():
+                    try:
+                        # Create new event loop for this thread
+                        new_loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(new_loop)
+                        try:
+                            result = new_loop.run_until_complete(
+                                self._execute(args, config)
+                            )
+                            result_container["result"] = result
+                        finally:
+                            new_loop.close()
+                            asyncio.set_event_loop(None)
+                    except Exception as e:
+                        exception_container["exception"] = e
+
+                # Run in thread
+                thread = threading.Thread(target=run_in_thread)
+                thread.start()
+                thread.join()
+
+                if "exception" in exception_container:
+                    raise exception_container["exception"]
+
+                return result_container["result"]
+
+            except RuntimeError:
+                # No event loop running, safe to use asyncio.run()
+                return asyncio.run(self._execute(args, config))
+        else:
+            # Run sync method
+            return self._execute(args, config)
 
 
 # --- Specialized Base Classes ---

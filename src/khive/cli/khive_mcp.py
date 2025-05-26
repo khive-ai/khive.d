@@ -30,30 +30,19 @@ import json
 import os
 import platform
 import shutil
-import sys
-import threading
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
-try:
-    from fastmcp import Client
-    from fastmcp.client.transports import SSETransport
+from fastmcp.client import Client
+from fastmcp.client.transports import (
+    StdioTransport,
+    PythonStdioTransport,
+    SSETransport,
+    StreamableHttpTransport,
+)
 
-    # Import with fallback for different FastMCP versions
-    try:
-        from fastmcp.client.transports import StdioTransport, PythonStdioTransport
-    except ImportError:
-        # Older versions might have different import paths
-        from fastmcp.transports import StdioTransport
-
-        PythonStdioTransport = None
-except ImportError:
-    Client = None
-    SSETransport = None
-    StdioTransport = None
-    PythonStdioTransport = None
 
 from khive.utils import BaseConfig, die, error_msg, info_msg, log_msg, warn_msg
 
@@ -226,7 +215,9 @@ class MCPCommand(BaseCLICommand):
                         env=server_config.get("env", {}),
                         always_allow=server_config.get("alwaysAllow", []),
                         disabled=server_config.get("disabled", False),
-                        timeout=server_config.get("timeout", DEFAULT_TIMEOUT),
+                        timeout=server_config.get(
+                            "timeout", self._get_default_timeout(server_config)
+                        ),
                         transport=transport,
                         url=url,
                         buffer_size=server_config.get("bufferSize", 65536),
@@ -236,6 +227,16 @@ class MCPCommand(BaseCLICommand):
                 warn_msg(f"Could not parse MCP config: {e}")
 
         return config
+
+    def _get_default_timeout(self, server_config: dict) -> float:
+        """Get appropriate default timeout based on server configuration."""
+        command = server_config.get("command", "")
+
+        # Docker containers often need shorter timeouts for faster failure detection
+        if command == "docker" or command.startswith("docker "):
+            return 10.0  # Shorter timeout for Docker
+
+        return DEFAULT_TIMEOUT
 
     def _detect_transport_type(self, server_config: dict) -> tuple[str, str | None]:
         """Intelligently detect the transport type based on server configuration."""
@@ -269,11 +270,22 @@ class MCPCommand(BaseCLICommand):
             warn_msg("No command specified, defaulting to stdio transport")
             return "stdio", None
 
-        # 4. Analyze command to determine best stdio transport
-        # Check if it's a Docker command
+        # 4. Analyze command to determine best transport
+        # Check if it's a Docker command - many Docker MCP servers use HTTP internally
         if command == "docker" or command.startswith("docker "):
-            log_msg(f"Detected Docker command, using stdio transport")
-            return "stdio", None
+            # Check if this looks like a typical MCP server Docker image
+            args = server_config.get("args", [])
+            if any("mcp" in str(arg).lower() for arg in args):
+                # This looks like an MCP server in Docker
+                # Many MCP servers in Docker expose HTTP endpoints
+                # But without explicit URL, we'll try stdio first with shorter timeout
+                log_msg(
+                    f"Detected Docker MCP server, using stdio transport with shorter timeout"
+                )
+                return "stdio", None
+            else:
+                log_msg(f"Detected Docker command, using stdio transport")
+                return "stdio", None
 
         # Check if it's a Python script or module
         if (
@@ -310,8 +322,8 @@ class MCPCommand(BaseCLICommand):
         )
         return "stdio", None
 
-    def _execute(self, args: argparse.Namespace, config: MCPConfig) -> CLIResult:
-        """Execute the MCP command using nest_asyncio for compatibility."""
+    async def _execute(self, args: argparse.Namespace, config: MCPConfig) -> CLIResult:
+        """Execute the MCP command asynchronously."""
         if not args.subcommand:
             return CLIResult(
                 status="failure",
@@ -328,88 +340,6 @@ class MCPCommand(BaseCLICommand):
         except ImportError:
             log_msg("nest_asyncio not available, using standard asyncio")
 
-        # Create a new event loop in a thread to avoid conflicts
-        result_container = {}
-        exception_container = {}
-
-        def run_in_thread():
-            try:
-                # Create new event loop for this thread
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-
-                # Platform-specific event loop policy
-                if platform.system() == "Windows":
-                    # Use ProactorEventLoop on Windows for better subprocess support
-                    if hasattr(asyncio, "WindowsProactorEventLoopPolicy"):
-                        asyncio.set_event_loop_policy(
-                            asyncio.WindowsProactorEventLoopPolicy()
-                        )
-
-                try:
-                    result = loop.run_until_complete(self._execute_async(args, config))
-                    result_container["result"] = result
-                finally:
-                    # Cleanup
-                    try:
-                        # Cancel any pending tasks
-                        pending = asyncio.all_tasks(loop)
-                        for task in pending:
-                            task.cancel()
-
-                        # Give tasks a chance to cleanup
-                        if pending:
-                            loop.run_until_complete(
-                                asyncio.gather(*pending, return_exceptions=True)
-                            )
-                    except Exception as e:
-                        log_msg(f"Error during cleanup: {e}")
-                    finally:
-                        loop.close()
-                        asyncio.set_event_loop(None)
-            except Exception as e:
-                exception_container["exception"] = e
-
-        # Run in thread
-        thread = threading.Thread(target=run_in_thread)
-        thread.start()
-
-        # Wait with timeout
-        thread.join(
-            timeout=config.servers[args.server].timeout
-            if hasattr(args, "server") and args.server in config.servers
-            else DEFAULT_TIMEOUT + 10
-        )
-
-        if thread.is_alive():
-            # Thread is still running - timeout
-            return CLIResult(
-                status="failure",
-                message="Operation timed out",
-                exit_code=1,
-            )
-
-        # Check results
-        if "exception" in exception_container:
-            return CLIResult(
-                status="failure",
-                message=f"Error: {exception_container['exception']}",
-                exit_code=1,
-            )
-
-        return result_container.get(
-            "result",
-            CLIResult(
-                status="failure",
-                message="Unknown error occurred",
-                exit_code=1,
-            ),
-        )
-
-    async def _execute_async(
-        self, args: argparse.Namespace, config: MCPConfig
-    ) -> CLIResult:
-        """Execute async MCP operations."""
         try:
             if args.subcommand == "list":
                 return await self._cmd_list_servers(config)
@@ -457,9 +387,15 @@ class MCPCommand(BaseCLICommand):
         transport_type = server_config.transport.lower()
 
         # Handle HTTP/SSE transports
-        if transport_type in ["sse", "http", "https"]:
+        if transport_type in ["http", "https"]:
             if not server_config.url:
                 raise ValueError(f"URL required for {transport_type} transport")
+            log_msg(f"Creating SSE transport for {server_config.url}")
+            return StreamableHttpTransport(server_config.url)
+
+        elif transport_type == "sse":
+            if not server_config.url:
+                raise ValueError("URL required for SSE transport")
             log_msg(f"Creating SSE transport for {server_config.url}")
             return SSETransport(server_config.url)
 
@@ -469,10 +405,10 @@ class MCPCommand(BaseCLICommand):
                 raise ValueError(f"URL required for {transport_type} transport")
             # Note: WebSocket transport may not be available in all FastMCP versions
             try:
-                from fastmcp.client.transports import WebSocketTransport
+                from fastmcp.client.transports import WSTransport
 
                 log_msg(f"Creating WebSocket transport for {server_config.url}")
-                return WebSocketTransport(server_config.url)
+                return WSTransport(server_config.url)
             except ImportError:
                 warn_msg("WebSocket transport not available, falling back to SSE")
                 return SSETransport(server_config.url)
