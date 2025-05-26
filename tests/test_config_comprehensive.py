@@ -138,11 +138,20 @@ class TestAppSettings:
 
     def test_app_settings_get_secret_none_value(self):
         """Test get_secret with None value."""
-        app_settings = AppSettings()
+        # Create environment without API keys to test None behavior
+        clean_env = {k: v for k, v in os.environ.items() if not k.endswith('_API_KEY')}
+        
+        with patch.dict(os.environ, clean_env, clear=True):
+            # Create AppSettings without env_file loading to test None behavior
+            class TestAppSettings(AppSettings):
+                model_config = AppSettings.model_config.copy()
+                model_config.update({"env_file": None})
+            
+            app_settings = TestAppSettings()
 
-        # All API keys default to None
-        with pytest.raises(ValueError, match="Secret key 'OPENAI_API_KEY' is not set"):
-            app_settings.get_secret("OPENAI_API_KEY")
+            # All API keys default to None
+            with pytest.raises(ValueError, match="Secret key 'OPENAI_API_KEY' is not set"):
+                app_settings.get_secret("OPENAI_API_KEY")
 
     def test_app_settings_frozen(self):
         """Test that AppSettings is frozen (immutable)."""

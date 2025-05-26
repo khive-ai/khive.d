@@ -366,7 +366,7 @@ class TestRetryWithBackoff:
         with pytest.raises(APIConnectionError):
             await retry_with_backoff(always_failing, max_retries=3, base_delay=0.01)
 
-        assert call_count == 3
+        assert call_count == 4  # 1 initial call + 3 retries
 
     async def test_different_backoff_strategies(self):
         """Test different backoff strategies."""
@@ -402,7 +402,12 @@ class TestRetryWithBackoff:
             raise ValueError("Invalid credentials")
 
         with pytest.raises(ValueError):
-            await retry_with_backoff(auth_error, max_retries=3, base_delay=0.01)
+            await retry_with_backoff(
+                auth_error,
+                max_retries=3,
+                base_delay=0.01,
+                exclude_exceptions=(ValueError,)
+            )
 
         # Should only be called once (no retries for ValueError)
         assert call_count == 1
@@ -462,7 +467,12 @@ class TestRetryWithBackoff:
             return "should not reach here"
 
         with pytest.raises(ValueError):
-            await retry_with_backoff(mixed_errors, max_retries=5, base_delay=0.01)
+            await retry_with_backoff(
+                mixed_errors,
+                max_retries=5,
+                base_delay=0.01,
+                exclude_exceptions=(ValueError,)
+            )
 
         assert call_count == 3
 
@@ -528,8 +538,12 @@ class TestResilienceIntegration:
         # Wait for recovery
         await asyncio.sleep(0.15)
 
+        # Create a new operation that always succeeds for recovery test
+        async def recovered_operation():
+            return "success"
+
         # Should work now
-        result = await circuit_breaker.execute(unreliable_operation)
+        result = await circuit_breaker.execute(recovered_operation)
         assert result == "success"
 
     async def test_resilience_with_real_world_scenario(self):

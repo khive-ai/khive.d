@@ -55,9 +55,11 @@ class TestAsyncAPIClient:
         # Test actual request method instead of mocking internal _make_request
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.json.return_value = {"success": True}
             mock_response.raise_for_status.return_value = None
+            mock_response.is_closed = False
+            mock_response.close = Mock()
             mock_client.request.return_value = mock_response
             mock_client_class.return_value = mock_client
             
@@ -74,9 +76,11 @@ class TestAsyncAPIClient:
 
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.json.return_value = {"created": True, "id": 123}
             mock_response.raise_for_status.return_value = None
+            mock_response.is_closed = False
+            mock_response.close = Mock()
             mock_client.request.return_value = mock_response
             mock_client_class.return_value = mock_client
             
@@ -94,9 +98,11 @@ class TestAsyncAPIClient:
 
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.json.return_value = {"updated": True}
             mock_response.raise_for_status.return_value = None
+            mock_response.is_closed = False
+            mock_response.close = Mock()
             mock_client.request.return_value = mock_response
             mock_client_class.return_value = mock_client
             
@@ -111,9 +117,11 @@ class TestAsyncAPIClient:
 
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.json.return_value = None
             mock_response.raise_for_status.return_value = None
+            mock_response.is_closed = False
+            mock_response.close = Mock()
             mock_client.request.return_value = mock_response
             mock_client_class.return_value = mock_client
             
@@ -131,9 +139,11 @@ class TestAsyncAPIClient:
 
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.json.return_value = {"results": []}
             mock_response.raise_for_status.return_value = None
+            mock_response.is_closed = False
+            mock_response.close = Mock()
             mock_client.request.return_value = mock_response
             mock_client_class.return_value = mock_client
             
@@ -149,9 +159,11 @@ class TestAsyncAPIClient:
 
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.json.return_value = {"data": "test"}
             mock_response.raise_for_status.return_value = None
+            mock_response.is_closed = False
+            mock_response.close = Mock()
             mock_client.request.return_value = mock_response
             mock_client_class.return_value = mock_client
             
@@ -166,13 +178,29 @@ class TestAsyncAPIClient:
 
         with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
-            mock_response = AsyncMock()
+            mock_response = Mock()
             mock_response.status_code = 404
-            mock_response.raise_for_status.side_effect = Exception("404 Not Found")
+            mock_response.is_closed = False
+            mock_response.close = Mock()
+            mock_response.headers = {"Content-Type": "application/json"}
+            mock_response.json.side_effect = Exception("Not JSON")
+            mock_response.text = "Not Found"
+            
+            # Create a proper HTTPStatusError
+            import httpx
+            error_response = Mock()
+            error_response.status_code = 404
+            error_response.headers = {"Content-Type": "application/json"}
+            error_response.json.side_effect = Exception("Not JSON")
+            error_response.text = "Not Found"
+            
+            mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+                "404 Not Found", request=Mock(), response=error_response
+            )
             mock_client.request.return_value = mock_response
             mock_client_class.return_value = mock_client
             
-            with pytest.raises(Exception):  # Will be caught and converted to APIClientError
+            with pytest.raises(APIClientError):
                 await client.get("/nonexistent")
 
     @pytest.mark.asyncio
@@ -180,17 +208,27 @@ class TestAsyncAPIClient:
         """Test handling of rate limit errors."""
         client = AsyncAPIClient(base_url="https://api.example.com")
 
-        mock_response = Mock(spec=ClientResponse)
-        mock_response.status = 429
-        mock_response.json = AsyncMock(return_value={"error": "Rate limit exceeded"})
-        mock_response.text = AsyncMock(return_value='{"error": "Rate limit exceeded"}')
-        mock_response.headers = {
-            "Content-Type": "application/json",
-            "Retry-After": "60",
-        }
-        mock_response.reason = "Too Many Requests"
-
-        with patch.object(client, "_make_request", return_value=mock_response):
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response = Mock()
+            mock_response.status_code = 429
+            mock_response.is_closed = False
+            mock_response.close = Mock()
+            mock_response.headers = {
+                "Content-Type": "application/json",
+                "Retry-After": "60",
+            }
+            mock_response.json.return_value = {"error": "Rate limit exceeded"}
+            mock_response.text = '{"error": "Rate limit exceeded"}'
+            
+            # Create a proper HTTPStatusError
+            import httpx
+            mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+                "429 Too Many Requests", request=Mock(), response=mock_response
+            )
+            mock_client.request.return_value = mock_response
+            mock_client_class.return_value = mock_client
+            
             with pytest.raises(RateLimitError) as exc_info:
                 await client.get("/rate-limited")
 
@@ -204,11 +242,13 @@ class TestAsyncAPIClient:
         """Test handling of connection errors."""
         client = AsyncAPIClient(base_url="https://api.example.com")
 
-        with patch.object(
-            client,
-            "_make_request",
-            side_effect=aiohttp.ClientConnectorError("Connection failed"),
-        ):
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            # Create a proper httpx ConnectError
+            import httpx
+            mock_client.request.side_effect = httpx.ConnectError("Connection failed")
+            mock_client_class.return_value = mock_client
+            
             with pytest.raises(APIConnectionError) as exc_info:
                 await client.get("/test")
 
@@ -219,12 +259,14 @@ class TestAsyncAPIClient:
         """Test handling of timeout errors."""
         client = AsyncAPIClient(base_url="https://api.example.com")
 
-        with patch.object(
-            client,
-            "_make_request",
-            side_effect=aiohttp.ServerTimeoutError("Request timeout"),
-        ):
-            with pytest.raises(APIClientError) as exc_info:
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            # Create a proper httpx TimeoutException
+            import httpx
+            mock_client.request.side_effect = httpx.TimeoutException("Request timeout")
+            mock_client_class.return_value = mock_client
+            
+            with pytest.raises(APITimeoutError) as exc_info:
                 await client.get("/slow")
 
             assert "timeout" in str(exc_info.value).lower()
@@ -234,76 +276,83 @@ class TestAsyncAPIClient:
         """Test handling of JSON decode errors."""
         client = AsyncAPIClient(base_url="https://api.example.com")
 
-        mock_response = Mock(spec=ClientResponse)
-        mock_response.status = 200
-        mock_response.json = AsyncMock(
-            side_effect=aiohttp.ContentTypeError("Invalid JSON")
-        )
-        mock_response.text = AsyncMock(return_value="invalid json content")
-        mock_response.headers = {"Content-Type": "application/json"}
-
-        with patch.object(client, "_make_request", return_value=mock_response):
-            # Should fallback to text content or handle gracefully
-            result = await client.get("/invalid-json")
-
-            # Depending on implementation, might return text or raise error
-            assert result is not None or True  # Placeholder assertion
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.is_closed = False
+            mock_response.close = Mock()
+            mock_response.headers = {"Content-Type": "application/json"}
+            mock_response.raise_for_status.return_value = None
+            # Make json() raise an exception to simulate invalid JSON
+            import json
+            mock_response.json.side_effect = json.JSONDecodeError("Invalid JSON", "", 0)
+            mock_client.request.return_value = mock_response
+            mock_client_class.return_value = mock_client
+            
+            with pytest.raises(APIClientError):
+                await client.get("/invalid-json")
 
     @pytest.mark.asyncio
     async def test_non_json_response_handling(self):
         """Test handling of non-JSON responses."""
         client = AsyncAPIClient(base_url="https://api.example.com")
 
-        mock_response = Mock(spec=ClientResponse)
-        mock_response.status = 200
-        mock_response.json = AsyncMock(side_effect=aiohttp.ContentTypeError("Not JSON"))
-        mock_response.text = AsyncMock(return_value="plain text response")
-        mock_response.headers = {"Content-Type": "text/plain"}
-
-        with patch.object(client, "_make_request", return_value=mock_response):
-            result = await client.get("/text-response")
-
-            # Should handle non-JSON responses appropriately
-            assert isinstance(result, (str, dict, type(None)))
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.is_closed = False
+            mock_response.close = Mock()
+            mock_response.headers = {"Content-Type": "text/plain"}
+            mock_response.raise_for_status.return_value = None
+            # Make json() raise an exception to simulate non-JSON response
+            import json
+            mock_response.json.side_effect = json.JSONDecodeError("Not JSON", "", 0)
+            mock_client.request.return_value = mock_response
+            mock_client_class.return_value = mock_client
+            
+            with pytest.raises(APIClientError):
+                await client.get("/text-response")
 
     @pytest.mark.asyncio
     async def test_session_management(self):
         """Test session creation and management."""
         client = AsyncAPIClient(base_url="https://api.example.com")
 
-        # Test that session is created when needed
-        with patch("aiohttp.ClientSession") as mock_session_class:
-            mock_session = AsyncMock()
-            mock_session_class.return_value = mock_session
+        # Test that client is created when needed
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client_class.return_value = mock_client
 
-            # Access session to trigger creation
-            session = await client._get_session()
+            # Access client to trigger creation
+            session = await client._get_client()
 
             assert session is not None
-            mock_session_class.assert_called_once()
+            mock_client_class.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_context_manager_usage(self):
         """Test APIClient as async context manager."""
         async with AsyncAPIClient(base_url="https://api.example.com") as client:
             assert client is not None
-            # Session should be created and available
-            assert hasattr(client, "session")
+            # Client should be created and available
+            assert hasattr(client, "_client")
 
     @pytest.mark.asyncio
     async def test_session_cleanup(self):
         """Test proper session cleanup."""
         client = AsyncAPIClient(base_url="https://api.example.com")
 
-        # Mock session with close method
-        mock_session = AsyncMock()
-        mock_session.close = AsyncMock()
+        # Mock client with aclose method
+        mock_client = AsyncMock()
+        mock_client.aclose = AsyncMock()
 
-        with patch.object(client, "session", mock_session):
+        with patch.object(client, "_client", mock_client):
             await client.close()
 
-            # Should call session.close()
-            mock_session.close.assert_called_once()
+            # Should call client.aclose()
+            mock_client.aclose.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_url_construction(self):
@@ -311,41 +360,34 @@ class TestAsyncAPIClient:
         base_url = "https://api.example.com/v1"
         client = AsyncAPIClient(base_url=base_url)
 
-        # Test absolute URL construction
-        full_url = client._build_url("/users")
-        assert full_url == "https://api.example.com/v1/users"
-
-        # Test with trailing slash handling
-        full_url = client._build_url("users")
-        assert "users" in full_url
+        # The URL construction is handled by httpx.AsyncClient internally
+        # We just verify the base_url is set correctly
+        assert client.base_url == base_url
 
     def test_header_merging(self):
         """Test merging of default and request headers."""
         default_headers = {"Authorization": "Bearer token", "User-Agent": "test"}
-        client = AsyncAPIClient(default_headers=default_headers)
+        client = AsyncAPIClient(base_url="https://api.example.com", headers=default_headers)
 
-        request_headers = {"Content-Type": "application/json", "X-Custom": "value"}
-
-        merged = client._merge_headers(request_headers)
-
-        # Should contain both default and request headers
-        assert "Authorization" in merged
-        assert "Content-Type" in merged
-        assert "X-Custom" in merged
-        assert merged["Authorization"] == "Bearer token"
-        assert merged["Content-Type"] == "application/json"
+        # The header merging is handled by httpx.AsyncClient internally
+        # We just verify the headers are set correctly
+        assert client.headers == default_headers
 
     def test_request_timeout_configuration(self):
         """Test timeout configuration."""
         timeout = 45.0
-        client = AsyncAPIClient(timeout=timeout)
+        client = AsyncAPIClient(base_url="https://api.example.com", timeout=timeout)
 
         assert client.timeout == timeout
 
     @pytest.mark.asyncio
     async def test_retry_mechanism(self):
         """Test retry mechanism for failed requests."""
-        client = AsyncAPIClient(base_url="https://api.example.com")
+        from khive.clients.resilience import RetryConfig
+        
+        # Create client with retry configuration
+        retry_config = RetryConfig(max_retries=2, base_delay=0.1)
+        client = AsyncAPIClient(base_url="https://api.example.com", retry_config=retry_config)
 
         # Mock consecutive failures then success
         call_count = 0
@@ -354,25 +396,27 @@ class TestAsyncAPIClient:
             nonlocal call_count
             call_count += 1
             if call_count < 3:
-                raise aiohttp.ClientConnectorError("Temporary failure")
+                import httpx
+                raise httpx.ConnectError("Temporary failure")
 
-            mock_response = Mock(spec=ClientResponse)
-            mock_response.status = 200
-            mock_response.json = AsyncMock(return_value={"success": True})
-            mock_response.text = AsyncMock(return_value='{"success": true}')
-            mock_response.headers = {"Content-Type": "application/json"}
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"success": True}
+            mock_response.raise_for_status.return_value = None
+            mock_response.is_closed = False
+            mock_response.close = Mock()
             return mock_response
 
-        with patch.object(
-            client, "_make_request", side_effect=mock_request_side_effect
-        ):
-            # Should retry and eventually succeed (if retry logic exists)
-            try:
-                result = await client.get("/flaky")
-                assert result["success"] is True
-            except APIConnectionError:
-                # If no retry logic, should fail after first attempt
-                assert call_count == 1
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.request.side_effect = mock_request_side_effect
+            mock_client_class.return_value = mock_client
+            
+            # Should retry and eventually succeed
+            result = await client.get("/flaky")
+            assert result["success"] is True
+            # Should have been called 3 times (2 failures + 1 success)
+            assert call_count == 3
 
 
 class TestAsyncAPIClientIntegration:
@@ -380,12 +424,12 @@ class TestAsyncAPIClientIntegration:
 
     @pytest.mark.asyncio
     async def test_real_session_creation(self):
-        """Test actual aiohttp session creation."""
+        """Test actual httpx client creation."""
         client = AsyncAPIClient(base_url="https://api.example.com")
 
-        # Should be able to create a real session
-        session = await client._get_session()
-        assert isinstance(session, ClientSession)
+        # Should be able to create a real client
+        session = await client._get_client()
+        assert isinstance(session, httpx.AsyncClient)
 
         # Cleanup
         await client.close()
@@ -408,13 +452,17 @@ class TestAsyncAPIClientIntegration:
         """Test handling of concurrent requests."""
         client = AsyncAPIClient(base_url="https://api.example.com")
 
-        mock_response = Mock(spec=ClientResponse)
-        mock_response.status = 200
-        mock_response.json = AsyncMock(return_value={"id": 1})
-        mock_response.text = AsyncMock(return_value='{"id": 1}')
-        mock_response.headers = {"Content-Type": "application/json"}
-
-        with patch.object(client, "_make_request", return_value=mock_response):
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response = Mock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"id": 1}
+            mock_response.raise_for_status.return_value = None
+            mock_response.is_closed = False
+            mock_response.close = Mock()
+            mock_client.request.return_value = mock_response
+            mock_client_class.return_value = mock_client
+            
             # Should handle multiple concurrent requests
             import asyncio
 

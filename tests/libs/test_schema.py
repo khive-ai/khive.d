@@ -120,15 +120,16 @@ class TestSchemaUtil:
             mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
             
             # Mock Path operations
-            with patch("pathlib.Path") as mock_path_class:
+            with patch("khive._libs.schema.Path") as mock_path_class:
                 mock_temp_path = MagicMock()
                 mock_output_file = MagicMock()
                 mock_output_file.stem = "testmodel_model_123"
                 mock_output_file.exists.return_value = True
+                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/testmodel_model_123.py"
                 mock_temp_path.__truediv__.return_value = mock_output_file
                 mock_path_class.return_value = mock_temp_path
 
-            result = SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
+                result = SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
 
             # Verify the result
             assert result == MockTestModel
@@ -174,15 +175,16 @@ class TestSchemaUtil:
             mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
             
             # Mock Path operations
-            with patch("pathlib.Path") as mock_path_class:
+            with patch("khive._libs.schema.Path") as mock_path_class:
                 mock_temp_path = MagicMock()
                 mock_output_file = MagicMock()
                 mock_output_file.stem = "testmodel_model_123"
                 mock_output_file.exists.return_value = True
+                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/testmodel_model_123.py"
                 mock_temp_path.__truediv__.return_value = mock_output_file
                 mock_path_class.return_value = mock_temp_path
 
-            result = SchemaUtil.load_pydantic_model_from_schema(simple_schema_str)
+                result = SchemaUtil.load_pydantic_model_from_schema(simple_schema_str)
 
             assert result == MockTestModel
             mock_generate.assert_called_once()
@@ -249,18 +251,19 @@ class TestSchemaUtil:
                             mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
                             
                             # Mock Path operations
-                            with patch("pathlib.Path") as mock_path_class:
+                            with patch("khive._libs.schema.Path") as mock_path_class:
                                 mock_temp_path = MagicMock()
                                 mock_output_file = MagicMock()
                                 mock_output_file.stem = "userprofilemodel2024_model_123"
                                 mock_output_file.exists.return_value = True
+                                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/userprofilemodel2024_model_123.py"
                                 mock_temp_path.__truediv__.return_value = mock_output_file
                                 mock_path_class.return_value = mock_temp_path
 
-                            result = SchemaUtil.load_pydantic_model_from_schema(
-                                schema_with_special_title
-                            )
-                            assert result == MockUserProfileModel2024
+                                result = SchemaUtil.load_pydantic_model_from_schema(
+                                    schema_with_special_title
+                                )
+                                assert result == MockUserProfileModel2024
 
     @patch("khive._libs.schema._HAS_DATAMODEL_CODE_GENERATOR", True)
     @patch("datamodel_code_generator.generate")
@@ -281,17 +284,18 @@ class TestSchemaUtil:
             mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
             
             # Mock Path operations
-            with patch("pathlib.Path") as mock_path_class:
+            with patch("khive._libs.schema.Path") as mock_path_class:
                 mock_temp_path = MagicMock()
                 mock_output_file = MagicMock()
                 mock_output_file.exists.return_value = False
+                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/testmodel_model_123.py"
                 mock_temp_path.__truediv__.return_value = mock_output_file
                 mock_path_class.return_value = mock_temp_path
 
-            with pytest.raises(
-                FileNotFoundError, match="Generated model file was not created"
-            ):
-                SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
+                with pytest.raises(
+                    FileNotFoundError, match="Generated model file was not created"
+                ):
+                    SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
 
     @patch("khive._libs.schema._HAS_DATAMODEL_CODE_GENERATOR", True)
     @patch("datamodel_code_generator.generate")
@@ -308,16 +312,17 @@ class TestSchemaUtil:
             mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
             
             # Mock Path operations
-            with patch("pathlib.Path") as mock_path_class:
+            with patch("khive._libs.schema.Path") as mock_path_class:
                 mock_temp_path = MagicMock()
                 mock_output_file = MagicMock()
                 mock_output_file.stem = "testmodel_model_123"
                 mock_output_file.exists.return_value = True
+                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/testmodel_model_123.py"
                 mock_temp_path.__truediv__.return_value = mock_output_file
                 mock_path_class.return_value = mock_temp_path
 
-            with pytest.raises(ImportError, match="Could not create module spec"):
-                SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
+                with pytest.raises(RuntimeError, match="Failed to load generated module"):
+                    SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
 
     @patch("khive._libs.schema._HAS_DATAMODEL_CODE_GENERATOR", True)
     @patch("datamodel_code_generator.generate")
@@ -336,13 +341,21 @@ class TestSchemaUtil:
         mock_spec.loader = mock_loader
         mock_spec_from_file.return_value = mock_spec
 
-        mock_module = Mock()
-        mock_module_from_spec.return_value = mock_module
+        # Create a custom mock class that properly handles attribute errors
+        class MockModule:
+            def __init__(self):
+                self.__dict__ = {}
+            
+            def __getattr__(self, name):
+                if name in ['TestModel', 'Model']:
+                    raise AttributeError(f"{name} not found")
+                return Mock()
+            
+            def __dir__(self):
+                return []
 
-        # Mock module without the expected TestModel attribute
-        del mock_module.TestModel
-        del mock_module.Model  # Also remove fallback
-        mock_module.__dict__ = {}
+        mock_module = MockModule()
+        mock_module_from_spec.return_value = mock_module
 
         with patch("tempfile.TemporaryDirectory") as mock_temp_dir:
             # Mock the temporary directory path as a string
@@ -350,18 +363,19 @@ class TestSchemaUtil:
             mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
             
             # Mock Path operations
-            with patch("pathlib.Path") as mock_path_class:
+            with patch("khive._libs.schema.Path") as mock_path_class:
                 mock_temp_path = MagicMock()
                 mock_output_file = MagicMock()
                 mock_output_file.stem = "testmodel_model_123"
                 mock_output_file.exists.return_value = True
+                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/testmodel_model_123.py"
                 mock_temp_path.__truediv__.return_value = mock_output_file
                 mock_path_class.return_value = mock_temp_path
 
-            with pytest.raises(
-                AttributeError, match="Could not find expected model class"
-            ):
-                SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
+                with pytest.raises(
+                    AttributeError, match="Could not find expected model class"
+                ):
+                    SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
 
     @patch("khive._libs.schema._HAS_DATAMODEL_CODE_GENERATOR", True)
     @patch("datamodel_code_generator.generate")
@@ -388,7 +402,7 @@ class TestSchemaUtil:
 
             @classmethod
             def model_rebuild(cls, **kwargs):
-                raise PydanticUserError("Rebuild failed")
+                raise PydanticUserError("Rebuild failed", code="rebuild_error")
 
         mock_module.TestModel = MockTestModel
         mock_module.__dict__ = {"TestModel": MockTestModel}
@@ -399,16 +413,17 @@ class TestSchemaUtil:
             mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
             
             # Mock Path operations
-            with patch("pathlib.Path") as mock_path_class:
+            with patch("khive._libs.schema.Path") as mock_path_class:
                 mock_temp_path = MagicMock()
                 mock_output_file = MagicMock()
                 mock_output_file.stem = "testmodel_model_123"
                 mock_output_file.exists.return_value = True
+                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/testmodel_model_123.py"
                 mock_temp_path.__truediv__.return_value = mock_output_file
                 mock_path_class.return_value = mock_temp_path
 
-            with pytest.raises(RuntimeError, match="Error during model_rebuild"):
-                SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
+                with pytest.raises(RuntimeError, match="Error during model_rebuild"):
+                    SchemaUtil.load_pydantic_model_from_schema(simple_schema_dict)
 
     def test_custom_model_name(self, simple_schema_dict):
         """Test using a custom model name."""
@@ -448,18 +463,19 @@ class TestSchemaUtil:
                             mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
                             
                             # Mock Path operations
-                            with patch("pathlib.Path") as mock_path_class:
+                            with patch("khive._libs.schema.Path") as mock_path_class:
                                 mock_temp_path = MagicMock()
                                 mock_output_file = MagicMock()
                                 mock_output_file.stem = "custommodel_model_123"
                                 mock_output_file.exists.return_value = True
+                                mock_output_file.__str__.return_value = "/tmp/test_temp_dir/custommodel_model_123.py"
                                 mock_temp_path.__truediv__.return_value = mock_output_file
                                 mock_path_class.return_value = mock_temp_path
 
-                            result = SchemaUtil.load_pydantic_model_from_schema(
-                                schema_without_title, model_name="CustomModel"
-                            )
-                            assert result == MockCustomModel
+                                result = SchemaUtil.load_pydantic_model_from_schema(
+                                    schema_without_title, "CustomModel"
+                                )
+                                assert result == MockCustomModel
 
     def test_fallback_to_model_class(self, simple_schema_dict):
         """Test fallback to 'Model' class when expected name not found."""
@@ -498,22 +514,23 @@ class TestSchemaUtil:
                                 mock_temp_dir.return_value.__enter__.return_value = temp_dir_path
                                 
                                 # Mock Path operations
-                                with patch("pathlib.Path") as mock_path_class:
+                                with patch("khive._libs.schema.Path") as mock_path_class:
                                     mock_temp_path = MagicMock()
                                     mock_output_file = MagicMock()
                                     mock_output_file.stem = "testmodel_model_123"
                                     mock_output_file.exists.return_value = True
+                                    mock_output_file.__str__.return_value = "/tmp/test_temp_dir/testmodel_model_123.py"
                                     mock_temp_path.__truediv__.return_value = mock_output_file
                                     mock_path_class.return_value = mock_temp_path
 
-                                result = SchemaUtil.load_pydantic_model_from_schema(
-                                    simple_schema_dict
-                                )
-                                assert result == MockModel
+                                    result = SchemaUtil.load_pydantic_model_from_schema(
+                                        simple_schema_dict
+                                    )
+                                    assert result == MockModel
 
-                                # Should print warning about fallback
-                                mock_print.assert_called_once()
-                                assert "Warning" in mock_print.call_args[0][0]
+                                    # Should print warning about fallback
+                                    mock_print.assert_called_once()
+                                    assert "Warning" in mock_print.call_args[0][0]
 
 
 class TestSchemaUtilIntegration:

@@ -66,12 +66,16 @@ class EndpointConfig(BaseModel):
             if isinstance(self.api_key, SecretStr):
                 self._api_key = self.api_key.get_secret_value()
             elif isinstance(self.api_key, str):
-                from khive.config import settings
+                # Skip settings lookup for ollama special case
+                if self.provider == "ollama" and self.api_key == "ollama_key":
+                    self._api_key = "ollama_key"
+                else:
+                    from khive.config import settings
 
-                try:
-                    self._api_key = settings.get_secret(self.api_key)
-                except (AttributeError, ValueError):
-                    self._api_key = os.getenv(self.api_key, self.api_key)
+                    try:
+                        self._api_key = settings.get_secret(self.api_key)
+                    except (AttributeError, ValueError):
+                        self._api_key = os.getenv(self.api_key, self.api_key)
 
         return self
 

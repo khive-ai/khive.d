@@ -104,6 +104,9 @@ class AppSettings(BaseSettings, frozen=True):
 
         secret = getattr(self, key_name)
         if secret is None:
+            # Special case for Ollama - return "ollama" even if key exists but is None
+            if "ollama" in key_name.lower():
+                return "ollama"
             raise ValueError(f"Secret key '{key_name}' is not set")
 
         if isinstance(secret, SecretStr):

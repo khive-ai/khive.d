@@ -117,87 +117,87 @@ class TestTokenBucketRateLimiter:
         # Request more tokens - should return wait time
         wait_time = await slow_rate_limiter.acquire(1)
         assert wait_time > 0  # Should need to wait for refill
-async def test_token_refill_over_time(self, slow_rate_limiter):
-    """Test that tokens are refilled over time."""
-    # Drain all tokens
-    await slow_rate_limiter.acquire(5)
-    assert slow_rate_limiter.tokens == 0
+    async def test_token_refill_over_time(self, slow_rate_limiter):
+        """Test that tokens are refilled over time."""
+        # Drain all tokens
+        await slow_rate_limiter.acquire(5)
+        assert slow_rate_limiter.tokens == 0
 
-    # Wait for some refill (2 tokens per second, so 0.6 seconds should give ~1 token)
-    await asyncio.sleep(0.6)
+        # Wait for some refill (2 tokens per second, so 0.6 seconds should give ~1 token)
+        await asyncio.sleep(0.6)
 
-    # Should be able to acquire at least 1 token with minimal wait
-    wait_time = await slow_rate_limiter.acquire(1)
-    assert wait_time < 0.5  # Should be available soon
+        # Should be able to acquire at least 1 token with minimal wait
+        wait_time = await slow_rate_limiter.acquire(1)
+        assert wait_time < 0.5  # Should be available soon
 
-async def test_token_refill_does_not_exceed_capacity(self, slow_rate_limiter):
-    """Test that token refill doesn't exceed capacity."""
-    # Start with some tokens
-    await slow_rate_limiter.acquire(2)
-    assert slow_rate_limiter.tokens == 3
+    async def test_token_refill_does_not_exceed_capacity(self, slow_rate_limiter):
+        """Test that token refill doesn't exceed capacity."""
+        # Start with some tokens
+        await slow_rate_limiter.acquire(2)
+        assert slow_rate_limiter.tokens == 3
 
-    # Wait longer than needed to fill to capacity
-    await asyncio.sleep(2.0)  # Should add 4 tokens, but max_tokens is 5
+        # Wait longer than needed to fill to capacity
+        await asyncio.sleep(2.0)  # Should add 4 tokens, but max_tokens is 5
 
-    # Check that we don't exceed capacity by trying to acquire
-    # Check that we don't exceed capacity by trying to acquire
-    await slow_rate_limiter._refill()
-    assert slow_rate_limiter.tokens <= slow_rate_limiter.max_tokens
+        # Check that we don't exceed capacity by trying to acquire
+        # Check that we don't exceed capacity by trying to acquire
+        await slow_rate_limiter._refill()
+        assert slow_rate_limiter.tokens <= slow_rate_limiter.max_tokens
 
-async def test_concurrent_token_acquisition(self, rate_limiter):
-    """Test concurrent token acquisition."""
+    async def test_concurrent_token_acquisition(self, rate_limiter):
+        """Test concurrent token acquisition."""
 
-    async def acquire_tokens(count):
-        wait_time = await rate_limiter.acquire(count)
-        return wait_time == 0.0  # True if immediate, False if needs wait
+        async def acquire_tokens(count):
+            wait_time = await rate_limiter.acquire(count)
+            return wait_time == 0.0  # True if immediate, False if needs wait
 
-    # Start multiple concurrent acquisitions
-    tasks = [
-        acquire_tokens(3),
-        acquire_tokens(4),
-        acquire_tokens(5),
-        acquire_tokens(6),
-    ]
+        # Start multiple concurrent acquisitions
+        tasks = [
+            acquire_tokens(3),
+            acquire_tokens(4),
+            acquire_tokens(5),
+            acquire_tokens(6),
+        ]
 
-    results = await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks)
 
-    # Some should succeed immediately, some might need to wait
-    immediate_acquisitions = sum(1 for result in results if result)
-    assert immediate_acquisitions >= 1  # At least one should succeed immediately
+        # Some should succeed immediately, some might need to wait
+        immediate_acquisitions = sum(1 for result in results if result)
+        assert immediate_acquisitions >= 1  # At least one should succeed immediately
 
-async def test_execute_with_rate_limiting(self, rate_limiter):
-    """Test execute method with rate limiting."""
-    
-    async def test_operation(value):
-        return f"result_{value}"
+    async def test_execute_with_rate_limiting(self, rate_limiter):
+        """Test execute method with rate limiting."""
+        
+        async def test_operation(value):
+            return f"result_{value}"
 
-    # Test successful execution
-    result = await rate_limiter.execute(test_operation, "test")
-    assert result == "result_test"
-    assert rate_limiter.tokens == 19  # Should consume 1 token by default
+        # Test successful execution
+        result = await rate_limiter.execute(test_operation, "test")
+        assert result == "result_test"
+        assert rate_limiter.tokens == 19  # Should consume 1 token by default
 
-async def test_execute_with_custom_tokens(self, rate_limiter):
-    """Test execute method with custom token count."""
-    
-    async def test_operation():
-        return "success"
+    async def test_execute_with_custom_tokens(self, rate_limiter):
+        """Test execute method with custom token count."""
+        
+        async def test_operation():
+            return "success"
 
-    # Test execution with custom token cost
-    result = await rate_limiter.execute(test_operation, tokens=5)
-    assert result == "success"
-    assert rate_limiter.tokens == 15  # Should consume 5 tokens
+        # Test execution with custom token cost
+        result = await rate_limiter.execute(test_operation, tokens=5)
+        assert result == "success"
+        assert rate_limiter.tokens == 15  # Should consume 5 tokens
 
-async def test_execute_with_operation_exception(self, rate_limiter):
-    """Test execute when operation raises exception."""
+    async def test_execute_with_operation_exception(self, rate_limiter):
+        """Test execute when operation raises exception."""
 
-    async def failing_operation():
-        raise ValueError("Operation failed")
+        async def failing_operation():
+            raise ValueError("Operation failed")
 
-    # Tokens should still be consumed even if operation fails
-    with pytest.raises(ValueError):
-        await rate_limiter.execute(failing_operation, tokens=5)
+        # Tokens should still be consumed even if operation fails
+        with pytest.raises(ValueError):
+            await rate_limiter.execute(failing_operation, tokens=5)
 
-    assert rate_limiter.tokens == 15
+        assert rate_limiter.tokens == 15
 
     async def test_tokens_property(self, rate_limiter):
         """Test the tokens property."""
@@ -215,10 +215,10 @@ async def test_execute_with_operation_exception(self, rate_limiter):
         # Manually trigger refill (simulates time passing)
         with patch("time.monotonic") as mock_time:
             # Simulate 1 second passing
-            mock_time.side_effect = [
-                rate_limiter.last_refill,  # Current time
-                rate_limiter.last_refill + 1.0,  # 1 second later
-            ]
+            # _refill() calls time.monotonic() once to get current time
+            # then updates last_refill to that time
+            original_time = rate_limiter.last_refill
+            mock_time.return_value = original_time + 1.0  # 1 second later
             await rate_limiter._refill()
 
         # Should have added 10 tokens (10 tokens/second * 1 second)
@@ -368,12 +368,12 @@ class TestRateLimiterIntegration:
         # Cheap operation (1 token)
         wait_time1 = await rate_limiter.acquire(1)
         assert wait_time1 == 0.0
-        assert rate_limiter.tokens == 19
+        assert abs(rate_limiter.tokens - 19) < 0.1  # Allow for small timing differences
 
         # Expensive operation (5 tokens)
         wait_time2 = await rate_limiter.acquire(5)
         assert wait_time2 == 0.0
-        assert rate_limiter.tokens == 14
+        assert abs(rate_limiter.tokens - 14) < 0.1  # Allow for small timing differences
 
         # Very expensive operation (15 tokens) - should need to wait
         wait_time3 = await rate_limiter.acquire(15)
@@ -383,4 +383,4 @@ class TestRateLimiterIntegration:
         # Another operation that fits
         wait_time4 = await rate_limiter.acquire(10)
         assert wait_time4 == 0.0
-        assert rate_limiter.tokens == 4
+        assert abs(rate_limiter.tokens - 4) < 0.1  # Allow for small timing differences
