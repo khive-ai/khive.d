@@ -697,39 +697,23 @@ class MCPCommand(BaseCLICommand):
         self._client_locks.clear()
 
     async def _safe_cleanup_all_clients(self):
-        """Safely clean up all active clients, ignoring cancellation and other errors."""
+        """Safely clean up all active clients, avoiding cancel scope issues entirely."""
         if not self._active_clients:
             return
 
-        # Make a copy of the clients to avoid modification during iteration
-        clients_to_cleanup = list(self._active_clients.items())
-
-        for client_key, client in clients_to_cleanup:
-            try:
-                # Try to close the client without any timeout context that could cause cancellation
-                # Just fire and forget - don't wait for complex cleanup
-                if hasattr(client, "_session_cm") and client._session_cm:
-                    # For FastMCP clients, try to close the session directly
-                    try:
-                        await asyncio.wait_for(
-                            client.__aexit__(None, None, None), timeout=0.5
-                        )
-                    except (asyncio.TimeoutError, asyncio.CancelledError):
-                        # Ignore timeout and cancellation errors
-                        pass
-                    except Exception:
-                        # Ignore all other errors during cleanup
-                        pass
-            except Exception:
-                # Ignore all cleanup errors
-                pass
-            finally:
-                # Always remove from tracking, regardless of cleanup success
-                self._active_clients.pop(client_key, None)
-
-        # Clear everything
+        # Instead of trying to properly close clients (which causes cancel scope issues),
+        # just clear our references and let Python's garbage collector handle cleanup
+        # This avoids the anyio cancel scope problems entirely
+        
+        log_msg(f"Clearing {len(self._active_clients)} MCP client references")
+        
+        # Clear all references immediately - no async cleanup
         self._active_clients.clear()
         self._client_locks.clear()
+        
+        # Force garbage collection to clean up any remaining resources
+        import gc
+        gc.collect()
 
     async def _cmd_list_servers(self, config: MCPConfig) -> CLIResult:
         """List all configured MCP servers."""
