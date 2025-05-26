@@ -186,7 +186,7 @@ description = "Test project"
         response = await dev_service._handle_setup(request, python_project_root)
 
         assert response.success is True
-        assert "successfully initialized" in response.summary
+        assert "initialized successfully" in response.summary
         assert response.mode_used == DevMode.SETUP
         assert len(response.actions_taken) > 0
         assert len(response.insights) > 0
@@ -250,11 +250,12 @@ description = "Test project"
         # Create response with various issues and test results
         response = DevResponse(
             success=True,
+            summary="Completed project health assessment with mixed results",
             mode_used=DevMode.FULL_CHECK,
             issues_found=[
-                DevIssue(type=IssueType.FORMATTING, severity=IssueSeverity.MEDIUM),
-                DevIssue(type=IssueType.TEST_FAILURE, severity=IssueSeverity.HIGH),
-                DevIssue(type=IssueType.CONFIGURATION, severity=IssueSeverity.CRITICAL),
+                DevIssue(type=IssueType.FORMATTING, severity=IssueSeverity.MEDIUM, summary="Formatting issues found"),
+                DevIssue(type=IssueType.TEST_FAILURE, severity=IssueSeverity.HIGH, summary="Test failures detected"),
+                DevIssue(type=IssueType.CONFIGURATION, severity=IssueSeverity.CRITICAL, summary="Configuration problems"),
             ],
             test_results=[
                 TestResult(
@@ -326,8 +327,8 @@ description = "Test project"
         """Test various summary generation methods."""
         # Test fix summary
         issues = [
-            DevIssue(type=IssueType.FORMATTING, severity=IssueSeverity.MEDIUM),
-            DevIssue(type=IssueType.FORMATTING, severity=IssueSeverity.MEDIUM),
+            DevIssue(type=IssueType.FORMATTING, severity=IssueSeverity.MEDIUM, summary="Formatting issue 1"),
+            DevIssue(type=IssueType.FORMATTING, severity=IssueSeverity.MEDIUM, summary="Formatting issue 2"),
         ]
 
         summary = dev_service._generate_fix_summary(issues, 2)
