@@ -26,7 +26,7 @@ COMMANDS: dict[str, str] = {
     "fmt": "fmt",  # -> khive.commands.fmt
     "roo": "roo",  # If khive_roo.py is kept for old functionality
     "info": "info",
-    "reader": "reader",
+    "file": "file",
     "ci": "ci",
     "mcp": "mcp",  # -> khive.commands.mcp
 }
@@ -48,7 +48,7 @@ COMMAND_DESCRIPTIONS: dict[str, str] = {
     "mcp": "Runs configuration-driven MCP servers.",
     "roo": "Legacy ROO mode generator.",
     "info": "Information service for web search and LLM consultation.",
-    "reader": "Opens and reads documents via docling.",
+    "file": "Opens and reads documents via docling.",
 }
 
 
