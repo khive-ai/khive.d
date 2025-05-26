@@ -19,9 +19,6 @@ COMMAND_MODULE_BASE_PATH = "khive.commands"
 # Each module is expected to have an entry point function (see ENTRY_POINT_FUNCTION_NAME)
 COMMANDS: dict[str, str] = {
     "init": "init",  # -> khive.commands.init
-    "commit": "commit",  # -> khive.commands.commit
-    "pr": "pr",  # -> khive.commands.pr
-    "clean": "clean",  # -> khive.commands.clean
     "new-doc": "new_doc",  # -> khive.commands.new_doc
     "fmt": "fmt",  # -> khive.commands.fmt
     "roo": "roo",  # If khive_roo.py is kept for old functionality
@@ -29,6 +26,8 @@ COMMANDS: dict[str, str] = {
     "file": "file",
     "ci": "ci",
     "mcp": "mcp",  # -> khive.commands.mcp
+    "dev": "dev",  # -> khive.commands.dev
+    "git": "git",  # -> khive.commands.git
 }
 
 # Expected name of the entry point function in each command module.
@@ -39,18 +38,16 @@ ENTRY_POINT_FUNCTION_NAME = "cli_entry"
 # One-line descriptions for the root help message.
 COMMAND_DESCRIPTIONS: dict[str, str] = {
     "init": "Initializes and bootstraps the khive project environment.",
-    "commit": "Creates Conventional Commits with staging and push options.",
-    "pr": "Creates or views GitHub Pull Requests for the current branch.",
-    "clean": "Deletes local and remote Git branches.",
     "new-doc": "Scaffolds new Markdown documents from templates.",
     "fmt": "Formats code across multiple stacks (Python, Rust, Deno, Markdown).",
-    "search": "Validates and executes Exa/Perplexity searches.",
-    "mcp": "Runs configuration-driven MCP servers.",
     "roo": "Legacy ROO mode generator.",
     "info": "Information service for web search and LLM consultation.",
     "file": "Opens and reads documents via docling.",
+    "ci": "Continuous integration and testing service.",
+    "mcp": "Runs configuration-driven MCP servers.",
+    "dev": "Development intelligence service (check, fix, diagnose)",
+    "git": "Natural language git operations for humans and AI",
 }
-
 
 # --- Helper Functions ---
 def _get_full_module_path(module_name: str) -> str:
