@@ -410,7 +410,7 @@ class DevServiceGroup(Service):
         try:
             parsed_args = self._ci_cmd.parser.parse_args(test_args)
             config = self._ci_cmd._create_config(parsed_args)
-            ci_result = self._ci_cmd._execute(parsed_args, config)
+            ci_result = await self._ci_cmd._execute_async(parsed_args, config)
 
             # Parse test results
             for test_run in ci_result.data.get("test_results", []):
