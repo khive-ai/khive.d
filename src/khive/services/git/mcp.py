@@ -111,54 +111,71 @@ async def git_operation(params: GitOperationParams) -> dict[str, Any]:
     Returns:
         Complete information about what was done, current state, and recommendations
     """
-    # Build context if provided
-    context = None
-    if any([
-        params.task_description,
-        params.related_issues,
-        params.requirements,
-        params.design_decisions,
-    ]):
-        context = WorkContext(
-            task_description=params.task_description,
-            related_issues=params.related_issues or [],
-            requirements=params.requirements or [],
-            design_decisions=params.design_decisions or [],
+    try:
+        # Build context if provided
+        context = None
+        if any([
+            params.task_description,
+            params.related_issues,
+            params.requirements,
+            params.design_decisions,
+        ]):
+            context = WorkContext(
+                task_description=params.task_description,
+                related_issues=params.related_issues or [],
+                requirements=params.requirements or [],
+                design_decisions=params.design_decisions or [],
+            )
+
+        # Create request
+        request = GitRequest(
+            request=params.request,
+            context=context,
+            conversation_id=params.session_id,
+            agent_id="mcp-agent",  # Could be customized
         )
 
-    # Create request
-    request = GitRequest(
-        request=params.request,
-        context=context,
-        conversation_id=params.session_id,
-        agent_id="mcp-agent",  # Could be customized
-    )
+        # Execute with proper async handling
+        response = await git_service.handle_request(request)
 
-    # Execute
-    response = await git_service.handle_request(request)
+        # Format response for MCP
+        result = {
+            "understood_as": response.understood_as,
+            "actions_taken": response.actions_taken,
+            "current_state": {
+                "branch": response.repository_state.current_branch,
+                "has_changes": response.repository_state.has_uncommitted_changes,
+                "work_phase": response.repository_state.work_phase,
+            },
+            "recommendations": [
+                {"action": rec.action, "reason": rec.reason, "how": rec.example_request}
+                for rec in response.recommendations[:3]  # Top 3
+            ],
+            "session_id": response.conversation_id,
+            "next_steps": response.follow_up_prompts[:3],
+        }
 
-    # Format response for MCP
-    result = {
-        "understood_as": response.understood_as,
-        "actions_taken": response.actions_taken,
-        "current_state": {
-            "branch": response.repository_state.current_branch,
-            "has_changes": response.repository_state.has_uncommitted_changes,
-            "work_phase": response.repository_state.work_phase,
-        },
-        "recommendations": [
-            {"action": rec.action, "reason": rec.reason, "how": rec.example_request}
-            for rec in response.recommendations[:3]  # Top 3
-        ],
-        "session_id": response.conversation_id,
-        "next_steps": response.follow_up_prompts[:3],
-    }
+        # Add any specific learned information
+        if response.learned:
+            result["details"] = response.learned
 
-    # Add any specific learned information
-    if response.learned:
-        result["details"] = response.learned
+        return result
 
-    return result
+    except Exception as e:
+        # Return error in MCP-compatible format
+        return {
+            "error": str(e),
+            "understood_as": "error",
+            "actions_taken": [],
+            "current_state": {
+                "branch": "unknown",
+                "has_changes": False,
+                "work_phase": "error",
+            },
+            "recommendations": [],
+            "session_id": params.session_id,
+            "next_steps": ["Fix the error and try again"],
+        }
 
 
 # Analysis tool
@@ -177,50 +194,63 @@ async def git_analyze(params: GitAnalysisParams) -> dict[str, Any]:
     Returns:
         Analysis results with actionable insights
     """
-    # Build analysis request
-    request_text = params.query
-    if params.focus:
-        request_text += f" focusing on {', '.join(params.focus)}"
-    if params.time_range:
-        request_text += f" in the {params.time_range}"
+    try:
+        # Build analysis request
+        request_text = params.query
+        if params.focus:
+            request_text += f" focusing on {', '.join(params.focus)}"
+        if params.time_range:
+            request_text += f" in the {params.time_range}"
 
-    request = GitRequest(request=request_text, agent_id="mcp-analyzer")
+        request = GitRequest(request=request_text, agent_id="mcp-analyzer")
 
-    # Execute
-    response = await git_service.handle_request(request)
+        # Execute with proper async handling
+        response = await git_service.handle_request(request)
 
-    # Extract analysis results
-    result = {
-        "analysis_type": response.understood_as,
-        "findings": response.learned,
-        "insights": [],
-        "action_items": [],
-    }
+        # Extract analysis results
+        result = {
+            "analysis_type": response.understood_as,
+            "findings": response.learned,
+            "insights": [],
+            "action_items": [],
+        }
 
-    # Add recommendations as action items
-    for rec in response.recommendations:
-        if rec.urgency in ["required", "urgent"]:
-            result["action_items"].append({
-                "action": rec.action,
-                "priority": rec.urgency,
-                "reason": rec.reason,
-            })
+        # Add recommendations as action items
+        for rec in response.recommendations:
+            if rec.urgency in ["required", "urgent"]:
+                result["action_items"].append({
+                    "action": rec.action,
+                    "priority": rec.urgency,
+                    "reason": rec.reason,
+                })
 
-    # Extract key insights
-    if "quality" in response.learned:
-        quality = response.learned["quality"]
-        result["insights"].append(
-            f"Code quality is {quality.get('readability', 'unknown')} "
-            f"with {quality.get('test_coverage', 0):.0%} test coverage"
-        )
+        # Extract key insights
+        if response.learned and "quality" in response.learned:
+            quality = response.learned["quality"]
+            result["insights"].append(
+                f"Code quality is {quality.get('readability', 'unknown')} "
+                f"with {quality.get('test_coverage', 0):.0%} test coverage"
+            )
 
-    if "patterns" in response.learned:
-        patterns = response.learned["patterns"]
-        result["insights"].append(
-            f"Common patterns: {', '.join(patterns.get('common_patterns', []))}"
-        )
+        if response.learned and "patterns" in response.learned:
+            patterns = response.learned["patterns"]
+            result["insights"].append(
+                f"Common patterns: {', '.join(patterns.get('common_patterns', []))}"
+            )
 
-    return result
+        return result
+
+    except Exception as e:
+        # Return error in MCP-compatible format
+        return {
+            "error": str(e),
+            "analysis_type": "error",
+            "findings": {},
+            "insights": [f"Analysis failed: {e}"],
+            "action_items": [
+                {"action": "Fix the error", "priority": "urgent", "reason": str(e)}
+            ],
+        }
 
 
 # Workflow status tool
@@ -236,20 +266,33 @@ async def git_status() -> dict[str, Any]:
     Returns:
         Current branch, changes, work phase, and suggestions
     """
-    request = GitRequest(request="What's the current state?", agent_id="mcp-status")
+    try:
+        request = GitRequest(request="What's the current state?", agent_id="mcp-status")
 
-    response = await git_service.handle_request(request)
+        response = await git_service.handle_request(request)
 
-    return {
-        "branch": response.repository_state.current_branch,
-        "branch_purpose": response.repository_state.branch_purpose,
-        "has_changes": response.repository_state.has_uncommitted_changes,
-        "work_phase": response.repository_state.work_phase,
-        "summary": response.repository_state.get_status_summary(),
-        "suggested_action": response.recommendations[0].action
-        if response.recommendations
-        else None,
-    }
+        return {
+            "branch": response.repository_state.current_branch,
+            "branch_purpose": response.repository_state.branch_purpose,
+            "has_changes": response.repository_state.has_uncommitted_changes,
+            "work_phase": response.repository_state.work_phase,
+            "summary": response.repository_state.get_status_summary(),
+            "suggested_action": response.recommendations[0].action
+            if response.recommendations
+            else None,
+        }
+
+    except Exception as e:
+        # Return error in MCP-compatible format
+        return {
+            "error": str(e),
+            "branch": "unknown",
+            "branch_purpose": "unknown",
+            "has_changes": False,
+            "work_phase": "error",
+            "summary": f"Error getting status: {e}",
+            "suggested_action": "Fix the error and try again",
+        }
 
 
 # Collaboration helper
@@ -277,36 +320,51 @@ async def git_collaborate(
     Returns:
         Action results and next steps for collaboration
     """
-    request_text = action
-    if context:
-        request_text += f" - {context}"
+    try:
+        request_text = action
+        if context:
+            request_text += f" - {context}"
 
-    request = GitRequest(request=request_text, agent_id="mcp-collaborator")
+        request = GitRequest(request=request_text, agent_id="mcp-collaborator")
 
-    response = await git_service.handle_request(request)
+        response = await git_service.handle_request(request)
 
-    result = {
-        "action_taken": response.understood_as,
-        "results": response.actions_taken,
-        "collaboration_state": {
-            "has_pr": response.repository_state.existing_pr is not None,
-            "reviewers": response.repository_state.collaboration.active_reviewers,
-            "feedback_items": len(
-                response.repository_state.collaboration.feedback_received
-            ),
-            "next_steps": response.follow_up_prompts[:2],
-        },
-    }
-
-    # Add PR details if created/updated
-    if "pr_url" in response.learned:
-        result["pr_details"] = {
-            "url": response.learned["pr_url"],
-            "number": response.learned.get("pr_number"),
-            "reviewers": response.learned.get("reviewers", []),
+        result = {
+            "action_taken": response.understood_as,
+            "results": response.actions_taken,
+            "collaboration_state": {
+                "has_pr": response.repository_state.existing_pr is not None,
+                "reviewers": response.repository_state.collaboration.active_reviewers,
+                "feedback_items": len(
+                    response.repository_state.collaboration.feedback_received
+                ),
+                "next_steps": response.follow_up_prompts[:2],
+            },
         }
 
-    return result
+        # Add PR details if created/updated
+        if response.learned and "pr_url" in response.learned:
+            result["pr_details"] = {
+                "url": response.learned["pr_url"],
+                "number": response.learned.get("pr_number"),
+                "reviewers": response.learned.get("reviewers", []),
+            }
+
+        return result
+
+    except Exception as e:
+        # Return error in MCP-compatible format
+        return {
+            "error": str(e),
+            "action_taken": "error",
+            "results": [],
+            "collaboration_state": {
+                "has_pr": False,
+                "reviewers": [],
+                "feedback_items": 0,
+                "next_steps": ["Fix the error and try again"],
+            },
+        }
 
 
 # Resource: Current git session

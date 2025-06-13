@@ -429,6 +429,7 @@ class MCPCommand(BaseCLICommand):
         except ImportError:
             log_msg("nest_asyncio not available, using standard asyncio")
 
+        # Execute commands with proper async handling
         result = None
         try:
             if args.subcommand == "list":
@@ -449,19 +450,49 @@ class MCPCommand(BaseCLICommand):
                     message=f"Unknown subcommand: {args.subcommand}",
                     exit_code=1,
                 )
+
+        except asyncio.TimeoutError as e:
+            # Cleanup resources
+            try:
+                await self._safe_cleanup_all_clients()
+            except Exception as cleanup_error:
+                log_msg(f"Cleanup error (ignoring): {cleanup_error}")
+
+            result = CLIResult(
+                status="failure",
+                message=f"Operation timed out: {e}",
+                exit_code=1,
+            )
+        except ConnectionError as e:
+            # Cleanup resources
+            try:
+                await self._safe_cleanup_all_clients()
+            except Exception as cleanup_error:
+                log_msg(f"Cleanup error (ignoring): {cleanup_error}")
+
+            result = CLIResult(
+                status="failure",
+                message=f"Connection failed: {e}",
+                exit_code=1,
+            )
         except Exception as e:
-            # If we get an exception, try to cleanup but don't let cleanup errors mask the original error
+            # Cleanup resources
             try:
                 await self._safe_cleanup_all_clients()
             except Exception as cleanup_error:
                 log_msg(f"Cleanup error (ignoring): {cleanup_error}")
-            raise e
-        else:
-            # Normal cleanup only if command succeeded
-            try:
-                await self._safe_cleanup_all_clients()
-            except Exception as cleanup_error:
-                log_msg(f"Cleanup error (ignoring): {cleanup_error}")
+
+            result = CLIResult(
+                status="failure",
+                message=f"Operation failed: {e}",
+                exit_code=1,
+            )
+
+        # Normal cleanup
+        try:
+            await self._safe_cleanup_all_clients()
+        except Exception as cleanup_error:
+            log_msg(f"Cleanup error (ignoring): {cleanup_error}")
 
         # Force garbage collection to clean up any remaining async resources
         import gc
@@ -624,31 +655,54 @@ class MCPCommand(BaseCLICommand):
 
     @asynccontextmanager
     async def _get_client(self, server_config: MCPServerConfig):
-        """Create a fresh client for each operation to avoid cleanup issues."""
-        # Create new client every time to avoid cancel scope issues
+        """Create a fresh client for each operation with proper async handling."""
         transport = self._create_transport(server_config)
         client = Client(transport)
 
+        connected = False
         try:
             # Initialize with timeout
             async with asyncio.timeout(INIT_TIMEOUT):
                 await client.__aenter__()
+                connected = True
 
             # Yield for use
             yield client
 
         except asyncio.TimeoutError:
-            # Don't try to cleanup on timeout - just let it go
             raise asyncio.TimeoutError(
                 f"Failed to connect to {server_config.name} within {INIT_TIMEOUT}s"
             )
-        except Exception:
-            # Don't try to cleanup on error - just let it go
+        except asyncio.CancelledError:
+            # Handle cancellation gracefully
+            if connected:
+                try:
+                    await asyncio.wait_for(
+                        client.__aexit__(None, None, None), timeout=CLEANUP_TIMEOUT
+                    )
+                except (asyncio.TimeoutError, Exception):
+                    pass  # Ignore cleanup errors on cancellation
             raise
-        finally:
-            # Don't try to explicitly close the client - this causes the cancel scope issues
-            # Just let Python's garbage collector handle it
-            pass
+        except Exception as e:
+            # Handle other exceptions
+            if connected:
+                try:
+                    await asyncio.wait_for(
+                        client.__aexit__(type(e), e, e.__traceback__),
+                        timeout=CLEANUP_TIMEOUT,
+                    )
+                except (asyncio.TimeoutError, Exception):
+                    pass  # Ignore cleanup errors
+            raise
+        else:
+            # Normal cleanup only when no exception occurred
+            if connected:
+                try:
+                    await asyncio.wait_for(
+                        client.__aexit__(None, None, None), timeout=CLEANUP_TIMEOUT
+                    )
+                except (asyncio.TimeoutError, Exception):
+                    pass  # Ignore cleanup errors
 
     async def _cleanup_all_clients(self):
         """No-op cleanup since we don't store clients anymore."""
@@ -773,42 +827,113 @@ class MCPCommand(BaseCLICommand):
                 data={"server": server_name},
             )
 
-        try:
-            async with asyncio.timeout(server_config.timeout):
-                async with self._get_client(server_config) as client:
-                    tools = await client.list_tools()
+        # Retry logic for flaky connections
+        max_retries = 3
+        last_error = None
 
-                    tools_info = []
-                    for tool in tools:
-                        tool_info = {"name": tool.name, "description": tool.description}
+        for attempt in range(max_retries):
+            try:
+                async with asyncio.timeout(server_config.timeout):
+                    async with self._get_client(server_config) as client:
+                        # Test connection first
+                        try:
+                            # Some MCP servers need a moment to initialize
+                            await asyncio.sleep(0.1)
+                            tools = await client.list_tools()
+                        except Exception as tools_error:
+                            log_msg(
+                                f"Error listing tools on attempt {attempt + 1}: {tools_error}"
+                            )
+                            if attempt < max_retries - 1:
+                                await asyncio.sleep(
+                                    0.5 * (attempt + 1)
+                                )  # Exponential backoff
+                                continue
+                            raise
 
-                        # Add parameter info if available
-                        if hasattr(tool, "inputSchema") and tool.inputSchema:
-                            if "properties" in tool.inputSchema:
-                                tool_info["parameters"] = list(
-                                    tool.inputSchema["properties"].keys()
+                        tools_info = []
+                        for tool in tools:
+                            try:
+                                tool_info = {
+                                    "name": tool.name,
+                                    "description": tool.description,
+                                }
+
+                                # Add parameter info if available - handle different schema formats
+                                if hasattr(tool, "inputSchema") and tool.inputSchema:
+                                    schema = tool.inputSchema
+                                    if (
+                                        isinstance(schema, dict)
+                                        and "properties" in schema
+                                    ):
+                                        tool_info["parameters"] = list(
+                                            schema["properties"].keys()
+                                        )
+                                    elif hasattr(schema, "properties"):
+                                        tool_info["parameters"] = list(
+                                            schema.properties.keys()
+                                        )
+
+                                # Add any available input schema info
+                                if hasattr(tool, "inputSchema") and tool.inputSchema:
+                                    tool_info["has_schema"] = True
+
+                                tools_info.append(tool_info)
+                            except Exception as tool_error:
+                                log_msg(
+                                    f"Error processing tool {getattr(tool, 'name', 'unknown')}: {tool_error}"
                                 )
+                                # Add minimal info for problematic tools
+                                tools_info.append({
+                                    "name": getattr(tool, "name", "unknown"),
+                                    "description": f"Error: {tool_error}",
+                                    "error": True,
+                                })
 
-                        tools_info.append(tool_info)
+                        return CLIResult(
+                            status="success",
+                            message=f"Found {len(tools_info)} tools on server '{server_name}'",
+                            data={"server": server_name, "tools": tools_info},
+                        )
 
-                    return CLIResult(
-                        status="success",
-                        message=f"Found {len(tools_info)} tools on server '{server_name}'",
-                        data={"server": server_name, "tools": tools_info},
-                    )
+            except asyncio.TimeoutError as e:
+                last_error = e
+                log_msg(
+                    f"Timeout on attempt {attempt + 1}/{max_retries} for server '{server_name}'"
+                )
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(1.0 * (attempt + 1))  # Progressive delay
+                    continue
+                break
+            except asyncio.CancelledError:
+                raise  # Don't retry cancellation
+            except Exception as e:
+                last_error = e
+                log_msg(
+                    f"Error on attempt {attempt + 1}/{max_retries} for server '{server_name}': {e}"
+                )
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(0.5 * (attempt + 1))
+                    continue
+                break
 
-        except asyncio.TimeoutError:
+        # All retries failed
+        if isinstance(last_error, asyncio.TimeoutError):
             return CLIResult(
                 status="failure",
-                message=f"Timeout connecting to server '{server_name}' after {server_config.timeout}s",
-                data={"server": server_name},
+                message=f"Timeout connecting to server '{server_name}' after {max_retries} attempts (max {server_config.timeout}s each)",
+                data={
+                    "server": server_name,
+                    "timeout": server_config.timeout,
+                    "attempts": max_retries,
+                },
                 exit_code=1,
             )
-        except Exception as e:
+        else:
             return CLIResult(
                 status="failure",
-                message=f"Failed to list tools: {e}",
-                data={"server": server_name},
+                message=f"Failed to list tools after {max_retries} attempts: {last_error}",
+                data={"server": server_name, "attempts": max_retries},
                 exit_code=1,
             )
 
@@ -857,30 +982,92 @@ class MCPCommand(BaseCLICommand):
                 data={"server": server_name, "tool": tool_name, "arguments": arguments},
             )
 
+        # Enhanced timeout for tool calls (they may take longer than connection)
+        call_timeout = max(
+            server_config.timeout, 60.0
+        )  # At least 60s for tool execution
+
         try:
-            async with asyncio.timeout(server_config.timeout):
+            async with asyncio.timeout(call_timeout):
                 async with self._get_client(server_config) as client:
-                    # Call the tool
-                    result = await client.call_tool(tool_name, arguments)
+                    # Validate tool exists first
+                    try:
+                        tools = await client.list_tools()
+                        available_tools = [t.name for t in tools]
+                        if tool_name not in available_tools:
+                            return CLIResult(
+                                status="failure",
+                                message=f"Tool '{tool_name}' not found on server '{server_name}'",
+                                data={
+                                    "server": server_name,
+                                    "tool": tool_name,
+                                    "available_tools": available_tools,
+                                },
+                                exit_code=1,
+                            )
+                    except Exception as list_error:
+                        log_msg(
+                            f"Warning: Could not verify tool existence: {list_error}"
+                        )
+                        # Continue anyway - some servers may not support tool listing during execution
 
-                    # Format result based on content type
-                    formatted_result = self._format_tool_result(result)
+                    # Call the tool with proper error handling
+                    try:
+                        log_msg(
+                            f"Calling tool '{tool_name}' on server '{server_name}' with args: {arguments}"
+                        )
+                        result = await client.call_tool(tool_name, arguments)
+                        log_msg(f"Tool call completed successfully")
 
-                    return CLIResult(
-                        status="success",
-                        message=f"Tool '{tool_name}' executed successfully",
-                        data={
+                        # Format result based on content type
+                        formatted_result = self._format_tool_result(result)
+
+                        return CLIResult(
+                            status="success",
+                            message=f"Tool '{tool_name}' executed successfully",
+                            data={
+                                "server": server_name,
+                                "tool": tool_name,
+                                "arguments": arguments,
+                                "result": formatted_result,
+                                "execution_time": f"< {call_timeout}s",
+                            },
+                        )
+                    except Exception as call_error:
+                        log_msg(f"Tool call failed: {call_error}")
+                        # Provide more specific error information
+                        error_info = {
                             "server": server_name,
                             "tool": tool_name,
                             "arguments": arguments,
-                            "result": formatted_result,
-                        },
-                    )
+                            "error_type": type(call_error).__name__,
+                            "error_details": str(call_error),
+                        }
+
+                        return CLIResult(
+                            status="failure",
+                            message=f"Tool execution failed: {call_error}",
+                            data=error_info,
+                            exit_code=1,
+                        )
 
         except asyncio.TimeoutError:
             return CLIResult(
                 status="failure",
-                message=f"Timeout calling tool '{tool_name}' after {server_config.timeout}s",
+                message=f"Timeout calling tool '{tool_name}' after {call_timeout}s",
+                data={
+                    "server": server_name,
+                    "tool": tool_name,
+                    "arguments": arguments,
+                    "timeout": call_timeout,
+                    "suggestion": "Tool may require more time - consider increasing timeout",
+                },
+                exit_code=1,
+            )
+        except asyncio.CancelledError:
+            return CLIResult(
+                status="failure",
+                message=f"Tool call '{tool_name}' was cancelled",
                 data={"server": server_name, "tool": tool_name, "arguments": arguments},
                 exit_code=1,
             )
@@ -888,7 +1075,12 @@ class MCPCommand(BaseCLICommand):
             return CLIResult(
                 status="failure",
                 message=f"Failed to call tool: {e}",
-                data={"server": server_name, "tool": tool_name, "arguments": arguments},
+                data={
+                    "server": server_name,
+                    "tool": tool_name,
+                    "arguments": arguments,
+                    "error_type": type(e).__name__,
+                },
                 exit_code=1,
             )
 

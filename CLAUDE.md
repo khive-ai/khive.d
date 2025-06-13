@@ -1,10 +1,12 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with
+code in this repository.
 
 ## Development Commands
 
 ### Environment Setup
+
 ```bash
 # Install khive with all dependencies using uv (preferred)
 uv sync --extra all
@@ -17,6 +19,7 @@ source .venv/bin/activate
 ```
 
 ### Common Development Tasks
+
 ```bash
 # Run tests
 uv run pytest                          # Run all tests
@@ -48,6 +51,7 @@ rm -rf dist/ build/ *.egg-info/
 ```
 
 ### Running khive Commands
+
 ```bash
 # All khive commands can be run with uv
 uv run khive init                     # Initialize project
@@ -59,15 +63,18 @@ uv run khive mcp                      # Start MCP servers
 
 ## High-Level Architecture
 
-khive follows a **Service-Oriented CLI Architecture** designed for AI-augmented development workflows.
+khive follows a **Service-Oriented CLI Architecture** designed for AI-augmented
+development workflows.
 
 ### Core Architecture Layers
 
 1. **CLI Layer** (`src/khive/cli/`)
    - Entry point: `khive_cli.py`
    - Command dispatcher using subcommands
-   - Base classes: `BaseCLICommand`, `FileBasedCLICommand`, `ConfigurableCLICommand`
-   - Lifecycle: `_add_arguments()` → `_create_config()` → `_execute()` → `_handle_result()`
+   - Base classes: `BaseCLICommand`, `FileBasedCLICommand`,
+     `ConfigurableCLICommand`
+   - Lifecycle: `_add_arguments()` → `_create_config()` → `_execute()` →
+     `_handle_result()`
 
 2. **Commands Layer** (`src/khive/commands/`)
    - Command implementations that orchestrate services
@@ -86,13 +93,15 @@ khive follows a **Service-Oriented CLI Architecture** designed for AI-augmented 
 
 4. **Clients Layer** (`src/khive/clients/`)
    - Generic async API clients with resilience patterns
-   - `AsyncAPIClient`: Base HTTP client with retry, rate limiting, circuit breaker
+   - `AsyncAPIClient`: Base HTTP client with retry, rate limiting, circuit
+     breaker
    - `AsyncExecutor`: Concurrent task execution with resource management
    - Resilience patterns: Circuit breaker, rate limiting (TokenBucket), retries
 
 5. **Connections Layer** (`src/khive/connections/`)
    - Provider-specific endpoint configurations
-   - Unified interface for different LLM providers (Anthropic, OpenAI, Perplexity, etc.)
+   - Unified interface for different LLM providers (Anthropic, OpenAI,
+     Perplexity, etc.)
    - Transport types: HTTP, SDK (OpenAI-compatible)
 
 ### Key Design Patterns
@@ -120,6 +129,7 @@ khive follows a **Service-Oriented CLI Architecture** designed for AI-augmented 
 ### MCP Integration
 
 khive integrates with Model Context Protocol (MCP) servers:
+
 - Dynamic server discovery from `.khive/mcps/config.json`
 - Intelligent transport detection (stdio/HTTP/SSE)
 - Environment management and lifecycle control
@@ -135,9 +145,11 @@ khive integrates with Model Context Protocol (MCP) servers:
 ### AI Methodology Integration
 
 khive implements the "Golden Path" development methodology:
+
 - Prompts in `src/khive/prompts/roo_rules/` define AI team roles
 - Templates in `src/khive/prompts/templates/` for structured outputs
-- Six specialized AI roles: Orchestrator, Researcher, Architect, Implementer, Reviewer, Documenter
+- Six specialized AI roles: Orchestrator, Researcher, Architect, Implementer,
+  Reviewer, Documenter
 - Workflow: Research → Design → Implement → Review → Document → Merge
 
 ### Testing Strategy
@@ -150,10 +162,14 @@ khive implements the "Golden Path" development methodology:
 
 ### Adding New Features
 
-1. **New Command**: Create in `src/khive/cli/khive_*.py`, inherit from appropriate base class
-2. **New Service**: Create in `src/khive/services/*/`, implement `Service` interface
-3. **New Provider**: Add to `src/khive/connections/providers/`, create `EndpointConfig`
-4. **New MCP Tool**: Add to service's `mcp.py` file, register in `get_mcp_tools()`
+1. **New Command**: Create in `src/khive/cli/khive_*.py`, inherit from
+   appropriate base class
+2. **New Service**: Create in `src/khive/services/*/`, implement `Service`
+   interface
+3. **New Provider**: Add to `src/khive/connections/providers/`, create
+   `EndpointConfig`
+4. **New MCP Tool**: Add to service's `mcp.py` file, register in
+   `get_mcp_tools()`
 
 ### Important Notes
 
