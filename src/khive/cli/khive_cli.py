@@ -28,6 +28,7 @@ COMMANDS: dict[str, str] = {
     "mcp": "mcp",  # -> khive.commands.mcp
     "dev": "dev",  # -> khive.commands.dev
     "git": "git",  # -> khive.commands.git
+    "monitor": "monitor",  # -> khive.commands.monitor
 }
 
 # Expected name of the entry point function in each command module.
@@ -47,6 +48,7 @@ COMMAND_DESCRIPTIONS: dict[str, str] = {
     "mcp": "Runs configuration-driven MCP servers.",
     "dev": "Development intelligence service (check, fix, diagnose)",
     "git": "Natural language git operations for humans and AI",
+    "monitor": "Real-time service health monitoring with dashboard and alerting",
 }
 
 
