@@ -661,47 +661,38 @@ class MCPCommand(BaseCLICommand):
 
         connected = False
         try:
-            # Initialize with timeout
-            async with asyncio.timeout(INIT_TIMEOUT):
-                await client.__aenter__()
+            # Initialize with timeout - use wait_for instead of asyncio.timeout to avoid cancellation issues
+            try:
+                await asyncio.wait_for(client.__aenter__(), timeout=INIT_TIMEOUT)
                 connected = True
+            except asyncio.TimeoutError:
+                raise asyncio.TimeoutError(
+                    f"Failed to connect to {server_config.name} within {INIT_TIMEOUT}s"
+                )
 
             # Yield for use
             yield client
 
-        except asyncio.TimeoutError:
-            raise asyncio.TimeoutError(
-                f"Failed to connect to {server_config.name} within {INIT_TIMEOUT}s"
-            )
         except asyncio.CancelledError:
-            # Handle cancellation gracefully
-            if connected:
-                try:
-                    await asyncio.wait_for(
-                        client.__aexit__(None, None, None), timeout=CLEANUP_TIMEOUT
-                    )
-                except (asyncio.TimeoutError, Exception):
-                    pass  # Ignore cleanup errors on cancellation
+            # Handle cancellation - don't try to cleanup, just let it go
+            log_msg(f"Client connection to {server_config.name} was cancelled")
             raise
         except Exception as e:
-            # Handle other exceptions
+            # Handle other exceptions - try cleanup but don't block
             if connected:
                 try:
-                    await asyncio.wait_for(
-                        client.__aexit__(type(e), e, e.__traceback__),
-                        timeout=CLEANUP_TIMEOUT,
-                    )
-                except (asyncio.TimeoutError, Exception):
+                    # Simple cleanup without nested timeouts to avoid cancellation issues
+                    await client.__aexit__(type(e), e, e.__traceback__)
+                except Exception:
                     pass  # Ignore cleanup errors
             raise
         else:
             # Normal cleanup only when no exception occurred
             if connected:
                 try:
-                    await asyncio.wait_for(
-                        client.__aexit__(None, None, None), timeout=CLEANUP_TIMEOUT
-                    )
-                except (asyncio.TimeoutError, Exception):
+                    # Simple cleanup without nested timeouts
+                    await client.__aexit__(None, None, None)
+                except Exception:
                     pass  # Ignore cleanup errors
 
     async def _cleanup_all_clients(self):
