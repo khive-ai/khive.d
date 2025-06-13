@@ -1324,6 +1324,7 @@ dependencies = [
     { name = "aiohttp" },
     { name = "backoff" },
     { name = "fastmcp" },
+    { name = "lionagi" },
     { name = "lionfuncs" },
     { name = "mcp" },
     { name = "openai" },
@@ -1376,6 +1377,7 @@ requires-dist = [
     { name = "docling", marker = "extra == 'all'", specifier = ">=2.31.0" },
     { name = "docling", marker = "extra == 'reader'", specifier = ">=2.31.0" },
     { name = "fastmcp", specifier = ">=2.3.3" },
+    { name = "lionagi", specifier = ">=0.12.3" },
     { name = "lionfuncs", specifier = ">=3.2.0" },
     { name = "mcp", specifier = ">=1.8.0" },
     { name = "ollama", marker = "extra == 'all'", specifier = ">=0.4.8" },
@@ -1423,6 +1425,26 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/6f/6b/c875b30a1ba490860c93da4cabf479e03f584eba06fe5963f6f6644653d8/lazy_loader-0.4.tar.gz", hash = "sha256:47c75182589b91a4e1a85a136c074285a5ad4d9f39c63e0d7fb76391c4574cd1", size = 15431, upload-time = "2024-04-05T13:03:12.261Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/83/60/d497a310bde3f01cb805196ac61b7ad6dc5dcf8dce66634dc34364b20b4f/lazy_loader-0.4-py3-none-any.whl", hash = "sha256:342aa8e14d543a154047afb4ba8ef17f5563baad3fc610d7b15b213b0f119efc", size = 12097, upload-time = "2024-04-05T13:03:10.514Z" },
+]
+
+[[package]]
+name = "lionagi"
+version = "0.12.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiocache" },
+    { name = "aiohttp" },
+    { name = "jinja2" },
+    { name = "pandas" },
+    { name = "pillow" },
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "tiktoken" },
+    { name = "toml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2e/db/dc4ba6d084ebd985044f3b044713d971b3eeb4b25dd3d6a699bfdaa048e3/lionagi-0.12.3.tar.gz", hash = "sha256:9b2116c1aaf71badd233fd6df648f9fb1e317e9acf610f1e12801f435a6f35ee", size = 510423, upload-time = "2025-05-29T00:40:16.488Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/40/24/2cfa494779d1469ec42881162e31afca6580a75474a197fd61c1e4effa23/lionagi-0.12.3-py3-none-any.whl", hash = "sha256:faad718556979a23671770fec5c1b475901dfd4c6d63ed407d9ef44d874a1179", size = 305435, upload-time = "2025-05-29T00:40:14.428Z" },
 ]
 
 [[package]]
