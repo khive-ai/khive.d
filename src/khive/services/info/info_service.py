@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import re
 from pathlib import Path
@@ -20,6 +21,9 @@ from khive.services.info.parts import (
     InsightSource,
 )
 from khive.types import Service
+
+# Set up logging for better error visibility
+logger = logging.getLogger(__name__)
 
 
 class InfoServiceGroup(Service):
@@ -104,6 +108,7 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
                 return await self._handle_comprehensive_insights(request)
 
         except Exception as e:
+            logger.error(f"Error in handle_request: {e}", exc_info=True)
             return InfoResponse(
                 success=False,
                 summary=f"Unable to gather insights: {e!s}",
@@ -200,10 +205,17 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
     async def _handle_quick_insights(self, request: InfoRequest) -> InfoResponse:
         """Handle quick factual lookups with minimal latency."""
         # Initialize Perplexity for quick facts
-        if self._perplexity is None:
-            self._perplexity = match_endpoint("perplexity", "chat")
-
         try:
+            if self._perplexity is None:
+                self._perplexity = match_endpoint("perplexity", "chat")
+
+            if self._perplexity is None:
+                logger.warning("Perplexity endpoint not available for quick insights")
+                return self._error_response(
+                    "Perplexity API not configured - cannot provide quick insights",
+                    InsightMode.QUICK,
+                )
+
             # Quick lookup with concise model
             messages = [
                 {
@@ -242,6 +254,7 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
             )
 
         except Exception as e:
+            logger.error(f"Error in quick insights: {e}", exc_info=True)
             return self._error_response(str(e), InsightMode.QUICK)
 
     async def _handle_comprehensive_insights(
@@ -266,47 +279,96 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
             tasks.append(self._search_technical_knowledge(request.query))
 
         # 3. External search (lower priority, for additional context)
-        if self._exa is None:
-            self._exa = match_endpoint("exa", "search")
-        if self._exa is not None:
-            tasks.append(self._search_with_exa(request.query))
+        try:
+            if self._exa is None:
+                self._exa = match_endpoint("exa", "search")
+            if self._exa is not None:
+                tasks.append(self._search_with_exa(request.query))
+            else:
+                logger.warning("Exa endpoint not available - skipping external search")
+        except Exception as e:
+            logger.error(f"Failed to initialize Exa endpoint: {e}")
 
         # 4. Analysis task (for synthesis)
-        if self._perplexity is None:
-            self._perplexity = match_endpoint("perplexity", "chat")
-        if self._perplexity is not None:
-            tasks.append(self._analyze_with_perplexity(request.query, request.context))
+        try:
+            if self._perplexity is None:
+                self._perplexity = match_endpoint("perplexity", "chat")
+            if self._perplexity is not None:
+                tasks.append(
+                    self._analyze_with_perplexity(request.query, request.context)
+                )
+            else:
+                logger.warning("Perplexity endpoint not available - skipping analysis")
+        except Exception as e:
+            logger.error(f"Failed to initialize Perplexity endpoint: {e}")
 
         # Execute all tasks with timeout
         try:
-            results = await asyncio.wait_for(
-                asyncio.gather(*tasks, return_exceptions=True),
-                timeout=request.time_budget_seconds,
-            )
+            if tasks:
+                logger.info(f"Executing {len(tasks)} information gathering tasks")
+                results = await asyncio.wait_for(
+                    asyncio.gather(*tasks, return_exceptions=True),
+                    timeout=request.time_budget_seconds,
+                )
+            else:
+                logger.warning(
+                    "No information gathering tasks available - endpoints may not be configured"
+                )
+                results = []
         except asyncio.TimeoutError:
+            logger.warning(
+                f"Information gathering timed out after {request.time_budget_seconds}s"
+            )
+            results = []
+        except Exception as e:
+            logger.error(f"Error during task execution: {e}", exc_info=True)
             results = []
 
         # Process results
-        for result in results:
+        for i, result in enumerate(results):
             if isinstance(result, Exception):
+                logger.error(f"Task {i} failed: {result}", exc_info=True)
                 continue
             if isinstance(result, dict) and "insights" in result:
                 insights.extend(result["insights"])
                 raw_sources.append(result.get("raw", ""))
+                logger.debug(f"Task {i} contributed {len(result['insights'])} insights")
+            else:
+                logger.warning(
+                    f"Task {i} returned unexpected result format: {type(result)}"
+                )
 
         # If no insights found, provide helpful fallback
         if not insights:
+            # Check if this was due to configuration issues
+            config_issues = []
+            if self._exa is None:
+                config_issues.append("Exa API (external search)")
+            if self._perplexity is None:
+                config_issues.append("Perplexity API (analysis)")
+            if self._openrouter is None:
+                config_issues.append("OpenRouter API (synthesis)")
+
+            fallback_message = "No insights were gathered from external sources."
+            fallback_details = "This could be due to: (1) API configuration issues, (2) network connectivity, or (3) the query not matching available data sources."
+
+            if config_issues:
+                fallback_details += (
+                    f" Missing API configurations: {', '.join(config_issues)}."
+                )
+                logger.warning(f"Missing API configurations: {config_issues}")
+
             fallback_insight = Insight(
-                summary="No specific information found for this query.",
-                details="Consider rephrasing your question or checking if the topic exists in the project documentation.",
+                summary=fallback_message,
+                details=fallback_details,
                 sources=[
                     InsightSource(
                         type="analysis",
                         provider="khive-fallback",
-                        confidence=0.5,
+                        confidence=0.3,
                     )
                 ],
-                relevance=0.5,
+                relevance=0.3,
             )
             insights.append(fallback_insight)
 
@@ -344,86 +406,112 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
 
         This mode emphasizes balanced analysis over raw information.
         """
-        if self._openrouter is None:
-            self._openrouter = match_endpoint("openrouter", "chat")
+        try:
+            if self._openrouter is None:
+                self._openrouter = match_endpoint("openrouter", "chat")
 
-        # Define perspectives for analysis
-        perspectives = [
-            (
-                "practical",
-                "Focus on practical implications and real-world applications",
-            ),
-            ("theoretical", "Examine theoretical foundations and principles"),
-            (
-                "critical",
-                "Provide critical analysis including limitations and challenges",
-            ),
-        ]
-
-        insights = []
-
-        # Gather multiple perspectives
-        for perspective_name, perspective_prompt in perspectives:
-            try:
-                messages = [
-                    {
-                        "role": "system",
-                        "content": f"You are an expert analyst providing {perspective_name} analysis. {perspective_prompt}",
-                    },
-                    {"role": "user", "content": request.query},
-                ]
-
-                # Use a strong model for analysis
-                response = await self._openrouter.call({
-                    "model": "anthropic/claude-3-5-sonnet",
-                    "messages": messages,
-                    "temperature": 0.7,
-                })
-
-                content = self._extract_content(response)
-
-                insights.append(
-                    Insight(
-                        summary=f"{perspective_name.capitalize()} perspective",
-                        details=content,
-                        sources=[
-                            InsightSource(
-                                type="analysis",
-                                provider=f"claude-{perspective_name}",
-                                confidence=0.85,
-                            )
-                        ],
-                        relevance=0.9,
-                    )
+            if self._openrouter is None:
+                logger.warning(
+                    "OpenRouter endpoint not available for analytical insights"
+                )
+                return self._error_response(
+                    "OpenRouter API not configured - cannot provide analytical insights",
+                    InsightMode.ANALYTICAL,
                 )
 
-            except Exception:
-                continue
+            # Define perspectives for analysis
+            perspectives = [
+                (
+                    "practical",
+                    "Focus on practical implications and real-world applications",
+                ),
+                ("theoretical", "Examine theoretical foundations and principles"),
+                (
+                    "critical",
+                    "Provide critical analysis including limitations and challenges",
+                ),
+            ]
 
-        # Synthesize analytical insights
-        synthesis = await self._synthesize_analytical_insights(request.query, insights)
+            insights = []
 
-        return InfoResponse(
-            success=True,
-            summary=f"Multi-perspective analysis of: {request.query[:100]}",
-            insights=insights,
-            synthesis=synthesis,
-            confidence=0.85,
-            mode_used=InsightMode.ANALYTICAL,
-            suggestions=[
-                "Consider specific use cases for practical application",
-                "Explore edge cases and exceptions",
-                "Research empirical evidence supporting these analyses",
-            ],
-        )
+            # Gather multiple perspectives
+            for perspective_name, perspective_prompt in perspectives:
+                try:
+                    messages = [
+                        {
+                            "role": "system",
+                            "content": f"You are an expert analyst providing {perspective_name} analysis. {perspective_prompt}",
+                        },
+                        {"role": "user", "content": request.query},
+                    ]
+
+                    # Use a strong model for analysis
+                    response = await self._openrouter.call({
+                        "model": "anthropic/claude-3-5-sonnet",
+                        "messages": messages,
+                        "temperature": 0.7,
+                    })
+
+                    content = self._extract_content(response)
+
+                    insights.append(
+                        Insight(
+                            summary=f"{perspective_name.capitalize()} perspective",
+                            details=content,
+                            sources=[
+                                InsightSource(
+                                    type="analysis",
+                                    provider=f"claude-{perspective_name}",
+                                    confidence=0.85,
+                                )
+                            ],
+                            relevance=0.9,
+                        )
+                    )
+
+                except Exception as e:
+                    logger.error(f"Error in {perspective_name} analysis: {e}")
+                    continue
+
+            # Synthesize analytical insights
+            synthesis = await self._synthesize_analytical_insights(
+                request.query, insights
+            )
+
+            return InfoResponse(
+                success=True,
+                summary=f"Multi-perspective analysis of: {request.query[:100]}",
+                insights=insights,
+                synthesis=synthesis,
+                confidence=0.85,
+                mode_used=InsightMode.ANALYTICAL,
+                suggestions=[
+                    "Consider specific use cases for practical application",
+                    "Explore edge cases and exceptions",
+                    "Research empirical evidence supporting these analyses",
+                ],
+            )
+
+        except Exception as e:
+            logger.error(f"Error in analytical insights: {e}", exc_info=True)
+            return self._error_response(str(e), InsightMode.ANALYTICAL)
 
     async def _handle_realtime_insights(self, request: InfoRequest) -> InfoResponse:
         """Handle requests for latest information with recency priority."""
         # Use Perplexity with recency filter
-        if self._perplexity is None:
-            self._perplexity = match_endpoint("perplexity", "chat")
-
         try:
+            if self._perplexity is None:
+                self._perplexity = match_endpoint("perplexity", "chat")
+
+            if self._perplexity is None:
+                logger.warning(
+                    "Perplexity endpoint not available for realtime insights"
+                )
+                return self._error_response(
+                    "Perplexity API not configured - cannot provide realtime insights",
+                    InsightMode.REALTIME,
+                )
+
             messages = [
                 {
                     "role": "system",
@@ -475,6 +563,7 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
             )
 
         except Exception as e:
+            logger.error(f"Error in realtime insights: {e}", exc_info=True)
             return self._error_response(str(e), InsightMode.REALTIME)
 
     # Helper methods
@@ -541,7 +630,7 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
             return {"insights": insights, "raw": "\n".join(raw_content)}
 
         except Exception as e:
-            print(f"Project knowledge search error: {e}")
+            logger.error(f"Project knowledge search error: {e}", exc_info=True)
             return {"insights": [], "raw": ""}
 
     def _search_documentation(self, query: str) -> list[Insight]:
@@ -580,7 +669,7 @@ Provide a clear, comprehensive synthesis that enhances understanding."""
                     )
 
         except Exception as e:
-            print(f"Documentation search error: {e}")
+            logger.error(f"Documentation search error: {e}", exc_info=True)
 
         return insights
 
@@ -638,7 +727,7 @@ Query: {query}"""
             return {"insights": insights, "raw": content if insights else ""}
 
         except Exception as e:
-            print(f"Technical knowledge search error: {e}")
+            logger.error(f"Technical knowledge search error: {e}", exc_info=True)
             return {"insights": [], "raw": ""}
 
     async def _search_with_exa(self, query: str) -> dict[str, Any]:
@@ -695,7 +784,7 @@ Query: {query}"""
 
         except Exception as e:
             # Log the exception for debugging
-            print(f"Exa search error: {e}")
+            logger.error(f"Exa search error: {e}", exc_info=True)
             return {"insights": [], "raw": ""}
 
     async def _analyze_with_perplexity(
@@ -745,7 +834,8 @@ Query: {query}"""
 
             return {"insights": insights, "raw": content}
 
-        except Exception:
+        except Exception as e:
+            logger.error(f"Perplexity analysis error: {e}", exc_info=True)
             return {"insights": [], "raw": ""}
 
     async def _synthesize_insights(
@@ -826,8 +916,9 @@ Query: {query}"""
                     query, project_insights, external_insights
                 )
 
-        except Exception:
+        except Exception as e:
             # Fallback to simple synthesis
+            logger.error(f"Synthesis error: {e}", exc_info=True)
             return self._create_simple_synthesis(
                 query, project_insights, external_insights
             )
@@ -999,10 +1090,19 @@ Query: {query}"""
 
     async def close(self) -> None:
         """Clean up resources."""
-        if hasattr(self, "_executor") and self._executor is not None:
-            await self._executor.shutdown()
+        try:
+            if hasattr(self, "_executor") and self._executor is not None:
+                await self._executor.shutdown()
 
-        for endpoint_attr in ("_perplexity", "_exa", "_openrouter"):
-            endpoint = getattr(self, endpoint_attr, None)
-            if endpoint is not None and hasattr(endpoint, "aclose"):
-                await endpoint.aclose()
+            for endpoint_attr in ("_perplexity", "_exa", "_openrouter"):
+                endpoint = getattr(self, endpoint_attr, None)
+                if endpoint is not None:
+                    try:
+                        if hasattr(endpoint, "aclose"):
+                            await endpoint.aclose()
+                        elif hasattr(endpoint, "close"):
+                            await endpoint.close()
+                    except Exception as e:
+                        logger.warning(f"Error closing endpoint {endpoint_attr}: {e}")
+        except Exception as e:
+            logger.error(f"Error during cleanup: {e}", exc_info=True)
