@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Agent-centric Git Service implementation.
+LionAGI-Enhanced Git Service implementation.
 
-A git service designed from the ground up for AI agents, focusing on
-natural language understanding, contextual awareness, and workflow intelligence.
+A git service designed from the ground up for AI agents, integrating with LionAGI's
+Branch orchestration, MessageManager for conversation history, and ActionManager
+for tool-based git operations.
 """
 
 from __future__ import annotations
@@ -15,6 +16,21 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+
+from lionagi.session.branch import Branch
+from lionagi.protocols.types import (
+    ActionManager,
+    MessageManager,
+    Instruction,
+    AssistantResponse,
+    ActionRequest,
+    ActionResponse,
+    System,
+)
+from lionagi.protocols.action.tool import Tool
+from lionagi.service.types import iModel
+
+LIONAGI_AVAILABLE = True
 
 from khive.services.git.nlp import IntentDetector, ResponseGenerator
 from khive.services.git.parts import (
@@ -48,18 +64,18 @@ from khive.utils import log_msg
 
 class GitService(Service):
     """
-    Git service optimized for AI agents.
+    LionAGI-Enhanced Git service optimized for AI agents.
 
     Key principles:
     - Natural language is the primary interface
-    - Maintains context across operations
-    - Provides rich semantic understanding
-    - Offers intelligent recommendations
-    - Learns from usage patterns
+    - Maintains conversational context across operations via LionAGI Branch
+    - Git operations are defined as LionAGI Tools for intelligent orchestration
+    - Provides rich semantic understanding and workflow intelligence
+    - Learns from usage patterns through conversation history
     """
 
     def __init__(self):
-        """Initialize the Git service."""
+        """Initialize the LionAGI-enhanced Git service."""
         self._sessions: dict[str, GitSession] = {}
         self._llm_endpoint = None
 
@@ -77,55 +93,76 @@ class GitService(Service):
         self._quality_analyzer = QualityAnalyzer()
         self._collaboration_optimizer = CollaborationOptimizer()
 
+        # LionAGI Integration
+        self._lionagi_available = LIONAGI_AVAILABLE
+        self._branches: dict[str, Branch] = {}
+        
+        if self._lionagi_available:
+            log_msg("LionAGI integration enabled - advanced conversation management available")
+        else:
+            log_msg("LionAGI not available - using standard service implementation")
+
     async def handle_request(self, request: GitRequest) -> GitResponse:
         """
-        Handle a git request with natural language understanding.
+        Handle a git request with LionAGI-enhanced natural language understanding.
 
-        This is the single entry point for all git operations.
+        This is the single entry point for all git operations, now enhanced with
+        LionAGI Branch orchestration for conversation management.
         """
         # Get or create session
         session = self._get_or_create_session(
             request.agent_id or "anonymous", request.conversation_id
         )
 
-        # Track request
+        # Get or create LionAGI Branch for conversation management
+        branch = await self._get_or_create_branch(
+            request.agent_id or "anonymous", request.conversation_id
+        )
+
+        # Track request in session and branch
         session.add_request(request.request)
+        
+        if branch:
+            # Add user instruction to conversation history
+            await branch.msgs.a_add_message(
+                instruction=request.request,
+                context=request.context.model_dump() if request.context else None,
+                sender=request.agent_id or "user",
+                metadata={"request_type": "git_operation", "timestamp": datetime.utcnow().isoformat()}
+            )
 
         try:
-            # Understand intent
-            intent, confidence = self._intent_detector.detect_intent(
-                request.request,
-                request.context,
-                await self._get_repository_state(),
-                session,
+            # Enhanced intent detection with LionAGI Branch context
+            intent, confidence = await self._detect_intent_with_branch(
+                request, session, branch
             )
             log_msg(f"Understood intent: {intent} (confidence: {confidence:.2f})")
 
-            # Route to appropriate workflow
+            # Route to appropriate workflow with Branch support
             if intent == WorkIntent.EXPLORE:
-                return await self._handle_explore(request, session)
+                return await self._handle_explore(request, session, branch)
             elif intent == WorkIntent.IMPLEMENT:
-                return await self._handle_implement(request, session)
+                return await self._handle_implement(request, session, branch)
             elif intent == WorkIntent.COLLABORATE:
-                return await self._handle_collaborate(request, session)
+                return await self._handle_collaborate(request, session, branch)
             elif intent == WorkIntent.INTEGRATE:
-                return await self._handle_integrate(request, session)
+                return await self._handle_integrate(request, session, branch)
             elif intent == WorkIntent.RELEASE:
-                return await self._handle_release(request, session)
+                return await self._handle_release(request, session, branch)
             elif intent == WorkIntent.UNDERSTAND:
-                return await self._handle_understand(request, session)
+                return await self._handle_understand(request, session, branch)
             elif intent == WorkIntent.UNDO:
-                return await self._handle_undo(request, session)
+                return await self._handle_undo(request, session, branch)
             elif intent == WorkIntent.ORGANIZE:
-                return await self._handle_organize(request, session)
+                return await self._handle_organize(request, session, branch)
 
         except Exception as e:
-            return await self._handle_error(e, request, session)
+            return await self._handle_error(e, request, session, branch)
 
     # --- Workflow Handlers ---
 
     async def _handle_explore(
-        self, request: GitRequest, session: GitSession
+        self, request: GitRequest, session: GitSession, branch: Branch | None = None
     ) -> GitResponse:
         """Handle exploration requests."""
         state = await self._get_repository_state()
@@ -161,7 +198,7 @@ class GitService(Service):
         )
 
     async def _handle_implement(
-        self, request: GitRequest, session: GitSession
+        self, request: GitRequest, session: GitSession, branch: Branch | None = None
     ) -> GitResponse:
         """Handle implementation save requests."""
         state = await self._get_repository_state()
@@ -207,6 +244,19 @@ class GitService(Service):
 
         session.add_action(f"saved implementation progress: {commit_result['sha'][:8]}")
 
+        # Add assistant response to LionAGI Branch conversation
+        if branch:
+            response_content = f"Successfully committed changes: {commit_message.split(chr(10))[0]}"
+            await branch.msgs.a_add_message(
+                assistant_response=response_content,
+                sender="git_service",
+                metadata={
+                    "action_type": "implement",
+                    "commit_sha": commit_result.get("sha", ""),
+                    "files_staged": len(staged_files)
+                }
+            )
+
         return GitResponse(
             understood_as="Saving implementation progress with intelligent commit",
             actions_taken=actions_taken,
@@ -228,7 +278,7 @@ class GitService(Service):
         )
 
     async def _handle_collaborate(
-        self, request: GitRequest, session: GitSession
+        self, request: GitRequest, session: GitSession, branch: Branch | None = None
     ) -> GitResponse:
         """Handle collaboration requests."""
         state = await self._get_repository_state()
@@ -236,7 +286,7 @@ class GitService(Service):
 
         # Ensure changes are committed
         if state.has_uncommitted_changes or state.has_staged_changes:
-            commit_response = await self._handle_implement(request, session)
+            commit_response = await self._handle_implement(request, session, branch)
             actions_taken.extend(commit_response.actions_taken)
             state = commit_response.repository_state
 
@@ -306,7 +356,7 @@ class GitService(Service):
         )
 
     async def _handle_integrate(
-        self, request: GitRequest, session: GitSession
+        self, request: GitRequest, session: GitSession, branch: Branch | None = None
     ) -> GitResponse:
         """Handle integration requests."""
         state = await self._get_repository_state()
@@ -387,7 +437,7 @@ class GitService(Service):
         )
 
     async def _handle_release(
-        self, request: GitRequest, session: GitSession
+        self, request: GitRequest, session: GitSession, branch: Branch | None = None
     ) -> GitResponse:
         """Handle release requests."""
         state = await self._get_repository_state()
@@ -410,7 +460,7 @@ class GitService(Service):
 
         # Ensure all changes are committed
         if state.has_uncommitted_changes:
-            commit_response = await self._handle_implement(request, session)
+            commit_response = await self._handle_implement(request, session, branch)
             actions_taken.extend(commit_response.actions_taken)
             state = commit_response.repository_state
 
@@ -418,7 +468,7 @@ class GitService(Service):
         if state.current_branch != "main":
             # Create PR if needed
             if not state.existing_pr:
-                pr_response = await self._handle_collaborate(request, session)
+                pr_response = await self._handle_collaborate(request, session, branch)
                 actions_taken.extend(pr_response.actions_taken)
 
             # Switch to main
@@ -517,7 +567,7 @@ class GitService(Service):
         )
 
     async def _handle_understand(
-        self, request: GitRequest, session: GitSession
+        self, request: GitRequest, session: GitSession, branch: Branch | None = None
     ) -> GitResponse:
         """Handle understanding/analysis requests."""
         state = await self._get_repository_state()
@@ -581,7 +631,7 @@ class GitService(Service):
         )
 
     async def _handle_undo(
-        self, request: GitRequest, session: GitSession
+        self, request: GitRequest, session: GitSession, branch: Branch | None = None
     ) -> GitResponse:
         """Handle undo/revert requests."""
         state = await self._get_repository_state()
@@ -714,7 +764,7 @@ class GitService(Service):
         )
 
     async def _handle_organize(
-        self, request: GitRequest, session: GitSession
+        self, request: GitRequest, session: GitSession, branch: Branch | None = None
     ) -> GitResponse:
         """Handle repository organization requests."""
         state = await self._get_repository_state()
@@ -871,10 +921,248 @@ class GitService(Service):
             ],
         )
 
+    # --- LionAGI Integration Methods ---
+
+    async def _get_or_create_branch(
+        self, agent_id: str, conversation_id: str | None = None
+    ) -> Branch | None:
+        """Get or create a LionAGI Branch for conversation management."""
+        branch_id = conversation_id or f"git-{agent_id}-{uuid4().hex[:8]}"
+        
+        if branch_id not in self._branches:
+            # Create new Branch with git-specific system message
+            system_message = (
+                "You are an intelligent Git service assistant. You help users with "
+                "git operations through natural language commands. You understand "
+                "repository context, maintain conversation history, and can execute "
+                "git operations as tools. Always provide clear, helpful responses "
+                "about git operations and repository state."
+            )
+            
+            try:
+                branch = Branch(
+                    name=f"git-service-{agent_id}",
+                    system=system_message,
+                    user=agent_id,
+                    use_lion_system_message=False
+                )
+                
+                # Register git operation tools
+                await self._register_git_tools(branch)
+                
+                self._branches[branch_id] = branch
+                log_msg(f"Created LionAGI Branch for git service: {branch_id}")
+                
+            except Exception as e:
+                log_msg(f"Failed to create LionAGI Branch: {e}")
+                return None
+        
+        return self._branches.get(branch_id)
+
+    async def _register_git_tools(self, branch: Branch) -> None:
+        """Register git operations as LionAGI Tools."""
+        try:
+            # Define git operation tools
+            git_tools = [
+                self._create_git_status_tool(),
+                self._create_git_commit_tool(),
+                self._create_git_push_tool(),
+                self._create_git_branch_tool(),
+                self._create_git_analyze_tool(),
+            ]
+            
+            branch.register_tools(git_tools)
+            log_msg(f"Registered {len(git_tools)} git operation tools")
+            
+        except Exception as e:
+            log_msg(f"Failed to register git tools: {e}")
+
+    def _create_git_status_tool(self) -> Tool:
+        """Create a tool for git status operations."""
+        async def git_status() -> dict[str, Any]:
+            """Get the current git repository status."""
+            try:
+                state = await self._get_repository_state()
+                return {
+                    "current_branch": state.current_branch,
+                    "has_changes": state.has_uncommitted_changes,
+                    "has_staged": state.has_staged_changes,
+                    "files_changed": len(state.files_changed),
+                    "work_phase": state.work_phase,
+                    "branch_purpose": state.branch_purpose,
+                }
+            except Exception as e:
+                return {"error": str(e)}
+        
+        return Tool(func_callable=git_status)
+
+    def _create_git_commit_tool(self) -> Tool:
+        """Create a tool for git commit operations."""
+        async def git_commit(message=None, auto_stage=True):
+            """Create a git commit with the specified message.
+            
+            Args:
+                message: Optional commit message
+                auto_stage: Whether to auto-stage files
+            
+            Returns:
+                dict: Commit result with success status and details
+            """
+            try:
+                staged_files = []
+                if auto_stage:
+                    # Auto-stage files
+                    state = await self._get_repository_state()
+                    staged_files = await self._smart_stage_files(state, None)
+                
+                if not message:
+                    # Generate contextual commit message
+                    state = await self._get_repository_state()
+                    message = await self._commit_generator.generate(
+                        state.files_changed, state.code_insights, {}, style="conventional"
+                    )
+                
+                result = await self._perform_commit(message)
+                return {
+                    "success": True,
+                    "commit_sha": result.get("sha", ""),
+                    "message": message,
+                    "files_staged": staged_files if auto_stage else []
+                }
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+        
+        return Tool(func_callable=git_commit)
+
+    def _create_git_push_tool(self) -> Tool:
+        """Create a tool for git push operations."""
+        async def git_push(branch: str = None) -> dict[str, Any]:
+            """Push changes to remote repository."""
+            try:
+                if not branch:
+                    state = await self._get_repository_state()
+                    branch = state.current_branch
+                
+                result = await self._push_branch(branch)
+                return {
+                    "success": True,
+                    "branch": branch,
+                    "result": result
+                }
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+        
+        return Tool(func_callable=git_push)
+
+    def _create_git_branch_tool(self) -> Tool:
+        """Create a tool for git branch operations."""
+        async def git_branch_info() -> dict[str, Any]:
+            """Get information about git branches."""
+            try:
+                current_branch = await self._git_ops.get_current_branch()
+                all_branches = await self._git_ops.get_all_branches()
+                return {
+                    "current_branch": current_branch,
+                    "all_branches": all_branches,
+                    "total_branches": len(all_branches)
+                }
+            except Exception as e:
+                return {"error": str(e)}
+        
+        return Tool(func_callable=git_branch_info)
+
+    def _create_git_analyze_tool(self) -> Tool:
+        """Create a tool for git repository analysis."""
+        async def git_analyze() -> dict[str, Any]:
+            """Analyze the current repository state and provide insights."""
+            try:
+                state = await self._get_repository_state()
+                quality = await self._quality_analyzer.assess(state)
+                
+                return {
+                    "work_phase": state.work_phase,
+                    "code_insights": {
+                        "complexity": state.code_insights.complexity,
+                        "change_type": state.code_insights.change_type,
+                        "risk_level": state.code_insights.risk_level,
+                        "adds_tests": state.code_insights.adds_tests,
+                        "updates_docs": state.code_insights.updates_docs,
+                    },
+                    "quality_assessment": {
+                        "test_coverage": quality.test_coverage,
+                        "readability": quality.readability,
+                        "maintainability": quality.maintainability,
+                        "issues_count": len(quality.issues),
+                    },
+                    "recommended_actions": state.recommended_actions,
+                }
+            except Exception as e:
+                return {"error": str(e)}
+        
+        return Tool(func_callable=git_analyze)
+
+    async def _detect_intent_with_branch(
+        self, request: GitRequest, session: GitSession, branch: Branch | None
+    ) -> tuple[WorkIntent, float]:
+        """Enhanced intent detection using LionAGI Branch context."""
+        if not branch:
+            # Fallback to standard intent detection
+            return self._intent_detector.detect_intent(
+                request.request,
+                request.context,
+                await self._get_repository_state(),
+                session,
+            )
+
+        try:
+            # Use LionAGI Branch for context-aware intent detection
+            repo_state = await self._get_repository_state()
+            
+            # Build context from conversation history
+            conversation_context = []
+            if branch.msgs.messages:
+                # Get recent messages for context
+                recent_messages = list(branch.msgs.messages)[-5:]  # Last 5 messages
+                for msg in recent_messages:
+                    if hasattr(msg, 'content') and msg.content:
+                        conversation_context.append(str(msg.content))
+            
+            # Enhanced intent detection with conversation context
+            context_str = " ".join(conversation_context) if conversation_context else ""
+            enhanced_request = f"{context_str} {request.request}".strip()
+            
+            intent, confidence = self._intent_detector.detect_intent(
+                enhanced_request,
+                request.context,
+                repo_state,
+                session,
+            )
+            
+            # Boost confidence if we have good conversation context
+            if conversation_context and confidence < 0.8:
+                confidence = min(confidence + 0.1, 0.95)
+            
+            return intent, confidence
+            
+        except Exception as e:
+            log_msg(f"Error in enhanced intent detection: {e}")
+            # Fallback to standard detection
+            return self._intent_detector.detect_intent(
+                request.request,
+                request.context,
+                await self._get_repository_state(),
+                session,
+            )
+
+    # Helper method stubs that are called but not yet implemented
+    async def _push_branch(self, branch: str) -> dict[str, Any]:
+        """Push branch to remote."""
+        return await self._git_ops.push_branch(branch)
+
     # --- Helper Methods (continued) ---
 
     async def _handle_error(
-        self, error: Exception, request: GitRequest, session: GitSession
+        self, error: Exception, request: GitRequest, session: GitSession, branch: Branch | None = None
     ) -> GitResponse:
         """Handle errors gracefully with recovery suggestions."""
         error_type = type(error).__name__
