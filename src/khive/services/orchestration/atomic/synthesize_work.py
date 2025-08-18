@@ -1,12 +1,3 @@
-"""
-Synthesize Work Operation (v2)
-
-Creates comprehensive synthesis of all completed work for handoff and PR creation.
-Uses Pydantic model as prompt template to generate structured work summary.
-"""
-
-from lionagi import Branch
-from lionagi.models import FieldModel
 from pydantic import BaseModel, Field
 
 from .base import CONFIDENCE_PROMPT, QUALITY_PROMPT

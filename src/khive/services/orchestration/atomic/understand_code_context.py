@@ -1,12 +1,3 @@
-"""
-Understand Code Context Operation (v2)
-
-Analyzes codebase structure and patterns to build mental model for integration.
-Uses Pydantic model as prompt template to generate structured analysis.
-"""
-
-from lionagi import Branch
-from lionagi.models import FieldModel
 from pydantic import BaseModel, Field
 
 from .base import CONFIDENCE_PROMPT, QUALITY_PROMPT

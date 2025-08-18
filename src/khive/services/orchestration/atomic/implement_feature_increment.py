@@ -1,12 +1,3 @@
-"""
-Implement Feature Increment Operation (v2)
-
-Generates actual code changes based on requirements and integration strategy.
-Uses Pydantic model as prompt template to generate structured implementation.
-"""
-
-from lionagi import Branch
-from lionagi.models import FieldModel
 from pydantic import BaseModel, Field
 
 from .base import CONFIDENCE_PROMPT, QUALITY_PROMPT

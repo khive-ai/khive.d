@@ -7,12 +7,15 @@ requires-python = ">=3.10"
 dependencies = [
     "aiofiles>=24.1.0",
     "fastmcp>=2.11.3",
-    "lionagi[graph,postgres,rich,schema]>=0.15.5",
+    "lionagi[graph,postgres,rich,schema, sqlite]>=0.15.5",
     "nest-asyncio>=1.6.0",
     "openai>=1.99.9",
+    "plotly>=6.3.0",
     "pydantic-settings>=2.10.1",
     "pyyaml>=6.0.2",
+    "streamlit>=1.48.1",
     "tenacity>=9.1.2",
+    "websockets>=15.0.1",
 ]
 
 [tool.pytest.ini_options]
