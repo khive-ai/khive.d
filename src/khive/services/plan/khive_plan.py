@@ -12,9 +12,7 @@ from .planner_service import PlannerService
 __all__ = ("main",)
 
 
-def fetch_github_issue(
-    issue_number: str, repo: str = "ohdearquant/khive222"
-) -> dict | None:
+def fetch_github_issue(issue_number: str) -> dict | None:
     """Fetch GitHub issue data using gh CLI."""
     try:
         cmd = [
@@ -22,8 +20,6 @@ def fetch_github_issue(
             "issue",
             "view",
             issue_number,
-            "--repo",
-            repo,
             "--json",
             "number,title,body,labels,assignees,state,createdAt,updatedAt,author",
         ]

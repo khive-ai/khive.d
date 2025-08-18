@@ -188,3 +188,5 @@ khive/third_party/openai_models.py
 .khive/deep_research/
 .khive/sessions/
 .khive/mcps/config.json
+
+claude_hooks.db

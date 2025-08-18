@@ -869,11 +869,13 @@ class MCPCommand(BaseCLICommand):
                                     f"Error processing tool {getattr(tool, 'name', 'unknown')}: {tool_error}"
                                 )
                                 # Add minimal info for problematic tools
-                                tools_info.append({
-                                    "name": getattr(tool, "name", "unknown"),
-                                    "description": f"Error: {tool_error}",
-                                    "error": True,
-                                })
+                                tools_info.append(
+                                    {
+                                        "name": getattr(tool, "name", "unknown"),
+                                        "description": f"Error: {tool_error}",
+                                        "error": True,
+                                    }
+                                )
 
                         return CLIResult(
                             status="success",

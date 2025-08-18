@@ -1,12 +1,3 @@
-"""
-Validate Requirement Satisfaction Operation (v2)
-
-Validates that implementation satisfies original requirements.
-Uses Pydantic model as prompt template to generate structured validation.
-"""
-
-from lionagi import Branch
-from lionagi.models import FieldModel
 from pydantic import BaseModel, Field
 
 from .base import CONFIDENCE_PROMPT, QUALITY_PROMPT
