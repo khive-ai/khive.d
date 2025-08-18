@@ -1,0 +1,41 @@
+domain:
+  id: nextjs
+  type: system_architecture
+  parent: architecture
+
+knowledge_patterns:
+  routing_and_pages:
+    - pattern: "app_router"
+      features: ["file_based_routing", "server_components"]
+      edge_cases: ["dynamic_routes", "parallel_routes"]
+    - pattern: "api_routes"
+      constraints: ["edge_runtime_limits", "cold_start_latency"]
+
+  data_fetching:
+    - pattern: "get_static_props"
+      use_when: ["build_time_data", "rare_updates"]
+      pitfalls: ["stale_content"]
+    - pattern: "server_actions"
+      benefits: ["mutations_without_client_js", "revalidate_path"]
+
+  edge_and_serverless:
+    - pattern: "vercel_edge_functions"
+      latency: "<50 ms global"
+      limits: ["cpu_50ms", "memory_128MB"]
+      compare: ["lambda@edge", "cloudflare_workers"]
+
+decision_rules:
+  deployment_target:
+    - condition: "global_low_latency"
+      recommend: "edge_runtime"
+    - condition: "heavy_cpu OR secrets"
+      recommend: "nodejs_server"
+
+specialized_tools:
+  next_cli: ["next_build", "next_start", "next_export"]
+  image_optimization: ["next_image", "sharp"]
+  performance_tools: ["next_perf_analyzer", "react_profiler"]
+
+best_practices: {}
+
+metrics: ["ttfb_ms", "lcp_ms", "route_transition_ms"]

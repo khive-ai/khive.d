@@ -1,7 +1,3 @@
-# Copyright (c) 2025, HaiyangLi <quantocean.li at gmail dot com>
-#
-# SPDX-License-Identifier: Apache-2.0
-
 from __future__ import annotations
 
 import importlib
@@ -12,43 +8,36 @@ from types import ModuleType
 
 # Define the package path where command modules are located.
 # Command modules are expected to be in the khive.commands package
-COMMAND_MODULE_BASE_PATH = "khive.commands"
+COMMAND_MODULE_BASE_PATH = "khive.cli.commands"
 
 # Maps the user-typed command to the Python module name within COMMAND_MODULE_BASE_PATH.
 # The corresponding .py file should exist (e.g., "init" -> "init.py")
 # Each module is expected to have an entry point function (see ENTRY_POINT_FUNCTION_NAME)
 COMMANDS: dict[str, str] = {
-    "init": "init",  # -> khive.commands.init
-    "new-doc": "new_doc",  # -> khive.commands.new_doc
-    "fmt": "fmt",  # -> khive.commands.fmt
-    "roo": "roo",  # If khive_roo.py is kept for old functionality
-    "info": "info",
-    "file": "file",
-    "ci": "ci",
-    "mcp": "mcp",  # -> khive.commands.mcp
-    "dev": "dev",  # -> khive.commands.dev
-    "git": "git",  # -> khive.commands.git
-    "monitor": "monitor",  # -> khive.commands.monitor
+    "new-doc": "new_doc",
+    "commit": "commit",
+    "pr": "pr",
+    "mcp": "mcp",
+    "clean": "clean",
+    "plan": "plan",
+    "session": "session",
+    "compose": "compose",
 }
 
 # Expected name of the entry point function in each command module.
-# This function will be called to execute the command.
-# It's recommended this function handles its own argparse.
 ENTRY_POINT_FUNCTION_NAME = "cli_entry"
 
 # One-line descriptions for the root help message.
 COMMAND_DESCRIPTIONS: dict[str, str] = {
-    "init": "Initializes and bootstraps the khive project environment.",
     "new-doc": "Scaffolds new Markdown documents from templates.",
-    "fmt": "Formats code across multiple stacks (Python, Rust, Deno, Markdown).",
-    "roo": "Legacy ROO mode generator.",
-    "info": "Information service for web search and LLM consultation.",
-    "file": "Opens and reads documents via docling.",
-    "ci": "Continuous integration and testing service.",
     "mcp": "Runs configuration-driven MCP servers.",
-    "dev": "Development intelligence service (check, fix, diagnose)",
-    "git": "Natural language git operations for humans and AI",
-    "monitor": "Real-time service health monitoring with dashboard and alerting",
+    "commit": "Commits changes with conventional commit messages.",
+    "pr": "Creates pull requests with conventional commit messages.",
+    "clean": "Deletes local and remote Git branches.",
+    "plan": "Generates orchestration plans for complex tasks.",
+    "session": "Manages Khive sessions for task tracking and diary writing.",
+    "compose": "Simplified CLI for Khive Agent Composition Service.",
+    "flow": "Intelligent flow router for automated issue resolution.",
 }
 
 

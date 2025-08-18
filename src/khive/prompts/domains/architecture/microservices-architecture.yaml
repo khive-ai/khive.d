@@ -1,0 +1,38 @@
+domain:
+  id: microservices-architecture
+  type: system_architecture
+  parent: architecture
+
+knowledge_patterns:
+  service_decomposition:
+    - pattern: "bounded_contexts"
+      origin: "ddd"
+      benefits: ["team_alignment", "loose_coupling"]
+    - pattern: "entity_services"
+      pitfalls: ["tight_coupling", "chatty_calls"]
+
+  communication_patterns:
+    - pattern: "sync_rest"
+      tradeoffs: ["simplicity", "latency_coupling"]
+    - pattern: "async_messaging"
+      tech: ["kafka", "nats", "sqs"]
+      tradeoffs: ["eventual_consistency"]
+    - pattern: "grpc_contract_first"
+      pros: ["strong_typing", "perf"]
+      cons: ["proto_tooling"]
+
+decision_rules:
+  when_to_split:
+    - condition: "team_size > 10"
+      action: "decompose_by_bounded_context"
+    - condition: "deployment_coupling_high"
+      action: "extract_service"
+
+specialized_tools:
+  service_mesh: ["istio", "linkerd"]
+  contract_testing: ["pact", "hoverfly"]
+  tracing: ["opentelemetry", "jaeger"]
+
+best_practices: {}
+
+metrics: ["change_failure_rate", "mean_time_to_recovery", "service_churn"]

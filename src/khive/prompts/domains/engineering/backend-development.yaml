@@ -1,0 +1,41 @@
+domain:
+  id: backend-development
+  type: technical_specialization
+  parent: engineering
+
+knowledge_patterns:
+  language_runtimes:
+    - pattern: "python_fastapi"
+      pros: ["developer_speed", "asyncio_support"]
+      cons: ["single_threaded_gil"]
+    - pattern: "rust_actix"
+      pros: ["memory_safety", "high_throughput"]
+      cons: ["compile_times", "learning_curve"]
+    - pattern: "node_express"
+      pros: ["ecosystem", "fullstack_ts"]
+      cons: ["callback_hell", "single_thread"]
+
+  scaling_strategies:
+    - pattern: "vertical_scale"
+      limits: ["cpu_clock", "ram_ceiling"]
+    - pattern: "horizontal_scale"
+      needs: ["statelessness", "session_affinity"]
+    - pattern: "event_driven_scale"
+      queues: ["kafka", "rabbitmq", "sqs"]
+
+decision_rules:
+  runtime_choice:
+    - condition: "latency_critical"
+      choose: "rust_actix"
+    - condition: "rapid_prototyping"
+      choose: "python_fastapi"
+    - condition: "js_fullstack"
+      choose: "node_express"
+
+specialized_tools:
+  profiling: ["pyinstrument", "tokio_console", "clinic.js"]
+  frameworks: ["fastapi", "actix_web", "express"]
+
+best_practices: {}
+
+metrics: ["p99_latency_ms", "req_per_sec", "error_rate_pct"]

@@ -1,0 +1,33 @@
+domain:
+  id: ci-cd-pipelines
+  type: operational_excellence
+  parent: operations
+
+knowledge_patterns:
+  pipeline_stages:
+    - pattern: "build_test_deploy"
+      steps: ["compile", "unit_test", "integration_test", "deploy"]
+    - pattern: "trunk_based"
+      benefits: ["short_cycles", "less_merge_hell"]
+
+  deployment_strategies:
+    - pattern: "blue_green"
+      pros: ["instant_rollback"]
+      cons: ["double_resources"]
+    - pattern: "canary"
+      metrics: ["error_budget", "slo_breach"]
+
+decision_rules:
+  trigger_strategy:
+    - condition: "monorepo"
+      recommend: "path_filters + shared_cache"
+    - condition: "heavy_tests"
+      recommend: "parallel_matrix"
+
+specialized_tools:
+  ci_runners: ["github_actions", "gitlab_ci", "circleci"]
+  cd: ["argo_cd", "spinnaker", "fluxcd"]
+
+best_practices: {}
+
+metrics: ["pipeline_duration_s", "success_rate", "deploy_frequency"]

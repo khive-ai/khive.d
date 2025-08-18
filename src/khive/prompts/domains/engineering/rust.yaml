@@ -1,0 +1,46 @@
+# Rust Programming Language Domain Module
+
+domain:
+  id: rust
+  type: programming_language
+  parent: programming-languages
+
+knowledge_patterns:
+  core_principles:
+    - pattern: "ownership_system"
+      characteristics: [
+        "zero_cost_abstractions",
+        "memory_safety",
+        "thread_safety",
+      ]
+    - pattern: "type_system"
+      features: [
+        "static_typing",
+        "trait_system",
+        "generics",
+        "lifetime_annotations",
+      ]
+
+decision_rules:
+  language_selection:
+    - condition: "performance_critical_system"
+      action: "prefer_rust_for_systems_programming"
+    - condition: "memory_safety_required"
+      action: "leverage_ownership_system"
+
+specialized_tools:
+  ecosystem:
+    - cargo: "Package manager and build system"
+    - rustc: "Rust compiler"
+    - rustfmt: "Code formatter"
+    - clippy: "Linting tool"
+
+best_practices:
+  development:
+    - ownership_clarity: "Design with ownership in mind"
+    - error_handling: "Use Result types for recoverable errors"
+    - trait_design: "Prefer composition over inheritance"
+
+metrics:
+  - compile_time: "Time to compile Rust code"
+  - memory_usage: "Runtime memory footprint"

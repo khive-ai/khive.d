@@ -1,0 +1,144 @@
+# Software Architecture Domain Module
+
+domain:
+  id: software-architecture
+  type: system_architecture
+  parent: architecture
+
+knowledge_patterns:
+  architectural_styles:
+    - pattern: "layered_architecture"
+      layers: ["presentation", "business_logic", "data_access", "database"]
+      principles: [
+        "separation_of_concerns",
+        "dependency_inversion",
+        "abstraction",
+      ]
+      tradeoffs: ["simplicity_vs_flexibility", "performance_vs_maintainability"]
+    - pattern: "microservices"
+      characteristics: [
+        "bounded_contexts",
+        "independent_deployment",
+        "decentralized",
+      ]
+      challenges: [
+        "distributed_complexity",
+        "network_latency",
+        "data_consistency",
+      ]
+      patterns: ["api_gateway", "service_mesh", "saga_pattern"]
+    - pattern: "event_driven_architecture"
+      components: ["event_producers", "event_router", "event_consumers"]
+      patterns: ["pub_sub", "event_sourcing", "cqrs"]
+      benefits: ["loose_coupling", "scalability", "real_time_processing"]
+
+  design_patterns:
+    - pattern: "creational_patterns"
+      examples: ["singleton", "factory", "builder", "prototype"]
+      purpose: "object_creation_mechanisms"
+      considerations: [
+        "thread_safety",
+        "lazy_initialization",
+        "dependency_injection",
+      ]
+    - pattern: "structural_patterns"
+      examples: ["adapter", "composite", "decorator", "facade", "proxy"]
+      purpose: "object_composition"
+      applications: ["interface_adaptation", "functionality_extension"]
+    - pattern: "behavioral_patterns"
+      examples: [
+        "observer",
+        "strategy",
+        "command",
+        "iterator",
+        "template_method",
+      ]
+      purpose: "object_collaboration"
+      benefits: ["flexibility", "reusability", "maintainability"]
+
+  quality_attributes:
+    - pattern: "performance"
+      tactics: [
+        "caching",
+        "load_balancing",
+        "async_processing",
+        "resource_pooling",
+      ]
+      metrics: ["response_time", "throughput", "resource_utilization"]
+    - pattern: "scalability"
+      dimensions: ["vertical", "horizontal", "elastic"]
+      patterns: ["sharding", "replication", "partitioning"]
+    - pattern: "security"
+      layers: ["authentication", "authorization", "encryption", "audit"]
+      principles: ["defense_in_depth", "least_privilege", "zero_trust"]
+
+decision_rules:
+  architecture_selection:
+    - condition: "simple_crud_application"
+      architecture: "layered_monolith"
+      rationale: "simplicity_and_rapid_development"
+    - condition: "high_scalability_requirements"
+      architecture: "microservices"
+      rationale: "independent_scaling_and_deployment"
+    - condition: "real_time_processing"
+      architecture: "event_driven"
+      rationale: "low_latency_and_reactive_processing"
+
+  pattern_application:
+    - condition: "complex_object_creation"
+      pattern: "builder_or_factory"
+      benefit: "encapsulate_construction_logic"
+    - condition: "multiple_implementations"
+      pattern: "strategy_pattern"
+      benefit: "runtime_algorithm_selection"
+    - condition: "cross_cutting_concerns"
+      pattern: "decorator_or_proxy"
+      benefit: "separation_of_concerns"
+
+  trade_off_decisions:
+    - condition: "startup_or_mvp"
+      prioritize: "time_to_market"
+      sacrifice: "perfect_architecture"
+    - condition: "enterprise_system"
+      prioritize: "maintainability_and_security"
+      sacrifice: "initial_simplicity"
+
+specialized_tools:
+  modeling:
+    - c4_model: "Context, containers, components, code"
+    - archimate: "Enterprise architecture modeling"
+    - uml: "Unified modeling language"
+
+  analysis:
+    - sonarqube: "Code quality and architecture"
+    - structure101: "Architecture complexity analysis"
+    - ndepend: "Dependency analysis"
+
+  documentation:
+    - arc42: "Architecture documentation template"
+    - adr_tools: "Architecture decision records"
+    - swagger: "API documentation"
+
+best_practices:
+  design_principles:
+    - solid: "Single responsibility, Open/closed, Liskov, Interface segregation, Dependency inversion"
+    - dry: "Don't repeat yourself"
+    - kiss: "Keep it simple, stupid"
+    - yagni: "You aren't gonna need it"
+
+  evolutionary_architecture:
+    - fitness_functions: "Automated architecture tests"
+    - incremental_change: "Small, reversible modifications"
+    - deferred_decisions: "Last responsible moment"
+    - experimentation: "Spike and learn"
+
+  documentation:
+    - just_enough: "Document decisions, not details"
+    - living_documentation: "Generated from code"
+    - visual_models: "Diagrams over text"
+    - decision_records: "Capture why, not just what"
+
+metrics:
+  - architecture_instability: "Rate of architectural change over time"
+  - coupling_score: "Degree of interdependence between components"
+  - complexity_index: "Architectural complexity measurement"

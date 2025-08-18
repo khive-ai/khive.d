@@ -1,7 +1,3 @@
-# Copyright (c) 2025, HaiyangLi <quantocean.li at gmail dot com>
-#
-# SPDX-License-Identifier: Apache-2.0
-
 """
 khive_new_doc.py - AI-enhanced document scaffolder with template support.
 

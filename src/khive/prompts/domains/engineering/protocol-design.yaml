@@ -1,0 +1,132 @@
+# Protocol Design Domain Module
+
+domain:
+  id: protocol-design
+  type: technical_specialization
+  parent: distributed-systems
+
+knowledge_patterns:
+  protocol_layers:
+    - pattern: "layered_architecture"
+      layers: ["physical", "link", "network", "transport", "application"]
+      principles: [
+        "separation_of_concerns",
+        "interface_abstraction",
+        "encapsulation",
+      ]
+    - pattern: "protocol_state_machines"
+      components: ["states", "transitions", "events", "actions"]
+      verification: ["model_checking", "formal_proofs", "invariant_checking"]
+    - pattern: "message_formats"
+      design: ["fixed_length", "variable_length", "self_describing"]
+      encoding: ["binary", "text_based", "hybrid"]
+
+  reliability_mechanisms:
+    - pattern: "error_detection"
+      techniques: ["checksums", "crc", "hash_functions", "parity"]
+      placement: ["per_message", "per_field", "end_to_end"]
+    - pattern: "flow_control"
+      mechanisms: ["stop_and_wait", "sliding_window", "credit_based"]
+      congestion: ["slow_start", "congestion_avoidance", "fast_recovery"]
+    - pattern: "ordering_guarantees"
+      levels: ["best_effort", "fifo", "total_order", "causal_order"]
+      implementation: [
+        "sequence_numbers",
+        "vector_clocks",
+        "lamport_timestamps",
+      ]
+
+  security_patterns:
+    - pattern: "authentication"
+      methods: [
+        "challenge_response",
+        "public_key",
+        "shared_secret",
+        "zero_knowledge",
+      ]
+      integration: ["in_band", "out_of_band", "layered"]
+    - pattern: "encryption"
+      approaches: ["end_to_end", "hop_by_hop", "selective_field"]
+      key_management: ["pre_shared", "key_exchange", "pki"]
+    - pattern: "integrity"
+      mechanisms: ["mac", "digital_signatures", "authenticated_encryption"]
+
+decision_rules:
+  protocol_selection:
+    - condition: "real_time_requirements"
+      considerations: [
+        "latency_bounds",
+        "jitter_tolerance",
+        "reliability_tradeoffs",
+      ]
+      protocols: ["rtp", "quic", "custom_udp_based"]
+    - condition: "resource_constrained"
+      considerations: ["bandwidth", "memory", "cpu", "battery"]
+      protocols: ["coap", "mqtt", "custom_binary"]
+    - condition: "interoperability_required"
+      considerations: ["standards_compliance", "ecosystem_compatibility"]
+      protocols: ["http", "grpc", "graphql"]
+
+  message_design:
+    - condition: "high_frequency_messages"
+      approach: "binary_encoding"
+      optimization: ["bit_packing", "varint", "delta_encoding"]
+    - condition: "human_readable_needed"
+      approach: "text_protocols"
+      format: ["json", "yaml", "xml"]
+    - condition: "schema_evolution_required"
+      approach: "self_describing"
+      format: ["protobuf", "avro", "msgpack"]
+
+  reliability_level:
+    - condition: "financial_transactions"
+      requirements: ["exactly_once", "atomic", "durable"]
+    - condition: "telemetry_data"
+      requirements: ["at_most_once", "lossy_acceptable"]
+    - condition: "control_plane"
+      requirements: ["at_least_once", "idempotent"]
+
+specialized_tools:
+  protocol_buffers:
+    - protobuf: "Google's protocol buffers"
+    - flatbuffers: "Zero-copy serialization"
+    - capnproto: "Infinitely faster"
+
+  specification_languages:
+    - asn1: "Abstract syntax notation"
+    - thrift: "Cross-language services"
+    - avro: "Schema evolution support"
+
+  testing_frameworks:
+    - scapy: "Packet manipulation"
+    - boofuzz: "Protocol fuzzing"
+    - tlsfuzzer: "TLS protocol testing"
+
+  formal_methods:
+    - tamarin: "Security protocol verification"
+    - proverif: "Cryptographic protocol analyzer"
+    - spin: "Protocol model checking"
+
+best_practices:
+  design_principles:
+    - simplicity: "Favor simple over clever"
+    - extensibility: "Design for future changes"
+    - robustness: "Handle errors gracefully"
+    - efficiency: "Optimize for common case"
+
+  implementation_guidelines:
+    - state_validation: "Verify all state transitions"
+    - timeout_handling: "Explicit timeout for all waits"
+    - resource_bounds: "Limit message sizes and rates"
+    - version_negotiation: "Support multiple versions"
+
+  security_considerations:
+    - defense_in_depth: "Multiple security layers"
+    - fail_secure: "Secure defaults on error"
+    - minimal_disclosure: "Reveal minimum information"
+    - audit_trail: "Log security events"
+
+metrics:
+  - protocol_efficiency: "Message overhead and processing efficiency"
+  - interoperability_score: "Compatibility across different implementations"
+  - security_validation_rate: "Coverage of security property verification"

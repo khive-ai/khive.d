@@ -1,0 +1,33 @@
+domain:
+  id: database-design
+  type: technical_specialization
+  parent: engineering
+
+knowledge_patterns:
+  schema_strategies:
+    - pattern: "third_normal_form"
+      goal: "eliminate_redundancy"
+    - pattern: "eventual_schema"
+      tech: ["dynamodb", "mongo"]
+      tradeoffs: ["denormalization", "duplication"]
+
+  scaling:
+    - pattern: "sharding"
+      keys: ["range", "hash", "composite"]
+    - pattern: "replication"
+      modes: ["leader_follower", "multi_leader", "leaderless"]
+
+decision_rules:
+  db_choice:
+    - condition: "strong_consistency"
+      select: "postgres"
+    - condition: "write_heavy_unstructured"
+      select: "mongodb"
+
+specialized_tools:
+  design: ["dbml", "prisma_schema"]
+  migration: ["flyway", "liquibase", "alembic"]
+
+best_practices: {}
+
+metrics: ["p95_query_ms", "replication_lag_ms", "cache_hit_ratio"]

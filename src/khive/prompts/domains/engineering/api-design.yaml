@@ -1,0 +1,36 @@
+domain:
+  id: api-design
+  type: technical_specialization
+  parent: engineering
+
+knowledge_patterns:
+  style_guides:
+    - pattern: "restful"
+      constraints: ["resource_based", "stateless", "http_verbs"]
+    - pattern: "grpc"
+      features: ["proto_schema", "http2", "bi_stream"]
+    - pattern: "graphql"
+      pros: ["flexible_queries"]
+      cons: ["complexity_dos"]
+
+  versioning:
+    - pattern: "uri_version"
+    - pattern: "header_version"
+    - pattern: "semver_in_schema"
+
+decision_rules:
+  protocol_selection:
+    - condition: "mobile_network_constraints"
+      choose: "grpc"
+    - condition: "client_data_shaping"
+      choose: "graphql"
+    - condition: "broad_http_support"
+      choose: "restful"
+
+specialized_tools:
+  spec_formats: ["openapi", "proto", "graphql_sdl"]
+  testing: ["postman", "k6", "dredd"]
+
+best_practices: {}
+
+metrics: ["breaking_change_rate", "p95_request_ms", "error_rate_pct"]

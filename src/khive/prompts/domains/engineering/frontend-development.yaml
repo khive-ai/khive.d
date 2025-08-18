@@ -1,0 +1,39 @@
+domain:
+  id: frontend-development
+  type: technical_specialization
+  parent: engineering
+
+knowledge_patterns:
+  rendering_architectures:
+    - pattern: "csr_ssr_isr"
+      variants: ["csr", "ssr", "ssg", "isr"]
+      tradeoffs: ["seo", "time_to_first_byte", "update_latency"]
+    - pattern: "islands_architecture"
+      benefits: ["partial_hydration", "reduced_js_payload"]
+      implementations: ["astro", "qwik", "fresh"]
+
+  state_management:
+    - pattern: "client_state"
+      libraries: ["zustand", "redux", "jotai", "valtio"]
+      strategies: ["global_store", "hooks", "context"]
+    - pattern: "server_state"
+      libraries: ["react_query", "swr", "trpc"]
+      concerns: ["caching", "revalidation", "optimistic_updates"]
+
+decision_rules:
+  rendering_strategy:
+    - condition: "seo_critical AND dynamic_content"
+      choose: "ssr"
+    - condition: "rare_updates AND many_pages"
+      choose: "ssg"
+    - condition: "dashboard_like"
+      choose: "csr_or_islands"
+
+specialized_tools:
+  bundlers: ["vite", "webpack", "rspack"]
+  linters_formatters: ["eslint", "prettier", "stylelint"]
+  performance_profiler: ["lighthouse", "web_vitals"]
+
+best_practices: {}
+
+metrics: ["first_contentful_paint_ms", "cls", "bundle_size_kb"]

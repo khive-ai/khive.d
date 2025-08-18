@@ -1,0 +1,125 @@
+# DevOps Automation Domain Module
+
+domain:
+  id: devops-automation
+  type: operational_excellence
+  parent: agile-methodology
+
+knowledge_patterns:
+  ci_cd_pipelines:
+    - pattern: "continuous_integration"
+      stages: [
+        "source_control",
+        "build_automation",
+        "test_automation",
+        "artifact_creation",
+      ]
+      practices: [
+        "feature_branches",
+        "pull_request_validation",
+        "automated_testing",
+      ]
+      tools: ["jenkins", "github_actions", "gitlab_ci", "azure_devops"]
+    - pattern: "continuous_deployment"
+      strategies: [
+        "blue_green",
+        "canary_releases",
+        "rolling_updates",
+        "feature_flags",
+      ]
+      environments: [
+        "development",
+        "staging",
+        "production",
+        "disaster_recovery",
+      ]
+
+  infrastructure_as_code:
+    - pattern: "declarative_infrastructure"
+      tools: ["terraform", "cloudformation", "pulumi", "ansible"]
+      principles: ["immutable_infrastructure", "version_control", "peer_review"]
+    - pattern: "configuration_management"
+      approaches: ["push_based", "pull_based", "hybrid"]
+      tools: ["ansible", "puppet", "chef", "saltstack"]
+
+  monitoring_observability:
+    - pattern: "three_pillars_observability"
+      components: ["metrics", "logs", "traces"]
+      tools: ["prometheus", "grafana", "elasticsearch", "jaeger"]
+    - pattern: "alerting_automation"
+      levels: [
+        "service_level_objectives",
+        "error_budgets",
+        "escalation_policies",
+      ]
+      channels: ["pagerduty", "slack", "email", "webhook"]
+
+decision_rules:
+  pipeline_design:
+    - condition: "microservices_architecture"
+      approach: "decentralized_pipelines"
+      patterns: [
+        "service_specific_pipelines",
+        "shared_libraries",
+        "artifact_repositories",
+      ]
+    - condition: "monolithic_application"
+      approach: "centralized_pipeline"
+      optimization: [
+        "parallel_testing",
+        "incremental_builds",
+        "selective_deployment",
+      ]
+    - condition: "compliance_requirements"
+      additions: ["approval_gates", "audit_logging", "security_scanning"]
+
+  deployment_strategy:
+    - condition: "zero_downtime_requirement"
+      approach: "blue_green_or_canary"
+      prerequisites: ["load_balancer", "health_checks", "rollback_automation"]
+    - condition: "high_frequency_deployments"
+      approach: "feature_flags_with_progressive_rollout"
+      benefits: ["risk_reduction", "faster_feedback", "independent_releases"]
+
+specialized_tools:
+  ci_cd_platforms:
+    - jenkins: "Open-source automation server"
+    - github_actions: "Git-native CI/CD workflows"
+    - gitlab_ci: "Integrated DevOps platform"
+    - tekton: "Kubernetes-native CI/CD"
+
+  infrastructure_tools:
+    - terraform: "Multi-cloud infrastructure provisioning"
+    - kubernetes: "Container orchestration platform"
+    - helm: "Kubernetes package manager"
+    - istio: "Service mesh for microservices"
+
+  monitoring_stack:
+    - prometheus: "Time-series metrics database"
+    - grafana: "Visualization and dashboarding"
+    - elk_stack: "Elasticsearch, Logstash, Kibana for logs"
+    - datadog: "Comprehensive monitoring platform"
+
+best_practices:
+  pipeline_engineering:
+    - fail_fast: "Catch issues early in the pipeline"
+    - parallel_execution: "Maximize pipeline throughput"
+    - artifact_promotion: "Build once, deploy everywhere"
+    - pipeline_as_code: "Version control pipeline definitions"
+
+  security_integration:
+    - shift_left_security: "Security scanning in early stages"
+    - secret_management: "Secure handling of credentials"
+    - compliance_automation: "Automated compliance checking"
+    - vulnerability_scanning: "Container and dependency scanning"
+
+  operational_excellence:
+    - infrastructure_monitoring: "Proactive system health monitoring"
+    - capacity_planning: "Predictive resource management"
+    - disaster_recovery: "Automated backup and recovery procedures"
+    - cost_optimization: "Resource utilization monitoring"
+
+metrics:
+  - deploy_frequency: "Number of deployments per day/week"
+  - lead_time: "Time from commit to production deployment"
+  - mean_time_to_recovery: "Average time to restore service after failure"

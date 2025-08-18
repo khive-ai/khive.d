@@ -1,56 +1,18 @@
 [project]
 name = "khive"
-version = "0.3.4"
-description = "Autonomous software engineering department"
+version = "0.4.0"
+description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "aiocache>=0.12.0",
     "aiofiles>=24.1.0",
-    "aiohttp>=3.11.0",
-    "backoff>=2.0.0",
-    "fastmcp>=2.3.3",
-    "lionfuncs>=3.2.0",
-    "mcp>=1.8.0",
-    "openai>=1.78.1",
-    "orjson>=3.10.18",
-    "pydantic-settings>=2.0.0",
-    "pydapter>=0.2.0",
-    "pyyaml>=6.0.0",
-    "tiktoken>=0.9.0",
-]
-
-[dependency-groups]
-dev = [
-    "black>=25.1.0",
-    "freezegun>=1.5.1",
-    "ipykernel>=6.29.5",
-    "isort>=6.0.1",
-    "nbqa>=1.9.1",
-    "pre-commit>=4.2.0",
-    "pytest-asyncio>=0.23.0", # Added pytest-asyncio
-    "pytest-cov>=4.1.0",
-    "pytest-mock>=3.10.0",
-    "questionary>=2.1.0",
-    "ruff>=0.11.8",
-]
-
-
-[project.optional-dependencies]
-reader = [
-    "docling>=2.31.0",
-]
-schema = [
-    "datamodel-code-generator>=0.30.1",
-]
-ollama = [
-    "ollama>=0.4.8",
-]
-
-all = [
-    "docling>=2.31.0",
-    "ollama>=0.4.8",
-    "datamodel-code-generator>=0.30.1",
+    "fastmcp>=2.11.3",
+    "lionagi[graph,postgres,rich,schema]>=0.15.5",
+    "nest-asyncio>=1.6.0",
+    "openai>=1.99.9",
+    "pydantic-settings>=2.10.1",
+    "pyyaml>=6.0.2",
+    "tenacity>=9.1.2",
 ]
 
 [tool.pytest.ini_options]
@@ -62,20 +24,19 @@ asyncio_mode = "auto"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "isort>=6.0.1",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
+    "ruff>=0.12.9",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/khive"]
-
-[tool.hatch.build]
-exclude = [
-    "dev/*",
-    "data/*",
-    "notebooks/*",
-    "tests/*",
-    "*.pyc",
-    "__pycache__",
-    "temp_logs/*",
-    "logs/*",
-]
 
 [project.scripts]                # PEP 621 console-scripts table
 khive         = "khive.cli.khive_cli:main"

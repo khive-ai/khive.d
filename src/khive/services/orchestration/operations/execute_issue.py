@@ -1,0 +1,83 @@
+import logging
+
+from lionagi.libs.concurrency import get_cancelled_exc_class
+
+from ..orchestrator import LionOrchestrator
+from ..parts import FanoutPatterns, Issue, IssueExecution, IssuePlan, IssueResult
+from ..prompts import (
+    KHIVE_PLAN_REMINDER,
+    REDO_ORCHESTRATOR_INSTRUCTION,
+    SYNTHESIS_INSTRUCTION,
+)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("KhiveOperations")
+
+
+async def execute_issue(
+    issue: Issue, issue_plan: IssuePlan | None = None, **kw
+) -> tuple[bool, Issue]:
+    if issue.content.git_processed is True:
+        logger.info(
+            f"🔵 Skipping already processed issue #{issue.content.issue_number}"
+        )
+        return
+    issue_result: IssueResult = issue.content.issue_result
+    is_redo = issue.content.needs_redo
+    redo_ctx = issue.content.redo_ctx
+
+    orc = LionOrchestrator(issue_plan.flow_name)
+    await orc.initialize("sonnet")
+
+    # 1. handle parameters and instructions -------------------------------------------------------
+    result: dict = {}
+    success = True
+    planning_instruction = (
+        KHIVE_PLAN_REMINDER + issue_plan.fanout_config.planning_instruction
+    )
+
+    if is_redo:
+        planning_instruction = (
+            REDO_ORCHESTRATOR_INSTRUCTION.format(redo_ctx=redo_ctx)
+            + planning_instruction
+        )
+
+    params = issue_plan.fanout_config.model_dump()
+    params["planning_instruction"] = planning_instruction
+
+    meth = orc.fanout
+
+    # 2. handle refinement pattern if applicable ---------------------------------------------------
+    if issue_plan.pattern == FanoutPatterns.W_REFINEMENT:
+        params.update(issue_plan.refinement_config.model_dump())
+        # Add context parameters for gate evaluation (only needed for gated refinement)
+        params["project_phase"] = issue_plan.project_phase
+        params["is_critical_path"] = issue_plan.is_critical_path
+        params["is_experimental"] = issue_plan.is_experimental
+        meth = orc.fanout_w_gated_refinement
+
+    params["synth_instruction"] = (
+        issue_plan.fanout_config.synth_instruction
+        + SYNTHESIS_INSTRUCTION.format(flow_name=issue_plan.flow_name)
+    )
+
+    # 3. run the orchestration method -----------------------------------------------------------------
+    try:
+        result = await meth(**params)
+        success = True
+    except get_cancelled_exc_class():
+        logger.warning(f"⚠️ Issue #{issue_plan.issue_number} was cancelled.")
+        success = False
+    except Exception as e:
+        logger.error(f"💥 Issue #{issue_plan.issue_number} error: {e}")
+        success = False
+
+    issue_result.executions.append(
+        IssueExecution(success=success, result=result, is_redo=is_redo)
+    )
+    logger.info(
+        f"{'✅' if success else '❌'} Issue #{issue_plan.issue_number} {'completed' if success else 'failed'}"
+    )
+    await orc.save_json()
+    await issue.sync()
+    return success, issue

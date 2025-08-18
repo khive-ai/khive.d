@@ -1,0 +1,37 @@
+domain:
+  id: typescript
+  type: programming_language
+  parent: engineering
+
+knowledge_patterns:
+  type_system_features:
+    - pattern: "structural_typing"
+      implications: ["duck_typing_safety", "excess_property_checks"]
+    - pattern: "conditional_types"
+      utilities: ["infer", "function_overloads"]
+    - pattern: "decorators"
+      stage: "experimental"
+      common_uses: ["dependency_injection", "meta_programming"]
+
+  build_pipeline:
+    - pattern: "tsc_vs_swc_vs_esbuild"
+      tradeoffs: ["speed", "type_check", "plugin_support"]
+    - pattern: "incremental_compilation"
+      flags: ["--incremental", "--composite"]
+      cache: ".tsbuildinfo"
+
+decision_rules:
+  strictness_level:
+    - condition: "library_code"
+      flags: ["--strict", "--noImplicitOverride"]
+    - condition: "legacy_migration"
+      flags: ["--strictNullChecks_off", "--skipLibCheck"]
+
+specialized_tools:
+  linters: ["typescript-eslint", "tslint (deprecated)"]
+  type_analyzers: ["tsc", "tsserver", "ts-morph"]
+  migration_helpers: ["ts-migrate", "tsd"]
+
+best_practices: {}
+
+metrics: ["compile_time_s", "type_error_density", "bundle_typings_size_kb"]

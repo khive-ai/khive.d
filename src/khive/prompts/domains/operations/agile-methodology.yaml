@@ -1,0 +1,139 @@
+# Agile Methodology Domain Module
+
+domain:
+  id: agile-methodology
+  type: operational_method
+  parent: operational-excellence
+
+knowledge_patterns:
+  frameworks:
+    - pattern: "scrum"
+      components: ["sprints", "roles", "ceremonies", "artifacts"]
+      roles: ["product_owner", "scrum_master", "development_team"]
+      ceremonies: [
+        "sprint_planning",
+        "daily_standup",
+        "sprint_review",
+        "retrospective",
+      ]
+      artifacts: ["product_backlog", "sprint_backlog", "increment"]
+    - pattern: "kanban"
+      principles: [
+        "visualize_work",
+        "limit_wip",
+        "manage_flow",
+        "explicit_policies",
+      ]
+      metrics: ["lead_time", "cycle_time", "throughput", "wip"]
+      practices: ["pull_system", "continuous_delivery", "kaizen"]
+    - pattern: "extreme_programming"
+      practices: [
+        "pair_programming",
+        "tdd",
+        "continuous_integration",
+        "refactoring",
+      ]
+      values: ["simplicity", "communication", "feedback", "courage", "respect"]
+
+  estimation_techniques:
+    - pattern: "story_points"
+      scales: ["fibonacci", "t_shirt_sizes", "powers_of_2"]
+      considerations: ["complexity", "uncertainty", "effort"]
+      calibration: ["reference_stories", "team_velocity", "historical_data"]
+    - pattern: "planning_poker"
+      process: [
+        "individual_estimates",
+        "discussion",
+        "re_estimation",
+        "consensus",
+      ]
+      benefits: ["team_alignment", "knowledge_sharing", "bias_reduction"]
+    - pattern: "monte_carlo_simulation"
+      inputs: ["historical_velocity", "scope_variability", "risk_factors"]
+      outputs: ["completion_probability", "date_ranges", "confidence_intervals"]
+
+  team_dynamics:
+    - pattern: "self_organizing_teams"
+      characteristics: ["autonomy", "cross_functional", "accountability"]
+      maturity_stages: ["forming", "storming", "norming", "performing"]
+    - pattern: "continuous_improvement"
+      practices: ["retrospectives", "kaizen", "experiments", "metrics_driven"]
+      frameworks: ["pdca_cycle", "improvement_kata", "a3_thinking"]
+    - pattern: "psychological_safety"
+      elements: ["trust", "respect", "openness", "learning_from_failure"]
+      indicators: ["question_asking", "mistake_admission", "help_seeking"]
+
+decision_rules:
+  framework_selection:
+    - condition: "fixed_scope_variable_time"
+      framework: "scrum"
+      rationale: "iterative_delivery_with_regular_feedback"
+    - condition: "continuous_flow_work"
+      framework: "kanban"
+      rationale: "optimize_flow_and_reduce_waste"
+    - condition: "high_technical_risk"
+      framework: "xp_practices"
+      rationale: "technical_excellence_and_rapid_feedback"
+
+  sprint_planning:
+    - condition: "new_team"
+      velocity: "conservative_estimate"
+      buffer: "20-30%"
+    - condition: "stable_team"
+      velocity: "rolling_average"
+      buffer: "10-15%"
+    - condition: "high_uncertainty"
+      approach: "spike_and_research"
+      commitment: "provisional"
+
+  process_adaptation:
+    - condition: "missing_sprint_goals"
+      intervention: [
+        "root_cause_analysis",
+        "backlog_refinement",
+        "capacity_review",
+      ]
+    - condition: "low_quality_deliverables"
+      intervention: [
+        "definition_of_done_review",
+        "testing_practices",
+        "code_review",
+      ]
+    - condition: "team_burnout"
+      intervention: ["sustainable_pace", "workload_balance", "recovery_sprints"]
+
+specialized_tools:
+  project_management:
+    - jira: "Agile project tracking"
+    - azure_devops: "End-to-end agile tools"
+    - trello: "Kanban boards"
+    - clubhouse: "Modern agile platform"
+
+  collaboration:
+    - miro: "Virtual whiteboarding"
+    - slack: "Team communication"
+    - confluence: "Knowledge sharing"
+
+  metrics:
+    - velocity_tracking: "Sprint velocity charts"
+    - burndown_charts: "Progress visualization"
+    - cumulative_flow: "Work item flow analysis"
+
+best_practices:
+  ceremony_execution:
+    - standup: "Time-boxed, focused on impediments"
+    - planning: "Whole team participation, clear acceptance criteria"
+    - review: "Working software demonstration, stakeholder feedback"
+    - retrospective: "Blameless, action-oriented, follow-through"
+
+  backlog_management:
+    - refinement: "Ongoing activity, not just ceremony"
+    - prioritization: "Value-driven, dependencies considered"
+    - sizing: "Relative, not absolute estimates"
+    - ready_criteria: "Clear, testable, sized"
+
+  scaling_practices:
+    - safe: "Scaled agile framework"
+    - less: "Large scale scrum"
+    - nexus: "Scrum scaling framework"
+    - spotify_model: "Tribes, squads, chapters, guilds"

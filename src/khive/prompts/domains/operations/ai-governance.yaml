@@ -1,0 +1,140 @@
+# AI Governance Domain Module
+
+domain:
+  id: ai-governance
+  type: knowledge_specialization
+  parent: null
+
+knowledge_patterns:
+  ethical_frameworks:
+    - pattern: "ai_ethics_principles"
+      principles: [
+        "fairness",
+        "accountability",
+        "transparency",
+        "human_oversight",
+      ]
+      frameworks: [
+        "ieee_ethically_aligned_design",
+        "eu_ai_act",
+        "partnership_ai",
+      ]
+    - pattern: "responsible_ai_development"
+      practices: ["bias_testing", "explainability", "privacy_preservation"]
+      governance: [
+        "ethics_review_boards",
+        "impact_assessments",
+        "stakeholder_engagement",
+      ]
+
+  regulatory_compliance:
+    - pattern: "ai_regulation_landscape"
+      jurisdictions: [
+        "eu_ai_act",
+        "us_algorithmic_accountability",
+        "china_ai_regulation",
+      ]
+      requirements: [
+        "risk_assessment",
+        "documentation",
+        "human_oversight",
+        "audit_trails",
+      ]
+    - pattern: "sector_specific_requirements"
+      domains: [
+        "healthcare_fda",
+        "finance_model_risk",
+        "hiring_anti_discrimination",
+      ]
+      standards: ["iso_iec_23053", "nist_ai_rmf", "ieee_standards"]
+
+  risk_management:
+    - pattern: "ai_risk_assessment"
+      categories: [
+        "safety_risks",
+        "bias_discrimination",
+        "privacy_violations",
+        "misuse",
+      ]
+      mitigation: [
+        "technical_safeguards",
+        "procedural_controls",
+        "monitoring_systems",
+      ]
+    - pattern: "algorithmic_auditing"
+      approaches: [
+        "bias_audits",
+        "performance_monitoring",
+        "adversarial_testing",
+      ]
+      metrics: [
+        "demographic_parity",
+        "equalized_odds",
+        "counterfactual_fairness",
+      ]
+
+decision_rules:
+  risk_classification:
+    - condition: "high_risk_use_case"
+      requirements: [
+        "human_oversight",
+        "extensive_testing",
+        "conformity_assessment",
+      ]
+      examples: [
+        "critical_infrastructure",
+        "law_enforcement",
+        "healthcare_diagnosis",
+      ]
+    - condition: "foundation_models"
+      requirements: [
+        "systemic_risk_evaluation",
+        "cybersecurity_measures",
+        "adversarial_testing",
+      ]
+      thresholds: ["compute_flops", "capabilities_evaluation"]
+
+  governance_implementation:
+    - condition: "deployment_in_eu"
+      compliance: "eu_ai_act_requirements"
+      documentation: [
+        "risk_management_system",
+        "data_governance",
+        "human_oversight",
+      ]
+    - condition: "algorithmic_decision_making"
+      requirements: ["explainability", "appeal_mechanisms", "bias_monitoring"]
+
+specialized_tools:
+  fairness_assessment:
+    - aif360: "AI Fairness 360 toolkit"
+    - fairlearn: "Fairness assessment and mitigation"
+    - what_if_tool: "Visual interface for ML fairness"
+
+  explainability:
+    - shap: "SHapley Additive exPlanations"
+    - lime: "Local Interpretable Model-agnostic Explanations"
+    - captum: "Model interpretability for PyTorch"
+
+  governance_platforms:
+    - mlflow: "Model lifecycle management with governance"
+    - weights_biases: "Experiment tracking with compliance features"
+    - arthur_ai: "Model monitoring and governance"
+
+best_practices:
+  ethical_ai_development:
+    - diverse_teams: "Include diverse perspectives in development"
+    - stakeholder_engagement: "Involve affected communities in design"
+    - continuous_monitoring: "Ongoing assessment of AI system impacts"
+    - transparency: "Clear documentation of AI system capabilities and limitations"
+
+  regulatory_preparation:
+    - proactive_compliance: "Design for regulatory requirements from start"
+    - documentation_discipline: "Maintain comprehensive development records"
+    - risk_assessment_integration: "Embed risk evaluation in development process"
+    - governance_by_design: "Build governance mechanisms into AI systems"
+
+metrics:
+  - compliance_coverage: "Percentage of regulatory requirements addressed"
+  - ethics_review_frequency: "Regular assessment of ethical implications"
+  - stakeholder_satisfaction: "Feedback from affected communities"
