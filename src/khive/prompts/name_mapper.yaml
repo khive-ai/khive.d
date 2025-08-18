@@ -1,0 +1,91 @@
+# Domain Synonym Mapping
+# Maps common synonyms and variations to canonical domain IDs
+
+synonyms:
+  # Web Development variants
+  "web development": "frontend-development"
+  "web dev": "frontend-development"
+  "frontend": "frontend-development"
+  "ui": "frontend-development"
+  "ui_engineering": "frontend-development"
+
+  # Backend variants
+  "backend_deployment": "backend-development"
+  "backend deployment": "backend-development"
+  "backend": "backend-development"
+  "server": "backend-development"
+  "api": "backend-development"
+
+  # Communication variants
+  "websocket": "websocket-communication"
+  "ws": "websocket-communication"
+  "realtime": "websocket-communication"
+
+  # AI/ML variants
+  "multi_modal_systems": "multi-modal-systems"
+  "multimodal": "multi-modal-systems"
+  "multi modal": "multi-modal-systems"
+
+  # Architecture variants
+  "microservices": "microservices-architecture"
+  "micro-services": "microservices-architecture"
+  "microservice": "microservices-architecture"
+
+  # Security variants
+  "security": "security-architecture"
+  "sec": "security-architecture"
+  "auth": "security-architecture"
+  "authentication": "security-architecture"
+
+  # Cloud variants
+  "cloud": "cloud-native"
+  "cloud-native": "cloud-native"
+  "cloud native": "cloud-native"
+
+  # Event variants
+  "event": "event-sourcing"
+  "events": "event-sourcing"
+  "event_sourcing": "event-sourcing"
+
+  # Testing variants
+  "testing": "playwright-testing"
+  "test": "playwright-testing"
+  "e2e": "playwright-testing"
+  "end-to-end": "playwright-testing"
+
+  # Neural network variants
+  "neural": "neural-networks"
+  "nn": "neural-networks"
+  "neural_networks": "neural-networks"
+  "ai": "neural-networks"
+
+  # Additional canonical mappings from feedback
+  "security-architecture": "security-engineering"
+  "backend_deployment": "backend-development"
+  "ai-architectures": "ai-architecture"
+
+  # General pluralization rules
+  "networks": "network-architecture"
+  "systems": "system-architecture"
+  "services": "service-architecture"
+  "architectures": "architecture"
+
+# Canonical domain list (for validation)
+canonical_domains:
+  - frontend-development
+  - backend-development
+  - websocket-communication
+  - multi-modal-systems
+  - microservices-architecture
+  - security-architecture
+  - cloud-native
+  - event-sourcing
+  - playwright-testing
+  - neural-networks
+  - distributed-systems
+  - service-mesh
+  - typescript
+  - nextjs
+  - rust-performance
+  - category-theory
+  - byzantine-fault-tolerance

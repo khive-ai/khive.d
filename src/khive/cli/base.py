@@ -1,7 +1,3 @@
-# Copyright (c) 2025, HaiyangLi <quantocean.li at gmail dot com>
-#
-# SPDX-License-Identifier: Apache-2.0
-
 """
 Base classes and patterns for khive CLI commands.
 
@@ -202,7 +198,6 @@ class BaseCLICommand(ABC):
                 # Try to get existing event loop
                 loop = asyncio.get_running_loop()
                 # If we're already in an event loop, we need to handle this differently
-                import concurrent.futures
                 import threading
 
                 result_container = {}
@@ -243,9 +238,8 @@ class BaseCLICommand(ABC):
                 if "no running event loop" in str(e).lower():
                     # For MCP command, suppress asyncio warnings during shutdown
                     if hasattr(self, "command_name") and self.command_name == "mcp":
-                        import warnings
                         import sys
-                        import os
+                        import warnings
 
                         # Capture stderr to suppress FastMCP/anyio error messages
                         original_stderr = sys.stderr

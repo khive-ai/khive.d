@@ -1,7 +1,3 @@
-# Copyright (c) 2025, HaiyangLi <quantocean.li at gmail dot com>
-#
-# SPDX-License-Identifier: Apache-2.0
-
 """
 khive_mcp.py - MCP (Model Context Protocol) server management using FastMCP.
 
@@ -33,21 +29,19 @@ import shutil
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from fastmcp.client import Client
 from fastmcp.client.transports import (
-    StdioTransport,
     PythonStdioTransport,
     SSETransport,
+    StdioTransport,
     StreamableHttpTransport,
 )
-
 
 from khive.utils import BaseConfig, die, error_msg, info_msg, log_msg, warn_msg
 
 from .base import BaseCLICommand, CLIResult, cli_command
-
 
 # Timeouts based on community recommendations
 DEFAULT_TIMEOUT = 30.0  # Increased from 10s
@@ -245,7 +239,7 @@ class MCPCommand(BaseCLICommand):
         if env_file.exists():
             try:
                 log_msg(f"Loading environment variables from {env_file}")
-                with open(env_file, "r") as f:
+                with open(env_file) as f:
                     for line_num, line in enumerate(f, 1):
                         line = line.strip()
                         # Skip empty lines and comments
@@ -308,7 +302,7 @@ class MCPCommand(BaseCLICommand):
                 # If target variable is not set, try to find it from source variables
                 if target_var not in merged_env or not merged_env[target_var]:
                     for source_var in source_vars:
-                        if source_var in merged_env and merged_env[source_var]:
+                        if merged_env.get(source_var):
                             merged_env[target_var] = merged_env[source_var]
                             log_msg(
                                 f"Mapped {source_var} -> {target_var} for server '{server_name}'"
@@ -343,7 +337,7 @@ class MCPCommand(BaseCLICommand):
                 warn_msg(f"Unknown transport type '{transport}', defaulting to stdio")
 
         # 2. URL presence indicates SSE/HTTP transport
-        if "url" in server_config and server_config["url"]:
+        if server_config.get("url"):
             url = server_config["url"]
             if url.startswith(("http://", "https://")):
                 return "sse", url
@@ -369,11 +363,11 @@ class MCPCommand(BaseCLICommand):
                 # Many MCP servers in Docker expose HTTP endpoints
                 # But without explicit URL, we'll try stdio first with shorter timeout
                 log_msg(
-                    f"Detected Docker MCP server, using stdio transport with shorter timeout"
+                    "Detected Docker MCP server, using stdio transport with shorter timeout"
                 )
                 return "stdio", None
             else:
-                log_msg(f"Detected Docker command, using stdio transport")
+                log_msg("Detected Docker command, using stdio transport")
                 return "stdio", None
 
         # Check if it's a Python script or module
@@ -382,7 +376,7 @@ class MCPCommand(BaseCLICommand):
             or command.startswith(("python ", "python3 ", "py "))
             or command.endswith(".py")
         ):
-            log_msg(f"Detected Python command, using stdio transport")
+            log_msg("Detected Python command, using stdio transport")
             return "stdio", None
 
         # Check if it's a Node.js command
@@ -391,18 +385,18 @@ class MCPCommand(BaseCLICommand):
             or command.startswith(("node ", "npm ", "npx ", "yarn "))
             or command.endswith(".js")
         ):
-            log_msg(f"Detected Node.js command, using stdio transport")
+            log_msg("Detected Node.js command, using stdio transport")
             return "stdio", None
 
         # Check if it's an executable file
         resolved_command = self._resolve_command_path(command)
         if Path(resolved_command).exists() and os.access(resolved_command, os.X_OK):
-            log_msg(f"Detected executable file, using stdio transport")
+            log_msg("Detected executable file, using stdio transport")
             return "stdio", None
 
         # Check if it's a system command
         if shutil.which(command.split()[0] if " " in command else command):
-            log_msg(f"Detected system command, using stdio transport")
+            log_msg("Detected system command, using stdio transport")
             return "stdio", None
 
         # Default to stdio with warning
@@ -599,7 +593,7 @@ class MCPCommand(BaseCLICommand):
                     )
 
         # Use standard StdioTransport (not our custom one) to avoid interference
-        log_msg(f"Using standard StdioTransport")
+        log_msg("Using standard StdioTransport")
         return StdioTransport(
             command=resolved_command,
             args=server_config.args,
@@ -1008,7 +1002,7 @@ class MCPCommand(BaseCLICommand):
                             f"Calling tool '{tool_name}' on server '{server_name}' with args: {arguments}"
                         )
                         result = await client.call_tool(tool_name, arguments)
-                        log_msg(f"Tool call completed successfully")
+                        log_msg("Tool call completed successfully")
 
                         # Format result based on content type
                         formatted_result = self._format_tool_result(result)

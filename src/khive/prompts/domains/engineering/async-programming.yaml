@@ -1,0 +1,158 @@
+# Async Programming Domain Module
+
+domain:
+  id: async-programming
+  type: technical_specialization
+  parent: engineering
+
+knowledge_patterns:
+  async_primitives:
+    - pattern: "futures_promises"
+      concepts: [
+        "deferred_computation",
+        "eventual_value",
+        "completion_callbacks",
+      ]
+      states: ["pending", "fulfilled", "rejected"]
+      composition: ["then", "map", "flatmap", "race", "all"]
+    - pattern: "async_await"
+      syntax: ["async_functions", "await_expressions", "top_level_await"]
+      execution: [
+        "cooperative_scheduling",
+        "continuation_passing",
+        "state_machines",
+      ]
+      languages: ["javascript", "python", "rust", "c#", "kotlin"]
+    - pattern: "coroutines"
+      types: ["stackless", "stackful", "symmetric", "asymmetric"]
+      operations: ["yield", "yield_from", "send", "close"]
+      use_cases: ["generators", "pipelines", "cooperative_multitasking"]
+
+  concurrency_models:
+    - pattern: "event_loop"
+      components: ["task_queue", "io_polling", "timer_management", "callbacks"]
+      implementations: ["libuv", "epoll", "kqueue", "iocp"]
+      single_vs_multi: ["single_threaded_async", "thread_pool_executor"]
+    - pattern: "actor_model"
+      principles: [
+        "message_passing",
+        "no_shared_state",
+        "location_transparency",
+      ]
+      frameworks: ["akka", "erlang_otp", "actix", "orleans"]
+      patterns: ["supervision", "let_it_crash", "backpressure"]
+    - pattern: "csp_channels"
+      operations: ["send", "receive", "select", "close"]
+      types: ["buffered", "unbuffered", "broadcast"]
+      languages: ["go", "rust", "clojure_core_async"]
+
+  synchronization:
+    - pattern: "async_synchronization"
+      primitives: [
+        "async_mutex",
+        "async_semaphore",
+        "async_rwlock",
+        "async_barrier",
+      ]
+      considerations: ["no_blocking", "fairness", "async_cancellation"]
+      deadlock_prevention: ["lock_ordering", "try_lock", "timeout"]
+    - pattern: "coordination_patterns"
+      constructs: ["async_queue", "async_pubsub", "async_pool"]
+      flow_control: ["backpressure", "rate_limiting", "circuit_breaker"]
+    - pattern: "cancellation"
+      mechanisms: ["cancellation_token", "abort_signal", "context_cancellation"]
+      propagation: ["structured_concurrency", "cancellation_scope"]
+
+  error_handling:
+    - pattern: "async_error_propagation"
+      strategies: ["result_types", "error_boundaries", "supervision_trees"]
+      aggregation: ["first_error", "all_errors", "error_accumulation"]
+    - pattern: "timeout_handling"
+      approaches: [
+        "race_with_timeout",
+        "deadline_propagation",
+        "cascading_timeouts",
+      ]
+      recovery: ["retry_with_backoff", "circuit_breaker", "fallback"]
+    - pattern: "partial_failure"
+      handling: ["compensating_actions", "saga_pattern", "eventual_consistency"]
+
+decision_rules:
+  concurrency_model_selection:
+    - condition: "io_bound_workload"
+      model: "async_await_event_loop"
+      rationale: "efficient_io_multiplexing"
+    - condition: "cpu_bound_workload"
+      model: "thread_pool_or_process_pool"
+      rationale: "true_parallelism_required"
+    - condition: "mixed_workload"
+      model: "hybrid_async_with_worker_threads"
+      rationale: "best_of_both_worlds"
+
+  async_primitive_choice:
+    - condition: "simple_sequential_async"
+      use: "async_await"
+      avoid: "callback_hell"
+    - condition: "complex_coordination"
+      use: "channels_or_actors"
+      avoid: "shared_mutable_state"
+    - condition: "streaming_data"
+      use: "async_iterators_or_reactive_streams"
+      avoid: "eager_collection"
+
+  error_strategy:
+    - condition: "transient_errors_expected"
+      strategy: "retry_with_exponential_backoff"
+      limit: "circuit_breaker_after_threshold"
+    - condition: "partial_success_acceptable"
+      strategy: "collect_successes_report_failures"
+      aggregate: "return_partial_results"
+
+specialized_tools:
+  language_specific:
+    javascript:
+      - libuv: "Node.js event loop"
+      - web_workers: "Browser parallelism"
+    python:
+      - asyncio: "Standard async library"
+      - trio: "Structured concurrency"
+      - curio: "Coroutine concurrency"
+    rust:
+      - tokio: "Async runtime"
+      - async_std: "Std-like async"
+      - smol: "Small async runtime"
+
+  debugging:
+    - async_stack_traces: "Preserve call context"
+    - async_profilers: "Visualize task execution"
+    - race_detectors: "Find data races"
+
+  testing:
+    - deterministic_scheduling: "Reproducible async tests"
+    - time_mocking: "Control async time"
+    - async_assertions: "Eventually consistent checks"
+
+best_practices:
+  structured_concurrency:
+    - task_scoping: "Child tasks bounded by parent"
+    - resource_cleanup: "Guaranteed on scope exit"
+    - error_propagation: "Parent notified of child failures"
+
+  performance:
+    - avoid_blocking: "Never block the event loop"
+    - batch_operations: "Reduce async overhead"
+    - connection_pooling: "Reuse expensive resources"
+    - lazy_initialization: "Defer until needed"
+
+  debugging_async:
+    - meaningful_task_names: "Aid debugging and profiling"
+    - context_propagation: "Trace IDs across async boundaries"
+    - timeout_budgets: "Prevent infinite waits"
+    - structured_logging: "Correlate async operations"
+
+metrics:
+  - async_overhead_percentage: "Ratio of async coordination time to useful work"
+  - task_completion_rate: "Successfully completed async operations per second"
+  - resource_utilization: "Percentage of available async resources in use"
+  - error_recovery_time: "Time to recover from async operation failures"
+  - throughput_efficiency: "Actual vs theoretical maximum async throughput"

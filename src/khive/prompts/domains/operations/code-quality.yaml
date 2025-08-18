@@ -1,0 +1,155 @@
+# Code Quality Domain Module
+
+domain:
+  id: code-quality
+  type: operational_excellence
+  parent: null
+
+knowledge_patterns:
+  code_metrics:
+    - pattern: "complexity_metrics"
+      measures: [
+        "cyclomatic_complexity",
+        "cognitive_complexity",
+        "halstead_metrics",
+      ]
+      thresholds: [
+        "mccabe < 10",
+        "cognitive < 15",
+        "maintainability_index > 20",
+      ]
+      tools: ["sonarqube", "codeclimate", "radon"]
+    - pattern: "coupling_cohesion"
+      metrics: [
+        "afferent_coupling",
+        "efferent_coupling",
+        "instability",
+        "abstractness",
+      ]
+      principles: ["low_coupling", "high_cohesion", "stable_dependencies"]
+      analysis: ["dependency_graphs", "package_cycles", "layer_violations"]
+    - pattern: "code_coverage"
+      types: ["line", "branch", "path", "mutation"]
+      targets: ["80%_line", "70%_branch", "critical_paths_100%"]
+      pitfalls: ["coverage_vs_quality", "gaming_metrics", "untestable_code"]
+
+  automated_review:
+    - pattern: "static_analysis_integration"
+      static_analysis: ["linters", "security_scanners", "complexity_analyzers"]
+      dynamic_analysis: ["sanitizers", "profilers", "fuzzers"]
+      integration: ["pre_commit_hooks", "ci_pipeline", "ide_integration"]
+
+  refactoring:
+    - pattern: "refactoring_catalog"
+      method_level: [
+        "extract_method",
+        "inline_method",
+        "rename",
+        "parameterize",
+      ]
+      class_level: ["extract_class", "move_method", "extract_interface"]
+      system_level: [
+        "extract_module",
+        "layer_extraction",
+        "hexagonal_architecture",
+      ]
+    - pattern: "code_smells"
+      method_smells: ["long_method", "long_parameter_list", "feature_envy"]
+      class_smells: ["large_class", "data_clumps", "refused_bequest"]
+      design_smells: ["shotgun_surgery", "parallel_inheritance", "middleman"]
+    - pattern: "refactoring_safety"
+      techniques: ["automated_tests", "incremental_changes", "version_control"]
+      verification: [
+        "behavior_preservation",
+        "performance_impact",
+        "api_compatibility",
+      ]
+
+decision_rules:
+  quality_gates:
+    - condition: "new_feature"
+      requirements: ["tests_pass", "coverage_threshold", "no_critical_issues"]
+    - condition: "hotfix"
+      requirements: ["critical_tests_pass", "no_regressions", "minimal_change"]
+    - condition: "refactoring"
+      requirements: ["behavior_unchanged", "metrics_improved", "tests_updated"]
+
+  technical_debt:
+    - condition: "high_interest_debt"
+      priority: "immediate"
+      examples: ["security_vulnerabilities", "performance_bottlenecks"]
+    - condition: "medium_interest_debt"
+      priority: "next_sprint"
+      examples: ["code_duplication", "missing_tests", "outdated_dependencies"]
+    - condition: "low_interest_debt"
+      priority: "backlog"
+      examples: ["style_inconsistencies", "missing_documentation"]
+
+  review_depth:
+    - condition: "critical_path"
+      review_type: "thorough_multi_reviewer"
+      focus: ["correctness", "security", "performance"]
+    - condition: "experimental_feature"
+      review_type: "design_focused"
+      focus: ["architecture", "extensibility", "api_design"]
+    - condition: "routine_change"
+      review_type: "standard_single_reviewer"
+      focus: ["correctness", "style", "tests"]
+
+specialized_tools:
+  static_analysis:
+    multi_language:
+      - sonarqube: "Comprehensive code quality"
+      - codeclimate: "Maintainability analysis"
+      - deepsource: "Continuous analysis"
+    language_specific:
+      - eslint: "JavaScript linting"
+      - pylint: "Python analysis"
+      - rubocop: "Ruby style guide"
+
+  testing_tools:
+    - mutation_testing: ["pitest", "mutmut", "stryker"]
+    - property_testing: ["quickcheck", "hypothesis", "fast_check"]
+    - coverage: ["istanbul", "coverage.py", "simplecov"]
+
+  refactoring_support:
+    - ide_refactoring: "IntelliJ, VSCode, Eclipse"
+    - automated_refactoring: ["jscodeshift", "coccinelle", "comby"]
+    - architecture_refactoring: ["jqassistant", "archunit", "structurizr"]
+
+best_practices:
+  continuous_improvement:
+    - metrics_tracking: "Trend analysis over absolute values"
+    - team_standards: "Agreed conventions and thresholds"
+    - regular_reviews: "Code quality retrospectives"
+    - tooling_investment: "Automate repetitive checks"
+
+  review:
+    workflow:
+      stages: [
+        "author_checklist",
+        "automated_checks",
+        "peer_review",
+        "approval",
+      ]
+      focus_areas: ["correctness", "design", "performance", "security", "style"]
+      tools: ["github_pr", "gitlab_mr", "gerrit", "phabricator"]
+    techniques:
+      approaches: ["checklist_based", "defect_hunting", "perspective_based"]
+      effectiveness: [
+        "find_bugs_early",
+        "knowledge_transfer",
+        "style_consistency",
+      ]
+      practices: ["small_changes", "timely_feedback", "constructive_tone"]
+    culture:
+      - psychological_safety: "Mistakes as learning opportunities"
+      - knowledge_sharing: "Reviews as teaching moments"
+      - efficiency: "Right-sized reviews for change type"
+      - follow_through: "Track action items to completion"
+
+  debt_management:
+    - visibility: "Technical debt register"
+    - budgeting: "20% time for debt reduction"
+    - prevention: "Definition of done includes quality"
+    - roi_analysis: "Cost of debt vs fixing"

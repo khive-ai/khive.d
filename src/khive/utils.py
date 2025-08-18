@@ -1,26 +1,10 @@
-# Copyright (c) 2025, HaiyangLi <quantocean.li at gmail dot com>
-#
-# SPDX-License-Identifier: Apache-2.0
-
-"""
-Consolidated utilities for khive CLI modules.
-
-This module provides shared functionality across all CLI commands including:
-- ANSI color management and console output
-- Logging and message formatting
-- Configuration loading patterns
-- Command execution helpers
-- Project root detection
-- JSON output formatting
-- Error handling and exit patterns
-"""
-
 from __future__ import annotations
 
 import asyncio
 import contextlib
 import functools
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -65,7 +49,15 @@ __all__ = (
     "is_package_installed",
     "is_coroutine_function",
     "as_async_fn",
+    "get_logger",
 )
+
+
+logging.basicConfig(level=logging.INFO)
+
+
+def get_logger(name: str) -> logging.Logger:
+    return logging.getLogger(name)
 
 
 def import_module(
