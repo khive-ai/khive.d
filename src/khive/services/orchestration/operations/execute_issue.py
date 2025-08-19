@@ -18,9 +18,7 @@ async def execute_issue(
     issue: Issue, issue_plan: IssuePlan | None = None, **kw
 ) -> tuple[bool, Issue]:
     if issue.content.git_processed is True:
-        logger.info(
-            f"🔵 Skipping already processed issue #{issue.content.issue_num}"
-        )
+        logger.info(f"🔵 Skipping already processed issue #{issue.content.issue_num}")
         return
     issue_result: IssueResult = issue.content.issue_result
     is_redo = issue.content.needs_redo

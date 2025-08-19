@@ -16,9 +16,7 @@ async def run_issue(issue_plan: IssuePlan, **kw) -> bool:
     issue_num = issue_plan.issue_num
     issue = await Issue.get(issue_num, issue_plan)
     if issue.content.operation_status == "completed":
-        logger.info(
-            f"🔵 Skipping already completed issue #{issue.content.issue_num}"
-        )
+        logger.info(f"🔵 Skipping already completed issue #{issue.content.issue_num}")
         return True
 
     _current_timestamp = datetime.now().isoformat()

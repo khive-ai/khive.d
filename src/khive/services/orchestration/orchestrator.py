@@ -107,7 +107,7 @@ class LionOrchestrator:
                     f"Too many branches with name {name}, please choose a different suffix"
                 )
 
-        setting_dir = Path(cc_settings.REPO) / f".khive/roles/{role}/.claude"
+        setting_dir = Path(cc_settings.REPO_LOCAL) / f".khive/roles/{role}/.claude"
         if role in ["implementer", "tester", "architect", "reviewer"]:
             requires_root = True
             copy_mcp_config = False
@@ -600,7 +600,7 @@ class LionOrchestrator:
         from lionagi.utils import create_path
 
         fp = create_path(
-            directory=f"{cc_settings.REPO}/{cc_settings.WORKSPACE}/{self.flow_name}/snapshots",
+            directory=f"{cc_settings.REPO_LOCAL}/{cc_settings.WORKSPACE}/{self.flow_name}/snapshots",
             filename=f"{self.flow_name}_session.json",
             dir_exist_ok=True,
             file_exist_ok=True,

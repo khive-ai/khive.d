@@ -164,12 +164,6 @@ def main():
     )
 
     parser.add_argument(
-        "--repo",
-        default="ohdearquant/khive222",
-        help="GitHub repository (default: ohdearquant/khive222)",
-    )
-
-    parser.add_argument(
         "--context", "-c", help="Additional context about the task or environment"
     )
 
@@ -187,9 +181,9 @@ def main():
 
     # Handle issue-based planning
     if args.issue:
-        print(f"🔍 Fetching GitHub issue #{args.issue} from {args.repo}...")
+        print(f"🔍 Fetching GitHub issue #{args.issue}...")
 
-        issue_data = fetch_github_issue(args.issue, args.repo)
+        issue_data = fetch_github_issue(args.issue)
         if not issue_data:
             print(f"❌ Failed to fetch issue #{args.issue}")
             sys.exit(1)

@@ -10,7 +10,7 @@ _get_cc_imodel = partial(
     iModel,
     provider="claude_code",
     endpoint=cc_settings.ENDPOINT,
-    repo=cc_settings.REPO,
+    repo=cc_settings.REPO_LOCAL,
     cli_display_theme=cc_settings.CLI_THEME,
 )
 

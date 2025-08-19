@@ -7,7 +7,7 @@ from lionagi.protocols.types import Node
 from pydantic import field_validator
 from typing_extensions import TypedDict
 
-from khive.utils import get_logger, EventBroadcaster
+from khive.utils import EventBroadcaster, get_logger
 
 hook_event_logger = get_logger("ClaudeHooks", "🪝 [CLAUDE-HOOKS]")
 
@@ -145,6 +145,7 @@ class HookEvent(Node):
             many=True,
         )
 
+
 def _initialize_adapter():
     """Initialize the async adapter for SQLite database."""
     if HookEvent._initialized:
@@ -166,6 +167,7 @@ def _initialize_adapter():
 
 _initialize_adapter()
 HookEvent = HookEvent
+
 
 class HookEventBroadcaster(EventBroadcaster):
     _event_type: ClassVar[type] = HookEvent
