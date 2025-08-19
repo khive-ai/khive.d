@@ -27,7 +27,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv sync --extra all
+          uv sync --all-extras
       - name: Run tests
         run: uv run pytest -q --cov=khive --cov-report=xml
 
