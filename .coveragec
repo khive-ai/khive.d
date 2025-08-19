@@ -1,0 +1,20 @@
+[run]
+source = src/khive
+omit =
+    tests/*
+    .github/*
+    src/khive/third_party/*
+    src/khive/prompts/*
+    src/khive/commands/*
+    docs/*
+    notebook/*
+    reports/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError
