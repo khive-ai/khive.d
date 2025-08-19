@@ -1,33 +1,73 @@
-name: ci
-on: [pull_request]
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+# Ensure only one CI run per PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
-    services:
-      docker:
-        image: docker:dind
-        options: --privileged
-    strategy:
-      matrix:
-        py: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: "${{ matrix.py }}"
-      - run: pip install uv
-      - name: Create and activate virtual environment
-        run: |
-          uv venv .venv
-          echo "VIRTUAL_ENV=$GITHUB_WORKSPACE/.venv" >> $GITHUB_ENV
-          echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
-      - name: Install dependencies
-        run: |
-          uv sync --extra all
-      - name: Run tests
-        run: uv run pytest -q --cov=khive --cov-report=xml
-      # - name: Upload coverage to Codecov
-      #   uses: codecov/codecov-action@v3
-      #   with:
-      #     token: ${{ secrets.CODECOV_TOKEN }}
-      #     fail_ci_if_error: true
+          version: "latest"
+          
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Create venv and install dependencies
+        run: uv sync
+
+      - name: Lint with ruff
+        run: uv run ruff check .
+          
+      - name: Format check with ruff
+        run: uv run ruff format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install uv  
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+          
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Create venv and install dependencies
+        run: uv sync
+
+      - name: Run unit tests
+        run: uv run pytest tests/unit/ -v
+
+      - name: Run integration tests
+        run: uv run pytest tests/integration/ -v
+
+      - name: Generate coverage report
+        run: uv run pytest --cov=src/khive --cov-report=html --cov-report=xml
+
+      - name: Upload coverage to artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/
+          
+      - name: Upload coverage XML
+        uses: actions/upload-artifact@v4  
+        with:
+          name: coverage-xml
+          path: coverage.xml
