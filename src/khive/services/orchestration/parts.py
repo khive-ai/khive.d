@@ -167,19 +167,19 @@ class IssueExecution(BaseModel):
 
 
 class IssueResult(BaseModel):
-    issue_number: IssueNum
+    issue_num: IssueNum
     executions: list[IssueExecution] = Field(default_factory=list)
     success: bool = False
 
-    @field_validator("issue_number", mode="before")
-    def validate_issue_number(cls, v: str | int) -> str:
+    @field_validator("issue_num", mode="before")
+    def validate_issue_num(cls, v: str | int) -> str:
         if isinstance(v, int):
             return str(v)
         return v
 
 
 class IssuePlan(BaseModel):
-    issue_number: IssueNum
+    issue_num: IssueNum
     """github issue number"""
 
     flow_name: str
@@ -240,7 +240,7 @@ class IssuePlan(BaseModel):
 
 
 class IssueContent(BaseModel):
-    issue_number: IssueNum
+    issue_num: IssueNum
     """GitHub issue number or string identifier"""
 
     issue_plan: IssuePlan
@@ -271,45 +271,45 @@ class Issue(Node):
     content: IssueContent
 
     @staticmethod
-    def create_file_path(issue_number: IssueNum, exists_ok: bool = True) -> Path:
+    def create_file_path(issue_num: IssueNum, exists_ok: bool = True) -> Path:
         fp = create_path(
             directory=f"{cc_settings.REPO}/.khive/issues/storage",
-            filename=f"issue_{issue_number}.json",
+            filename=f"issue_{issue_num}.json",
             dir_exist_ok=True,
             file_exist_ok=exists_ok,
         )
         return fp
 
     @staticmethod
-    def issue_exists(issue_number: IssueNum) -> bool:
+    def issue_exists(issue_num: IssueNum) -> bool:
         """Check if an issue with the given number exists in the file"""
         try:
-            Issue.create_file_path(issue_number, exists_ok=False)
+            Issue.create_file_path(issue_num, exists_ok=False)
             return False
         except Exception:
             return True
 
     @classmethod
-    async def get(cls, issue_number: IssueNum, plan: IssuePlan) -> Issue:
-        res = await cls.load(issue_number)
+    async def get(cls, issue_num: IssueNum, plan: IssuePlan) -> Issue:
+        res = await cls.load(issue_num)
         if isinstance(res, cls):
             return res
 
         # Create a new issue if it doesn't exist
         issue = cls(
             content=IssueContent(
-                issue_number=issue_number,
+                issue_num=issue_num,
                 issue_plan=plan,
-                issue_result=IssueResult(issue_number=issue_number),
+                issue_result=IssueResult(issue_num=issue_num),
             ),
         )
         await issue.sync()
         return issue
 
     @classmethod
-    async def load(cls, issue_number):
-        if cls.issue_exists(issue_number):
-            fp = cls.create_file_path(issue_number)
+    async def load(cls, issue_num):
+        if cls.issue_exists(issue_num):
+            fp = cls.create_file_path(issue_num)
             async with aiofiles.open(fp, "r") as fp:
                 text = await fp.read()
             self = cls.from_dict(json.loads(text))
@@ -317,9 +317,9 @@ class Issue(Node):
         return None
 
     async def sync(self):
-        fp = self.create_file_path(self.content.issue_number)
+        fp = self.create_file_path(self.content.issue_num)
         async with aiofiles.open(
-            self.create_file_path(self.content.issue_number), "w"
+            self.create_file_path(self.content.issue_num), "w"
         ) as fp:
             await fp.write(json.dumps(self.to_dict()))
 

@@ -9,7 +9,7 @@ __all__ = (
 
 
 KHIVE_PLAN_REMINDER = """
-Requirement: must use GitHub to fetch issues, must use khive plan [CONTEXT] --issue xxx to get agent consensus for each kind of plan. You must check the GitHub issue #{issue_number} or any updates or changes before proceeding. with git commands. The domains for agents must come from @libs/khive/src/khive/prompts/domains 
+Requirement: must use GitHub to fetch issues, must use khive plan [CONTEXT] --issue xxx to get agent consensus for each kind of plan. You must check the GitHub issue #{issue_num} or any updates or changes before proceeding. with git commands. The domains for agents must come from @libs/khive/src/khive/prompts/domains 
 
 Notes:
 - If multiple implementers/testers are involved, ensure divide and conquer approach and avoid overlap

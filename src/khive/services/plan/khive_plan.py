@@ -12,14 +12,14 @@ from .planner_service import PlannerService
 __all__ = ("main",)
 
 
-def fetch_github_issue(issue_number: str) -> dict | None:
+def fetch_github_issue(issue_num: str) -> dict | None:
     """Fetch GitHub issue data using gh CLI."""
     try:
         cmd = [
             "gh",
             "issue",
             "view",
-            issue_number,
+            issue_num,
             "--json",
             "number,title,body,labels,assignees,state,createdAt,updatedAt,author",
         ]
@@ -28,7 +28,7 @@ def fetch_github_issue(issue_number: str) -> dict | None:
         return json.loads(result.stdout)
 
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error fetching issue #{issue_number}: {e.stderr}", file=sys.stderr)
+        print(f"❌ Error fetching issue #{issue_num}: {e.stderr}", file=sys.stderr)
         return None
     except json.JSONDecodeError as e:
         print(f"❌ Error parsing issue data: {e}", file=sys.stderr)
@@ -77,7 +77,7 @@ async def run_planning(
     context: str | None,
     time_budget: float,
     json_output: bool,
-    issue_number: str | None = None,
+    issue_num: str | None = None,
 ) -> None:
     """Execute planning and print results."""
     service = PlannerService()

@@ -23,7 +23,7 @@ async def review_gate(issue: Issue, **kw) -> tuple[bool, Issue]:
     issue_result: IssueResult = issue.content.issue_result
 
     logging.info(
-        f"\n🔍 Critic Review Gate for Issue #{issue_plan.issue_number}, Execution Number {len(issue_result.executions)}"
+        f"\n🔍 Critic Review Gate for Issue #{issue_plan.issue_num}, Execution Number {len(issue_result.executions)}"
     )
     orc = LionOrchestrator(issue_plan.flow_name)
     await orc.initialize("sonnet", system="You are acting as a critic reviewer")
@@ -70,7 +70,7 @@ async def review_gate(issue: Issue, **kw) -> tuple[bool, Issue]:
             verbose_output=False,
             auto_finish=True,
             overwrite_config=True,
-            agent_suffix=f"issue_{issue_plan.issue_number}_gate_review",  # ensure unique agent names
+            agent_suffix=f"issue_{issue_plan.issue_num}_gate_review",  # ensure unique agent names
         )
         node = orc.builder.add_operation(
             operation="operate",
@@ -97,16 +97,16 @@ async def review_gate(issue: Issue, **kw) -> tuple[bool, Issue]:
         )
         if score >= 3:
             logging.info(
-                f"✅ Critic review gate PASSED for issue #{issue_plan.issue_number} ({score}/5 votes)"
+                f"✅ Critic review gate PASSED for issue #{issue_plan.issue_num} ({score}/5 votes)"
             )
             issue.content.gate_passed = True
             issue.content.redo_ctx = None
             issue.content.needs_redo = False
         else:
             logger.info(
-                f"❌ Critic review gate FAILED for issue #{issue_plan.issue_number} ({score}/5 votes)"
+                f"❌ Critic review gate FAILED for issue #{issue_plan.issue_num} ({score}/5 votes)"
             )
-            logger.info(f"🔄 Issue #{issue_plan.issue_number} will be re-executed")
+            logger.info(f"🔄 Issue #{issue_plan.issue_num} will be re-executed")
 
             synth_node = orc.builder.add_operation(
                 operation="communicate",
@@ -124,7 +124,7 @@ async def review_gate(issue: Issue, **kw) -> tuple[bool, Issue]:
 
     except Exception as e:
         logger.error(
-            f"💥 Critic review gate failed for issue #{issue_plan.issue_number}: {e}"
+            f"💥 Critic review gate failed for issue #{issue_plan.issue_num}: {e}"
         )
         issue.content.redo_ctx = None
         issue.content.gate_passed = False
