@@ -1,5 +1,5 @@
 ---
-issue_number: {issue_number}
+issue_num: {issue_num}
 flow_name: "{flow_name}"
 pattern: "{pattern}"
 project_phase: "{project_phase}"
@@ -14,7 +14,7 @@ workspace_path: ".khive/workspaces/{flow_name}"
 {refinement_config}
 ---
 
-# Issue #{issue_number}: {title}
+# Issue #{issue_num}: {title}
 
 ## System Prompt
 
