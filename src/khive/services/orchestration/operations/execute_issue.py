@@ -19,7 +19,7 @@ async def execute_issue(
 ) -> tuple[bool, Issue]:
     if issue.content.git_processed is True:
         logger.info(
-            f"🔵 Skipping already processed issue #{issue.content.issue_number}"
+            f"🔵 Skipping already processed issue #{issue.content.issue_num}"
         )
         return
     issue_result: IssueResult = issue.content.issue_result
@@ -66,17 +66,17 @@ async def execute_issue(
         result = await meth(**params)
         success = True
     except get_cancelled_exc_class():
-        logger.warning(f"⚠️ Issue #{issue_plan.issue_number} was cancelled.")
+        logger.warning(f"⚠️ Issue #{issue_plan.issue_num} was cancelled.")
         success = False
     except Exception as e:
-        logger.error(f"💥 Issue #{issue_plan.issue_number} error: {e}")
+        logger.error(f"💥 Issue #{issue_plan.issue_num} error: {e}")
         success = False
 
     issue_result.executions.append(
         IssueExecution(success=success, result=result, is_redo=is_redo)
     )
     logger.info(
-        f"{'✅' if success else '❌'} Issue #{issue_plan.issue_number} {'completed' if success else 'failed'}"
+        f"{'✅' if success else '❌'} Issue #{issue_plan.issue_num} {'completed' if success else 'failed'}"
     )
     await orc.save_json()
     await issue.sync()
