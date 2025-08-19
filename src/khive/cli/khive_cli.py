@@ -23,7 +23,7 @@ COMMANDS: dict[str, str] = {
     "session": "session",
     "compose": "compose",
     "claude": "claude",
-    "ci": "ci",
+    "session": "session",
 }
 
 # Expected name of the entry point function in each command module.

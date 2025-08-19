@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from khive.session.khive_session import main as original_main
+from khive.services.session.khive_session import main as original_main
 
 
 def cli_entry() -> None:

@@ -185,7 +185,7 @@ class LionOrchestrator:
             is_critical_path: Whether this issue blocks other work
             is_experimental: Whether this is experimental/exploratory work
             **gate_components: Gate components where keys are gate types and values are
-                             descriptions (str) or True for default behavior
+                descriptions (str) or True for default behavior
 
         Example:
             generate_quality_gate_field(
