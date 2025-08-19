@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-# Copyright (c) 2025, HaiyangLi <quantocean.li at gmail dot com>
-#
-# SPDX-License-Identifier: MIT
-
 """
 Claude Code post-edit hook for observability.
 

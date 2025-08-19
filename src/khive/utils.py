@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from functools import cache
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any, ClassVar, TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -53,11 +53,18 @@ __all__ = (
 )
 
 
-logging.basicConfig(level=logging.INFO)
-
-
-def get_logger(name: str) -> logging.Logger:
-    return logging.getLogger(name)
+def get_logger(name: str, prefix: str = "") -> logging.Logger:
+    """Set up Claude Code hook event logger."""
+    logger = logging.getLogger(name)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            f"{prefix} %(asctime)s - %(levelname)s - %(message)s".strip()
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+    return logger
 
 
 def import_module(
@@ -684,3 +691,62 @@ def print_step(step: str, status: str = "running") -> None:
 # Set up project root as module-level constant
 PROJECT_ROOT = get_project_root()
 KHIVE_CONFIG_DIR = PROJECT_ROOT / ".khive"
+
+
+class EventBroadcaster:
+    """Real-time event broadcasting system for hook events."""
+
+    _instance: ClassVar["EventBroadcaster | None"] = None
+    _subscribers: ClassVar[list[Callable[[Any], None]]] = []
+    _async_subscribers: ClassVar[list[Callable[[Any], Any]]] = []
+    _event_type: ClassVar[type]
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    @classmethod
+    def subscribe(cls, callback: Callable[[Any], None]) -> None:
+        """Subscribe to hook events with sync callback."""
+        if callback not in cls._subscribers:
+            cls._subscribers.append(callback)
+
+    @classmethod
+    def subscribe_async(cls, callback: Callable[[Any], Any]) -> None:
+        """Subscribe to hook events with async callback."""
+        if callback not in cls._async_subscribers:
+            cls._async_subscribers.append(callback)
+
+    @classmethod
+    def unsubscribe(cls, callback: Callable[[Any], None]) -> None:
+        """Unsubscribe from hook events."""
+        if callback in cls._subscribers:
+            cls._subscribers.remove(callback)
+        if callback in cls._async_subscribers:
+            cls._async_subscribers.remove(callback)
+
+    @classmethod
+    async def broadcast(cls, event) -> None:
+        """Broadcast event to all subscribers."""
+        # Sync callbacks
+        for callback in cls._subscribers:
+            try:
+                callback(event)
+            except Exception as e:
+                print(f"Error in sync subscriber callback: {e}")
+
+        # Async callbacks
+        for callback in cls._async_subscribers:
+            try:
+                if asyncio.iscoroutinefunction(callback):
+                    await callback(event)
+                else:
+                    callback(event)
+            except Exception as e:
+                print(f"Error in async subscriber callback: {e}")
+
+    @classmethod
+    def get_subscriber_count(cls) -> int:
+        """Get total number of subscribers."""
+        return len(cls._subscribers) + len(cls._async_subscribers)

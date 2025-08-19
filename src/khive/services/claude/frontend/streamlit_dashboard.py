@@ -9,7 +9,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from khive.services.claude.hooks.hook_event import HookEvent
+from khive.services.claude.hooks import HookEvent
+from khive import __version__
 
 # Page config with enhanced styling
 st.set_page_config(
@@ -19,8 +20,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Version
-__version__ = "0.1.0"
 
 # Configuration defaults (can be overridden by environment variables)
 CONFIG = {
