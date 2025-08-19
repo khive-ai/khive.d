@@ -11,8 +11,11 @@ async def main():
         throttle_period=60,
     )
     issue_seq = [195, 185, 186, 187, 190, 188, 189, 191, 192, 193, 194]
+    
+    
+    
     ir.load(issue_seq)
-    await ir.run()
+    await ir.run(visualize=True)
 
 
 if __name__ == "__main__":
