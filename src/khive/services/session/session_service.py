@@ -78,27 +78,10 @@ class SessionService:
             None, initializer.initialize
         )
 
-        # Extract information from the initializer
-        memory_queries = []
-        queries = initializer.generate_memory_queries()
-        for query in queries:
-            if isinstance(query, tuple):
-                if query[0] == "search_by_type":
-                    memory_queries.append(
-                        f'mcp__memory__search_by_type("{query[1]}", limit={query[2]})'
-                    )
-                else:
-                    memory_queries.append(
-                        f'mcp__memory__search("{query[1]}", limit={query[2]})'
-                    )
-            else:
-                memory_queries.append(f'mcp__memory__search("{query}", limit=5)')
-
         return SessionResponse(
             success=True,
             summary="Session initialized successfully",
             session_output=session_output,
-            memory_queries=memory_queries,
             pending_tasks=initializer.context.get("pending_tasks", []),
             git_status=initializer.context.get("git_status", {}),
             unprocessed_summaries=initializer.context.get("unprocessed_summaries", 0),

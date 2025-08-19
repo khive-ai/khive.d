@@ -65,11 +65,6 @@ async def run_session_command(
                 else:
                     print(f"✅ {response.summary}")
 
-                    if response.memory_queries:
-                        print(f"\n🧠 Memory Queries ({len(response.memory_queries)}):")
-                        for query in response.memory_queries:
-                            print(f"  {query}")
-
                     if response.pending_tasks:
                         print(f"\n📋 Pending Tasks ({len(response.pending_tasks)}):")
                         for task in response.pending_tasks[:5]:  # Show first 5
