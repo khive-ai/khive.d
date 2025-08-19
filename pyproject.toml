@@ -7,7 +7,7 @@ requires-python = ">=3.10"
 dependencies = [
     "aiofiles>=24.1.0",
     "fastmcp>=2.11.3",
-    "lionagi[graph,postgres,rich,schema, sqlite]>=0.15.7",
+    "lionagi[graph,postgres,rich, sqlite]>=0.15.7",
     "nest-asyncio>=1.6.0",
     "openai>=1.99.9",
     "plotly>=6.3.0",
@@ -47,6 +47,13 @@ markers = [
     "service: Service layer tests",
     "orchestration: Orchestration workflow tests",
     "performance: Performance benchmark tests",
+    "benchmark: Pytest-benchmark performance tests",
+    "database: Database performance tests",
+    "memory: Memory usage and leak detection tests",
+    "concurrency: Multi-agent concurrency tests",
+    "scalability: Agent scaling performance tests",
+    "regression: Performance regression detection tests",
+    "baseline: Baseline establishment tests",
 ]
 
 # Test environment variables
@@ -63,7 +70,7 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
-# Coverage configuration for when explicitly requested
+# Coverage configuration
 source = ["src/khive"]
 omit = [
     "tests/*",
@@ -78,9 +85,10 @@ omit = [
 ]
 branch = true
 parallel = true
+data_file = ".coverage"
 
 [tool.coverage.report]
-# Reporting configuration
+# Reporting configuration with quality thresholds
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -96,6 +104,15 @@ show_missing = true
 skip_covered = false
 sort = "Cover"
 precision = 2
+# Quality gates
+fail_under = 80.0
+
+[tool.coverage.html]
+directory = "htmlcov"
+show_contexts = true
+
+[tool.coverage.xml]
+output = "coverage.xml"
 
 [build-system]
 requires = ["hatchling"]
@@ -111,6 +128,22 @@ dev = [
     "pytest-cov>=6.2.1",
     "pytest-mock>=3.14.0",
     "pytest-env>=1.1.5",
+    "pytest-benchmark>=4.0.0",
+    "memory-profiler>=0.61.0",
+    "psutil>=6.0.0",
+    "aiosqlite>=0.20.0",
+    "asyncpg>=0.29.0",
+    "matplotlib>=3.8.0",
+    "numpy>=1.26.0",
+    "isort>=6.0.1",
+]
+
+performance = [
+    "psutil>=6.1.0",
+    "memory-profiler>=0.61.0",
+    "pytest-benchmark>=4.0.0",
+    "locust>=2.32.3",
+    "matplotlib>=3.9.0",
 ]
 
 [tool.hatch.build.targets.wheel]

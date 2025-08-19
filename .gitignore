@@ -192,3 +192,6 @@ khive/third_party/openai_models.py
 claude_hooks.db
 
 *logs/
+*.mcp.json
+
+*.lock
