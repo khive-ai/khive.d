@@ -1441,7 +1441,7 @@ dev = [
 requires-dist = [
     { name = "aiofiles", specifier = ">=24.1.0" },
     { name = "fastmcp", specifier = ">=2.11.3" },
-    { name = "lionagi", extras = ["graph", "postgres", "rich", "schema", "sqlite"], specifier = ">=0.15.5" },
+    { name = "lionagi", extras = ["graph", "postgres", "rich", "schema", "sqlite"], specifier = ">=0.15.7" },
     { name = "nest-asyncio", specifier = ">=1.6.0" },
     { name = "openai", specifier = ">=1.99.9" },
     { name = "plotly", specifier = ">=6.3.0" },
@@ -1592,11 +1592,10 @@ wheels = [
 
 [[package]]
 name = "lionagi"
-version = "0.15.5"
+version = "0.15.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiocache" },
-    { name = "aiofiles" },
     { name = "aiohttp" },
     { name = "anyio" },
     { name = "backoff" },
@@ -1610,9 +1609,9 @@ dependencies = [
     { name = "tiktoken" },
     { name = "toml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4f/d5/8cf2bb77e685ca382c33d0c3315f0104a5352e042376876dfab7ef0ed68a/lionagi-0.15.5.tar.gz", hash = "sha256:91e5f512679366fbd22b9a05a999eca65aafbfee190f97eea39bb768d908725d", size = 911011, upload-time = "2025-08-17T19:05:17.42Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/85/a9/cb6fe39601504b2a79f2451451cfd9cdd7df823c0adddc974ca150b46f16/lionagi-0.15.7.tar.gz", hash = "sha256:b3ea098e9bae963c614c7418c271bce4b378ccfb970216bc7ee0456f9a81eeb0", size = 910817, upload-time = "2025-08-18T22:56:22.309Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cc/77/fd3ac0694dcfba10ee4239ebb81e554774ecc5475cd4751a4e278ab1957f/lionagi-0.15.5-py3-none-any.whl", hash = "sha256:7bfd3d94a312d4e7e341ca37599c8658c1a4c4094f8169d0c37e05c152dff5a5", size = 384092, upload-time = "2025-08-17T19:05:15.739Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/65/19473d64f423fad185029380ec0195915610b807aa6fa8b73f22b7705351/lionagi-0.15.7-py3-none-any.whl", hash = "sha256:439cabbd19903a737b506faa5a88c4450894cdfdd0473a6933049f21978ed8e9", size = 384030, upload-time = "2025-08-18T22:56:20.494Z" },
 ]
 
 [package.optional-dependencies]
