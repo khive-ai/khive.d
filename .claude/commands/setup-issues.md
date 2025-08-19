@@ -95,7 +95,7 @@ executable runner
 
 ```yaml
 ---
-issue_number: {issue_number}
+issue_num: {issue_num}
 flow_name: "{flow_name}"
 pattern: "{pattern}"
 project_phase: "{project_phase}"
@@ -114,7 +114,7 @@ gate_instruction: "Quality gate instruction"
 gates: ["gate1", "gate2"]
 ---
 
-# Issue #{issue_number}: {title}
+# Issue #{issue_num}: {title}
 
 ## System Prompt
 {orchestration_context}
@@ -188,8 +188,8 @@ flows/{flow_name}/
 ├── runner.py                    # Executable orchestration runner
 ├── issues/
 │   ├── __init__.py
-│   ├── {issue_number}_{descriptive_name}.md  # e.g., 185_cli_command_testing.md
-│   ├── {issue_number}_{descriptive_name}.md  # e.g., 186_agent_composer_testing.md
+│   ├── {issue_num}_{descriptive_name}.md  # e.g., 185_cli_command_testing.md
+│   ├── {issue_num}_{descriptive_name}.md  # e.g., 186_agent_composer_testing.md
 │   └── ...
 └── README.md                   # Flow documentation (auto-generated)
 ```
@@ -334,7 +334,7 @@ python .claude/scripts/verify_issue_plans.py flows/v4tdd/issues/
 
 **Required YAML Fields**:
 
-- `issue_number` (integer > 0)
+- `issue_num` (integer > 0)
 - `flow_name` (string)
 - `pattern` (FANOUT or W_REFINEMENT)
 - `project_phase` (exploration, development, integration, production)
@@ -412,7 +412,7 @@ flows/{flow_name}/
 ├── runner.py                    # AsyncIO orchestration runner
 ├── issues/
 │   ├── __init__.py
-│   ├── {issue_number}_{descriptive_name}.md  # e.g., 185_cli_command_testing.md
+│   ├── {issue_num}_{descriptive_name}.md  # e.g., 185_cli_command_testing.md
 │   └── ...
 └── README.md                   # Auto-generated documentation
 ```

@@ -4,12 +4,9 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import yaml
-from .parts import (
-    FanoutConfig,
-    FanoutPatterns,
-    IssuePlan,
-    RefinementConfig,
-)
+
+from .parts import FanoutConfig, FanoutPatterns, IssuePlan, RefinementConfig
+
 
 @dataclass
 class ParsedIssue:
@@ -157,7 +154,8 @@ class IssueMarkdownParser:
             refinement_config = RefinementConfig(
                 refinement_desc=parsed.refinement_desc or "Refine implementation",
                 critic_domain=parsed.critic_domain or "general",
-                gate_instruction=parsed.gate_instruction or "Evaluate quality and completeness",
+                gate_instruction=parsed.gate_instruction
+                or "Evaluate quality and completeness",
                 gates=parsed.gates or ["design"],
             )
 
@@ -187,6 +185,7 @@ class IssueMarkdownParser:
 
         return issue_plans
 
+
 def load_all_issues(issues_dir: Path) -> Dict[str, IssuePlan]:
     """
     Load all issues from markdown files
@@ -194,6 +193,6 @@ def load_all_issues(issues_dir: Path) -> Dict[str, IssuePlan]:
     issues_dir = Path(issues_dir) if not isinstance(issues_dir, Path) else issues_dir
     if not issues_dir.exists() or not issues_dir.is_dir():
         raise NotADirectoryError(f"{issues_dir} does not exist")
-    
+
     parser = IssueMarkdownParser(issues_dir)
     return parser.load_all_issue_plans()

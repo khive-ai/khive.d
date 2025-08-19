@@ -1,5 +1,5 @@
 ---
-issue_number: 195
+issue_num: 195
 flow_name: "195_test_infrastructure_setup"
 pattern: "W_REFINEMENT"
 project_phase: "development"

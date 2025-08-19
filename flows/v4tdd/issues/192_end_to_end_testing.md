@@ -1,5 +1,5 @@
 ---
-issue_number: 192
+issue_num: 192
 flow_name: "192_end_to_end_testing"
 pattern: "FANOUT"
 project_phase: "development"

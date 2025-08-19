@@ -12,6 +12,7 @@ from khive.utils import get_logger
 
 logger = get_logger("HookEventWebSocketServer", "🪝 [HOOK-EVENT-WSS]")
 
+
 class HookEventWebSocketServer:
     """WebSocket server for real-time hook event broadcasting."""
 

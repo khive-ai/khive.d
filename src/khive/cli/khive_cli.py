@@ -23,6 +23,7 @@ COMMANDS: dict[str, str] = {
     "session": "session",
     "compose": "compose",
     "claude": "claude",
+    "ci": "ci",
 }
 
 # Expected name of the entry point function in each command module.
@@ -39,6 +40,7 @@ COMMAND_DESCRIPTIONS: dict[str, str] = {
     "session": "Manages Khive sessions for task tracking and diary writing.",
     "compose": "Simplified CLI for Khive Agent Composition Service.",
     "flow": "Intelligent flow router for automated issue resolution.",
+    "ci": "Automated CI/CD execution for multi-language projects.",
 }
 
 

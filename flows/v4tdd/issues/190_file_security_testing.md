@@ -1,5 +1,5 @@
 ---
-issue_number: 190
+issue_num: 190
 flow_name: "190_file_security_testing"
 pattern: "W_REFINEMENT"
 project_phase: "development"

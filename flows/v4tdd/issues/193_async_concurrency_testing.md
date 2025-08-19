@@ -1,5 +1,5 @@
 ---
-issue_number: 193
+issue_num: 193
 flow_name: "193_async_concurrency_testing"
 pattern: "FANOUT"
 project_phase: "development"

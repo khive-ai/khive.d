@@ -1,5 +1,5 @@
 ---
-issue_number: 58
+issue_num: 58
 flow_name: "58_database_schema_design"
 pattern: "W_REFINEMENT"
 project_phase: "exploration"

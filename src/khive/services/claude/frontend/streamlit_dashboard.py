@@ -9,8 +9,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from khive.services.claude.hooks import HookEvent
 from khive import __version__
+from khive.services.claude.hooks import HookEvent
 
 # Page config with enhanced styling
 st.set_page_config(
@@ -1459,7 +1459,7 @@ class ClaudeCodeObservabilityDashboard:
             st.markdown(
                 """
             <div style="font-size: 0.875rem; color: #6c757d; text-align: center;">
-                Made with ❤️ by <a href="https://github.com/ohdearquant" target="_blank" style="color: #1e3c72;">Ocean</a>
+                Made with ❤️ by <a href="https://github.com/khive-ai" target="_blank" style="color: #1e3c72;">Ocean</a>
             </div>
             """,
                 unsafe_allow_html=True,

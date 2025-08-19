@@ -1,5 +1,5 @@
 ---
-issue_number: 185
+issue_num: 185
 flow_name: "185_cli_command_testing"
 pattern: "FANOUT"
 project_phase: "development"

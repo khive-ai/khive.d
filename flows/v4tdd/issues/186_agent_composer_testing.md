@@ -1,5 +1,5 @@
 ---
-issue_number: 186
+issue_num: 186
 flow_name: "186_agent_composer_testing"
 pattern: "W_REFINEMENT"
 project_phase: "development"

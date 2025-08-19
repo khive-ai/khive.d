@@ -19,9 +19,11 @@ class CCSettings(BaseKhiveSettings):
     )
 
     # project settings
-    REPO: str = "/Users/lion/projects/khive"
+    REPO_LOCAL: str = "/Users/lion/projects/khive"
     WORKSPACE: str = ".khive/workspaces"
     CLI_THEME: str = "dark"
+    REPO_OWNER: str = "khive-ai"
+    REPO_NAME: str = "khive.d"
 
     # model settings
     ENDPOINT: str = "query_cli"

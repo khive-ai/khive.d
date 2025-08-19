@@ -1,18 +1,19 @@
 import logging
 from pathlib import Path
 
+from lionagi import Builder, ln
+
 from .issue_parser import load_all_issues
 from .parts import IssuePlan
 from .workflows.factory import get_orc_session
-from lionagi import Builder, ln
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("KhiveIssueRunner")
 
-class IssueRunner:
 
+class IssueRunner:
     def __init__(
-        self, 
+        self,
         issue_dir: str | Path,
         delay_before_start: float = 0.0,
         max_concurrent: int = 3,
@@ -59,11 +60,11 @@ class IssueRunner:
             branch=branch,
         )
         self._operations[f"issue_{issue_num}"] = op
-        
+
     def load(self, issue_seq: list):
         for j in issue_seq:
             self.add_issue(j)
-            
+
     async def run(self, visualize: bool = True):
         if visualize:
             self.builder.visualize("IssueRunner")
