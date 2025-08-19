@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "memory": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "/Users/lion/ocean-servers/servers/memory",
+        "python",
+        "-m",
+        "memory.server"
+      ],
+      "env": {
+        "MCP_MEMORY_API_KEY": "dev-agent-1"
+      }
+    }
+  }
+}

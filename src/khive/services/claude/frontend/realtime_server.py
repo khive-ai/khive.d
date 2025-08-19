@@ -7,10 +7,10 @@ from typing import Set
 
 import websockets
 
-from khive.services.claude.hooks.hook_event import HookEvent, HookEventBroadcaster
+from khive.services.claude.hooks import HookEvent, HookEventBroadcaster
+from khive.utils import get_logger
 
-logger = logging.getLogger(__name__)
-
+logger = get_logger("HookEventWebSocketServer", "🪝 [HOOK-EVENT-WSS]")
 
 class HookEventWebSocketServer:
     """WebSocket server for real-time hook event broadcasting."""

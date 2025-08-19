@@ -1,75 +1,15 @@
-# Copyright (c) 2025, HaiyangLi <quantocean.li at gmail dot com>
-#
-# SPDX-License-Identifier: MIT
-
 from __future__ import annotations
 
-import asyncio
-import logging
-from typing import Any, Callable, ClassVar, List, Optional
+from typing import Any, ClassVar, Optional
 
 from lionagi.libs.concurrency import shield
 from lionagi.protocols.types import Node
 from pydantic import field_validator
 from typing_extensions import TypedDict
 
+from khive.utils import get_logger, EventBroadcaster
 
-class HookEventBroadcaster:
-    """Real-time event broadcasting system for hook events."""
-
-    _instance: ClassVar["HookEventBroadcaster | None"] = None
-    _subscribers: ClassVar[List[Callable[[Any], None]]] = []
-    _async_subscribers: ClassVar[List[Callable[[Any], Any]]] = []
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    @classmethod
-    def subscribe(cls, callback: Callable[[Any], None]) -> None:
-        """Subscribe to hook events with sync callback."""
-        if callback not in cls._subscribers:
-            cls._subscribers.append(callback)
-
-    @classmethod
-    def subscribe_async(cls, callback: Callable[[Any], Any]) -> None:
-        """Subscribe to hook events with async callback."""
-        if callback not in cls._async_subscribers:
-            cls._async_subscribers.append(callback)
-
-    @classmethod
-    def unsubscribe(cls, callback: Callable[[Any], None]) -> None:
-        """Unsubscribe from hook events."""
-        if callback in cls._subscribers:
-            cls._subscribers.remove(callback)
-        if callback in cls._async_subscribers:
-            cls._async_subscribers.remove(callback)
-
-    @classmethod
-    async def broadcast(cls, event: "HookEvent") -> None:
-        """Broadcast event to all subscribers."""
-        # Sync callbacks
-        for callback in cls._subscribers:
-            try:
-                callback(event)
-            except Exception as e:
-                print(f"Error in sync subscriber callback: {e}")
-
-        # Async callbacks
-        for callback in cls._async_subscribers:
-            try:
-                if asyncio.iscoroutinefunction(callback):
-                    await callback(event)
-                else:
-                    callback(event)
-            except Exception as e:
-                print(f"Error in async subscriber callback: {e}")
-
-    @classmethod
-    def get_subscriber_count(cls) -> int:
-        """Get total number of subscribers."""
-        return len(cls._subscribers) + len(cls._async_subscribers)
+hook_event_logger = get_logger("ClaudeHooks", "🪝 [CLAUDE-HOOKS]")
 
 
 class HookEventContent(TypedDict, total=False):
@@ -110,7 +50,6 @@ class HookEvent(Node):
             table="hook_events",
         )
 
-        # Broadcast to real-time subscribers
         await HookEventBroadcaster.broadcast(self)
 
         return result
@@ -206,40 +145,31 @@ class HookEvent(Node):
             many=True,
         )
 
-
-def _setup_logger() -> logging.Logger:
-    """Set up Claude Code hook event logger."""
-    logger = logging.getLogger("ClaudeHooks")
-    if not logger.handlers:
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter(
-            "🪝 [CLAUDE-HOOKS] %(asctime)s - %(levelname)s - %(message)s"
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        logger.setLevel(logging.INFO)
-    return logger
-
-
 def _initialize_adapter():
     """Initialize the async adapter for SQLite database."""
+    if HookEvent._initialized:
+        return
+
+    from pydapter.exceptions import AdapterNotFoundError
+
     try:
+        HookEvent._async_registry.get("lionagi_async_pg")
+    except AdapterNotFoundError:
+        print("🔄 Initializing database adapter for Claude hooks...")
         from lionagi.adapters.async_postgres_adapter import LionAGIAsyncPostgresAdapter
 
-        if not HookEvent._initialized:
-            HookEvent.register_async_adapter(LionAGIAsyncPostgresAdapter)
-            HookEvent._initialized = True
-            print("✅ Database adapter initialized successfully")
-    except Exception as e:
-        print(f"⚠️  Warning: Could not initialize database adapter: {e}")
+        HookEvent.register_async_adapter(LionAGIAsyncPostgresAdapter)
+
+    HookEvent._initialized = True
+    print("✅ Database adapter initialized successfully")
 
 
 _initialize_adapter()
-
-hook_event_logger = _setup_logger()
-
-# Register the class with the adapter system
 HookEvent = HookEvent
+
+class HookEventBroadcaster(EventBroadcaster):
+    _event_type: ClassVar[type] = HookEvent
+
 
 __all__ = (
     "HookEvent",
