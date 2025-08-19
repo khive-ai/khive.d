@@ -360,22 +360,6 @@ class SessionInitializer:
         output.append("✅ Always: plan → memory context → orchestrate → save learnings")
         output.append("")
 
-        # Essential memory queries (batch)
-        queries = self.generate_memory_queries()
-        output.append("🧠 Execute Memory Context Loading (BATCH):")
-        output.append("[BatchTool]:")
-        for query in queries:
-            if isinstance(query, tuple):
-                if query[0] == "search_by_type":
-                    output.append(
-                        f'  mcp__memory__search_by_type("{query[1]}", limit={query[2]})'
-                    )
-                else:
-                    output.append(
-                        f'  mcp__memory__search("{query[1]}", limit={query[2]})'
-                    )
-        output.append("")
-
         # Next actions
         output.append("🎯 Next Actions:")
         output.append("1. Execute memory queries above (batch)")
@@ -423,10 +407,6 @@ class SessionInitializer:
 
         # If resuming, show additional context
         resume_output = ""
-        if self.resume:
-            resume_context = f'\n{BOLD}📂 Resume Mode{RESET}\nAdditional memory queries for session continuity:\n```python\nmcp__memory__search("last session outcome", limit=3)\nmcp__memory__search("incomplete tasks", limit=5)\n```'
-            print(resume_context)
-            resume_output = resume_context
 
         # Return the complete output for server response
         return formatted_output + resume_output

@@ -120,7 +120,7 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "black>=25.1.0",
+    "black[jupyter]>=25.1.0",
     "ruff>=0.12.9",
     "pre-commit>=4.3.0",
     "pytest>=8.4.1",
@@ -136,6 +136,8 @@ dev = [
     "matplotlib>=3.8.0",
     "numpy>=1.26.0",
     "isort>=6.0.1",
+    "ipykernel>=6.30.1",
+    "ipywidgets>=8.1.7",
 ]
 
 performance = [
