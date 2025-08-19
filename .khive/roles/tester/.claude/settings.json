@@ -1,0 +1,147 @@
+{
+  "env": {
+    "BASH_DEFAULT_TIMEOUT_MS": "300000",
+    "BASH_MAX_TIMEOUT_MS": "300000",
+    "BASH_MAX_OUTPUT_LENGTH": "500000",
+    "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "true",
+    "MAX_THINKING_TOKENS": "20000",
+    "MCP_TIMEOUT": "60000",
+    "MCP_TOOL_TIMEOUT": "120000",
+    "DISABLE_COST_WARNINGS": "1",
+    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "0"
+  },
+  "model": "sonnet",
+  "permissions": {
+    "allow": [
+      "Bash(mv *)",
+      "Bash(head *)",
+      "Bash(grep *)",
+      "Bash(git status)",
+      "Bash(uv *)",
+      "Bash(node *)",
+      "Bash(cat *)",
+      "Bash(pip *)",
+      "Bash(which *)",
+      "Bash(cp *)",
+      "Bash(mypy *)",
+      "Bash(find *)",
+      "Bash(pnpm *)",
+      "Bash(docker *)",
+      "Bash(mkdir *)",
+      "Bash(ruff *)",
+      "Bash(pytest *)",
+      "Bash(python *)",
+      "Bash(tail *)",
+      "Bash(kubectl *)",
+      "Read(*)",
+      "Bash(cargo *)",
+      "WebSearch(*)",
+      "Bash(npm *)",
+      "Bash(ls *)",
+      "MultiEdit(*)",
+      "Bash(rustc *)",
+      "Bash(pwd)",
+      "Bash(git log *)",
+      "Bash(yarn *)",
+      "Write(*)",
+      "Bash(khive *)",
+      "Edit(*)",
+      "WebSearch(*)",
+      "WebFetch(*)",
+      "Bash(git *)",
+      "Bash(khive *)",
+      "__mcp_memory_(*)",
+      "Glob(*)",
+      "Bash(find *)",
+      "LS(*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(curl * | bash)",
+      "Bash(wget * | sh)",
+      "Bash(eval *)"
+    ]
+  },
+  "includeCoAuthoredBy": true,
+  "enableAllProjectMcpServers": true,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -m khive.services.claude.hooks.pre_edit"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -m khive.services.claude.hooks.pre_command"
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -m khive.services.claude.hooks.pre_agent_spawn"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -m khive.services.claude.hooks.post_edit"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -m khive.services.claude.hooks.post_command"
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -m khive.services.claude.hooks.post_agent_spawn"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -m khive.services.claude.hooks.prompt_submitted"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -m khive.services.claude.hooks.notification"
+          }
+        ]
+      }
+    ]
+  }
+}
