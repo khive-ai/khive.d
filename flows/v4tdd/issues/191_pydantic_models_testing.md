@@ -1,5 +1,5 @@
 ---
-issue_number: 191
+issue_num: 191
 flow_name: "191_pydantic_models_testing"
 pattern: "FANOUT"
 project_phase: "development"

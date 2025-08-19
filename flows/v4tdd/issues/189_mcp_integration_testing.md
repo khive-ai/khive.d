@@ -1,5 +1,5 @@
 ---
-issue_number: 189
+issue_num: 189
 flow_name: "189_mcp_integration_testing"
 pattern: "FANOUT"
 project_phase: "development"

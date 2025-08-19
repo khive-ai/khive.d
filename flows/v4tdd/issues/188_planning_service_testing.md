@@ -1,5 +1,5 @@
 ---
-issue_number: 188
+issue_num: 188
 flow_name: "188_planning_service_testing"
 pattern: "FANOUT"
 project_phase: "development"

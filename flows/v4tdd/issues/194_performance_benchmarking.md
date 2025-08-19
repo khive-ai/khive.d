@@ -1,5 +1,5 @@
 ---
-issue_number: 194
+issue_num: 194
 flow_name: "194_performance_benchmarking"
 pattern: "FANOUT"
 project_phase: "development"

@@ -1,5 +1,5 @@
 ---
-issue_number: 187
+issue_num: 187
 flow_name: "187_orchestration_testing"
 pattern: "W_REFINEMENT"
 project_phase: "development"
