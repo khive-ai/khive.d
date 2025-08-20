@@ -9,9 +9,9 @@ from lionagi.models import FieldModel, OperableModel
 from lionagi.protocols.types import ID, AssistantResponse, Graph, IDType, Pile
 
 from khive.services.composition import composer_service
-from khive.toolkits.cc import cc_settings, create_cc
+from khive.toolkits.cc import create_cc
 from khive.toolkits.cc.create_cc import create_orchestrator_cc_model
-from khive.utils import get_logger
+from khive.utils import KHIVE_CONFIG_DIR, get_logger
 
 from .atomic import (
     CodeContextAnalysis,
@@ -59,7 +59,6 @@ class LionOrchestrator:
         orc_cc = await create_cc(
             as_orchestrator=True,
             verbose_output=True,
-            permission_mode="bypassPermissions",
             model=model,
             auto_finish=True,
         )
@@ -107,7 +106,39 @@ class LionOrchestrator:
                     f"Too many branches with name {name}, please choose a different suffix"
                 )
 
-        setting_dir = Path(cc_settings.REPO_LOCAL) / f".khive/roles/{role}/.claude"
+        setting_dir = KHIVE_CONFIG_DIR / "claude_roles" / role / ".claude"
+        source_dir = (
+            Path(__file__).parent.parent.parent
+            / "toolkits"
+            / "cc"
+            / "claude_roles"
+            / role
+            / ".claude"
+        )
+
+        if not setting_dir.exists():
+            import shutil
+
+            shutil.copytree(source_dir, setting_dir, dirs_exist_ok=True)
+
+        files_to_check = {"settings.json", "CLAUDE.md"}
+        for f in files_to_check:
+            if not (setting_dir / f).exists():
+                import shutil
+
+                shutil.copy(source_dir / f, setting_dir / f)
+
+        mcp_fp = setting_dir / ".mcp.json"
+        settings_fp = setting_dir / "settings.json"
+        claude_md_fp = setting_dir / "CLAUDE.md"
+        if not mcp_fp.exists() and copy_mcp_config:
+            from khive.utils import PROJECT_ROOT
+
+            if (PROJECT_ROOT / ".mcp.json").exists():
+                import shutil
+
+                shutil.copy(PROJECT_ROOT / ".mcp.json", mcp_fp)
+
         if role in ["implementer", "tester", "architect", "reviewer"]:
             requires_root = True
             copy_mcp_config = False
@@ -123,17 +154,13 @@ class LionOrchestrator:
             verbose_output=verbose_output,
             auto_finish=auto_finish,
             requires_root=requires_root,
-            copy_mcp_config_from=setting_dir / ".mcp.json" if copy_mcp_config else None,
-            copy_settings_from=(
-                setting_dir / "settings.json" if copy_settings else None
-            ),
-            copy_claude_md_from=setting_dir / "CLAUDE.md" if copy_claude_md else None,
+            copy_mcp_config_from=mcp_fp if copy_mcp_config else None,
+            copy_settings_from=settings_fp if copy_settings else None,
+            copy_claude_md_from=claude_md_fp if copy_claude_md else None,
             overwrite_config=overwrite_config,
         )
 
-        compose_response = await composer_service.handle_request(
-            request=compose_request
-        )
+        compose_response = await composer_service.handle_request(compose_request)
 
         if clone_from:
             _from = self.session.get_branch(clone_from)
@@ -597,7 +624,7 @@ class LionOrchestrator:
         from lionagi.utils import create_path
 
         fp = create_path(
-            directory=f"{cc_settings.REPO_LOCAL}/{cc_settings.WORKSPACE}/{self.flow_name}/snapshots",
+            directory=f"{KHIVE_CONFIG_DIR}/{self.flow_name}/snapshots",
             filename=f"{self.flow_name}_session.json",
             dir_exist_ok=True,
             file_exist_ok=True,

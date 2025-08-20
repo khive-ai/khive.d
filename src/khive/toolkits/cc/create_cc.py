@@ -4,14 +4,16 @@ from pathlib import Path
 import aiofiles
 from lionagi import iModel
 
-from .settings import cc_settings
+from khive.utils import PROJECT_ROOT
+
+from .settings import cc_settings as cc
 
 _get_cc_imodel = partial(
     iModel,
     provider="claude_code",
-    endpoint=cc_settings.ENDPOINT,
-    repo=cc_settings.REPO_LOCAL,
-    cli_display_theme=cc_settings.CLI_THEME,
+    endpoint="query_cli",
+    repo=PROJECT_ROOT,
+    cli_display_theme=cc.CLI_THEME,
 )
 
 
@@ -39,19 +41,17 @@ def create_orchestrator_cc_model(
      - permission_mode: bypassPermissions, default, acceptEdits
      - auto_finish: whether to automatically enforce result message as final output
     """
-    model = model or cc_settings.ORCHESTRATOR_MODEL or cc_settings.MODEL
+    model = model or cc.ORCHESTRATOR_MODEL or cc.MODEL
     verbose_output = (
-        verbose_output
-        if verbose_output is not None
-        else cc_settings.ORCHESTRATOR_VERBOSE
+        verbose_output if verbose_output is not None else cc.ORCHESTRATOR_VERBOSE
     )
     permission_mode = (
         "bypassPermissions"
-        if cc_settings.ORCHESTRATOR_SKIP_PERMISSIONS
-        else permission_mode or cc_settings.PERMISSION_MODE
+        if cc.ORCHESTRATOR_SKIP_PERMISSIONS
+        else permission_mode or cc.PERMISSION_MODE
     )
     auto_finish = (
-        auto_finish if auto_finish is not None else cc_settings.ORCHESTRATOR_AUTO_FINISH
+        auto_finish if auto_finish is not None else cc.ORCHESTRATOR_AUTO_FINISH
     )
 
     return _get_cc_imodel(
@@ -83,18 +83,14 @@ def create_task_cc_model(
     if subdir is None, it will be root/
     """
 
-    verbose_output = (
-        verbose_output if verbose_output is not None else cc_settings.TASK_VERBOSE
-    )
+    verbose_output = verbose_output if verbose_output is not None else cc.TASK_VERBOSE
     if permission_mode is None:
-        if cc_settings.TASK_SKIP_PERMISSIONS:
+        if cc.TASK_SKIP_PERMISSIONS:
             permission_mode = "bypassPermissions"
         else:
-            permission_mode = cc_settings.PERMISSION_MODE
-    model = model or cc_settings.TASK_MODEL or cc_settings.MODEL
-    auto_finish = (
-        auto_finish if auto_finish is not None else cc_settings.TASK_AUTO_FINISH
-    )
+            permission_mode = cc.PERMISSION_MODE
+    model = model or cc.TASK_MODEL or cc.MODEL
+    auto_finish = auto_finish if auto_finish is not None else cc.TASK_AUTO_FINISH
 
     ws_, add_dir = None, None
     if requires_root:
@@ -104,7 +100,7 @@ def create_task_cc_model(
             ws_depth = _calculate_workspace_depth(ws_)
             add_dir = "../" * ws_depth if ws_depth else None
     else:
-        ws_ = cc_settings.WORKSPACE
+        ws_ = ".khive/workspaces"
         if subdir:
             ws_ = f"{ws_}/{subdir}"
 

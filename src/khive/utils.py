@@ -691,6 +691,7 @@ def print_step(step: str, status: str = "running") -> None:
 # Set up project root as module-level constant
 PROJECT_ROOT = get_project_root()
 KHIVE_CONFIG_DIR = PROJECT_ROOT / ".khive"
+SQLITE_DSN = f"sqlite+aiosqlite:///{KHIVE_CONFIG_DIR}/claude_hooks.db"
 
 
 class EventBroadcaster:

@@ -111,6 +111,21 @@ def start(
         )
         sys.exit(1)
 
+    from khive.utils import PROJECT_ROOT
+
+    dot_claude = PROJECT_ROOT / ".claude"
+    if not dot_claude.exists() or not dot_claude.is_dir():
+        import shutil
+
+        source_dot_claude = (
+            Path(__file__).parent.parent / "toolkits" / "cc" / "dot_claude"
+        )
+        dest_dot_claude = PROJECT_ROOT / ".claude"
+        shutil.copytree(
+            source_dot_claude,
+            dest_dot_claude,
+            dirs_exist_ok=True,
+        )
     processes = []
 
     try:

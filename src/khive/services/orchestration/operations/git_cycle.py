@@ -1,9 +1,8 @@
 import logging
 
-from lionagi.ln.concurrency import get_cancelled_exc_class
+from lionagi import ln as ln
 
-from khive.services.orchestration.orchestrator import LionOrchestrator
-
+from ..orchestrator import LionOrchestrator
 from ..parts import Issue, IssuePlan
 
 logging.basicConfig(level=logging.INFO)
@@ -77,7 +76,7 @@ HUMAN REVIEW REQUIRED: This step requires human validation before proceeding to 
         await orc.run_flow()
         issue.content.git_processed = True
         issue.content.operation_status = "completed" if success else "failed"
-    except get_cancelled_exc_class():
+    except ln.get_cancelled_exc_class():
         logger.warning(f"⚠️ Issue #{issue_plan.issue_num} git cycle was cancelled.")
         issue.content.operation_status = "cancelled"
     except Exception as e:

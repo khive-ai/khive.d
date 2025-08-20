@@ -1,8 +1,4 @@
-# Legacy imports (deprecated - use new operation-based pattern)
-# New clean operation-based orchestration
 from .orchestrator import LionOrchestrator
-
-# Shared data models
 from .parts import (
     AgentRequest,
     BaseGate,
@@ -20,7 +16,6 @@ from .parts import (
     OrchestrationPlan,
     RefinementConfig,
 )
-from .prompts import KHIVE_PLAN_REMINDER
 
 __all__ = (
     "LionOrchestrator",
@@ -38,6 +33,5 @@ __all__ = (
     "IssueResult",
     "OrchestrationPlan",
     "RefinementConfig",
-    "KHIVE_PLAN_REMINDER",
     "Issue",
 )

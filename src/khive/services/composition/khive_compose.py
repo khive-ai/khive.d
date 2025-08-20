@@ -54,30 +54,24 @@ async def run_composition(
             print(json.dumps(response.model_dump(exclude_none=True), indent=2))
         elif response.success:
             # Print summary
-            print(f"\n🤖 {response.summary}")
-            print(f"🆔 Agent ID: {response.agent_id}")
-            print(f"👤 Role: {response.role}")
+            print(f"Agent ID: {response.agent_id}")
+            print(f"Role: {response.role}")
             print(
-                f"🎯 Domains: {', '.join(response.domains) if response.domains else 'general'}"
+                f"Domains: {', '.join(response.domains) if response.domains else 'general'}"
             )
-            print(f"✨ Confidence: {response.confidence:.0%}")
 
             if response.capabilities:
-                print("\n🔧 Capabilities:")
-                for cap in response.capabilities[:5]:  # Show first 5
+                print("\nCapabilities:")
+                for cap in response.capabilities:
                     if cap.strip():
-                        print(f"  • {cap.strip()}")
-                if len(response.capabilities) > 5:
-                    print(
-                        f"  ... and {len(response.capabilities) - 5} more capabilities"
-                    )
+                        print(f" - {cap.strip()}")
 
             if response.tools:
-                print(f"\n🛠️  Tools: {', '.join(response.tools)}")
+                print(f"\nTools: {', '.join(response.tools)}")
 
             if response.domain_expertise:
                 print("\n📚 Domain Expertise:")
-                for expertise in response.domain_expertise[:3]:  # Show first 3
+                for expertise in response.domain_expertise:
                     print(f"  • {expertise.domain_id}")
                     if expertise.knowledge_patterns:
                         pattern_count = sum(
@@ -95,20 +89,13 @@ async def run_composition(
                         print(
                             f"    Specialized tools: {len(expertise.specialized_tools)}"
                         )
-                if len(response.domain_expertise) > 3:
-                    print(
-                        f"  ... and {len(response.domain_expertise) - 3} more domains"
-                    )
 
-            print("\n📝 System Prompt Preview:")
-            print("─" * 60)
+            print("\nSystem Prompt Preview:")
+            print("---")
             # Show first few lines of system prompt
             lines = response.system_prompt.split("\n")
-            for line in lines[:10]:
+            for line in lines:
                 print(line)
-            if len(lines) > 10:
-                print(f"... and {len(lines) - 10} more lines")
-            print("─" * 60)
 
             # **NEW: Show essential communication info for enhanced/secure mode**
             if (
@@ -121,7 +108,7 @@ async def run_composition(
                     artifact_id = comm_info.get("artifact_id", "none")
                     print("\n🔗 Communication Ready")
                     print(
-                        f"📝 Publish findings: uv run khive communicate publish --artifact={artifact_id} --section=findings --content='...'"
+                        f"Publish findings: uv run khive communicate publish --artifact={artifact_id} --section=findings --content='...'"
                     )
                     print(
                         f"🚨 Check urgent: uv run khive communicate check-urgent --agent={response.agent_id}"

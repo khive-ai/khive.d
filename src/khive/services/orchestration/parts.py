@@ -272,8 +272,10 @@ class Issue(Node):
 
     @staticmethod
     def create_file_path(issue_num: IssueNum, exists_ok: bool = True) -> Path:
+        from khive.utils import KHIVE_CONFIG_DIR
+
         fp = create_path(
-            directory=f"{cc_settings.REPO_LOCAL}/.khive/issues/storage",
+            directory=f"{KHIVE_CONFIG_DIR}/issues/storage",
             filename=f"issue_{issue_num}.json",
             dir_exist_ok=True,
             file_exist_ok=exists_ok,
