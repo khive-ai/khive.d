@@ -34,3 +34,12 @@ Evaluate if testing fits issue needs and project phase.
 
 Focus on confidence appropriate to current risk and maturity.
 """
+
+MINIMAL_TESTING_GATE_PROMPT = """
+Basic testing check for early development:
+- Does the main functionality work?
+- Are critical paths tested?
+- Can changes be made safely?
+
+This is about development velocity, not production reliability.
+"""

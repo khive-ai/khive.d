@@ -9,7 +9,7 @@ __all__ = (
 
 
 KHIVE_PLAN_REMINDER = """
-MANDATORY: First run `gh issue view #{issue_num}` to read the original requirements.
+MANDATORY: First run `gh issue view {issue_num}` to read the original requirements.
 
 Planning Constraints:
 - Plan the MINIMAL change to satisfy this issue's acceptance criteria
@@ -30,7 +30,7 @@ Agent Coordination:
 """
 
 CRITIC_REVIEW_INSTRUCTION = """
-STEP 1: Run `gh issue view #{issue_num}` to read the original issue requirements.
+STEP 1: Run `gh issue view {issue_num}` to read the original issue requirements.
 
 STEP 2: Evaluate ONLY against the specific GitHub issue:
 - Does the work satisfy the acceptance criteria stated in the issue?
@@ -65,7 +65,7 @@ Remember: Quality means "appropriate for the issue scope," not "gold-plated."
 REDO_ORCHESTRATOR_INSTRUCTION = """
 REDO EXECUTION - Previous attempt failed critic review.
 
-STEP 1: Run `gh issue view #{issue_num}` to re-read original requirements.
+STEP 1: Run `gh issue view {issue_num}` to re-read original requirements and c heck relevant comments.
 
 STEP 2: Analyze critic feedback:
 {redo_ctx}

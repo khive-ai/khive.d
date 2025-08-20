@@ -624,7 +624,7 @@ class LionOrchestrator:
         from lionagi.utils import create_path
 
         fp = create_path(
-            directory=f"{KHIVE_CONFIG_DIR}/{self.flow_name}/snapshots",
+            directory=f"{KHIVE_CONFIG_DIR}/workspaces/{self.flow_name}/snapshots",
             filename=f"{self.flow_name}_session.json",
             dir_exist_ok=True,
             file_exist_ok=True,

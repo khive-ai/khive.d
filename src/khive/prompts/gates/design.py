@@ -26,3 +26,12 @@ Evaluate if design fits issue scope and project phase.
 
 Perfect is the enemy of good. Match design detail to issue importance and maturity.
 """
+
+MINIMAL_DESIGN_GATE_PROMPT = """
+Quick design check for exploratory/experimental work:
+- Is the core approach clear?
+- Are major risks identified?
+- Can implementation begin?
+
+This is for learning and iteration, not production deployment.
+"""
