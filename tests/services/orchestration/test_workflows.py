@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     ComposerRequest,
@@ -524,12 +525,12 @@ class TestAsyncSecurityAndResilience:
         async def amplifying_flow_operation(graph):
             # Simulate a potentially malicious operation that spawns many tasks
             tasks = []
-            for i in range(100):  # Try to create many tasks
-                # Use a semaphore to limit actual concurrency
-                semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent
+            # Use a semaphore to limit actual concurrency
+            semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent
 
-                async def limited_operation():
-                    async with semaphore:
+            for i in range(100):  # Try to create many tasks
+                async def limited_operation(sem=semaphore):
+                    async with sem:
                         await asyncio.sleep(0.01)
                         return f"result_{len(tasks)}"
 

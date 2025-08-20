@@ -93,12 +93,11 @@ def get_composite_gate_prompt(
     Returns:
         Combined gate prompt
     """
-    prompts = []
-    for gate_type in gate_types:
-        if prompt := get_gate_prompt(
-            gate_type, phase, is_critical_path, is_experimental
-        ):
-            prompts.append(f"## {gate_type.upper()} GATE\n{prompt}")
+    prompts = [
+        f"## {gate_type.upper()} GATE\n{prompt}"
+        for gate_type in gate_types
+        if (prompt := get_gate_prompt(gate_type, phase, is_critical_path, is_experimental))
+    ]
 
     if not prompts:
         return ""

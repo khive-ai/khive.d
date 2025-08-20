@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+
 from khive.services.composition.agent_composer import AgentComposer
 
 
@@ -87,8 +88,7 @@ class TestBasicThreadSafety:
             futures = []
             # Each file loaded by multiple threads
             for _ in range(5):  # 5 rounds
-                for file_path in test_files:
-                    futures.append(executor.submit(load_yaml_file, file_path))
+                futures.extend(executor.submit(load_yaml_file, file_path) for file_path in test_files)
 
             # Wait for all to complete
             for future in as_completed(futures):
@@ -96,7 +96,7 @@ class TestBasicThreadSafety:
 
         # Verify results
         assert len(errors) == 0, f"Errors occurred: {errors}"
-        assert len(results) == 50  # 10 files × 5 rounds
+        assert len(results) == 50  # 10 files x 5 rounds
 
         # All results should be valid
         for result in results:
@@ -139,15 +139,14 @@ class TestBasicThreadSafety:
             futures = []
             # Each role loaded multiple times concurrently
             for _ in range(3):
-                for role_name in role_names:
-                    futures.append(executor.submit(load_role, role_name))
+                futures.extend(executor.submit(load_role, role_name) for role_name in role_names)
 
             for future in as_completed(futures):
                 future.result()
 
         # Verify results
         assert len(load_errors) == 0, f"Load errors: {load_errors}"
-        assert len(loaded_roles) == 60  # 20 roles × 3 rounds
+        assert len(loaded_roles) == 60  # 20 roles x 3 rounds
 
         # Group by role name and verify consistency
         role_groups = {}

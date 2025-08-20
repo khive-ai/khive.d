@@ -575,8 +575,7 @@ class MCPCommand(BaseCLICommand):
             log_msg(f"GITHUB_PERSONAL_ACCESS_TOKEN: {token_preview}")
 
         # Detect if this is a Python script for PythonStdioTransport
-        if self._is_python_command(server_config.command, server_config.args):
-            if PythonStdioTransport is not None:
+        if self._is_python_command(server_config.command, server_config.args) and PythonStdioTransport is not None:
                 # Extract Python script path from command/args
                 script_path = self._extract_python_script_path(
                     server_config.command, server_config.args
@@ -674,8 +673,12 @@ class MCPCommand(BaseCLICommand):
                 try:
                     # Simple cleanup without nested timeouts to avoid cancellation issues
                     await client.__aexit__(type(e), e, e.__traceback__)
-                except Exception:
-                    pass  # Ignore cleanup errors
+                except Exception as cleanup_e:
+                    # Expected cleanup failure during exception handling
+                    import logging
+                    logging.getLogger(__name__).debug(
+                        f"MCP client cleanup exception (expected during error): {cleanup_e}"
+                    )
             raise
         else:
             # Normal cleanup only when no exception occurred
@@ -683,8 +686,12 @@ class MCPCommand(BaseCLICommand):
                 try:
                     # Simple cleanup without nested timeouts
                     await client.__aexit__(None, None, None)
-                except Exception:
-                    pass  # Ignore cleanup errors
+                except Exception as cleanup_e:
+                    # Expected cleanup failure during normal operation
+                    import logging
+                    logging.getLogger(__name__).debug(
+                        f"MCP client cleanup exception (expected): {cleanup_e}"
+                    )
 
     async def _cleanup_all_clients(self):
         """No-op cleanup since we don't store clients anymore."""

@@ -2,8 +2,8 @@ import logging
 
 from lionagi.fields import Instruct
 
-from orchestration.orchestrator import LionOrchestrator
-from orchestration.parts import (
+from khive.services.orchestration.orchestrator import LionOrchestrator
+from khive.services.orchestration.parts import (
     BaseGate,
     ComposerRequest,
     FanoutPatterns,
@@ -12,17 +12,23 @@ from orchestration.parts import (
     IssuePlan,
     IssueResult,
 )
-from orchestration.prompts import CRITIC_REVIEW_INSTRUCTION
+from khive.services.orchestration.prompts import CRITIC_REVIEW_INSTRUCTION
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("KhiveOperations")
 
 
-async def review_gate(issue: Issue, **kw) -> tuple[bool, Issue]:
+async def review_gate(issue: Issue, **_kw) -> tuple[bool, Issue]:
+    """Execute review gate evaluation for an issue.
+
+    Args:
+        issue: Issue to review
+        **_kw: Framework parameters (branch, depends_on) passed by orchestration registry
+    """
     issue_plan: IssuePlan = issue.content.issue_plan
     issue_result: IssueResult = issue.content.issue_result
 
-    logging.info(
+    logger.info(
         f"\n🔍 Critic Review Gate for Issue #{issue_plan.issue_num}, Execution Number {len(issue_result.executions)}"
     )
     orc = LionOrchestrator(issue_plan.flow_name)
@@ -98,7 +104,7 @@ async def review_gate(issue: Issue, **kw) -> tuple[bool, Issue]:
             1 if gate and getattr(gate, "threshold_met", False) else 0 for gate in gates
         )
         if score >= 3:
-            logging.info(
+            logger.info(
                 f"✅ Critic review gate PASSED for issue #{issue_plan.issue_num} ({score}/5 votes)"
             )
             issue.content.gate_passed = True

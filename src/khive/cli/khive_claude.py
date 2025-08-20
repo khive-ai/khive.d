@@ -187,8 +187,12 @@ def start(
         for name, process in processes:
             try:
                 process.terminate()
-            except:
-                pass
+            except (ProcessLookupError, OSError) as e:
+                # Expected termination failure - process may already be stopped
+                import logging
+                logging.getLogger(__name__).debug(
+                    f"Process {name} termination exception (expected): {e}"
+                )
         sys.exit(1)
 
 
@@ -222,10 +226,10 @@ def status(limit: int, event_type: str | None, session_id: str | None):
                 click.echo("-" * 80)
 
                 for event in reversed(events[-20:]):  # Show last 20, newest first
-                    from datetime import datetime
+                    from khive.core import TimePolicy
 
                     if isinstance(event.created_at, int | float):
-                        event_time = datetime.fromtimestamp(event.created_at).strftime(
+                        event_time = TimePolicy.from_timestamp_local(event.created_at).strftime(
                             "%H:%M:%S"
                         )
                     else:

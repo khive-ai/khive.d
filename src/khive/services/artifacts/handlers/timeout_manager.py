@@ -9,13 +9,17 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import aiofiles
+
+from khive.core import TimePolicy
+
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -94,20 +98,20 @@ class TimeoutResult:
 
     def mark_completed(self) -> None:
         """Mark operation as completed."""
-        self.end_time = datetime.now()
+        self.end_time = TimePolicy.now_utc()
         self.duration = (self.end_time - self.start_time).total_seconds()
         self.status = TimeoutStatus.COMPLETED
 
     def mark_timed_out(self, error: str) -> None:
         """Mark operation as timed out."""
-        self.end_time = datetime.now()
+        self.end_time = TimePolicy.now_utc()
         self.duration = (self.end_time - self.start_time).total_seconds()
         self.status = TimeoutStatus.TIMED_OUT
         self.error = error
 
     def mark_error(self, error: str) -> None:
         """Mark operation as failed with error."""
-        self.end_time = datetime.now()
+        self.end_time = TimePolicy.now_utc()
         self.duration = (self.end_time - self.start_time).total_seconds()
         self.status = TimeoutStatus.ERROR
         self.error = error
@@ -192,7 +196,7 @@ class TimeoutManager:
             operation_id=operation_id,
             timeout_type=timeout_type,
             status=TimeoutStatus.PENDING,
-            start_time=datetime.now(),
+            start_time=TimePolicy.now_utc(),
         )
 
         self._active_operations[operation_id] = result
@@ -283,7 +287,7 @@ class TimeoutManager:
             operation_id=operation_id,
             timeout_type=timeout_type,
             status=TimeoutStatus.TIMED_OUT,
-            start_time=datetime.now(),
+            start_time=TimePolicy.now_utc(),
             retry_count=self.config.max_retries,
         )
         final_result.mark_timed_out(
@@ -356,15 +360,15 @@ class TimeoutManager:
 
         metrics_data = {
             "session_id": self.session_id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": TimePolicy.now_utc().isoformat(),
             "config": self.config.to_dict(),
             "metrics": self._performance_metrics,
             "active_operations": len(self._active_operations),
         }
 
         try:
-            with open(self.metrics_file, "w") as f:
-                json.dump(metrics_data, f, indent=2)
+            async with aiofiles.open(self.metrics_file, "w") as f:
+                await f.write(json.dumps(metrics_data, indent=2))
         except Exception as e:
             logger.exception(f"Failed to save metrics: {e}")
 
@@ -446,9 +450,9 @@ async def timeout_agent_execution(
 ) -> TimeoutResult:
     """Execute an agent task with timeout handling."""
     return await timeout_manager.execute_with_timeout(
-        operation_id=operation_id,
-        timeout_type=TimeoutType.AGENT_EXECUTION,
-        operation=agent_task,
+        operation_id,
+        TimeoutType.AGENT_EXECUTION,
+        agent_task,
         *args,
         **kwargs,
     )
@@ -463,9 +467,9 @@ async def timeout_phase_completion(
 ) -> TimeoutResult:
     """Execute a phase task with timeout handling."""
     return await timeout_manager.execute_with_timeout(
-        operation_id=f"phase_{phase_name}",
-        timeout_type=TimeoutType.PHASE_COMPLETION,
-        operation=phase_task,
+        f"phase_{phase_name}",
+        TimeoutType.PHASE_COMPLETION,
+        phase_task,
         *args,
         **kwargs,
     )

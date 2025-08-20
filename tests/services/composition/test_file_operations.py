@@ -19,6 +19,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 import yaml
+
 from khive.services.composition.agent_composer import AgentComposer
 
 
@@ -139,7 +140,7 @@ class TestFileLoadingSafety:
                 try:
                     race_file.write_text(f"modified: {i}")
                     time.sleep(0.01)
-                except:
+                except (OSError, PermissionError):
                     pass  # File might be locked
 
         def load_file():
@@ -150,7 +151,7 @@ class TestFileLoadingSafety:
                     result = composer.load_yaml(race_file)
                     results.append(result)
                     time.sleep(0.02)
-                except:
+                except (OSError, PermissionError, ValueError):
                     results.append({})  # Handle errors gracefully
             return results
 
@@ -614,7 +615,7 @@ class TestConcurrentFileOperations:
             for _ in range(20):
                 import random
 
-                file_to_load = random.choice(yaml_files)
+                file_to_load = random.choice(yaml_files)  # noqa: S311
                 result = composer.load_yaml(file_to_load)
                 results.append(result)
                 time.sleep(0.001)  # Small delay to increase chance of races

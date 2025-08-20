@@ -4,16 +4,18 @@ import json
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 import aiofiles
-from khive._types import BaseModel
 from lionagi.protocols.types import Node
 from lionagi.utils import Enum, create_path
 from pydantic import Field, field_validator, model_validator
 
+from khive._types import BaseModel
+
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from khive.services.composition.parts import AgentRole, ComposerRequest
     from lionagi.fields import Instruct
+
+    from khive.services.composition.parts import AgentRole, ComposerRequest
 
 DeliverableType = Literal[
     "RequirementsAnalysis",
@@ -93,6 +95,7 @@ GateOptions = Literal["design", "security", "performance", "testing", "documenta
 
 class FanoutPatterns(str, Enum):
     """Enumeration for orchestration patterns used in issues"""
+    __slots__ = ()
 
     FANOUT = "fanout"
     W_REFINEMENT = "fanout_with_gated_refinement"
@@ -126,7 +129,7 @@ class RefinementConfig(BaseModel):
     gate_instruction: str
     """Instruction for the gate to evaluate quality of deliverables"""
 
-    gates: Any = None  # type: ignore
+    gates: Any = None  # type: ignore[assignment]
     """Optional gates for additional quality checks, can be a list or dict"""
 
 
@@ -318,10 +321,8 @@ class Issue(Node):
         return None
 
     async def sync(self):
-        fp = self.create_file_path(self.content.issue_num)
-        async with aiofiles.open(
-            self.create_file_path(self.content.issue_num), "w"
-        ) as fp:
+        file_path = self.create_file_path(self.content.issue_num)
+        async with aiofiles.open(file_path, "w") as fp:
             await fp.write(json.dumps(self.to_dict()))
 
     @property

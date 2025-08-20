@@ -449,7 +449,7 @@ def run_command(
         if env:
             final_env.update(env)
 
-        process = subprocess.run(
+        process = subprocess.run(  # noqa: S603
             cmd_args,
             text=True,
             capture_output=capture,
@@ -457,6 +457,7 @@ def run_command(
             cwd=cwd,
             env=final_env,
             timeout=timeout,
+            shell=False,
         )
 
         duration = time.time() - start_time

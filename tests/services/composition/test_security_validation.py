@@ -20,6 +20,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 import yaml
+
 from khive.services.composition.agent_composer import AgentComposer
 
 
@@ -462,7 +463,7 @@ class TestFileSizeAndResourceSecurity:
         def counting_load_yaml(path):
             access_count[0] += 1
             time.sleep(0.1)  # Simulate I/O delay
-            return original_load_yaml(path)
+            return original_open(path)
 
         # Launch many concurrent file loads
         with ThreadPoolExecutor(max_workers=50) as executor:

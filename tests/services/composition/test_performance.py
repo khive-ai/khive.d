@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+
 from khive.services.composition.agent_composer import AgentComposer
 
 
@@ -196,9 +197,9 @@ class TestScalabilityPerformance:
 
             start_time = time.perf_counter()
 
-            def worker():
+            def worker(ops_count=operations_per_thread):
                 results = []
-                for i in range(operations_per_thread):
+                for i in range(ops_count):
                     role_name = f"scale_role_{i % 5}"  # Cycle through 5 roles
                     result = composer.load_agent_role(role_name)
                     results.append(result)
@@ -632,9 +633,9 @@ class TestThroughputPerformance:
             ops_per_thread = scenario["ops_per_thread"]
             name = scenario["name"]
 
-            def burst_worker():
+            def burst_worker(ops_count=ops_per_thread):
                 worker_results = []
-                for i in range(ops_per_thread):
+                for i in range(ops_count):
                     start_time = time.perf_counter()
                     role_idx = i % 5
                     result = composer.load_agent_role(f"throughput_role_{role_idx}")

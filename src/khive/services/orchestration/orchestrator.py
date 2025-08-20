@@ -1,16 +1,17 @@
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import aiofiles
-from khive.services.composition import composer_service
-from khive.toolkits.cc import create_cc
-from khive.toolkits.cc.create_cc import create_orchestrator_cc_model
-from khive.utils import KHIVE_CONFIG_DIR, get_logger
 from lionagi import Branch, Builder, Operation, Session
 from lionagi.fields import Instruct
 from lionagi.models import FieldModel, OperableModel
 from lionagi.protocols.types import ID, AssistantResponse, Graph, IDType, Pile
+
+from khive.services.composition import composer_service
+from khive.toolkits.cc import create_cc
+from khive.toolkits.cc.create_cc import create_orchestrator_cc_model
+from khive.utils import KHIVE_CONFIG_DIR, get_logger
 
 from .atomic import (
     CodeContextAnalysis,
@@ -28,7 +29,6 @@ from .parts import (
     FanoutResponse,
     FanoutWithGatedRefinementResponse,
     GateOptions,
-    Literal,
     OrchestrationPlan,
 )
 from .prompts import ATOMIC_WORK_GUIDANCE
@@ -381,14 +381,14 @@ class LionOrchestrator:
         visualize_step = (
             visualize if isinstance(visualize, bool) else visualize == "step"
         )
-        FlowPlansField = self.generate_flow_plans_field(
+        flow_plans_field = self.generate_flow_plans_field(
             initial=initial_desc,
         )
         orc_branch = self.new_orc_branch()
         params = {
             "operation": "operate",
             "branch": orc_branch.id,
-            "field_models": [FlowPlansField],
+            "field_models": [flow_plans_field],
             "instruct": Instruct(
                 reason=True,
                 instruction=planning_instruction,

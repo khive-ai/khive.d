@@ -5,7 +5,9 @@ import json
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import aiofiles
 import pytest
+
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     FanoutWithGatedRefinementResponse,
@@ -409,8 +411,8 @@ class TestSessionLifecycleManagement:
 
             # Write to temp file
             state_file = tmp_path / f"session_{serializable_state['session_id']}.json"
-            with open(state_file, "w") as f:
-                json.dump(serializable_state, f)
+            async with aiofiles.open(state_file, "w") as f:
+                await f.write(json.dumps(serializable_state))
 
             serialization_log.append({
                 "action": "serialize_complete",
@@ -430,8 +432,9 @@ class TestSessionLifecycleManagement:
 
             await asyncio.sleep(0.02)
 
-            with open(file_path) as f:
-                restored_state = json.load(f)
+            async with aiofiles.open(file_path) as f:
+                content = await f.read()
+                restored_state = json.loads(content)
 
             serialization_log.append({
                 "action": "deserialize_complete",
@@ -689,13 +692,18 @@ class TestAdvancedWorkflowCoordination:
         # Track agent execution order and coordination
         agent_execution_log = []
         agent_completion_times = {}
+        agent_completion_events = {}
+
+        # Initialize completion events for all agents
+        for agent in ["researcher", "analyst", "architect", "implementer", "reviewer"]:
+            agent_completion_events[agent] = asyncio.Event()
 
         async def coordinated_agent_execution(agent_name, dependencies):
             """Simulate agent execution with dependency coordination."""
 
-            # Wait for dependencies to complete
-            while not all(dep in agent_completion_times for dep in dependencies):
-                await asyncio.sleep(0.01)  # Check dependencies frequently
+            # Wait for dependencies to complete using events
+            for dep in dependencies:
+                await agent_completion_events[dep].wait()
 
             # Log execution start
             start_time = time.time()
@@ -720,6 +728,8 @@ class TestAdvancedWorkflowCoordination:
             # Log completion
             completion_time = time.time()
             agent_completion_times[agent_name] = completion_time
+            # Signal completion to other waiting agents
+            agent_completion_events[agent_name].set()
             agent_execution_log.append({
                 "agent": agent_name,
                 "action": "complete",

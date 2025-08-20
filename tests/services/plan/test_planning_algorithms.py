@@ -3,12 +3,12 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from khive.services.plan.planner_service import (
     ComplexityTier,
     OrchestrationPlanner,
     Request,
 )
-
 from tests.fixtures.planning_fixtures import MockDecisionMatrix
 
 
@@ -506,7 +506,7 @@ class TestAlgorithmicCornerCases:
         obscure_request = Request("xyzabc qwerty uiop")
 
         complexity = corner_case_planner.assess(obscure_request)
-        roles = corner_case_planner.select_roles(request, complexity)
+        roles = corner_case_planner.select_roles(obscure_request, complexity)
 
         # Should fall back to defaults
         assert complexity == ComplexityTier.MEDIUM

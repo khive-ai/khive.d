@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from khive.cli.base import CLIResult, ConfigurableCLICommand, cli_command
+from khive.core import TimePolicy
 from khive.utils import BaseConfig, ensure_directory, log_msg, safe_write_file, warn_msg
 
 
@@ -353,7 +354,7 @@ class NewDocCommand(ConfigurableCLICommand):
             **config.default_vars,
             **custom_vars,
             "DATE": dt.date.today().isoformat(),
-            "DATETIME": dt.datetime.now().isoformat(),
+            "DATETIME": TimePolicy.now_local().isoformat(),
             "IDENTIFIER": identifier,
             "PROJECT_ROOT": str(config.project_root),
             "USER": self._get_user_info(),
@@ -576,7 +577,12 @@ class NewDocCommand(ConfigurableCLICommand):
 
         try:
             return pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0] or os.getlogin()
-        except:
+        except (KeyError, OSError, AttributeError, IndexError) as e:
+            # Expected user info retrieval failure - fallback to environment
+            import logging
+            logging.getLogger(__name__).debug(
+                f"User info retrieval failed (using fallback): {e}"
+            )
             return os.environ.get("USER", "Unknown")
 
     def _generate_template_content(

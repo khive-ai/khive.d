@@ -8,14 +8,20 @@ This module addresses critical security vulnerabilities identified in the orches
 - Authorization bypass prevention
 """
 
+import contextlib
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from lionagi.fields import Instruct
+
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import ComposerRequest
-from lionagi.fields import Instruct
+
+
+class SecurityError(Exception):
+    """Custom security exception for testing."""
 
 
 class TestPathTraversalSecurity:
@@ -60,14 +66,11 @@ class TestPathTraversalSecurity:
             mock_path.exists.return_value = False
             mock_path.__truediv__ = MagicMock(return_value=mock_path)
 
-            try:
+            with contextlib.suppress(ValueError, OSError, FileNotFoundError, Exception):
                 # This should either sanitize the input or raise an exception
-                import asyncio
-
-                asyncio.run(orchestrator.create_cc_branch(compose_request))
-            except (ValueError, OSError, FileNotFoundError, Exception):
                 # Expected behavior - malicious input should be rejected
-                pass
+                import asyncio
+                asyncio.run(orchestrator.create_cc_branch(compose_request))
 
             # If file operations were called, verify paths don't contain traversal
             if mock_copytree.called:

@@ -8,6 +8,7 @@ This test suite focuses on advanced security attack vectors including:
 - Malformed YAML/markdown exploitation
 """
 
+import contextlib
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -15,6 +16,7 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 import yaml
+
 from khive.services.composition.agent_composer import AgentComposer
 
 
@@ -668,10 +670,8 @@ class TestConcurrentSecurityAttacks:
         def modify_file():
             """Modify file to malicious content during reading"""
             time.sleep(0.01)  # Small delay
-            try:
+            with contextlib.suppress(OSError, PermissionError):
                 race_file.write_text("malicious: " + "X" * (11 * 1024 * 1024))
-            except:
-                pass  # Ignore errors during race
 
         def read_file():
             """Read file while it's being modified"""

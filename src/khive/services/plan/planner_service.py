@@ -4,22 +4,23 @@ import asyncio
 import json
 import os
 import time
-from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Protocol
 
 import yaml
-from khive.utils import get_logger
 from openai import OpenAI
 
-from ..artifacts.handlers import (
+from khive.core import TimePolicy
+from khive.services.artifacts.handlers import (
     HandoffAgentSpec,
     HandoffCoordinator,
     TimeoutConfig,
     TimeoutManager,
     TimeoutType,
 )
+from khive.utils import get_logger
+
 from .cost_tracker import CostTracker
 from .models import OrchestrationEvaluation
 from .parts import (
@@ -85,7 +86,7 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         self.log_dir = Path(".khive/logs/orchestration_planning")
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = (
-            self.log_dir / f"evaluations_{datetime.now().strftime('%Y%m%d')}.jsonl"
+            self.log_dir / f"evaluations_{TimePolicy.now_utc().strftime('%Y%m%d')}.jsonl"
         )
 
         # Artifact management - use .khive folder instead of .claude
@@ -212,7 +213,7 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
     def create_session(self, task_description: str) -> str:
         """Create new session with artifact management structure"""
         # Generate session ID from timestamp and task
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = TimePolicy.now_utc().strftime("%Y%m%d_%H%M%S")
         task_slug = "".join(
             c for c in task_description.lower()[:20] if c.isalnum() or c in "-_"
         )
@@ -224,7 +225,7 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         # Initialize artifact registry
         registry = {
             "session_id": session_id,
-            "created_at": datetime.now().isoformat(),
+            "created_at": TimePolicy.now_utc().isoformat(),
             "task_description": task_description,
             "artifacts": [],
             "phases": [],
@@ -262,10 +263,7 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
             hits = self._assess_by_heuristics(req)
 
         # Return the highest complexity tier found
-        if hits:
-            tier = max(hits, key=self._tier_rank)
-        else:
-            tier = "medium"  # Default fallback
+        tier = max(hits, key=self._tier_rank) if hits else "medium"
 
         # Apply RAGRS complexity modifiers if applicable
         tier = self._apply_complexity_modifiers(req, tier)
@@ -555,9 +553,9 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
 
         # Execute agent task with timeout
         result = await timeout_manager.execute_with_timeout(
-            operation_id=agent_id,
-            timeout_type=timeout_type,
-            operation=agent_task,
+            agent_id,
+            timeout_type,
+            agent_task,
             *args,
             **kwargs,
         )
@@ -818,8 +816,8 @@ Be different - show YOUR unique perspective on which roles matter most."""
 
         output.append(f"Complexity Consensus: {consensus_complexity}")
         output.append("Agent assessments:")
-        for eval in evaluations:
-            e = eval["evaluation"]
+        for evaluation in evaluations:
+            e = evaluation["evaluation"]
             output.append(
                 f"- {eval['config']['name']}: {e.complexity} - {e.complexity_reason}"
             )
@@ -828,7 +826,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
         # Agent count consensus with weighted voting
         agent_counts = [e.total_agents for e in all_evals]
 
-        # Apply weighted voting (cost_optimizer and efficiency_analyst get ×2 weight when budget tight)
+        # Apply weighted voting (cost_optimizer and efficiency_analyst get x2 weight when budget tight)
         is_budget_tight = self.cost_tracker.total_cost >= (
             self.cost_tracker.get_cost_budget() * 0.8
         )
@@ -836,8 +834,8 @@ Be different - show YOUR unique perspective on which roles matter most."""
         weighted_sum = 0
         total_weight = 0
 
-        for eval in evaluations:
-            e = eval["evaluation"]
+        for evaluation in evaluations:
+            e = evaluation["evaluation"]
             agent_name = eval["config"]["name"]
 
             # Default weight
@@ -863,8 +861,8 @@ Be different - show YOUR unique perspective on which roles matter most."""
             f"Total Agents: {min(agent_counts)}-{max(agent_counts)} (avg: {avg_agents:.0f})"
         )
         output.append("Agent recommendations:")
-        for eval in evaluations:
-            e = eval["evaluation"]
+        for evaluation in evaluations:
+            e = evaluation["evaluation"]
             output.append(
                 f"- {eval['config']['name']}: {e.total_agents} agents - {e.agent_reason}"
             )
@@ -875,8 +873,8 @@ Be different - show YOUR unique perspective on which roles matter most."""
         role_scores = {}
         role_mentions = {}  # Track how many agents mentioned each role
 
-        for eval in evaluations:
-            e = eval["evaluation"]
+        for evaluation in evaluations:
+            e = evaluation["evaluation"]
             agent_weight = e.confidence
 
             # Score based on position in priority list
@@ -907,8 +905,8 @@ Be different - show YOUR unique perspective on which roles matter most."""
 
         # Show individual agent recommendations
         output.append("Individual Agent Priority Lists:")
-        for eval in evaluations:
-            e = eval["evaluation"]
+        for evaluation in evaluations:
+            e = evaluation["evaluation"]
             roles_str = " → ".join(e.role_priorities[:5])  # Show top 5
             output.append(
                 f"- {eval['config']['name']} ({e.confidence:.0%}): {roles_str}"
@@ -972,10 +970,10 @@ Be different - show YOUR unique perspective on which roles matter most."""
 
         output.append(f"Overall Confidence: {avg_confidence:.0%}")
         output.append("Individual confidence scores:")
-        for eval in evaluations:
-            output.append(
-                f"- {eval['config']['name']}: {eval['evaluation'].confidence:.0%}"
-            )
+        output.extend(
+            f"- {eval['config']['name']}: {eval['evaluation'].confidence:.0%}"
+            for eval in evaluations
+        )
         output.append("")
 
         # Add context reminder for orchestrator
@@ -1014,7 +1012,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
         avg_confidence = sum(e.confidence for e in all_evals) / len(all_evals)
 
         # Initialize Composer for domain canonicalization and duplicate prevention
-        from ..composition import AgentComposer
+        from khive.services.composition import AgentComposer
 
         composer = AgentComposer(Path(__file__).parent.parent.parent / "prompts")
 
@@ -1171,35 +1169,6 @@ Remember: This is PARALLEL EXECUTION - coordinate via shared artifacts!"""
 
         return "\n".join(output)
 
-    def create_session(self, task_description: str) -> str:
-        """Create new session with artifact management structure"""
-        # Generate session ID from timestamp and task
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        task_slug = "".join(
-            c for c in task_description.lower()[:20] if c.isalnum() or c in "-_"
-        )
-        session_id = f"{timestamp}_{task_slug}"
-
-        session_dir = self.workspace_dir / session_id
-        session_dir.mkdir(exist_ok=True)
-
-        # Initialize artifact registry
-        registry = {
-            "session_id": session_id,
-            "created_at": datetime.now().isoformat(),
-            "task_description": task_description,
-            "artifacts": [],
-            "phases": [],
-            "status": "active",
-        }
-
-        registry_path = session_dir / "artifact_registry.json"
-        with open(registry_path, "w") as f:
-            json.dump(registry, f, indent=2)
-
-        self.current_session_id = session_id
-        return session_id
-
     def get_artifact_management_prompt(
         self, session_id: str, phase: str, agent_role: str, domain: str
     ) -> str:
@@ -1242,7 +1211,7 @@ Your deliverable will be automatically registered. Include in your final report:
     ) -> str:
         """Generate standardized artifact path"""
         session_dir = self.workspace_dir / session_id
-        timestamp = datetime.now().strftime("%H%M%S")
+        timestamp = TimePolicy.now_utc().strftime("%H%M%S")
         filename = f"{phase}_{agent_role}_{domain}_{timestamp}.md"
         return str(session_dir / filename)
 
@@ -1449,11 +1418,10 @@ Your deliverable will be automatically registered. Include in your final report:
 
         # Build dependency map for available roles only
         for role in available_roles:
-            dependencies = []
-            if role in role_dependencies:
-                for dep in role_dependencies[role]:
-                    if dep in available_roles:
-                        dependencies.append(dep)
+            dependencies = [
+                dep for dep in role_dependencies.get(role, [])
+                if dep in available_roles
+            ]
             dependency_map[role] = dependencies
 
         return dependency_map
@@ -1655,9 +1623,7 @@ class PlannerService:
             spawn_commands = []
             if "khive compose" in consensus:
                 lines = consensus.split("\n")
-                for line in lines:
-                    if "khive compose" in line:
-                        spawn_commands.append(line.strip())
+                spawn_commands.extend(line.strip() for line in lines if "khive compose" in line)
 
             # Calculate confidence based on evaluation results
             confidence = 0.8  # Default confidence

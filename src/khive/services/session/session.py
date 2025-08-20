@@ -6,9 +6,10 @@ Handles session initialization and completion workflows
 import json
 import re
 import subprocess
-from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from khive.core import TimePolicy
 
 # ANSI color codes
 BOLD = "\033[1m"
@@ -35,7 +36,7 @@ class SessionInitializer:
         self.continue_session = continue_session
         self.memory_depth = depth
         self.context = {
-            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "date": TimePolicy.now_utc().strftime("%Y-%m-%d %H:%M:%S"),
             "priorities": [],
             "recent_work": [],
             "patterns": [],
@@ -47,7 +48,7 @@ class SessionInitializer:
     def run_command(self, cmd: list[str]) -> tuple[bool, str]:
         """Execute command and return success status and output"""
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True, shell=False)  # noqa: S603
             return True, result.stdout.strip()
         except subprocess.CalledProcessError as e:
             return False, e.stderr.strip()
@@ -89,8 +90,8 @@ class SessionInitializer:
                 # Check if not processed
                 if "processed: true" not in content:
                     count += 1
-            except:
-                pass
+            except (OSError, UnicodeDecodeError) as e:
+                self.logger.warning(f"Failed to read summary file {summary_file}: {e}")
 
         return count
 
@@ -147,8 +148,8 @@ class SessionInitializer:
                     if len(results) >= 5:
                         break
 
-            except:
-                pass
+            except (OSError, UnicodeDecodeError, ValueError) as e:
+                self.logger.warning(f"Failed to process diary file {diary}: {e}")
 
         return results[:5]
 
@@ -168,7 +169,8 @@ class SessionInitializer:
                 try:
                     content = path.read_text()
                     return f"# Documentation: {path.name}\n\n" + content
-                except:
+                except (OSError, UnicodeDecodeError) as e:
+                    self.logger.warning(f"Failed to read documentation file {path}: {e}")
                     continue
 
         return "# No orchestrator documentation found - using memory patterns only"
@@ -215,8 +217,8 @@ class SessionInitializer:
                             if len(results) >= 5:
                                 break
 
-            except:
-                pass
+            except (OSError, UnicodeDecodeError, ValueError) as e:
+                self.logger.warning(f"Failed to process summary file {summary}: {e}")
 
         # Deduplicate and limit
         seen = set()
@@ -268,8 +270,8 @@ class SessionInitializer:
         if success and output:
             try:
                 return json.loads(output)
-            except:
-                pass
+            except (json.JSONDecodeError, TypeError) as e:
+                self.logger.warning(f"Failed to parse JSON output: {e}")
         return []
 
     def generate_memory_queries(self) -> list[str]:
@@ -308,8 +310,7 @@ class SessionInitializer:
         ][:2]
         if high_priority_tasks:
             output.append("🔥 High Priority Tasks:")
-            for task in high_priority_tasks:
-                output.append(f"  • {task.get('description', 'Unknown task')}")
+            output.extend(f"  • {task.get('description', 'Unknown task')}" for task in high_priority_tasks)
             output.append("")
 
         # Recent insights (condensed)
@@ -538,7 +539,7 @@ class DiaryWritingAssistant:
 
                 # Add processed flag at the end if not already present
                 if "processed: true" not in content:
-                    content += f"\n\n---\nprocessed: true\nprocessed_date: {datetime.now().isoformat()}\n"
+                    content += f"\n\n---\nprocessed: true\nprocessed_date: {TimePolicy.now_utc().isoformat()}\n"
 
                     if not self.dry_run:
                         summary_path.write_text(content)

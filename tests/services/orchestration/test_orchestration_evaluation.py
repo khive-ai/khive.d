@@ -13,6 +13,8 @@ import time
 from unittest.mock import Mock, patch
 
 import pytest
+from pydantic import ValidationError
+
 from khive.services.plan.cost_tracker import CostTracker
 from khive.services.plan.models import OrchestrationEvaluation
 from khive.services.plan.parts import (
@@ -30,8 +32,6 @@ from khive.services.plan.planner_service import (
     PlannerService,
     Request,
 )
-from pydantic import ValidationError
-
 from tests.fixtures.planning_fixtures import (
     MockOpenAIResponse,
 )
@@ -505,11 +505,11 @@ class TestExternalModelMocking:
         tasks = []
         for i in range(3):
 
-            async def mock_eval():
+            async def mock_eval(index=i):
                 await asyncio.sleep(0.01)  # Simulate API delay
                 return mock_openai_environment.beta.chat.completions.parse(
                     model="gpt-5-nano",
-                    messages=[{"role": "user", "content": f"test {i}"}],
+                    messages=[{"role": "user", "content": f"test {index}"}],
                     response_format=OrchestrationEvaluation,
                 )
 

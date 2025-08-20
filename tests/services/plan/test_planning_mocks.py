@@ -1,17 +1,19 @@
 """Tests for planning service with comprehensive mocking of external dependencies."""
 
+import contextlib
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from khive.services.plan.models import OrchestrationEvaluation
 from khive.services.plan.parts import ComplexityLevel, PlannerRequest
 from khive.services.plan.planner_service import (
+    ComplexityTier,
     OrchestrationPlanner,
     PlannerService,
     Request,
 )
-
 from tests.fixtures.planning_fixtures import MockDecisionMatrix, MockOpenAIResponse
 
 
@@ -210,12 +212,9 @@ class TestErrorHandlingWithMocks:
         # Mock filesystem error
         with patch.object(Path, "mkdir", side_effect=PermissionError("Access denied")):
             # Should handle filesystem errors gracefully
-            try:
+            with contextlib.suppress(PermissionError):
                 session_id = planner.create_session("test task")
                 # If no exception, that's fine too
-            except PermissionError:
-                # Expected in some test environments
-                pass
 
     def test_malformed_decision_matrix_handling(self):
         """Test handling of malformed decision matrix."""

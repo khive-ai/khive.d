@@ -161,8 +161,7 @@ async def create_cc(
 
         ws_fp = Path(ws)
 
-        if copy_mcp_config_from:
-            if overwrite_config or not (ws_fp / ".mcp.json").exists():
+        if copy_mcp_config_from and (overwrite_config or not (ws_fp / ".mcp.json").exists()):
                 fp = create_path(ws, ".mcp.json", dir_exist_ok=True, file_exist_ok=True)
                 src_mcp = Path(copy_mcp_config_from)
 
@@ -173,8 +172,7 @@ async def create_cc(
                     content = await src_file.read()
                     await dest_file.write(content)
 
-        if copy_settings_from:
-            if overwrite_config or not (ws_fp / ".claude/settings.json").exists():
+        if copy_settings_from and (overwrite_config or not (ws_fp / ".claude/settings.json").exists()):
                 fp = create_path(
                     ws, ".claude/settings.json", dir_exist_ok=True, file_exist_ok=True
                 )
@@ -187,8 +185,7 @@ async def create_cc(
                     content = await src_file.read()
                     await dest_file.write(content)
 
-        if copy_claude_md_from:
-            if overwrite_config or not (ws_fp / "CLAUDE.md").exists():
+        if copy_claude_md_from and (overwrite_config or not (ws_fp / "CLAUDE.md").exists()):
                 fp = create_path(ws, "CLAUDE.md", dir_exist_ok=True, file_exist_ok=True)
                 src_claude_md = Path(copy_claude_md_from)
 

@@ -1,10 +1,12 @@
 """Async-specific tests for LionOrchestrator focusing on concurrency and async patterns."""
 
 import asyncio
+import contextlib
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     ComposerRequest,
@@ -326,10 +328,8 @@ class TestAsyncResourceManagement:
                 role="researcher", domains="software-architecture"
             )
 
-            try:
+            with contextlib.suppress(Exception):
                 await orchestrator.create_cc_branch(request)
-            except Exception:
-                pass  # Expected
 
             # Branch should not have been added to session due to failure
             # (Since exception occurs before branch creation)
@@ -500,14 +500,12 @@ class TestAsyncDeadlockPrevention:
                 "Operation failed"
             )
 
-            try:
+            with contextlib.suppress(Exception):
                 await orchestrator.fanout(
                     initial_desc="Test",
                     planning_instruction="Plan",
                     synth_instruction="Synthesize",
                 )
-            except Exception:
-                pass  # Expected
 
             # State should be cleanly handled (branch was created before failure)
             # This tests that partial state changes are acceptable

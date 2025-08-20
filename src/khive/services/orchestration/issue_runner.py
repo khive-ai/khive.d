@@ -43,11 +43,11 @@ class IssueRunner:
         if issue_plan is None:
             raise ValueError(f"Issue plan for {issue_num} not found")
         dep_on_ = issue_plan.dependencies
-        out = []
-        for i in dep_on_:
-            if f"issue_{i}" in self._operations:
-                out.append(self._operations[f"issue_{i}"])
-        return out
+        return [
+            self._operations[f"issue_{i}"]
+            for i in dep_on_
+            if f"issue_{i}" in self._operations
+        ]
 
     def add_issue(self, issue_num: str | int, /):
         """Add an issue to the orchestration builder."""

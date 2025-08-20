@@ -4,21 +4,27 @@ This module provides comprehensive fixtures for testing agent composition functi
 including security testing, file operations testing, and performance testing scenarios.
 """
 
-from .composition_fixtures import *
-from .performance_fixtures import *
-from .security_fixtures import *
+from .composition_fixtures import (
+    composer_with_test_data,
+    mock_file_system,
+    temp_composition_env,
+)
+from .performance_fixtures import (
+    concurrent_test_setup,
+    large_composition_data,
+    stress_test_environment,
+)
+from .security_fixtures import path_traversal_attempts
 
 __all__ = [
     # Core fixtures
     "composer_with_test_data",
-    "concurrent_test_setup",
     # Performance fixtures
+    "concurrent_test_setup",
     "large_composition_data",
-    "malicious_inputs",
     "mock_file_system",
-    "path_traversal_attempts",
     # Security fixtures
-    "security_test_vectors",
+    "path_traversal_attempts",
     "stress_test_environment",
     "temp_composition_env",
 ]

@@ -24,7 +24,7 @@ def fetch_github_issue(issue_num: str) -> dict | None:
             "number,title,body,labels,assignees,state,createdAt,updatedAt,author",
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True, shell=False)  # noqa: S603
         return json.loads(result.stdout)
 
     except subprocess.CalledProcessError as e:
@@ -77,9 +77,17 @@ async def run_planning(
     context: str | None,
     time_budget: float,
     json_output: bool,
-    issue_num: str | None = None,
+    _issue_num: str | None = None,
 ) -> None:
-    """Execute planning and print results."""
+    """Execute planning and print results.
+
+    Args:
+        task_description: Description of task to plan
+        context: Additional context for planning
+        time_budget: Time budget in seconds
+        json_output: Whether to output results as JSON
+        _issue_num: GitHub issue number (reserved for future issue tracking integration)
+    """
     service = PlannerService()
 
     try:

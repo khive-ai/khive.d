@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from enum import Enum
 
-from khive._types import BaseModel
 from pydantic import Field
+
+from khive._types import BaseModel
 
 
 class ComplexityLevel(str, Enum):

@@ -2,14 +2,20 @@ import logging
 
 from lionagi import ln as ln
 
-from orchestration.orchestrator import LionOrchestrator
-from orchestration.parts import Issue, IssuePlan
+from khive.services.orchestration.orchestrator import LionOrchestrator
+from khive.services.orchestration.parts import Issue, IssuePlan
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("KhiveOperations")
 
 
-async def git_cycle(issue: Issue, **kw) -> Issue:
+async def git_cycle(issue: Issue, **_kw) -> Issue:
+    """Execute git cycle workflow for an issue.
+
+    Args:
+        issue: Issue to process through git workflow
+        **_kw: Framework parameters (branch, depends_on) passed by orchestration registry
+    """
     issue_plan: IssuePlan = issue.content.issue_plan
     success = issue.last_execution_success
     allow_merge = success is True and issue.content.gate_passed

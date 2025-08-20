@@ -8,7 +8,9 @@ from typing import Any
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+
 from khive import __version__
+from khive.core import TimePolicy
 from khive.services.claude.hooks import HookEvent
 
 # Page config with enhanced styling
@@ -232,7 +234,7 @@ class ClaudeCodeObservabilityDashboard:
                 "latest_events": [],
             }
 
-        now = datetime.now()
+        now = TimePolicy.now_local()
         last_hour = now - timedelta(hours=1)
         last_5min = now - timedelta(minutes=5)
 
@@ -332,14 +334,13 @@ class ClaudeCodeObservabilityDashboard:
                 st.rerun()
 
         with col5:
-            if st.button("📥 Export", help="Export current data as CSV"):
-                if self.events_cache:
+            if st.button("📥 Export", help="Export current data as CSV") and self.events_cache:
                     df = pd.DataFrame(self.events_cache)
                     csv = df.to_csv(index=False)
                     st.download_button(
                         label="📁 Download",
                         data=csv,
-                        file_name=f"khive_events_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        file_name=f"khive_events_{TimePolicy.now_local().strftime('%Y%m%d_%H%M%S')}.csv",
                         mime="text/csv",
                         help="Download events as CSV file",
                     )
@@ -354,7 +355,12 @@ class ClaudeCodeObservabilityDashboard:
                 result = sock.connect_ex(("localhost", CONFIG["WEBSOCKET_PORT"]))
                 sock.close()
                 ws_server_running = result == 0
-            except:
+            except (OSError, ConnectionError) as e:
+                # Expected WebSocket connectivity failure - server may be down
+                import logging
+                logging.getLogger(__name__).debug(
+                    f"WebSocket server connectivity check failed: {e}"
+                )
                 ws_server_running = False
 
             if ws_server_running:
@@ -388,7 +394,7 @@ class ClaudeCodeObservabilityDashboard:
             f"""
         <div style="text-align: center; padding: 0.5rem; background: #f0f2f6; border-radius: 8px; margin: 1rem 0; font-size: 0.875rem; color: #6c757d;">
             <strong>{len(self.events_cache)}</strong> events loaded |
-            Last update: <strong>{datetime.fromtimestamp(self.last_load_time).strftime("%H:%M:%S") if self.last_load_time else "Never"}</strong> |
+            Last update: <strong>{TimePolicy.from_timestamp_local(self.last_load_time).strftime("%H:%M:%S") if self.last_load_time else "Never"}</strong> |
             {refresh_text}
         </div>
         """,
@@ -630,7 +636,7 @@ class ClaudeCodeObservabilityDashboard:
             return
 
         # Determine time range
-        now = datetime.now()
+        now = TimePolicy.now_local()
         today = now.date()
 
         if time_range == "Today":
@@ -720,7 +726,7 @@ class ClaudeCodeObservabilityDashboard:
                 current_date += timedelta(days=1)
 
             x_labels = [
-                datetime.strptime(d, "%Y-%m-%d").strftime("%m/%d") for d in date_range
+                datetime.strptime(d, "%Y-%m-%d").strftime("%m/%d") for d in date_range  # noqa: DTZ007
             ]
             x_data = date_range
             data_dict = daily_data
@@ -845,8 +851,8 @@ class ClaudeCodeObservabilityDashboard:
 
         # Add current time marker for today view
         if time_range == "Today" and group_by == "hour":
-            current_hour = datetime.now().hour
-            current_minute = datetime.now().minute
+            current_hour = TimePolicy.now_local().hour
+            current_minute = TimePolicy.now_local().minute
 
             fig.add_vline(
                 x=current_hour + current_minute / 60,
@@ -1047,8 +1053,13 @@ class ClaudeCodeObservabilityDashboard:
                     unique_sessions = len({row["👤 Session"] for row in table_data})
                     st.caption(f"👥 Active sessions: {unique_sessions}")
 
-    def render_event_card(self, event: dict[str, Any], index: int):
-        """Render individual event card with full details."""
+    def render_event_card(self, event: dict[str, Any], _index: int):
+        """Render individual event card with full details.
+
+        Args:
+            event: Event data to render
+            _index: Event position (reserved for future features like alternating colors)
+        """
         event_type = event.get("event_type", "unknown")
 
         # Color coding by event type (enhanced for notifications)
@@ -1147,7 +1158,7 @@ class ClaudeCodeObservabilityDashboard:
         )
         st.sidebar.write(f"**Events Loaded**: {len(self.events_cache)}")
         st.sidebar.write(
-            f"**Last Updated**: {datetime.fromtimestamp(self.last_load_time).strftime('%H:%M:%S') if self.last_load_time else 'Never'}"
+            f"**Last Updated**: {TimePolicy.from_timestamp_local(self.last_load_time).strftime('%H:%M:%S') if self.last_load_time else 'Never'}"
         )
         # Check WebSocket server status for sidebar
         import socket
@@ -1158,7 +1169,12 @@ class ClaudeCodeObservabilityDashboard:
             result = sock.connect_ex(("localhost", CONFIG["WEBSOCKET_PORT"]))
             sock.close()
             ws_server_running = result == 0
-        except:
+        except (OSError, ConnectionError) as e:
+            # Expected WebSocket connectivity failure - server may be down
+            import logging
+            logging.getLogger(__name__).debug(
+                f"WebSocket server connectivity check failed: {e}"
+            )
             ws_server_running = False
 
         st.sidebar.write(
@@ -1189,15 +1205,14 @@ class ClaudeCodeObservabilityDashboard:
         if st.sidebar.button("🧪 Test Hook"):
             st.sidebar.info("Use Claude Code tools to generate hook events")
 
-        if st.sidebar.button("📊 Export Data"):
+        if st.sidebar.button("📊 Export Data") and self.events_cache:
             # Create download link for events data
-            if self.events_cache:
                 df = pd.DataFrame(self.events_cache)
                 csv = df.to_csv(index=False)
                 st.sidebar.download_button(
                     label="📥 Download CSV",
                     data=csv,
-                    file_name=f"claude_code_events_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    file_name=f"claude_code_events_{TimePolicy.now_local().strftime('%Y%m%d_%H%M%S')}.csv",
                     mime="text/csv",
                 )
 
@@ -1378,7 +1393,7 @@ class ClaudeCodeObservabilityDashboard:
 
         # Apply time range filter
         if events and "time_range" in locals():
-            now = datetime.now()
+            now = TimePolicy.now_local()
             start_time = now - timedelta(hours=time_range[1])
             end_time = now - timedelta(hours=time_range[0])
             filtered_events = [

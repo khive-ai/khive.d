@@ -1,9 +1,12 @@
 """Integration tests for LionOrchestrator workflow patterns."""
 
 import asyncio
+import contextlib
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     FanoutResponse,
@@ -772,14 +775,12 @@ class TestErrorRecovery:
             # Simulate failure during flow execution
             orchestrator.session.flow.side_effect = Exception("Flow execution failed")
 
-            try:
+            with contextlib.suppress(Exception):
                 await orchestrator.fanout(
                     initial_desc="Test",
                     planning_instruction="Plan",
                     synth_instruction="Synthesize",
                 )
-            except Exception:
-                pass  # Expected failure
 
             # Verify branch was still added to session (proper state)
             orchestrator.session.branches.include.assert_called_once_with(mock_branch)

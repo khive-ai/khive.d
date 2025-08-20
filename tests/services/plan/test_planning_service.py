@@ -2,10 +2,14 @@
 
 import asyncio
 import json
+import time
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import aiofiles
 import pytest
+from pydantic import ValidationError
+
 from khive.services.plan.models import OrchestrationEvaluation
 from khive.services.plan.parts import (
     AgentRecommendation,
@@ -21,7 +25,6 @@ from khive.services.plan.planner_service import (
     PlannerService,
     Request,
 )
-from pydantic import ValidationError
 
 # Import test fixtures
 from tests.fixtures.planning_fixtures import (
@@ -630,7 +633,7 @@ class TestPydanticValidation:
 
 
 @pytest.mark.unit
-class TestPlannerServiceIntegration:
+class TestPlannerServiceUnit:
     """Test PlannerService wrapper class."""
 
     @pytest.fixture
@@ -1163,8 +1166,9 @@ class TestConsistencyValidation:
             assert registry_path.exists()
 
             # Load and verify registry structure
-            with open(registry_path) as f:
-                registry = json.load(f)
+            async with aiofiles.open(registry_path) as f:
+                content = await f.read()
+                registry = json.loads(content)
 
             required_fields = [
                 "session_id",

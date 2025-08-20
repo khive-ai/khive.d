@@ -9,9 +9,13 @@ This module provides tests for:
 """
 
 import asyncio
+import contextlib
 from unittest.mock import MagicMock, patch
 
 import pytest
+from lionagi.fields import Instruct
+from lionagi.protocols.types import AssistantResponse
+
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     AgentRequest,
@@ -20,8 +24,6 @@ from khive.services.orchestration.parts import (
     GateComponent,
     OrchestrationPlan,
 )
-from lionagi.fields import Instruct
-
 from tests.fixtures.gated_refinement_fixtures import create_mock_orchestrator
 
 
@@ -392,14 +394,12 @@ class TestSecurityValidation:
             mock_path_instance.exists.return_value = False
 
             # This should not perform actual file operations in test
-            try:
+            with contextlib.suppress(Exception):
                 asyncio.run(
                     orchestrator.create_cc_branch(
                         ComposerRequest(role="test_role", domains="test")
                     )
                 )
-            except Exception:
-                pass  # Expected in test environment
 
             # Verify paths are constructed safely
             if mock_copytree.called:
@@ -708,7 +708,8 @@ class TestCoverageScenarios:
             visualization_modes = [False, True, "step", "final"]
 
             for viz_mode in visualization_modes:
-                try:
+                with contextlib.suppress(Exception):
+                    # Expected to fail in test environment, but should handle viz parameter
                     await orchestrator.fanout_w_gated_refinement(
                         initial_desc="Viz test",
                         refinement_desc="Viz refinement",
@@ -717,9 +718,6 @@ class TestCoverageScenarios:
                         planning_instruction="Test planning",
                         visualize=viz_mode,
                     )
-                except Exception:
-                    # Expected to fail in test environment, but should handle viz parameter
-                    pass
 
                 # Verify visualization parameter is processed correctly
                 assert True  # If we get here without ValueError, parameter was handled

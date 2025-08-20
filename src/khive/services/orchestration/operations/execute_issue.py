@@ -2,15 +2,15 @@ import logging
 
 from lionagi.libs.concurrency import get_cancelled_exc_class
 
-from orchestration.orchestrator import LionOrchestrator
-from orchestration.parts import (
+from khive.services.orchestration.orchestrator import LionOrchestrator
+from khive.services.orchestration.parts import (
     FanoutPatterns,
     Issue,
     IssueExecution,
     IssuePlan,
     IssueResult,
 )
-from orchestration.prompts import (
+from khive.services.orchestration.prompts import (
     KHIVE_PLAN_REMINDER,
     REDO_ORCHESTRATOR_INSTRUCTION,
     SYNTHESIS_INSTRUCTION,
@@ -21,8 +21,15 @@ logger = logging.getLogger("KhiveOperations")
 
 
 async def execute_issue(
-    issue: Issue, issue_plan: IssuePlan | None = None, **kw
+    issue: Issue, issue_plan: IssuePlan | None = None, **_kw
 ) -> tuple[bool, Issue]:
+    """Execute an issue through the orchestration framework.
+
+    Args:
+        issue: Issue to execute
+        issue_plan: Execution plan for the issue
+        **_kw: Framework parameters (branch, depends_on) passed by orchestration registry
+    """
     if issue.content.git_processed is True:
         logger.info(f"🔵 Skipping already processed issue #{issue.content.issue_num}")
         return None

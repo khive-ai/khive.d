@@ -7,6 +7,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 import yaml
+
 from khive.services.composition.agent_composer import AgentComposer
 
 
@@ -367,9 +368,11 @@ class TestAgentComposition:
         domain_data = {
             "domain": {"id": "quality"},
             "knowledge_patterns": {"metrics": ["coverage", "complexity"]},
-            "decision_rules": {"quality_gates": [{"condition": "new_feature"}]},
+            "decision_rules": {
+                "quality_gates": [{"condition": "new_feature"}],
+                "confidence_thresholds": {"test_pass": 0.95}
+            },
             "specialized_tools": {"testing": ["pytest", "coverage"]},
-            "decision_rules": {"confidence_thresholds": {"test_pass": 0.95}},
         }
         domain_file.write_text(yaml.dump(domain_data))
 

@@ -12,10 +12,12 @@ import json
 import logging
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import TYPE_CHECKING
 
+from khive.core import TimePolicy
+
 if TYPE_CHECKING:
+    from datetime import datetime
     from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -101,7 +103,7 @@ class HandoffCoordinator:
         else:
             self.artifact_registry = {
                 "session_id": self.session_id,
-                "created_at": datetime.now().isoformat(),
+                "created_at": TimePolicy.now_utc().isoformat(),
                 "artifacts": [],
                 "phases": [],
                 "status": "active",
@@ -231,7 +233,7 @@ class HandoffCoordinator:
         Returns:
             Dictionary mapping agent IDs to their execution status
         """
-        self.start_time = datetime.now()
+        self.start_time = TimePolicy.now_utc()
         logger.info(
             f"Starting parallel fan-out execution with {len(self.execution_graph)} agents"
         )
@@ -273,7 +275,7 @@ class HandoffCoordinator:
                 # Check for timeout
                 if (
                     timeout
-                    and (datetime.now() - self.start_time).total_seconds() > timeout
+                    and (TimePolicy.now_utc() - self.start_time).total_seconds() > timeout
                 ):
                     logger.warning("Parallel execution timeout reached")
                     break
@@ -288,7 +290,7 @@ class HandoffCoordinator:
                 task.cancel()
 
         # Generate execution report
-        execution_time = (datetime.now() - self.start_time).total_seconds()
+        execution_time = (TimePolicy.now_utc() - self.start_time).total_seconds()
         self.execution_metrics["total_time"] = execution_time
         self.execution_metrics["agents_completed"] = len(self.completed_agents)
         self.execution_metrics["agents_failed"] = len(self.failed_agents)
@@ -309,7 +311,7 @@ class HandoffCoordinator:
         """
         node = self.execution_graph[agent_id]
         node.status = "running"
-        node.start_time = datetime.now()
+        node.start_time = TimePolicy.now_utc()
         self.running_agents.add(agent_id)
 
         logger.info(f"Starting execution of agent {agent_id}")
@@ -330,14 +332,14 @@ class HandoffCoordinator:
             self._register_artifact(agent_id, artifact_path)
 
             node.status = "completed"
-            node.completion_time = datetime.now()
+            node.completion_time = TimePolicy.now_utc()
 
             logger.info(f"Agent {agent_id} completed successfully")
             return agent_id, "completed"
 
         except Exception as e:
             node.status = "failed"
-            node.completion_time = datetime.now()
+            node.completion_time = TimePolicy.now_utc()
             logger.exception(f"Agent {agent_id} failed: {e}")
             return agent_id, "failed"
 
@@ -426,7 +428,7 @@ COORDINATION INSTRUCTIONS:
 
     def _generate_artifact_path(self, agent_spec: AgentSpec) -> str:
         """Generate artifact path for an agent"""
-        timestamp = datetime.now().strftime("%H%M%S")
+        timestamp = TimePolicy.now_utc().strftime("%H%M%S")
         filename = (
             f"{agent_spec.phase}_{agent_spec.role}_{agent_spec.domain}_{timestamp}.md"
         )
@@ -437,7 +439,7 @@ COORDINATION INSTRUCTIONS:
         artifact_entry = {
             "agent_id": agent_id,
             "artifact_path": artifact_path,
-            "created_at": datetime.now().isoformat(),
+            "created_at": TimePolicy.now_utc().isoformat(),
             "phase": self.execution_graph[agent_id].agent_spec.phase,
             "role": self.execution_graph[agent_id].agent_spec.role,
             "domain": self.execution_graph[agent_id].agent_spec.domain,
@@ -469,7 +471,7 @@ COORDINATION INSTRUCTIONS:
         metrics = self.execution_metrics.copy()
 
         if self.start_time:
-            current_time = datetime.now()
+            current_time = TimePolicy.now_utc()
             metrics["elapsed_time"] = (current_time - self.start_time).total_seconds()
 
         metrics["completion_rate"] = (

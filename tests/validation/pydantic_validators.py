@@ -11,6 +11,8 @@ This module provides:
 from typing import Any
 
 import pytest
+from pydantic import BaseModel, ValidationError
+
 from khive.services.plan.models import OrchestrationEvaluation
 from khive.services.plan.parts import (
     AgentRecommendation,
@@ -18,7 +20,6 @@ from khive.services.plan.parts import (
     PlannerResponse,
     TaskPhase,
 )
-from pydantic import BaseModel, ValidationError
 
 # ============================================================================
 # Base Validation Patterns
@@ -668,11 +669,11 @@ class CrossModelValidator:
 
         # Check dependency references
         for phase in phases:
-            for dep in phase.dependencies:
-                if dep not in phase_names:
-                    issues.append(
-                        f"Phase {phase.name} depends on non-existent phase {dep}"
-                    )
+            issues.extend(
+                f"Phase {phase.name} depends on non-existent phase {dep}"
+                for dep in phase.dependencies
+                if dep not in phase_names
+            )
 
         # Check for circular dependencies
         if CrossModelValidator._has_circular_dependencies(phases):

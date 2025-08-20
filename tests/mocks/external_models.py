@@ -13,8 +13,9 @@ from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from khive.services.plan.models import OrchestrationEvaluation
 from openai.types.completion_usage import CompletionUsage
+
+from khive.services.plan.models import OrchestrationEvaluation
 
 # ============================================================================
 # Mock Response Configuration
@@ -94,16 +95,16 @@ class MockEvaluationTemplate:
 
         if config.complexity_variation:
             complexities = ["simple", "medium", "complex", "very_complex"]
-            if random.random() < 0.3:  # 30% chance to vary complexity
-                template.complexity = random.choice(complexities)
+            if random.random() < 0.3:  # 30% chance to vary complexity  # noqa: S311
+                template.complexity = random.choice(complexities)  # noqa: S311
 
         if config.agent_count_variation:
             variance = int(template.total_agents * 0.3)
-            template.total_agents += random.randint(-variance, variance)
+            template.total_agents += random.randint(-variance, variance)  # noqa: S311
             template.total_agents = max(1, min(20, template.total_agents))
 
         if config.confidence_variation:
-            confidence_change = random.uniform(-0.15, 0.15)
+            confidence_change = random.uniform(-0.15, 0.15)  # noqa: S311
             template.confidence = max(
                 0.0, min(1.0, template.confidence + confidence_change)
             )
@@ -173,7 +174,7 @@ class MockOpenAIClient:
         await asyncio.sleep(latency)
 
         # Simulate failures
-        rand = random.random()
+        rand = random.random()  # noqa: S311
 
         if rand < (1 - self.config.success_rate):
             if rand < self.config.timeout_rate:
@@ -211,7 +212,7 @@ class MockOpenAIClient:
         time.sleep(latency)
 
         # Simulate failures
-        rand = random.random()
+        rand = random.random()  # noqa: S311
 
         if rand < (1 - self.config.success_rate):
             if rand < self.config.timeout_rate:
@@ -293,7 +294,7 @@ class MockOpenAIClient:
         ):
             template = MockEvaluationTemplate(
                 complexity="simple",
-                total_agents=random.randint(1, 3),
+                total_agents=random.randint(1, 3),  # noqa: S311
                 complexity_reason="Simple task with clear objectives",
             )
         elif any(
@@ -302,7 +303,7 @@ class MockOpenAIClient:
         ):
             template = MockEvaluationTemplate(
                 complexity="complex",
-                total_agents=random.randint(6, 10),
+                total_agents=random.randint(6, 10),  # noqa: S311
                 complexity_reason="Complex distributed system requiring specialized expertise",
             )
         elif any(
@@ -311,7 +312,7 @@ class MockOpenAIClient:
         ):
             template = MockEvaluationTemplate(
                 complexity="very_complex",
-                total_agents=random.randint(10, 15),
+                total_agents=random.randint(10, 15),  # noqa: S311
                 complexity_reason="Research-level work requiring deep expertise",
             )
         else:
@@ -612,9 +613,7 @@ class AdaptiveMockBehavior:
             "research",
             "novel",
         ]
-        for word in complexity_words:
-            if word in content_lower:
-                patterns.append(f"complexity:{word}")
+        patterns.extend(f"complexity:{word}" for word in complexity_words if word in content_lower)
 
         # Domain indicators
         domain_words = [
@@ -625,15 +624,11 @@ class AdaptiveMockBehavior:
             "database",
             "microservices",
         ]
-        for word in domain_words:
-            if word in content_lower:
-                patterns.append(f"domain:{word}")
+        patterns.extend(f"domain:{word}" for word in domain_words if word in content_lower)
 
         # Scale indicators
         scale_words = ["single", "multiple", "entire", "platform", "system"]
-        for word in scale_words:
-            if word in content_lower:
-                patterns.append(f"scale:{word}")
+        patterns.extend(f"scale:{word}" for word in scale_words if word in content_lower)
 
         return patterns
 
