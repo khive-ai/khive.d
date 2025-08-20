@@ -219,11 +219,14 @@ class TestAdvancedInputSanitization:
             sanitized = composer._sanitize_input(attack)
             # Control characters should be filtered out
             for char in attack:
-                if ord(char) < 32 or ord(char) > 126:
-                    if char not in ["\t", "\n", "\r"]:  # Allow common whitespace
-                        assert (
-                            char not in sanitized
-                        ), f"Control character not filtered: {char!r}"
+                if (ord(char) < 32 or ord(char) > 126) and char not in [
+                    "\t",
+                    "\n",
+                    "\r",
+                ]:  # Allow common whitespace
+                    assert (
+                        char not in sanitized
+                    ), f"Control character not filtered: {char!r}"
 
     def test_length_limit_bypass_attempts(self, temp_dir):
         """Test attempts to bypass length limitations."""

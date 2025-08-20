@@ -275,7 +275,8 @@ class HandoffCoordinator:
                 # Check for timeout
                 if (
                     timeout
-                    and (TimePolicy.now_utc() - self.start_time).total_seconds() > timeout
+                    and (TimePolicy.now_utc() - self.start_time).total_seconds()
+                    > timeout
                 ):
                     logger.warning("Parallel execution timeout reached")
                     break

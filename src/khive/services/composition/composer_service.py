@@ -147,16 +147,12 @@ class ComposerService:
                 domain_expertise.extend(
                     DomainExpertise(
                         domain_id=domain_data.get("id", "unknown"),
-                        knowledge_patterns=agent_spec.get(
-                            "domain_patterns", {}
-                        ),
+                        knowledge_patterns=agent_spec.get("domain_patterns", {}),
                         decision_rules=agent_spec.get("domain_rules", {}),
-                        specialized_tools=agent_spec.get(
-                            "domain_tools", {}
-                        ).get("specialized", []),
-                        confidence_thresholds=agent_spec.get(
-                            "domain_thresholds", {}
+                        specialized_tools=agent_spec.get("domain_tools", {}).get(
+                            "specialized", []
                         ),
+                        confidence_thresholds=agent_spec.get("domain_thresholds", {}),
                     )
                     for domain_data in agent_spec["domains"]
                     if isinstance(domain_data, dict)

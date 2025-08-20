@@ -495,16 +495,21 @@ class AgentComposer:
 
         # Include flat structure domains for backward compatibility
         domains.extend(
-            file_path.stem for file_path in self.domains_path.glob("*.yaml")
+            file_path.stem
+            for file_path in self.domains_path.glob("*.yaml")
             if file_path.stem not in ["TAXONOMY", "README"]
         )
 
         # Include hierarchical domains
-        for file_path in self.domains_path.rglob("*.yaml"):
+        domains.extend(
+            file_path.stem
+            for file_path in self.domains_path.rglob("*.yaml")
             # Skip files in the root (already processed above)
-            if (file_path.parent != self.domains_path and
-                file_path.stem not in ["TAXONOMY", "README"]):
-                domains.append(file_path.stem)
+            if (
+                file_path.parent != self.domains_path
+                and file_path.stem not in ["TAXONOMY", "README"]
+            )
+        )
 
         return sorted(set(domains))  # Remove duplicates
 
@@ -519,7 +524,9 @@ class AgentComposer:
                 taxonomy[category_name] = {}
 
                 # Check for domains directly in category folder
-                direct_domains = [yaml_file.stem for yaml_file in category_path.glob("*.yaml")]
+                direct_domains = [
+                    yaml_file.stem for yaml_file in category_path.glob("*.yaml")
+                ]
 
                 if direct_domains:
                     taxonomy[category_name]["_root"] = sorted(direct_domains)
@@ -528,7 +535,10 @@ class AgentComposer:
                 for subcategory_path in category_path.iterdir():
                     if subcategory_path.is_dir():
                         subcategory_name = subcategory_path.name
-                        domains = [yaml_file.stem for yaml_file in subcategory_path.glob("*.yaml")]
+                        domains = [
+                            yaml_file.stem
+                            for yaml_file in subcategory_path.glob("*.yaml")
+                        ]
 
                         if domains:  # Only include non-empty subcategories
                             taxonomy[category_name][subcategory_name] = sorted(domains)

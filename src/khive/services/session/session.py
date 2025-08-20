@@ -5,6 +5,7 @@ Handles session initialization and completion workflows
 
 import json
 import re
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -48,7 +49,16 @@ class SessionInitializer:
     def run_command(self, cmd: list[str]) -> tuple[bool, str]:
         """Execute command and return success status and output"""
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True, shell=False)  # noqa: S603
+            # Resolve command path for security
+            if cmd and cmd[0] in ("git", "gh"):
+                cmd_path = shutil.which(cmd[0])
+                if not cmd_path:
+                    return False, f"Command '{cmd[0]}' not found in PATH"
+                cmd = [cmd_path, *cmd[1:]]
+
+            result = subprocess.run(  # noqa: S603
+                cmd, capture_output=True, text=True, check=True, shell=False
+            )
             return True, result.stdout.strip()
         except subprocess.CalledProcessError as e:
             return False, e.stderr.strip()
@@ -170,7 +180,9 @@ class SessionInitializer:
                     content = path.read_text()
                     return f"# Documentation: {path.name}\n\n" + content
                 except (OSError, UnicodeDecodeError) as e:
-                    self.logger.warning(f"Failed to read documentation file {path}: {e}")
+                    self.logger.warning(
+                        f"Failed to read documentation file {path}: {e}"
+                    )
                     continue
 
         return "# No orchestrator documentation found - using memory patterns only"
@@ -310,7 +322,10 @@ class SessionInitializer:
         ][:2]
         if high_priority_tasks:
             output.append("🔥 High Priority Tasks:")
-            output.extend(f"  • {task.get('description', 'Unknown task')}" for task in high_priority_tasks)
+            output.extend(
+                f"  • {task.get('description', 'Unknown task')}"
+                for task in high_priority_tasks
+            )
             output.append("")
 
         # Recent insights (condensed)

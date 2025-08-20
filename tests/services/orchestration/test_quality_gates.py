@@ -27,6 +27,14 @@ from khive.services.orchestration.parts import (
 from tests.fixtures.gated_refinement_fixtures import create_mock_orchestrator
 
 
+class FlowExecutionError(Exception):
+    """Custom exception for flow execution failures in tests."""
+
+
+class BranchCreationError(Exception):
+    """Custom exception for branch creation failures in tests."""
+
+
 class TestFanoutGatedRefinementPattern:
     """Test fanout with gated refinement orchestration pattern."""
 
@@ -420,9 +428,9 @@ class TestErrorRecoveryMechanisms:
 
         with patch.object(orchestrator, "run_flow") as mock_run_flow:
             # Simulate flow execution failure
-            mock_run_flow.side_effect = Exception("Flow execution failed")
+            mock_run_flow.side_effect = FlowExecutionError("Flow execution failed")
 
-            with pytest.raises(Exception):
+            with pytest.raises(FlowExecutionError):
                 await orchestrator.fanout_w_gated_refinement(
                     initial_desc="Test",
                     refinement_desc="Test refinement",
@@ -438,9 +446,11 @@ class TestErrorRecoveryMechanisms:
 
         with patch.object(orchestrator, "create_cc_branch") as mock_create_branch:
             # Simulate branch creation failure
-            mock_create_branch.side_effect = Exception("Branch creation failed")
+            mock_create_branch.side_effect = BranchCreationError(
+                "Branch creation failed"
+            )
 
-            with pytest.raises(Exception):
+            with pytest.raises(BranchCreationError):
                 await orchestrator.fanout_w_gated_refinement(
                     initial_desc="Test",
                     refinement_desc="Test refinement",

@@ -22,7 +22,9 @@ def run_command(cmd: list[str], description: str) -> bool:
 
     start_time = time.time()
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True, shell=False)  # noqa: S603
+        result = subprocess.run(  # noqa: S603
+            cmd, check=True, capture_output=True, text=True, shell=False
+        )
         duration = time.time() - start_time
         print(f"✅ SUCCESS ({duration:.2f}s)")
         if result.stdout:

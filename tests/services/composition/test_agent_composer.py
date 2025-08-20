@@ -370,7 +370,7 @@ class TestAgentComposition:
             "knowledge_patterns": {"metrics": ["coverage", "complexity"]},
             "decision_rules": {
                 "quality_gates": [{"condition": "new_feature"}],
-                "confidence_thresholds": {"test_pass": 0.95}
+                "confidence_thresholds": {"test_pass": 0.95},
             },
             "specialized_tools": {"testing": ["pytest", "coverage"]},
         }

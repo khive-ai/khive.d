@@ -220,6 +220,7 @@ class BaseCLICommand(ABC):
                             except Exception as e:
                                 # Expected cleanup failure - loop may already be closed
                                 import logging
+
                                 logging.getLogger(__name__).debug(
                                     f"Event loop cleanup exception (expected): {e}"
                                 )

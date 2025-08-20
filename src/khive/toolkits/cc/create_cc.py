@@ -161,39 +161,45 @@ async def create_cc(
 
         ws_fp = Path(ws)
 
-        if copy_mcp_config_from and (overwrite_config or not (ws_fp / ".mcp.json").exists()):
-                fp = create_path(ws, ".mcp.json", dir_exist_ok=True, file_exist_ok=True)
-                src_mcp = Path(copy_mcp_config_from)
+        if copy_mcp_config_from and (
+            overwrite_config or not (ws_fp / ".mcp.json").exists()
+        ):
+            fp = create_path(ws, ".mcp.json", dir_exist_ok=True, file_exist_ok=True)
+            src_mcp = Path(copy_mcp_config_from)
 
-                async with (
-                    aiofiles.open(src_mcp) as src_file,
-                    aiofiles.open(fp, "w") as dest_file,
-                ):
-                    content = await src_file.read()
-                    await dest_file.write(content)
+            async with (
+                aiofiles.open(src_mcp) as src_file,
+                aiofiles.open(fp, "w") as dest_file,
+            ):
+                content = await src_file.read()
+                await dest_file.write(content)
 
-        if copy_settings_from and (overwrite_config or not (ws_fp / ".claude/settings.json").exists()):
-                fp = create_path(
-                    ws, ".claude/settings.json", dir_exist_ok=True, file_exist_ok=True
-                )
-                src_settings = Path(copy_settings_from)
+        if copy_settings_from and (
+            overwrite_config or not (ws_fp / ".claude/settings.json").exists()
+        ):
+            fp = create_path(
+                ws, ".claude/settings.json", dir_exist_ok=True, file_exist_ok=True
+            )
+            src_settings = Path(copy_settings_from)
 
-                async with (
-                    aiofiles.open(src_settings) as src_file,
-                    aiofiles.open(fp, "w") as dest_file,
-                ):
-                    content = await src_file.read()
-                    await dest_file.write(content)
+            async with (
+                aiofiles.open(src_settings) as src_file,
+                aiofiles.open(fp, "w") as dest_file,
+            ):
+                content = await src_file.read()
+                await dest_file.write(content)
 
-        if copy_claude_md_from and (overwrite_config or not (ws_fp / "CLAUDE.md").exists()):
-                fp = create_path(ws, "CLAUDE.md", dir_exist_ok=True, file_exist_ok=True)
-                src_claude_md = Path(copy_claude_md_from)
+        if copy_claude_md_from and (
+            overwrite_config or not (ws_fp / "CLAUDE.md").exists()
+        ):
+            fp = create_path(ws, "CLAUDE.md", dir_exist_ok=True, file_exist_ok=True)
+            src_claude_md = Path(copy_claude_md_from)
 
-                async with (
-                    aiofiles.open(src_claude_md) as src_file,
-                    aiofiles.open(fp, "w") as dest_file,
-                ):
-                    content = await src_file.read()
-                    await dest_file.write(content)
+            async with (
+                aiofiles.open(src_claude_md) as src_file,
+                aiofiles.open(fp, "w") as dest_file,
+            ):
+                content = await src_file.read()
+                await dest_file.write(content)
 
     return imodel

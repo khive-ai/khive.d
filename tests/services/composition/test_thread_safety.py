@@ -88,7 +88,10 @@ class TestBasicThreadSafety:
             futures = []
             # Each file loaded by multiple threads
             for _ in range(5):  # 5 rounds
-                futures.extend(executor.submit(load_yaml_file, file_path) for file_path in test_files)
+                futures.extend(
+                    executor.submit(load_yaml_file, file_path)
+                    for file_path in test_files
+                )
 
             # Wait for all to complete
             for future in as_completed(futures):
@@ -139,7 +142,9 @@ class TestBasicThreadSafety:
             futures = []
             # Each role loaded multiple times concurrently
             for _ in range(3):
-                futures.extend(executor.submit(load_role, role_name) for role_name in role_names)
+                futures.extend(
+                    executor.submit(load_role, role_name) for role_name in role_names
+                )
 
             for future in as_completed(futures):
                 future.result()

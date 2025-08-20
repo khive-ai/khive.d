@@ -18,6 +18,19 @@ from openai.types.completion_usage import CompletionUsage
 from khive.services.plan.models import OrchestrationEvaluation
 
 # ============================================================================
+# Custom Exceptions
+# ============================================================================
+
+
+class MockRateLimitError(Exception):
+    """Mock exception for rate limit scenarios."""
+
+
+class MockAPIError(Exception):
+    """Mock exception for general API errors."""
+
+
+# ============================================================================
 # Mock Response Configuration
 # ============================================================================
 
@@ -180,8 +193,8 @@ class MockOpenAIClient:
             if rand < self.config.timeout_rate:
                 raise asyncio.TimeoutError("Mock API timeout")
             if rand < self.config.timeout_rate + self.config.rate_limit_rate:
-                raise Exception("Rate limit exceeded")
-            raise Exception("API error")
+                raise MockRateLimitError("Rate limit exceeded")
+            raise MockAPIError("API error")
 
         # Generate response
         return self._generate_response(request_info)
@@ -218,8 +231,8 @@ class MockOpenAIClient:
             if rand < self.config.timeout_rate:
                 raise TimeoutError("Mock API timeout")
             if rand < self.config.timeout_rate + self.config.rate_limit_rate:
-                raise Exception("Rate limit exceeded")
-            raise Exception("API error")
+                raise MockRateLimitError("Rate limit exceeded")
+            raise MockAPIError("API error")
 
         # Generate response
         return self._generate_response(request_info)
@@ -613,7 +626,9 @@ class AdaptiveMockBehavior:
             "research",
             "novel",
         ]
-        patterns.extend(f"complexity:{word}" for word in complexity_words if word in content_lower)
+        patterns.extend(
+            f"complexity:{word}" for word in complexity_words if word in content_lower
+        )
 
         # Domain indicators
         domain_words = [
@@ -624,11 +639,15 @@ class AdaptiveMockBehavior:
             "database",
             "microservices",
         ]
-        patterns.extend(f"domain:{word}" for word in domain_words if word in content_lower)
+        patterns.extend(
+            f"domain:{word}" for word in domain_words if word in content_lower
+        )
 
         # Scale indicators
         scale_words = ["single", "multiple", "entire", "platform", "system"]
-        patterns.extend(f"scale:{word}" for word in scale_words if word in content_lower)
+        patterns.extend(
+            f"scale:{word}" for word in scale_words if word in content_lower
+        )
 
         return patterns
 

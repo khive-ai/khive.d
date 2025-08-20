@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover
-    import tomli as tomllib  # type: ignore
+    import tomli as tomllib  # type: ignore[import-untyped]
 
 # --- Type Variables ---
 T = TypeVar("T")
@@ -227,8 +227,11 @@ def get_project_root() -> Path:
     Falls back to current working directory if not in a Git repository.
     """
     try:
-        result = subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"], text=True, stderr=subprocess.PIPE
+        git_cmd = shutil.which("git")
+        if not git_cmd:
+            return Path.cwd()
+        result = subprocess.check_output(  # noqa: S603
+            [git_cmd, "rev-parse", "--show-toplevel"], text=True, stderr=subprocess.PIPE
         ).strip()
         return Path(result)
     except (subprocess.CalledProcessError, FileNotFoundError):

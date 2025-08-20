@@ -190,6 +190,7 @@ def start(
             except (ProcessLookupError, OSError) as e:
                 # Expected termination failure - process may already be stopped
                 import logging
+
                 logging.getLogger(__name__).debug(
                     f"Process {name} termination exception (expected): {e}"
                 )
@@ -229,9 +230,9 @@ def status(limit: int, event_type: str | None, session_id: str | None):
                     from khive.core import TimePolicy
 
                     if isinstance(event.created_at, int | float):
-                        event_time = TimePolicy.from_timestamp_local(event.created_at).strftime(
-                            "%H:%M:%S"
-                        )
+                        event_time = TimePolicy.from_timestamp_local(
+                            event.created_at
+                        ).strftime("%H:%M:%S")
                     else:
                         event_time = event.created_at.strftime("%H:%M:%S")
                     event_type_display = event.content.get("event_type", "unknown")[:14]

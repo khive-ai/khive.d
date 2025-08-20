@@ -2,7 +2,7 @@ import asyncio
 import os
 import time
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 import pandas as pd
@@ -334,16 +334,19 @@ class ClaudeCodeObservabilityDashboard:
                 st.rerun()
 
         with col5:
-            if st.button("📥 Export", help="Export current data as CSV") and self.events_cache:
-                    df = pd.DataFrame(self.events_cache)
-                    csv = df.to_csv(index=False)
-                    st.download_button(
-                        label="📁 Download",
-                        data=csv,
-                        file_name=f"khive_events_{TimePolicy.now_local().strftime('%Y%m%d_%H%M%S')}.csv",
-                        mime="text/csv",
-                        help="Download events as CSV file",
-                    )
+            if (
+                st.button("📥 Export", help="Export current data as CSV")
+                and self.events_cache
+            ):
+                df = pd.DataFrame(self.events_cache)
+                csv = df.to_csv(index=False)
+                st.download_button(
+                    label="📁 Download",
+                    data=csv,
+                    file_name=f"khive_events_{TimePolicy.now_local().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    help="Download events as CSV file",
+                )
 
         with col6:
             # Enhanced WebSocket status with visual indicator
@@ -358,6 +361,7 @@ class ClaudeCodeObservabilityDashboard:
             except (OSError, ConnectionError) as e:
                 # Expected WebSocket connectivity failure - server may be down
                 import logging
+
                 logging.getLogger(__name__).debug(
                     f"WebSocket server connectivity check failed: {e}"
                 )
@@ -726,7 +730,7 @@ class ClaudeCodeObservabilityDashboard:
                 current_date += timedelta(days=1)
 
             x_labels = [
-                datetime.strptime(d, "%Y-%m-%d").strftime("%m/%d") for d in date_range  # noqa: DTZ007
+                TimePolicy.strptime_utc(d, "%Y-%m-%d").strftime("%m/%d") for d in date_range
             ]
             x_data = date_range
             data_dict = daily_data
@@ -1172,6 +1176,7 @@ class ClaudeCodeObservabilityDashboard:
         except (OSError, ConnectionError) as e:
             # Expected WebSocket connectivity failure - server may be down
             import logging
+
             logging.getLogger(__name__).debug(
                 f"WebSocket server connectivity check failed: {e}"
             )
@@ -1207,14 +1212,14 @@ class ClaudeCodeObservabilityDashboard:
 
         if st.sidebar.button("📊 Export Data") and self.events_cache:
             # Create download link for events data
-                df = pd.DataFrame(self.events_cache)
-                csv = df.to_csv(index=False)
-                st.sidebar.download_button(
-                    label="📥 Download CSV",
-                    data=csv,
-                    file_name=f"claude_code_events_{TimePolicy.now_local().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv",
-                )
+            df = pd.DataFrame(self.events_cache)
+            csv = df.to_csv(index=False)
+            st.sidebar.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"claude_code_events_{TimePolicy.now_local().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+            )
 
         # Real-time controls
         st.sidebar.subheader("🔴 Real-time")

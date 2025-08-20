@@ -4,18 +4,16 @@ import json
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 import aiofiles
+from lionagi.fields import Instruct  # noqa: TC002
 from lionagi.protocols.types import Node
 from lionagi.utils import Enum, create_path
 from pydantic import Field, field_validator, model_validator
 
 from khive._types import BaseModel
+from khive.services.composition.parts import AgentRole, ComposerRequest  # noqa: TC001
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
-    from lionagi.fields import Instruct
-
-    from khive.services.composition.parts import AgentRole, ComposerRequest
+    from pathlib import Path  # type: ignore[import-untyped]
 
 DeliverableType = Literal[
     "RequirementsAnalysis",
@@ -95,6 +93,7 @@ GateOptions = Literal["design", "security", "performance", "testing", "documenta
 
 class FanoutPatterns(str, Enum):
     """Enumeration for orchestration patterns used in issues"""
+
     __slots__ = ()
 
     FANOUT = "fanout"

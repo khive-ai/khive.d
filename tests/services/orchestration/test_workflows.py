@@ -529,6 +529,7 @@ class TestAsyncSecurityAndResilience:
             semaphore = asyncio.Semaphore(10)  # Limit to 10 concurrent
 
             for i in range(100):  # Try to create many tasks
+
                 async def limited_operation(sem=semaphore):
                     async with sem:
                         await asyncio.sleep(0.01)

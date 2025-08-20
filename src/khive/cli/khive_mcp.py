@@ -575,18 +575,21 @@ class MCPCommand(BaseCLICommand):
             log_msg(f"GITHUB_PERSONAL_ACCESS_TOKEN: {token_preview}")
 
         # Detect if this is a Python script for PythonStdioTransport
-        if self._is_python_command(server_config.command, server_config.args) and PythonStdioTransport is not None:
-                # Extract Python script path from command/args
-                script_path = self._extract_python_script_path(
-                    server_config.command, server_config.args
+        if (
+            self._is_python_command(server_config.command, server_config.args)
+            and PythonStdioTransport is not None
+        ):
+            # Extract Python script path from command/args
+            script_path = self._extract_python_script_path(
+                server_config.command, server_config.args
+            )
+            if script_path:
+                log_msg(f"Creating PythonStdioTransport for {script_path}")
+                return PythonStdioTransport(
+                    script_path=script_path,
+                    args=self._extract_python_script_args(server_config.args),
+                    env=env,
                 )
-                if script_path:
-                    log_msg(f"Creating PythonStdioTransport for {script_path}")
-                    return PythonStdioTransport(
-                        script_path=script_path,
-                        args=self._extract_python_script_args(server_config.args),
-                        env=env,
-                    )
 
         # Use standard StdioTransport (not our custom one) to avoid interference
         log_msg("Using standard StdioTransport")
@@ -676,6 +679,7 @@ class MCPCommand(BaseCLICommand):
                 except Exception as cleanup_e:
                     # Expected cleanup failure during exception handling
                     import logging
+
                     logging.getLogger(__name__).debug(
                         f"MCP client cleanup exception (expected during error): {cleanup_e}"
                     )
@@ -689,6 +693,7 @@ class MCPCommand(BaseCLICommand):
                 except Exception as cleanup_e:
                     # Expected cleanup failure during normal operation
                     import logging
+
                     logging.getLogger(__name__).debug(
                         f"MCP client cleanup exception (expected): {cleanup_e}"
                     )

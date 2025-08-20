@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import shutil
 import subprocess
 import sys
 
@@ -15,8 +16,13 @@ __all__ = ("main",)
 def fetch_github_issue(issue_num: str) -> dict | None:
     """Fetch GitHub issue data using gh CLI."""
     try:
+        gh_path = shutil.which("gh")
+        if not gh_path:
+            print("❌ Error: GitHub CLI (gh) not found in PATH", file=sys.stderr)
+            return None
+
         cmd = [
-            "gh",
+            gh_path,
             "issue",
             "view",
             issue_num,
@@ -24,7 +30,9 @@ def fetch_github_issue(issue_num: str) -> dict | None:
             "number,title,body,labels,assignees,state,createdAt,updatedAt,author",
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True, shell=False)  # noqa: S603
+        result = subprocess.run(  # noqa: S603
+            cmd, capture_output=True, text=True, check=True, shell=False
+        )
         return json.loads(result.stdout)
 
     except subprocess.CalledProcessError as e:

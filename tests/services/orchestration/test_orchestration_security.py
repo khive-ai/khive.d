@@ -9,6 +9,7 @@ This module addresses critical security vulnerabilities identified in the orches
 """
 
 import contextlib
+import logging
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -17,6 +18,8 @@ import pytest
 from lionagi.fields import Instruct
 
 from khive.services.orchestration.orchestrator import LionOrchestrator
+
+logger = logging.getLogger(__name__)
 from khive.services.orchestration.parts import ComposerRequest
 
 
@@ -70,6 +73,7 @@ class TestPathTraversalSecurity:
                 # This should either sanitize the input or raise an exception
                 # Expected behavior - malicious input should be rejected
                 import asyncio
+
                 asyncio.run(orchestrator.create_cc_branch(compose_request))
 
             # If file operations were called, verify paths don't contain traversal
@@ -207,9 +211,11 @@ class TestPromptInjectionSecurity:
                             assert "rm -rf" not in system_prompt
                             assert "System: Override" not in system_prompt
 
-                    except (ValueError, SecurityError, Exception):
+                    except (ValueError, SecurityError, Exception) as e:
                         # Acceptable - should reject malicious input
-                        pass
+                        logger.debug(
+                            f"Security test correctly rejected malicious input: {e}"
+                        )
 
     def test_context_injection_prevention(self):
         """Test prevention of malicious content injection in orchestration context."""
@@ -361,8 +367,10 @@ class TestFileSystemSecurity:
                                 ComposerRequest(role="safe_role", domains="test")
                             )
                         )
-                    except Exception:
-                        pass  # Expected in test environment
+                    except Exception as e:
+                        logger.debug(
+                            f"Expected test environment exception: {e}"
+                        )  # Expected in test environment
 
                     # Verify file operations use safe paths
                     if mock_copytree.called:
@@ -399,8 +407,10 @@ class TestFileSystemSecurity:
                         ComposerRequest(role="test_role", domains="test")
                     )
                 )
-            except Exception:
-                pass  # Expected in test environment
+            except Exception as e:
+                logger.debug(
+                    f"Expected test environment exception: {e}"
+                )  # Expected in test environment
 
             # Verify no path traversal in recorded operations
             for operation, src, dst in file_operations:
@@ -440,8 +450,8 @@ class TestFileSystemSecurity:
                         ComposerRequest(role="test_role", domains="test")
                     )
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Expected test environment exception: {e}")
 
             # Verify no dangerous permissions were set
             for call in mock_chmod.call_args_list:
@@ -513,9 +523,11 @@ class TestAuthorizationSecurity:
                     )
                     # Should succeed for privileged roles
                     assert result is not None
-                except Exception:
+                except Exception as e:
                     # May fail in test environment, but shouldn't fail due to authorization
-                    pass
+                    logger.debug(
+                        f"Test environment exception (not authorization failure): {e}"
+                    )
 
     def test_cross_agent_communication_security(self):
         """Test security of cross-agent communication."""

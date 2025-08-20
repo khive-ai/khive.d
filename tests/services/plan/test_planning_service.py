@@ -33,6 +33,10 @@ from tests.fixtures.planning_fixtures import (
 )
 
 
+class MockOpenAIError(Exception):
+    """Custom exception for mocking OpenAI API errors."""
+
+
 @pytest.mark.unit
 class TestRequest:
     """Test the Request class."""
@@ -898,7 +902,7 @@ class TestExternalModelIntegration:
 
         # Mock API failure
         async def failing_openai_call(*args, **kwargs):
-            raise Exception("OpenAI API Error: Rate limit exceeded")
+            raise MockOpenAIError("OpenAI API Error: Rate limit exceeded")
 
         with patch("asyncio.to_thread", side_effect=failing_openai_call):
             evaluations = await mock_planner_with_openai.evaluate_request(

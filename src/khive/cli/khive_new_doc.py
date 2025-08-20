@@ -580,6 +580,7 @@ class NewDocCommand(ConfigurableCLICommand):
         except (KeyError, OSError, AttributeError, IndexError) as e:
             # Expected user info retrieval failure - fallback to environment
             import logging
+
             logging.getLogger(__name__).debug(
                 f"User info retrieval failed (using fallback): {e}"
             )

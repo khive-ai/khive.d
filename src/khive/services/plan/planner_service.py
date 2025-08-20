@@ -86,7 +86,8 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         self.log_dir = Path(".khive/logs/orchestration_planning")
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = (
-            self.log_dir / f"evaluations_{TimePolicy.now_utc().strftime('%Y%m%d')}.jsonl"
+            self.log_dir
+            / f"evaluations_{TimePolicy.now_utc().strftime('%Y%m%d')}.jsonl"
         )
 
         # Artifact management - use .khive folder instead of .claude
@@ -371,19 +372,22 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
                     return tier_order[current_idx + 1]
 
         # Check for energy constraints
-        if any(
-            keyword in req.text
-            for keyword in ["energy", "optimization", "performance", "efficiency"]
-        ) and ("microsecond" in req.text or "nanosecond" in req.text):
-            if "energy_constraints" in modifiers:
-                modifier = modifiers["energy_constraints"]
-                if "+1 level" in modifier.get("complexity_increase", ""):
-                    tier_order = ["simple", "medium", "complex", "very_complex"]
-                    current_idx = (
-                        tier_order.index(base_tier) if base_tier in tier_order else 1
-                    )
-                    if current_idx < len(tier_order) - 1:
-                        return tier_order[current_idx + 1]
+        if (
+            any(
+                keyword in req.text
+                for keyword in ["energy", "optimization", "performance", "efficiency"]
+            )
+            and ("microsecond" in req.text or "nanosecond" in req.text)
+            and "energy_constraints" in modifiers
+        ):
+            modifier = modifiers["energy_constraints"]
+            if "+1 level" in modifier.get("complexity_increase", ""):
+                tier_order = ["simple", "medium", "complex", "very_complex"]
+                current_idx = (
+                    tier_order.index(base_tier) if base_tier in tier_order else 1
+                )
+                if current_idx < len(tier_order) - 1:
+                    return tier_order[current_idx + 1]
 
         return base_tier
 
@@ -819,7 +823,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
         for evaluation in evaluations:
             e = evaluation["evaluation"]
             output.append(
-                f"- {eval['config']['name']}: {e.complexity} - {e.complexity_reason}"
+                f"- {evaluation['config']['name']}: {e.complexity} - {e.complexity_reason}"
             )
         output.append("")
 
@@ -836,7 +840,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
 
         for evaluation in evaluations:
             e = evaluation["evaluation"]
-            agent_name = eval["config"]["name"]
+            agent_name = evaluation["config"]["name"]
 
             # Default weight
             weight = 1.0
@@ -864,7 +868,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
         for evaluation in evaluations:
             e = evaluation["evaluation"]
             output.append(
-                f"- {eval['config']['name']}: {e.total_agents} agents - {e.agent_reason}"
+                f"- {evaluation['config']['name']}: {e.total_agents} agents - {e.agent_reason}"
             )
         output.append("")
 
@@ -909,7 +913,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
             e = evaluation["evaluation"]
             roles_str = " → ".join(e.role_priorities[:5])  # Show top 5
             output.append(
-                f"- {eval['config']['name']} ({e.confidence:.0%}): {roles_str}"
+                f"- {evaluation['config']['name']} ({e.confidence:.0%}): {roles_str}"
             )
         output.append("")
 
@@ -971,8 +975,8 @@ Be different - show YOUR unique perspective on which roles matter most."""
         output.append(f"Overall Confidence: {avg_confidence:.0%}")
         output.append("Individual confidence scores:")
         output.extend(
-            f"- {eval['config']['name']}: {eval['evaluation'].confidence:.0%}"
-            for eval in evaluations
+            f"- {evaluation['config']['name']}: {evaluation['evaluation'].confidence:.0%}"
+            for evaluation in evaluations
         )
         output.append("")
 
@@ -1419,8 +1423,7 @@ Your deliverable will be automatically registered. Include in your final report:
         # Build dependency map for available roles only
         for role in available_roles:
             dependencies = [
-                dep for dep in role_dependencies.get(role, [])
-                if dep in available_roles
+                dep for dep in role_dependencies.get(role, []) if dep in available_roles
             ]
             dependency_map[role] = dependencies
 
@@ -1623,7 +1626,9 @@ class PlannerService:
             spawn_commands = []
             if "khive compose" in consensus:
                 lines = consensus.split("\n")
-                spawn_commands.extend(line.strip() for line in lines if "khive compose" in line)
+                spawn_commands.extend(
+                    line.strip() for line in lines if "khive compose" in line
+                )
 
             # Calculate confidence based on evaluation results
             confidence = 0.8  # Default confidence
