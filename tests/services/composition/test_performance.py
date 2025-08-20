@@ -16,7 +16,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from khive.services.composition.agent_composer import AgentComposer
 
 
@@ -575,15 +574,12 @@ class TestThroughputPerformance:
             op_end = time.perf_counter()
             op_time = op_end - op_start
 
-            operations_completed.append(
-                {
-                    "operation_id": operation_count,
-                    "duration": op_time,
-                    "timestamp": op_end - start_time,
-                    "success": result["identity"]["id"]
-                    == f"throughput_role_{role_idx}",
-                }
-            )
+            operations_completed.append({
+                "operation_id": operation_count,
+                "duration": op_time,
+                "timestamp": op_end - start_time,
+                "success": result["identity"]["id"] == f"throughput_role_{role_idx}",
+            })
 
             operation_count += 1
 
@@ -644,13 +640,11 @@ class TestThroughputPerformance:
                     result = composer.load_agent_role(f"throughput_role_{role_idx}")
                     end_time = time.perf_counter()
 
-                    worker_results.append(
-                        {
-                            "duration": end_time - start_time,
-                            "success": result["identity"]["id"]
-                            == f"throughput_role_{role_idx}",
-                        }
-                    )
+                    worker_results.append({
+                        "duration": end_time - start_time,
+                        "success": result["identity"]["id"]
+                        == f"throughput_role_{role_idx}",
+                    })
                 return worker_results
 
             # Execute burst

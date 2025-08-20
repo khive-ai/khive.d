@@ -3,12 +3,12 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from khive.services.plan.planner_service import (
     ComplexityTier,
     OrchestrationPlanner,
     Request,
 )
+
 from tests.fixtures.planning_fixtures import MockDecisionMatrix
 
 

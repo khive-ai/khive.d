@@ -73,13 +73,13 @@ Complete LionOrchestrator instance with all dependencies mocked:
 def test_method(orchestrator_with_mocks):
     """Test individual orchestrator method."""
     orchestrator = orchestrator_with_mocks
-    
+
     # Setup specific mocks for this test
     orchestrator.session.flow.return_value = {"result": "test"}
-    
+
     # Execute method
     result = await orchestrator.run_flow()
-    
+
     # Verify behavior
     assert result["result"] == "test"
     orchestrator.session.flow.assert_called_once()
@@ -91,14 +91,14 @@ def test_method(orchestrator_with_mocks):
 def test_workflow(orchestrator_with_mocks, mock_create_cc, mock_composer_service):
     """Test complete workflow patterns."""
     orchestrator = orchestrator_with_mocks
-    
+
     # Mock external services
     with patch("module.create_cc") as mock_cc:
         mock_cc.return_value = MagicMock()
-        
+
         # Execute workflow
         result = await orchestrator.fanout(...)
-        
+
         # Verify integration points
         assert isinstance(result, FanoutResponse)
 ```
@@ -110,13 +110,13 @@ def test_workflow(orchestrator_with_mocks, mock_create_cc, mock_composer_service
 async def test_concurrent_operations(orchestrator_with_mocks):
     """Test async concurrency patterns."""
     orchestrator = orchestrator_with_mocks
-    
+
     # Setup concurrent operations
     tasks = [orchestrator.create_cc_branch(request) for request in requests]
-    
+
     # Execute concurrently
     results = await asyncio.gather(*tasks)
-    
+
     # Verify concurrent execution
     assert len(results) == len(requests)
 ```
@@ -182,7 +182,7 @@ def test_example(temp_dir, mock_subprocess):
     # Use temp_dir for file operations
     test_file = temp_dir / "test.txt"
     test_file.write_text("test")
-    
+
     # Use mock_subprocess for CLI testing
     result = subprocess.run(["echo", "test"])
     assert result.returncode == 0

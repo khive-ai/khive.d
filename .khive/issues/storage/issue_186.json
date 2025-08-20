@@ -1,7 +1,9 @@
 {
   "id": "2da43415-7aea-4975-9a7e-4b4f9c1c2786",
   "created_at": 1755706553.100696,
-  "metadata": { "lion_class": "khive.services.orchestration.parts.Issue" },
+  "metadata": {
+    "lion_class": "khive.services.orchestration.parts.Issue"
+  },
   "content": {
     "issue_num": 186,
     "issue_plan": {
@@ -20,18 +22,27 @@
         "critic_domain": "security",
         "critic_role": "critic",
         "gate_instruction": "Evaluate if security testing covers all attack vectors including path traversal, prompt injection, and input validation.",
-        "gates": ["security", "testing"]
+        "gates": [
+          "security",
+          "testing"
+        ]
       },
       "blocks_issues": [],
       "enables_issues": [],
-      "dependencies": [195],
+      "dependencies": [
+        195
+      ],
       "project_phase": "development",
       "is_critical_path": true,
       "is_experimental": false,
       "skip_refinement": false,
       "max_refinement_iterations": null
     },
-    "issue_result": { "issue_num": 186, "executions": [], "success": false },
+    "issue_result": {
+      "issue_num": 186,
+      "executions": [],
+      "success": false
+    },
     "operation_status": "pending",
     "gate_passed": false,
     "git_processed": false,

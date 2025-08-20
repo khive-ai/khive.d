@@ -1,7 +1,9 @@
 {
   "id": "f71b8d1a-eec3-4441-8729-ce1abec6090d",
   "created_at": 1755706553.10108,
-  "metadata": { "lion_class": "khive.services.orchestration.parts.Issue" },
+  "metadata": {
+    "lion_class": "khive.services.orchestration.parts.Issue"
+  },
   "content": {
     "issue_num": 187,
     "issue_plan": {
@@ -20,18 +22,27 @@
         "critic_domain": "async-programming",
         "critic_role": "critic",
         "gate_instruction": "Evaluate if async workflow testing covers all execution patterns, error handling, and resource management scenarios.",
-        "gates": ["testing", "design"]
+        "gates": [
+          "testing",
+          "design"
+        ]
       },
       "blocks_issues": [],
       "enables_issues": [],
-      "dependencies": [195],
+      "dependencies": [
+        195
+      ],
       "project_phase": "development",
       "is_critical_path": true,
       "is_experimental": false,
       "skip_refinement": false,
       "max_refinement_iterations": null
     },
-    "issue_result": { "issue_num": 187, "executions": [], "success": false },
+    "issue_result": {
+      "issue_num": 187,
+      "executions": [],
+      "success": false
+    },
     "operation_status": "pending",
     "gate_passed": false,
     "git_processed": false,

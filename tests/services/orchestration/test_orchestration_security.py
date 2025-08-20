@@ -13,10 +13,9 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from lionagi.fields import Instruct
-
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import ComposerRequest
+from lionagi.fields import Instruct
 
 
 class TestPathTraversalSecurity:

@@ -14,7 +14,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from khive.services.composition.agent_composer import AgentComposer
 
 
@@ -435,7 +434,8 @@ class TestResourceContention:
                 f"pattern_{i}": [f"item_{j}" for j in range(100)] for i in range(50)
             },
             "large_rules": {
-                f"rule_{i}": "x" * 1000 for i in range(100)  # 100 rules, 1KB each
+                f"rule_{i}": "x" * 1000
+                for i in range(100)  # 100 rules, 1KB each
             },
         }
         domain_file = domains_dir / "memory_domain.yaml"
@@ -646,14 +646,12 @@ class TestDeadlockPrevention:
                     future.result()
                 except Exception as e:
                     with operation_lock:
-                        completed_operations.append(
-                            (
-                                "future",
-                                "timeout",
-                                "error",
-                                str(e),
-                            )
-                        )
+                        completed_operations.append((
+                            "future",
+                            "timeout",
+                            "error",
+                            str(e),
+                        ))
 
         # Verify no deadlocks occurred
         successful_ops = [op for op in completed_operations if op[2] == "success"]

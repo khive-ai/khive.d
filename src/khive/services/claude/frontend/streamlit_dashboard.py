@@ -8,7 +8,6 @@ from typing import Any
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-
 from khive import __version__
 from khive.services.claude.hooks import HookEvent
 

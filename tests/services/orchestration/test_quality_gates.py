@@ -12,8 +12,6 @@ import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
-from lionagi.fields import Instruct
-
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     AgentRequest,
@@ -22,6 +20,8 @@ from khive.services.orchestration.parts import (
     GateComponent,
     OrchestrationPlan,
 )
+from lionagi.fields import Instruct
+
 from tests.fixtures.gated_refinement_fixtures import create_mock_orchestrator
 
 

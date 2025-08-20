@@ -181,7 +181,7 @@ pytest tests/test_planning_service.py -m benchmark --benchmark-only
 ```python
 @pytest.mark.parametrize("request_text,expected_tier", [
     ("single objective well defined scope", ComplexityTier.SIMPLE),
-    ("multiple objectives some unknowns", ComplexityTier.MEDIUM), 
+    ("multiple objectives some unknowns", ComplexityTier.MEDIUM),
     ("many stakeholders high uncertainty", ComplexityTier.COMPLEX),
     ("research frontier multiple disciplines", ComplexityTier.VERY_COMPLEX),
 ])

@@ -20,7 +20,7 @@ graph TD
     B -->|Feature Branch| C[Fast Feedback]
     B -->|Main/Develop| D[Full CI Pipeline]
     C --> E[Quick Validation]
-    E --> F[Security Check]  
+    E --> F[Security Check]
     F --> G[PR Quality Gate]
     D --> H[Comprehensive Testing]
     H --> I[Performance Tests]
@@ -258,7 +258,7 @@ show_missing = true
 
 3. **Performance Degradation**
    ```bash
-   # Run performance tests locally  
+   # Run performance tests locally
    uv run pytest tests/performance/ --benchmark-only
    ```
 

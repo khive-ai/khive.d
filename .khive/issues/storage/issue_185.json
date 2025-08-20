@@ -1,7 +1,9 @@
 {
   "id": "6042edd8-b59a-426f-8e82-66e0ab1bc0b4",
   "created_at": 1755706553.100455,
-  "metadata": { "lion_class": "khive.services.orchestration.parts.Issue" },
+  "metadata": {
+    "lion_class": "khive.services.orchestration.parts.Issue"
+  },
   "content": {
     "issue_num": 185,
     "issue_plan": {
@@ -18,14 +20,20 @@
       "refinement_config": null,
       "blocks_issues": [],
       "enables_issues": [],
-      "dependencies": [195],
+      "dependencies": [
+        195
+      ],
       "project_phase": "development",
       "is_critical_path": true,
       "is_experimental": false,
       "skip_refinement": false,
       "max_refinement_iterations": null
     },
-    "issue_result": { "issue_num": 185, "executions": [], "success": false },
+    "issue_result": {
+      "issue_num": 185,
+      "executions": [],
+      "success": false
+    },
     "operation_status": "pending",
     "gate_passed": false,
     "git_processed": false,

@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from khive.services.plan.models import OrchestrationEvaluation
 from khive.services.plan.parts import ComplexityLevel, PlannerRequest
 from khive.services.plan.planner_service import (
@@ -12,6 +11,7 @@ from khive.services.plan.planner_service import (
     PlannerService,
     Request,
 )
+
 from tests.fixtures.planning_fixtures import MockDecisionMatrix, MockOpenAIResponse
 
 
@@ -425,8 +425,10 @@ class TestMockedIntegrationScenarios:
                     )
 
                     mock_response = MockOpenAIResponse(mock_eval)
-                    integration_mocks["openai_client"].beta.chat.completions.parse = (
-                        AsyncMock(return_value=mock_response)
+                    integration_mocks[
+                        "openai_client"
+                    ].beta.chat.completions.parse = AsyncMock(
+                        return_value=mock_response
                     )
 
                     # 5. Run evaluation

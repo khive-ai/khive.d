@@ -15,7 +15,6 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 import yaml
-
 from khive.services.composition.agent_composer import AgentComposer
 
 
@@ -66,9 +65,7 @@ class TestAdvancedPathTraversalAttacks:
             result = composer._is_safe_path(unsafe_path)
             # These are safe as literal filenames but test the principle
             # In real attacks, they would be decoded before reaching this method
-            assert (
-                True
-            )  # Either outcome is acceptable for literal % chars
+            assert True  # Either outcome is acceptable for literal % chars
 
     def test_symlink_traversal_attacks(self, temp_dir):
         """Test symlink-based directory traversal attacks."""
