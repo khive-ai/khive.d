@@ -9,48 +9,126 @@ __all__ = (
 
 
 KHIVE_PLAN_REMINDER = """
-Requirement: must use GitHub to fetch issues, must use khive plan [CONTEXT] --issue xxx to get agent consensus for each kind of plan. You must check the GitHub issue #{issue_num} or any updates or changes before proceeding. with git commands. The domains for agents must come from @libs/khive/src/khive/prompts/domains 
+MANDATORY: First run `gh issue view #{issue_num}` to read the original requirements.
 
-Notes:
-- If multiple implementers/testers are involved, ensure divide and conquer approach and avoid overlap
-- later agents need to be aware of earlier agents' work, so they can build on top of it
-- If this is a redo, you need to be mindful of the existing work already completed for this issue, so your agents work on improving it, not rebuilding same broken wheels
+Planning Constraints:
+- Plan the MINIMAL change to satisfy this issue's acceptance criteria
+- Reuse existing patterns - no new abstractions unless explicitly required
+- Domains for agents must come from @libs/khive/src/khive/prompts/domains
+- Use khive plan [CONTEXT] --issue xxx for agent consensus
+
+Simplicity Rules:
+- What is the simplest approach that meets the issue requirements?
+- What existing code/patterns can be reused?
+- What would you deliberately NOT do to keep this minimal?
+- Remember: Complexity is a bug, not a feature
+
+Agent Coordination:
+- If multiple agents: divide work clearly, avoid overlap
+- Later agents build on earlier work, don't rebuild
+- If redo: improve existing work, don't start over
 """
 
 CRITIC_REVIEW_INSTRUCTION = """
-Review the completion of issue.
+STEP 1: Run `gh issue view #{issue_num}` to read the original issue requirements.
 
-EVALUATION CRITERIA:
-- Deliverable completeness and quality standards
-- Requirements fulfillment and integration readiness  
-- Documentation quality and implementation clarity
+STEP 2: Evaluate ONLY against the specific GitHub issue:
+- Does the work satisfy the acceptance criteria stated in the issue?
+- Is anything explicitly requested still missing?
+- Are there any out-of-scope additions that should be removed?
 
-Evaluate if work meets production standards and is ready for git cycle.
-Can suggest re-execution if needed. If the issue work is not satisfactory, 
-provide clear feedback on what needs to be improved to pass the quality gate.
-You may also propose additional GitHub issues if significant gaps are identified.
+STEP 3: Check for over-engineering (complexity is a bug):
+- Are there new abstractions that could be avoided?
+- Could this be simpler and still satisfy the issue?
+- What files/code should be deleted as unnecessary?
+- Are there multiple implementations that should be consolidated?
+
+STEP 4: Context-appropriate quality check:
+- Prototype → Does it work? Ship it.
+- Development → Are main use cases covered?
+- Production → Is it robust for the stated requirements?
+
+REJECT only if:
+- Issue acceptance criteria are NOT met
+- Unnecessary complexity that creates technical debt
+- Missing critical functionality explicitly requested in the issue
+
+Do NOT reject for:
+- Missing features not requested in the original issue
+- Lack of "perfect" test coverage for experimental work
+- Missing documentation for internal prototypes
+- Performance optimizations not requested
+
+Remember: Quality means "appropriate for the issue scope," not "gold-plated."
 """
 
 REDO_ORCHESTRATOR_INSTRUCTION = """
-You are re-executing a previously failed issue with additional context.
+REDO EXECUTION - Previous attempt failed critic review.
+
+STEP 1: Run `gh issue view #{issue_num}` to re-read original requirements.
+
+STEP 2: Analyze critic feedback:
 {redo_ctx}
-You must ensure all previous problems are resolved and the issue is ready for production.
+
+STEP 3: Fix specific problems identified by critics:
+- Address ONLY the issues critics flagged
+- Do NOT rebuild from scratch - improve existing work
+- Do NOT add new features beyond the original issue scope
+- Focus on satisfying the GitHub issue requirements, not gold-plating
+
+STEP 4: Apply simplicity principles:
+- Keep changes MINIMAL to address critic concerns
+- Remove any over-engineering introduced in previous attempt
+- Consolidate redundant work from previous execution
+- Reuse existing patterns where possible
+
+Success Criteria:
+- Original GitHub issue requirements are met
+- Specific critic concerns are addressed
+- Solution is as simple as possible while being functional
+- No unnecessary complexity or tech debt introduced
+
+Remember: Fix the problems, don't rebuild the world. Complexity is a bug, not a feature.
 """
 
 SYNTHESIS_INSTRUCTION = """
-Info:
-- workspace: `.khvie/workspaces/{flow_name}/`
-- Your agents work in their respective workspaces all under .khive/workspaces/, with directory named starting with `{flow_name}_` followed by their specification
-- They might misplace files across codebase. You might need to use git diff to find them
-- They tend to produce redundant files, or multiple versions of the same file. Must prune before handing off to next agent, keep only updated version in codebase, remove others or move them into workspace
-- All non deliverable files from working should be in the dedicated workspace directory
-- Your work will be immiediately evaluated by a group of 5 critic agents, do a good job to pass the gate
+Workspace Management:
+- Agent workspaces: `.khive/workspaces/{flow_name}_[agent_spec]/`
+- Agents may scatter files - use `git diff` to locate misplaced work
+- Move all working files to respective agent workspaces
+- Keep only final deliverables in the main codebase
+
+MANDATORY Cleanup (Tech Debt Removal):
+- Remove redundant files and multiple versions of same functionality
+- Delete unused/dead code and temporary debug files
+- Consolidate duplicate implementations
+- Remove over-engineered abstractions not needed for the issue
+- Clean up any experimental code that didn't make it to final solution
+
+Quality Standards:
+- Ensure deliverables meet the GitHub issue requirements (not generic "best practices")
+- Verify simplicity - could this be done with less complexity?
+- 5 critic agents will evaluate: pass their review by being issue-focused, not gold-plated
+
+Remember: You're optimizing for issue completion, not theoretical perfection. Complexity is a bug, not a feature.
 """
 
 ATOMIC_WORK_GUIDANCE = """
-AFTER, doing your other regular requirements. Present the a deliverable in the following format
-- DO NOT only submit the deliverable, the actual work must need to be done first
-- DO NOT submit the deliverable if the work is not done
-- If you have done substantial work, you must also write a markdown file in flow workspace so that
-future agents do not need to redo the work.
+Work Execution Rules:
+- Complete the actual work BEFORE submitting deliverable
+- Use MINIMAL approach that satisfies requirements
+- Reuse existing patterns - avoid creating new abstractions
+- Stop when issue acceptance criteria are met
+
+STOP Rules (DO NOT add):
+- "Future-proofing" features not requested
+- Extra abstractions "just in case"  
+- Performance optimizations not required
+- Generic improvements beyond issue scope
+
+Deliverable Requirements:
+- Submit work only AFTER it's complete and tested
+- Write markdown summary in workspace for future agents
+- Focus on issue satisfaction, not theoretical perfection
+- Remember: Complexity is a bug, not a feature
 """

@@ -146,13 +146,10 @@ class LionOrchestrator:
 
         # Secure system prompt construction with validation and JSON escaping
         base_system_prompt = compose_response.system_prompt or ""
-        system_reminder = (
-            "friendly reminder: if ever need to use python, should use `uv run` command"
-        )
         branch = Branch(
             chat_model=cc,
             parse_model=cc,
-            system=base_system_prompt + "\n" + system_reminder,
+            system=base_system_prompt,
             use_lion_system_message=True,
             system_datetime=True,
             name=full_name,
