@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
 from pathlib import Path
 
+from khive.prompts import ALL_AGENT_ROLES
 from khive.utils import get_logger
 
 from .agent_composer import AgentComposer
@@ -38,9 +40,54 @@ class ComposerService:
         if self._composer is None:
             async with self._composer_lock:
                 if self._composer is None:
-                    # Need to set up the composer with domains and roles from shared prompts
-                    prompts_path = Path(__file__).parent.parent.parent / "prompts"
-                    self._composer = AgentComposer(base_path=str(prompts_path))
+                    from khive.utils import KHIVE_CONFIG_DIR
+
+                    source_prompts = Path(__file__).parent.parent.parent / "prompts"
+                    khive_prompts = KHIVE_CONFIG_DIR / "prompts"
+
+                    # copy entire roles folder
+                    if not (khive_prompts / "roles").exists():
+                        shutil.copytree(
+                            source_prompts / "roles",
+                            khive_prompts / "roles",
+                            dirs_exist_ok=True,
+                        )
+
+                    # copy entire domains folder
+                    if not (khive_prompts / "domains").exists():
+                        shutil.copytree(
+                            source_prompts / "domains",
+                            khive_prompts / "domains",
+                            dirs_exist_ok=True,
+                        )
+
+                    # check for specific files
+                    files = {
+                        "name_mapper.yaml",
+                        "decision_matrix.yaml",
+                        "name_mapper.yaml",
+                    }
+                    for f in files:
+                        if not (khive_prompts / f).exists():
+                            shutil.copy(source_prompts / f, khive_prompts / f)
+
+                    # ensure all roles are present
+                    from lionagi.libs.file.file_ops import list_files
+
+                    fps = list_files(khive_prompts / "roles", ".md")
+                    all_existing_roles = set(fp.stem for fp in fps if fp.is_file())
+                    if not ALL_AGENT_ROLES.issubset(all_existing_roles):
+                        for role in ALL_AGENT_ROLES:
+                            if role not in all_existing_roles:
+                                role_prompt_fp = source_prompts / "roles" / f"{role}.md"
+                                shutil.copy(
+                                    role_prompt_fp,
+                                    khive_prompts / "roles" / f"{role}.md",
+                                )
+
+                    self._composer = AgentComposer(
+                        base_path=str(KHIVE_CONFIG_DIR / "prompts")
+                    )
         return self._composer
 
     async def handle_request(self, request: ComposerRequest) -> ComposerResponse:

@@ -7,7 +7,7 @@ from lionagi.protocols.types import Node
 from pydantic import field_validator
 from typing_extensions import TypedDict
 
-from khive.utils import EventBroadcaster, get_logger
+from khive.utils import SQLITE_DSN, EventBroadcaster, get_logger
 
 hook_event_logger = get_logger("ClaudeHooks", "🪝 [CLAUDE-HOOKS]")
 
@@ -27,6 +27,7 @@ class HookEvent(Node):
 
     content: HookEventContent
     _initialized: ClassVar[bool] = False
+    _table_name: ClassVar[str] = "hook_events"
 
     @field_validator("content", mode="before")
     def _validate_event_type(cls, value) -> dict:
@@ -46,8 +47,8 @@ class HookEvent(Node):
         # Save to database
         result = await self.adapt_to_async(
             obj_key="lionagi_async_pg",
-            dsn="sqlite+aiosqlite:///claude_hooks.db",
-            table="hook_events",
+            dsn=SQLITE_DSN,
+            table=self._table_name,
         )
 
         await HookEventBroadcaster.broadcast(self)
@@ -58,8 +59,8 @@ class HookEvent(Node):
     async def get_all(cls, limit: int | None = None):
         """Get all hook events from database."""
         params = {
-            "dsn": "sqlite+aiosqlite:///claude_hooks.db",
-            "table": "hook_events",
+            "dsn": SQLITE_DSN,
+            "table": cls._table_name,
         }
         if limit:
             params["limit"] = limit
@@ -74,8 +75,8 @@ class HookEvent(Node):
     async def get_recent(cls, limit: int = 100) -> list[HookEvent]:
         """Get recent hook events."""
         params = {
-            "dsn": "sqlite+aiosqlite:///claude_hooks.db",
-            "table": "hook_events",
+            "dsn": SQLITE_DSN,
+            "table": cls._table_name,
             "order_by": "created_at DESC",
         }
         if limit:
@@ -93,8 +94,8 @@ class HookEvent(Node):
     ) -> list[HookEvent]:
         """Get hook events by event type."""
         params = {
-            "dsn": "sqlite+aiosqlite:///claude_hooks.db",
-            "table": "hook_events",
+            "dsn": SQLITE_DSN,
+            "table": cls._table_name,
             "where": f"content->>'event_type' = '{event_type}'",
         }
         if limit:
@@ -112,8 +113,8 @@ class HookEvent(Node):
     ) -> list[HookEvent]:
         """Get hook events by session ID."""
         params = {
-            "dsn": "sqlite+aiosqlite:///claude_hooks.db",
-            "table": "hook_events",
+            "dsn": SQLITE_DSN,
+            "table": cls._table_name,
             "where": f"content->>'session_id' = '{session_id}'",
         }
         if limit:
@@ -131,8 +132,8 @@ class HookEvent(Node):
     ) -> list[HookEvent]:
         """Get hook events since a specific timestamp."""
         params = {
-            "dsn": "sqlite+aiosqlite:///claude_hooks.db",
-            "table": "hook_events",
+            "dsn": SQLITE_DSN,
+            "table": cls._table_name,
             "where": f"created_at >= '{timestamp}'",
             "order_by": "created_at DESC",
         }

@@ -19,22 +19,17 @@ class CCSettings(BaseKhiveSettings):
     )
 
     # project settings
-    REPO_LOCAL: str = "/Users/lion/projects/khive"
-    WORKSPACE: str = ".khive/workspaces"
     CLI_THEME: str = "dark"
-    REPO_OWNER: str = "khive-ai"
-    REPO_NAME: str = "khive.d"
 
     # model settings
-    ENDPOINT: str = "query_cli"
-    PERMISSION_MODE: str = "default"
+    PERMISSION_MODE: str = "acceptEdits"
     MODEL: str = "sonnet"
 
     # orchestrator settings
     ORCHESTRATOR_VERBOSE: bool = True
     ORCHESTRATOR_AUTO_FINISH: bool = True
     ORCHESTRATOR_SKIP_PERMISSIONS: bool = False
-    ORCHESTRATOR_MODEL: str = "sonnet"
+    ORCHESTRATOR_MODEL: str | None = None
 
     # task settings
     TASK_VERBOSE: bool = False
