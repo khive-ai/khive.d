@@ -43,9 +43,11 @@ class TestKhiveServices:
         """Test that service modules can be imported."""
         # Test that services exist and are importable
         try:
-            from khive import utils  # noqa: F401
-            from khive import _types  # noqa: F401
-            
+            from khive import (
+                _types,  # noqa: F401
+                utils,  # noqa: F401
+            )
+
             # If we get here without ImportError, the basic modules exist
             assert True
         except ImportError as e:

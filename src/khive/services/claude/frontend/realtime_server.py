@@ -5,6 +5,7 @@ import signal
 from datetime import datetime
 
 import websockets
+
 from khive.services.claude.hooks import HookEvent, HookEventBroadcaster
 from khive.utils import get_logger
 

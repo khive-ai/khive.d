@@ -10,8 +10,9 @@ from pathlib import Path
 from typing import Protocol
 
 import yaml
-from khive.utils import get_logger
 from openai import OpenAI
+
+from khive.utils import get_logger
 
 from ..artifacts.handlers import (
     HandoffAgentSpec,
