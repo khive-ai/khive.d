@@ -65,7 +65,7 @@ class ComposerService:
                     files = {
                         "name_mapper.yaml",
                         "decision_matrix.yaml",
-                        "name_mapper.yaml",
+                        "agent_prompts.yaml",
                     }
                     for f in files:
                         if not (khive_prompts / f).exists():

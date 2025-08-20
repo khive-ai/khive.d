@@ -2,3 +2,5 @@ workspace/
 notes/
 *snapshots/
 workspaces/
+claude_roles/
+prompts/

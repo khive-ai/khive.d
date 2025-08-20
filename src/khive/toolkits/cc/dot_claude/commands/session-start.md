@@ -136,7 +136,7 @@ uv run khive plan "[detailed task description]"
 
 - **Modified Files**: 26 files with pending changes
 - **Last Commit**: 1b5cb522 - "Merge pull request #46 from khive-ai/feat/update-claude-code"
-- **Active Issue**: #{issue_number} (if linked)
+- **Active Issue**: #{issue_num} (if linked)
 
 ### 🧠 Memory Context Loaded
 

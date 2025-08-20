@@ -12,7 +12,6 @@ from pydantic import Field, field_validator, model_validator
 
 from khive._types import BaseModel
 from khive.services.composition.parts import AgentRole, ComposerRequest
-from khive.toolkits.cc.settings import cc_settings
 
 DeliverableType = Literal[
     "RequirementsAnalysis",

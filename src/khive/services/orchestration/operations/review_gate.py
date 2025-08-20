@@ -77,7 +77,9 @@ async def review_gate(issue: Issue, **kw) -> tuple[bool, Issue]:
             depends_on=[root],
             branch=critic,
             instruct=Instruct(
-                instruction=CRITIC_REVIEW_INSTRUCTION,
+                instruction=CRITIC_REVIEW_INSTRUCTION.format(
+                    issue_num=issue_plan.issue_num
+                ),
                 context=ctx,
                 reason=True,
             ),

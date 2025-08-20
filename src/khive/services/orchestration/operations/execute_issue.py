@@ -31,12 +31,15 @@ async def execute_issue(
     result: dict = {}
     success = True
     planning_instruction = (
-        KHIVE_PLAN_REMINDER + issue_plan.fanout_config.planning_instruction
+        KHIVE_PLAN_REMINDER.format(issue_num=issue.content.issue_num)
+        + issue_plan.fanout_config.planning_instruction
     )
 
     if is_redo:
         planning_instruction = (
-            REDO_ORCHESTRATOR_INSTRUCTION.format(redo_ctx=redo_ctx)
+            REDO_ORCHESTRATOR_INSTRUCTION.format(
+                issue_num=issue.content.issue_num, redo_ctx=redo_ctx
+            )
             + planning_instruction
         )
 
