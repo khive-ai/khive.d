@@ -3,15 +3,14 @@ from pathlib import Path
 from typing import Any
 
 import aiofiles
-from lionagi import Branch, Builder, Operation, Session
-from lionagi.fields import Instruct
-from lionagi.models import FieldModel, OperableModel
-from lionagi.protocols.types import ID, AssistantResponse, Graph, IDType, Pile
-
 from khive.services.composition import composer_service
 from khive.toolkits.cc import create_cc
 from khive.toolkits.cc.create_cc import create_orchestrator_cc_model
 from khive.utils import KHIVE_CONFIG_DIR, get_logger
+from lionagi import Branch, Builder, Operation, Session
+from lionagi.fields import Instruct
+from lionagi.models import FieldModel, OperableModel
+from lionagi.protocols.types import ID, AssistantResponse, Graph, IDType, Pile
 
 from .atomic import (
     CodeContextAnalysis,
@@ -55,7 +54,7 @@ class LionOrchestrator:
         self.session: Session = None
         self.builder: Builder = None
 
-    async def initialize(self, model: str = None, system: str = None):
+    async def initialize(self, model: str | None = None, system: str | None = None):
         orc_cc = await create_cc(
             as_orchestrator=True,
             verbose_output=True,
@@ -81,11 +80,11 @@ class LionOrchestrator:
         self,
         compose_request: ComposerRequest,
         agent_suffix: str = "",
-        clone_from: str = None,
-        model: str = None,
-        verbose_output: bool = None,
-        permission_mode: str = None,
-        auto_finish: bool = None,
+        clone_from: str | None = None,
+        model: str | None = None,
+        verbose_output: bool | None = None,
+        permission_mode: str | None = None,
+        auto_finish: bool | None = None,
         requires_root: bool = False,
         overwrite_config: bool = False,
         copy_mcp_config: bool = True,
@@ -331,7 +330,7 @@ class LionOrchestrator:
             try:
                 op: Operation = g.internal_nodes[op_id]
                 if not op.branch_id:
-                    return {"error": f"Operation {str(op_id)} has no branch_id"}
+                    return {"error": f"Operation {op_id!s} has no branch_id"}
 
                 branch = self.session.get_branch(op.branch_id, None)
 
@@ -347,7 +346,7 @@ class LionOrchestrator:
 
                 return {"error": "No branch or messages found"}
             except Exception as e:
-                return {"error": f"Failed to extract summary: {str(e)}"}
+                return {"error": f"Failed to extract summary: {e!s}"}
 
         return [_get_ctx(o) for o in ops]
 
@@ -355,8 +354,7 @@ class LionOrchestrator:
         """Run flow with timeout protection and security logging."""
         if visualize:
             self.builder.visualize(self.flow_name)
-        result = await self.session.flow(self.builder.get_graph())
-        return result
+        return await self.session.flow(self.builder.get_graph())
 
     def new_orc_branch(self) -> Branch:
         cc = create_orchestrator_cc_model(permission_mode="bypassPermissions")
@@ -376,7 +374,7 @@ class LionOrchestrator:
         initial_desc: str,
         planning_instruction: str,
         synth_instruction: str,
-        context: str = None,
+        context: str | None = None,
         visualize: bool | Literal["step", "final"] = False,
         max_agents: int = 8,
     ):
@@ -443,11 +441,11 @@ class LionOrchestrator:
         gate_instruction: str,
         synth_instruction: str,
         planning_instruction: str,
-        context: str = None,
+        context: str | None = None,
         critic_domain: str = "software-architecture",
         critic_role: str = "critic",
         visualize: bool | Literal["step", "final"] = False,
-        gates: list[GateOptions] | dict[str, str] = None,
+        gates: list[GateOptions] | dict[str, str] | None = None,
         max_agents=8,
         project_phase=None,
         is_critical_path=False,
@@ -480,7 +478,7 @@ class LionOrchestrator:
         gate_components = {}
         if gates:
             if isinstance(gates, list):
-                gates = {gate: True for gate in gates}
+                gates = dict.fromkeys(gates, True)
             for g, d in gates.items():
                 if isinstance(d, str):
                     gate_components[g] = d
@@ -638,12 +636,7 @@ class LionOrchestrator:
         }
 
         dict_ = {
-            "branches": [
-                b.to_dict()
-                for b in self.session.branches
-                if b != self.session.default_branch
-            ],
-            "session_default_branch": self.session.default_branch.to_dict(),
+            "branches": self.session.branches.to_dict(),
             "metadata": session_meta,
             "graph": self.builder.get_graph().to_dict(),
         }
@@ -659,7 +652,7 @@ class LionOrchestrator:
         if not fp.exists():
             raise FileNotFoundError(f"File {fp} does not exist")
 
-        async with aiofiles.open(fp, "r") as f:
+        async with aiofiles.open(fp) as f:
             text = await f.read()
 
         dict_ = json.loads(text)

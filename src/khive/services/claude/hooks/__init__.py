@@ -8,8 +8,8 @@ from .hook_event import (
 
 __all__ = [
     "HookEvent",
-    "HookEventContent",
     "HookEventBroadcaster",
+    "HookEventContent",
     "hook_event_logger",
     "shield",
 ]

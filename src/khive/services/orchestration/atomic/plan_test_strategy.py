@@ -59,12 +59,12 @@ class TestStrategy(BaseModel):
     quality_validation: str = Field(
         description=f"""
         {QUALITY_PROMPT}
-        
+
         Additionally for test strategy planning:
         - Does your testing strategy provide sufficient coverage for critical functionality?
         - Are your test scenarios realistic and likely to catch real issues?
         - Is the testing approach practical and maintainable for the development team?
-        
+
         {CONFIDENCE_PROMPT}
         """
     )

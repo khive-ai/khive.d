@@ -4,19 +4,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
-
-from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from khive.prompts import AgentRole
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 __all__ = (
-    "ComposerRequest",
-    "DomainExpertise",
-    "ComposerResponse",
     "AgentCompositionRequest",
-    "AgentSpec",
     "AgentRole",  # re-export for convenience
+    "AgentSpec",
+    "ComposerRequest",
+    "ComposerResponse",
+    "DomainExpertise",
 )
 
 
@@ -73,9 +71,7 @@ class ComposerResponse(BaseModel):
     confidence: float = Field(
         ..., description="Confidence in the composition (0.0-1.0)"
     )
-    error: Optional[str] = Field(
-        None, description="Error message if composition failed"
-    )
+    error: str | None = Field(None, description="Error message if composition failed")
 
 
 class AgentCompositionRequest(BaseModel):

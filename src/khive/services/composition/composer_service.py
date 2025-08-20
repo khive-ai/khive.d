@@ -75,7 +75,7 @@ class ComposerService:
                     from lionagi.libs.file.file_ops import list_files
 
                     fps = list_files(khive_prompts / "roles", ".md")
-                    all_existing_roles = set(fp.stem for fp in fps if fp.is_file())
+                    all_existing_roles = {fp.stem for fp in fps if fp.is_file()}
                     if not ALL_AGENT_ROLES.issubset(all_existing_roles):
                         for role in ALL_AGENT_ROLES:
                             if role not in all_existing_roles:
@@ -184,7 +184,7 @@ class ComposerService:
             logger.error(f"Error in handle_request: {e}", exc_info=True)
             return ComposerResponse(
                 success=False,
-                summary=f"Composition failed: {str(e)}",
+                summary=f"Composition failed: {e!s}",
                 agent_id="",
                 role=request.role,
                 system_prompt="",

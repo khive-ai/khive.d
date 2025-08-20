@@ -2,8 +2,6 @@
 Basic unit tests for the khive package.
 """
 
-import importlib
-import sys
 from pathlib import Path
 
 
@@ -46,8 +44,6 @@ def test_tests_directory():
     tests_dir = project_root / "tests"
 
     assert tests_dir.exists()
-    assert (tests_dir / "unit").exists()
-    assert (tests_dir / "integration").exists()
-    assert (tests_dir / "performance").exists()
+    assert (tests_dir / "fixtures").exists()
     assert (tests_dir / "conftest.py").exists()
     assert (tests_dir / "README.md").exists()

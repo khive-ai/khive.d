@@ -6,7 +6,7 @@ Validates YAML frontmatter and required fields.
 
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
 
@@ -91,13 +91,13 @@ class IssueplanValidator:
 
         return len(self.errors) == 0
 
-    def _validate_required_fields(self, metadata: Dict[str, Any]):
+    def _validate_required_fields(self, metadata: dict[str, Any]):
         """Check all required fields are present."""
-        for field, expected_type in self.REQUIRED_FIELDS.items():
+        for field in self.REQUIRED_FIELDS:
             if field not in metadata:
                 self.errors.append(f"Missing required field: {field}")
 
-    def _validate_field_types(self, metadata: Dict[str, Any]):
+    def _validate_field_types(self, metadata: dict[str, Any]):
         """Validate field types and values."""
         for field, expected_type in self.REQUIRED_FIELDS.items():
             if field not in metadata:
@@ -123,7 +123,7 @@ class IssueplanValidator:
             if field == "issue_num" and isinstance(value, int) and value <= 0:
                 self.errors.append(f"Issue number must be positive, got {value}")
 
-    def _validate_pattern_requirements(self, metadata: Dict[str, Any]):
+    def _validate_pattern_requirements(self, metadata: dict[str, Any]):
         """Validate pattern-specific requirements."""
         pattern = metadata.get("pattern")
 
@@ -146,7 +146,7 @@ class IssueplanValidator:
                                 f"Refinement field '{field}' must be {expected_type.__name__}"
                             )
 
-    def _validate_markdown_content(self, content: str, metadata: Dict[str, Any]):
+    def _validate_markdown_content(self, content: str, metadata: dict[str, Any]):
         """Validate markdown content structure."""
         issue_num = metadata.get("issue_num", "N/A")
 
@@ -164,7 +164,7 @@ class IssueplanValidator:
             if section not in content:
                 self.errors.append(f"Missing required section: {section}")
 
-    def validate_directory(self, directory: Path) -> Dict[str, bool]:
+    def validate_directory(self, directory: Path) -> dict[str, bool]:
         """Validate all .md files in a directory."""
         results = {}
 
@@ -184,9 +184,9 @@ class IssueplanValidator:
             results[str(file_path)] = is_valid
 
             if is_valid:
-                print(f"  ✅ Valid")
+                print("  ✅ Valid")
             else:
-                print(f"  ❌ Invalid")
+                print("  ❌ Invalid")
                 for error in self.errors:
                     print(f"    Error: {error}")
 

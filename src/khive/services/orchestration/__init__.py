@@ -18,7 +18,6 @@ from .parts import (
 )
 
 __all__ = (
-    "LionOrchestrator",
     "AgentRequest",
     "BaseGate",
     "ComplexityAssessment",
@@ -27,11 +26,12 @@ __all__ = (
     "FanoutResponse",
     "FanoutWithGatedRefinementResponse",
     "GateComponent",
+    "Issue",
     "IssueExecution",
     "IssueNum",
     "IssuePlan",
     "IssueResult",
+    "LionOrchestrator",
     "OrchestrationPlan",
     "RefinementConfig",
-    "Issue",
 )

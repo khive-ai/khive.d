@@ -9,7 +9,7 @@ Task(t) → Pattern(p) → Execution(e)
 
 Simple(t) → Expert(1) → khive.communicate
 ├─ quick(role, domain, msg?)
-├─ talk(expert, msg) 
+├─ talk(expert, msg)
 └─ create+send
 
 Complex(t) → Orchestra(n) → BatchTool|Flow
@@ -68,7 +68,7 @@ persist(e,m) := khive.communicate.talk(e,m)
 ```python
 Task(f"{r₁}+{d}: {phase₁} → artifact_path")
 # checkpoint: verify artifact exists
-Task(f"{r₂}+{d}: {phase₂} based on artifact_path")  
+Task(f"{r₂}+{d}: {phase₂} based on artifact_path")
 # ∀phase: Task(rᵢ: phaseᵢ → artifactᵢ) → verify → next
 ```
 
@@ -88,9 +88,9 @@ Task(f"{r₂}+{d}: {phase₂} based on artifact_path")
 ## 🚨 Quality Gates & Constraints
 
 ```
-ALWAYS[7]: 
+ALWAYS[7]:
 ├─ plan(t) BEFORE execute(e)
-├─ critic(c) IN parallel_work  
+├─ critic(c) IN parallel_work
 ├─ role+domain composition
 ├─ mem.context loading
 ├─ batch(max=8) for parallel
@@ -98,7 +98,7 @@ ALWAYS[7]:
 └─ save(learnings) post-execution
 
 NEVER[5]:
-├─ delegate meta-orchestration  
+├─ delegate meta-orchestration
 ├─ skip quality gates
 ├─ assume without validation
 ├─ complexity theater
@@ -106,7 +106,7 @@ NEVER[5]:
 
 WHEN[5]:
 ├─ multi-perspective → P∥
-├─ dependencies → P→  
+├─ dependencies → P→
 ├─ quality critical → P⊕
 ├─ reusable → Pⓕ
 └─ multi-phase → P⊗
@@ -117,7 +117,7 @@ WHEN[5]:
 ```bash
 # Essential Flow
 plan(t)    := uv run khive plan "detailed_task"
-expert(r,d,m) := uv run khive communicate quick r d --message "m"  
+expert(r,d,m) := uv run khive communicate quick r d --message "m"
 talk(e,m)  := uv run khive communicate talk e "m"
 status()   := uv run khive communicate list
 history(e,n) := uv run khive communicate history e --limit n
@@ -136,12 +136,12 @@ expert_insight = talk(domain_expert, "analyze problem")
 orchestra_plan = plan(f"based on {expert_insight}")
 execute(pattern_from_plan)
 
-# Orchestra→Expert Creation  
+# Orchestra→Expert Creation
 orchestra_result = execute(P∥, task)
 create_expert(f"{successful_role}_{domain}_expert")
 
 # Quality Amplification
-responses = [expert₁, expert₂, expert₃]  
+responses = [expert₁, expert₂, expert₃]
 best = execute(P⊕, responses)
 ```
 
@@ -151,7 +151,7 @@ best = execute(P⊕, responses)
 Pattern  | Speed | Quality | Cost | Complexity | Use Case
 ---------|-------|---------|------|------------|----------
 P∥       | +++   | ++      | ++   | +          | Analysis
-P→       | ++    | +++     | ++   | ++         | Build  
+P→       | ++    | +++     | ++   | ++         | Build
 P⊕       | +     | +++     | +++  | ++         | Critical
 Pⓕ      | +     | ++      | +    | +++        | Complex
 P⊗       | ++    | +++     | ++   | +++        | Large
@@ -169,10 +169,10 @@ C < 0.3 → Expert(single)
   ├─ quick(r,d,msg) → response
   └─ talk(expert, follow_up)
 
-C ≥ 0.3 → Orchestra(multi)  
+C ≥ 0.3 → Orchestra(multi)
   ├─ Independent? → P∥
   ├─ Sequential? → P→
-  ├─ Quality? → P⊕  
+  ├─ Quality? → P⊕
   ├─ Complex? → Pⓕ
   └─ Mixed? → P⊗
 

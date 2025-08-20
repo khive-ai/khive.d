@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from typing import Any, ClassVar, List, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 import aiofiles
-from lionagi.fields import Instruct
+from khive._types import BaseModel
 from lionagi.protocols.types import Node
 from lionagi.utils import Enum, create_path
 from pydantic import Field, field_validator, model_validator
 
-from khive._types import BaseModel
-from khive.services.composition.parts import AgentRole, ComposerRequest
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from khive.services.composition.parts import AgentRole, ComposerRequest
+    from lionagi.fields import Instruct
 
 DeliverableType = Literal[
     "RequirementsAnalysis",
@@ -42,7 +44,7 @@ class OrchestrationPlan(BaseModel):
     common_background: str
     """Common background information for all agents in the orchestration plan."""
 
-    agent_requests: List[AgentRequest]
+    agent_requests: list[AgentRequest]
     """List of requests for each agent in the orchestration plan."""
 
     execution_strategy: Literal["sequential", "concurrent"] = "concurrent"
@@ -82,7 +84,7 @@ class GateComponent(BaseModel):
     is_acceptable: bool
     """Does this component meet requirements appropriate for the current context and phase?"""
 
-    problems: List[str] = Field(default_factory=list)
+    problems: list[str] = Field(default_factory=list)
     """List specific problems that would actually block progress or create unacceptable risk"""
 
 
@@ -138,7 +140,7 @@ class FanoutResponse(BaseModel):
     flow_results: dict | None = Field(None, exclude=True)
     """The results from the flow execution, if applicable"""
 
-    initial_nodes: List[Any] | None = Field(None, exclude=True)
+    initial_nodes: list[Any] | None = Field(None, exclude=True)
     """The initial nodes from the orchestration graph, if applicable"""
 
 
@@ -273,13 +275,12 @@ class Issue(Node):
     def create_file_path(issue_num: IssueNum, exists_ok: bool = True) -> Path:
         from khive.utils import KHIVE_CONFIG_DIR
 
-        fp = create_path(
+        return create_path(
             directory=f"{KHIVE_CONFIG_DIR}/issues/storage",
             filename=f"issue_{issue_num}.json",
             dir_exist_ok=True,
             file_exist_ok=exists_ok,
         )
-        return fp
 
     @staticmethod
     def issue_exists(issue_num: IssueNum) -> bool:
@@ -311,10 +312,9 @@ class Issue(Node):
     async def load(cls, issue_num):
         if cls.issue_exists(issue_num):
             fp = cls.create_file_path(issue_num)
-            async with aiofiles.open(fp, "r") as fp:
+            async with aiofiles.open(fp) as fp:
                 text = await fp.read()
-            self = cls.from_dict(json.loads(text))
-            return self
+            return cls.from_dict(json.loads(text))
         return None
 
     async def sync(self):
@@ -340,17 +340,17 @@ IssuePlan.model_rebuild()
 
 __all__ = (
     "AgentRequest",
-    "OrchestrationPlan",
-    "ComplexityAssessment",
     "BaseGate",
-    "GateComponent",
-    "FanoutPatterns",
+    "ComplexityAssessment",
     "FanoutConfig",
-    "RefinementConfig",
+    "FanoutPatterns",
     "FanoutResponse",
     "FanoutWithGatedRefinementResponse",
-    "IssueNum",
+    "GateComponent",
     "IssueExecution",
-    "IssueResult",
+    "IssueNum",
     "IssuePlan",
+    "IssueResult",
+    "OrchestrationPlan",
+    "RefinementConfig",
 )

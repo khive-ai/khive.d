@@ -7,12 +7,11 @@ import time
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Protocol
+from typing import Protocol
 
 import yaml
-from openai import OpenAI
-
 from khive.utils import get_logger
+from openai import OpenAI
 
 from ..artifacts.handlers import (
     HandoffAgentSpec,
@@ -70,7 +69,7 @@ class RoleSelector(Protocol):
 
 
 class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
-    def __init__(self, timeout_config: Optional[TimeoutConfig] = None):
+    def __init__(self, timeout_config: TimeoutConfig | None = None):
         from dotenv import load_dotenv
 
         load_dotenv()
@@ -609,16 +608,14 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 agent_id = agent_tasks[i][0]
-                processed_results.append(
-                    {
-                        "agent_id": agent_id,
-                        "status": "error",
-                        "duration": None,
-                        "retry_count": 0,
-                        "error": str(result),
-                        "execution_time": None,
-                    }
-                )
+                processed_results.append({
+                    "agent_id": agent_id,
+                    "status": "error",
+                    "duration": None,
+                    "retry_count": 0,
+                    "error": str(result),
+                    "execution_time": None,
+                })
             else:
                 processed_results.append(result)
 
@@ -767,14 +764,12 @@ Be different - show YOUR unique perspective on which roles matter most."""
                 gate="thorough",  # Default gate for template
             )
 
-            configs.append(
-                {
-                    "name": agent_config.get("name", agent_name),
-                    "system_prompt": system_prompt,
-                    # "temperature": agent_config.get("temperature", 0.3),
-                    "description": agent_config.get("description", ""),
-                }
-            )
+            configs.append({
+                "name": agent_config.get("name", agent_name),
+                "system_prompt": system_prompt,
+                # "temperature": agent_config.get("temperature", 0.3),
+                "description": agent_config.get("description", ""),
+            })
 
         # Fallback to hardcoded if YAML not available
         if not configs:
@@ -1034,7 +1029,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
 
         # Collect agent specifications with dependency analysis
         agent_specs = []
-        dependency_map = self._analyze_role_dependencies(sorted_roles[:10])
+        self._analyze_role_dependencies(sorted_roles[:10])
 
         for i, (role, score) in enumerate(sorted_roles[:10]):
             if score >= 0.1:  # Show any role with reasonable score
@@ -1218,7 +1213,7 @@ Remember: This is PARALLEL EXECUTION - coordinate via shared artifacts!"""
         # Get existing artifacts for coordination
         existing_artifacts = []
         if registry_path.exists():
-            with open(registry_path, "r") as f:
+            with open(registry_path) as f:
                 registry = json.load(f)
                 existing_artifacts = [a["artifact_path"] for a in registry["artifacts"]]
 
@@ -1431,8 +1426,8 @@ Your deliverable will be automatically registered. Include in your final report:
             self.timeout_manager = None
 
     def _analyze_role_dependencies(
-        self, sorted_roles: List[tuple]
-    ) -> Dict[str, List[str]]:
+        self, sorted_roles: list[tuple]
+    ) -> dict[str, list[str]]:
         """Analyze dependencies between roles for parallel execution"""
         dependency_map = {}
 
@@ -1464,8 +1459,8 @@ Your deliverable will be automatically registered. Include in your final report:
         return dependency_map
 
     def _organize_execution_tiers(
-        self, agent_specs: List[HandoffAgentSpec]
-    ) -> List[List[HandoffAgentSpec]]:
+        self, agent_specs: list[HandoffAgentSpec]
+    ) -> list[list[HandoffAgentSpec]]:
         """Organize agents into execution tiers based on dependencies"""
         tiers = []
         remaining_agents = agent_specs.copy()
@@ -1602,61 +1597,59 @@ class PlannerService:
                 )
             else:
                 # Multi-phase execution
-                phases.extend(
-                    [
-                        TaskPhase(
-                            name="discovery_phase",
-                            description="Research and analyze requirements",
-                            agents=[
-                                a
-                                for a in agent_recommendations
-                                if a.role in ["researcher", "analyst"]
-                            ][:3],
-                            quality_gate=QualityGate.THOROUGH,
-                            coordination_pattern=WorkflowPattern.PARALLEL,
+                phases.extend([
+                    TaskPhase(
+                        name="discovery_phase",
+                        description="Research and analyze requirements",
+                        agents=[
+                            a
+                            for a in agent_recommendations
+                            if a.role in ["researcher", "analyst"]
+                        ][:3],
+                        quality_gate=QualityGate.THOROUGH,
+                        coordination_pattern=WorkflowPattern.PARALLEL,
+                    ),
+                    TaskPhase(
+                        name="design_phase",
+                        description="Design architecture and approach",
+                        agents=[
+                            a
+                            for a in agent_recommendations
+                            if a.role in ["architect", "strategist"]
+                        ][:2],
+                        dependencies=["discovery_phase"],
+                        quality_gate=QualityGate.THOROUGH,
+                        coordination_pattern=WorkflowPattern.SEQUENTIAL,
+                    ),
+                    TaskPhase(
+                        name="implementation_phase",
+                        description="Implement the solution",
+                        agents=[
+                            a
+                            for a in agent_recommendations
+                            if a.role in ["implementer", "innovator"]
+                        ][:3],
+                        dependencies=["design_phase"],
+                        quality_gate=QualityGate.THOROUGH,
+                        coordination_pattern=WorkflowPattern.PARALLEL,
+                    ),
+                    TaskPhase(
+                        name="validation_phase",
+                        description="Validate and test the solution",
+                        agents=[
+                            a
+                            for a in agent_recommendations
+                            if a.role in ["tester", "critic", "auditor"]
+                        ][:2],
+                        dependencies=["implementation_phase"],
+                        quality_gate=(
+                            QualityGate.CRITICAL
+                            if complexity_level == ComplexityLevel.VERY_COMPLEX
+                            else QualityGate.THOROUGH
                         ),
-                        TaskPhase(
-                            name="design_phase",
-                            description="Design architecture and approach",
-                            agents=[
-                                a
-                                for a in agent_recommendations
-                                if a.role in ["architect", "strategist"]
-                            ][:2],
-                            dependencies=["discovery_phase"],
-                            quality_gate=QualityGate.THOROUGH,
-                            coordination_pattern=WorkflowPattern.SEQUENTIAL,
-                        ),
-                        TaskPhase(
-                            name="implementation_phase",
-                            description="Implement the solution",
-                            agents=[
-                                a
-                                for a in agent_recommendations
-                                if a.role in ["implementer", "innovator"]
-                            ][:3],
-                            dependencies=["design_phase"],
-                            quality_gate=QualityGate.THOROUGH,
-                            coordination_pattern=WorkflowPattern.PARALLEL,
-                        ),
-                        TaskPhase(
-                            name="validation_phase",
-                            description="Validate and test the solution",
-                            agents=[
-                                a
-                                for a in agent_recommendations
-                                if a.role in ["tester", "critic", "auditor"]
-                            ][:2],
-                            dependencies=["implementation_phase"],
-                            quality_gate=(
-                                QualityGate.CRITICAL
-                                if complexity_level == ComplexityLevel.VERY_COMPLEX
-                                else QualityGate.THOROUGH
-                            ),
-                            coordination_pattern=WorkflowPattern.PARALLEL,
-                        ),
-                    ]
-                )
+                        coordination_pattern=WorkflowPattern.PARALLEL,
+                    ),
+                ])
 
             # Extract spawn commands from consensus
             spawn_commands = []
@@ -1688,7 +1681,7 @@ class PlannerService:
             logger.error(f"Error in handle_request: {e}", exc_info=True)
             return PlannerResponse(
                 success=False,
-                summary=f"Planning failed: {str(e)}",
+                summary=f"Planning failed: {e!s}",
                 complexity=ComplexityLevel.MEDIUM,
                 recommended_agents=0,
                 confidence=0.0,
@@ -1709,10 +1702,10 @@ class PlannerService:
 
     async def execute_parallel_fanout(
         self,
-        agent_specs: List[AgentRecommendation],
+        agent_specs: list[AgentRecommendation],
         session_id: str,
-        timeout: Optional[float] = None,
-    ) -> Dict[str, str]:
+        timeout: float | None = None,
+    ) -> dict[str, str]:
         """
         Execute parallel fan-out orchestration with dependency resolution.
 
@@ -1748,7 +1741,7 @@ class PlannerService:
             return execution_status
 
         except Exception as e:
-            logger.error(f"Parallel fan-out execution failed: {e}")
+            logger.exception(f"Parallel fan-out execution failed: {e}")
             raise
 
     async def close(self) -> None:

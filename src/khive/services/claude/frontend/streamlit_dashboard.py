@@ -3,12 +3,11 @@ import os
 import time
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
+from typing import Any
 
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-
 from khive import __version__
 from khive.services.claude.hooks import HookEvent
 
@@ -44,7 +43,7 @@ st.markdown(
         color: white;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-    
+
     /* Metric cards styling - enhanced */
     .metric-card {
         background: white;
@@ -55,30 +54,30 @@ st.markdown(
         transition: all 0.3s ease;
         height: 100%;
     }
-    
+
     .metric-card:hover {
         box-shadow: 0 4px 12px rgba(0,0,0,0.12);
         transform: translateY(-2px);
     }
-    
+
     .metric-value {
         font-size: 2.5rem;
         font-weight: 700;
         margin: 0.5rem 0;
         line-height: 1;
     }
-    
+
     .metric-label {
         font-size: 0.875rem;
         color: #6c757d;
         margin-bottom: 0.25rem;
     }
-    
+
     .metric-delta {
         font-size: 0.75rem;
         color: #6c757d;
     }
-    
+
     /* Status indicators */
     .status-indicator {
         display: inline-block;
@@ -87,23 +86,23 @@ st.markdown(
         border-radius: 50%;
         margin-right: 5px;
     }
-    
+
     .status-online { background-color: #28a745; }
     .status-offline { background-color: #dc3545; }
     .status-warning { background-color: #ffc107; }
-    
+
     /* Enhanced event table */
     .event-row {
         border-left: 4px solid #007bff;
         padding-left: 10px;
         margin: 5px 0;
     }
-    
+
     .event-bash { border-color: #28a745; }
     .event-edit { border-color: #17a2b8; }
     .event-task { border-color: #ffc107; }
     .event-error { border-color: #dc3545; }
-    
+
     /* Sidebar improvements */
     .sidebar-section {
         background: #f8f9fa;
@@ -111,7 +110,7 @@ st.markdown(
         border-radius: 5px;
         margin: 10px 0;
     }
-    
+
     /* Clean section headers */
     h3 {
         font-size: 1.2rem !important;
@@ -120,13 +119,13 @@ st.markdown(
         margin-bottom: 1rem !important;
         font-weight: 600 !important;
     }
-    
+
     /* Better spacing */
     .stSelectbox > div > div {
         background-color: white;
         border: 1px solid #e1e5eb;
     }
-    
+
     /* Professional button styling */
     .stButton > button {
         background-color: #1e3c72;
@@ -137,7 +136,7 @@ st.markdown(
         font-weight: 500;
         transition: all 0.3s ease;
     }
-    
+
     .stButton > button:hover {
         background-color: #2a5298;
         transform: translateY(-1px);
@@ -165,7 +164,7 @@ class ClaudeCodeObservabilityDashboard:
 
     async def load_events_from_db(
         self, force_refresh: bool = False
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Load hook events from SQLite database with caching."""
         current_time = time.time()
 
@@ -207,7 +206,7 @@ class ClaudeCodeObservabilityDashboard:
             st.error(f"Error loading events from database: {e}")
             return []
 
-    def load_events(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
+    def load_events(self, force_refresh: bool = False) -> list[dict[str, Any]]:
         """Synchronous wrapper for async event loading."""
         try:
             loop = asyncio.new_event_loop()
@@ -219,7 +218,7 @@ class ClaudeCodeObservabilityDashboard:
             st.error(f"Error in event loading: {e}")
             return []
 
-    def get_metrics(self, events: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def get_metrics(self, events: list[dict[str, Any]]) -> dict[str, Any]:
         """Calculate system metrics from events."""
         if not events:
             return {
@@ -388,8 +387,8 @@ class ClaudeCodeObservabilityDashboard:
         st.markdown(
             f"""
         <div style="text-align: center; padding: 0.5rem; background: #f0f2f6; border-radius: 8px; margin: 1rem 0; font-size: 0.875rem; color: #6c757d;">
-            <strong>{len(self.events_cache)}</strong> events loaded | 
-            Last update: <strong>{datetime.fromtimestamp(self.last_load_time).strftime("%H:%M:%S") if self.last_load_time else "Never"}</strong> | 
+            <strong>{len(self.events_cache)}</strong> events loaded |
+            Last update: <strong>{datetime.fromtimestamp(self.last_load_time).strftime("%H:%M:%S") if self.last_load_time else "Never"}</strong> |
             {refresh_text}
         </div>
         """,
@@ -398,7 +397,7 @@ class ClaudeCodeObservabilityDashboard:
 
         return auto_refresh, refresh_rate
 
-    def render_metrics(self, metrics: Dict[str, Any]):
+    def render_metrics(self, metrics: dict[str, Any]):
         """Render enhanced key metrics with better styling."""
         st.markdown("### 📊 System Metrics")
 
@@ -406,12 +405,16 @@ class ClaudeCodeObservabilityDashboard:
         activity_level = (
             "High"
             if metrics["recent_events_5m"] > 10
-            else "Medium" if metrics["recent_events_5m"] > 3 else "Low"
+            else "Medium"
+            if metrics["recent_events_5m"] > 3
+            else "Low"
         )
         activity_color = (
             "#28a745"
             if activity_level == "High"
-            else "#ffc107" if activity_level == "Medium" else "#6c757d"
+            else "#ffc107"
+            if activity_level == "Medium"
+            else "#6c757d"
         )
 
         # Calculate event rate
@@ -443,9 +446,7 @@ class ClaudeCodeObservabilityDashboard:
             )
 
         with col2:
-            hourly_rate = (
-                metrics["recent_events_1h"] if metrics["recent_events_1h"] > 0 else 0
-            )
+            hourly_rate = max(0, metrics["recent_events_1h"])
             st.markdown(
                 f"""
             <div class="metric-card">
@@ -502,7 +503,9 @@ class ClaudeCodeObservabilityDashboard:
             agent_color = (
                 "#dc3545"
                 if metrics["estimated_active_agents"] > 5
-                else "#28a745" if metrics["estimated_active_agents"] > 0 else "#6c757d"
+                else "#28a745"
+                if metrics["estimated_active_agents"] > 0
+                else "#6c757d"
             )
             st.markdown(
                 f"""
@@ -519,17 +522,17 @@ class ClaudeCodeObservabilityDashboard:
         if metrics["recent_events_5m"] > 0:
             st.markdown(
                 f"""
-            <div style="margin: 1rem 0 0.5rem 0; padding: 0.75rem; background: {activity_color}15; 
+            <div style="margin: 1rem 0 0.5rem 0; padding: 0.75rem; background: {activity_color}15;
                         border-left: 4px solid {activity_color}; border-radius: 6px;">
-                <strong>System Activity:</strong> {activity_level} 
-                <span style="color: {activity_color};">●</span> 
+                <strong>System Activity:</strong> {activity_level}
+                <span style="color: {activity_color};">●</span>
                 {metrics["recent_events_5m"]} events in last 5 minutes ({events_per_minute} events/min)
             </div>
             """,
                 unsafe_allow_html=True,
             )
 
-    def render_hook_types_chart(self, metrics: Dict[str, Any]):
+    def render_hook_types_chart(self, metrics: dict[str, Any]):
         """Render enhanced hook types distribution chart."""
         if not metrics["hook_types"]:
             st.markdown(
@@ -560,17 +563,15 @@ class ClaudeCodeObservabilityDashboard:
         }
 
         for hook_type, count in metrics["hook_types"].items():
-            hook_data.append(
-                {
-                    "Hook Type": hook_type.replace("_", " ").title(),
-                    "Count": count,
-                    "Percentage": round(
-                        (count / sum(metrics["hook_types"].values())) * 100, 1
-                    ),
-                    "Color": color_map.get(hook_type, "#6c757d"),
-                    "Original": hook_type,
-                }
-            )
+            hook_data.append({
+                "Hook Type": hook_type.replace("_", " ").title(),
+                "Count": count,
+                "Percentage": round(
+                    (count / sum(metrics["hook_types"].values())) * 100, 1
+                ),
+                "Color": color_map.get(hook_type, "#6c757d"),
+                "Original": hook_type,
+            })
 
         df = pd.DataFrame(hook_data)
         df = df.sort_values("Count", ascending=True)
@@ -599,16 +600,20 @@ class ClaudeCodeObservabilityDashboard:
             },
             height=400,
             showlegend=True,
-            legend=dict(
-                orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.05
-            ),
-            margin=dict(l=20, r=120, t=50, b=20),
+            legend={
+                "orientation": "v",
+                "yanchor": "middle",
+                "y": 0.5,
+                "xanchor": "left",
+                "x": 1.05,
+            },
+            margin={"l": 20, "r": 120, "t": 50, "b": 20},
         )
 
         st.plotly_chart(fig, use_container_width=True)
 
     def render_timeline_chart(
-        self, events: List[Dict[str, Any]], time_range: str = "Today"
+        self, events: list[dict[str, Any]], time_range: str = "Today"
     ):
         """Render enhanced activity timeline chart with flexible time ranges."""
         if not events:
@@ -774,9 +779,10 @@ class ClaudeCodeObservabilityDashboard:
                         y=y_values,
                         mode="lines",
                         name=event_type.replace("_", " ").title(),
-                        line=dict(
-                            width=0.5, color=color_map.get(event_type, "#6c757d")
-                        ),
+                        line={
+                            "width": 0.5,
+                            "color": color_map.get(event_type, "#6c757d"),
+                        },
                         stackgroup="one",
                         fillcolor=color_map.get(event_type, "#6c757d"),
                         hovertemplate=f"<b>{event_type.replace('_', ' ').title()}</b><br>{x_title}: %{{x}}<br>Events: %{{y}}<extra></extra>",
@@ -811,23 +817,27 @@ class ClaudeCodeObservabilityDashboard:
                 "xanchor": "center",
                 "font": {"size": 16},
             },
-            xaxis=dict(
-                title=x_title,
-                showgrid=True,
-                gridcolor="rgba(128, 128, 128, 0.2)",
-                tickangle=-45 if group_by != "hour" else 0,
-            ),
-            yaxis=dict(
-                title="Number of Events",
-                showgrid=True,
-                gridcolor="rgba(128, 128, 128, 0.2)",
-            ),
+            xaxis={
+                "title": x_title,
+                "showgrid": True,
+                "gridcolor": "rgba(128, 128, 128, 0.2)",
+                "tickangle": -45 if group_by != "hour" else 0,
+            },
+            yaxis={
+                "title": "Number of Events",
+                "showgrid": True,
+                "gridcolor": "rgba(128, 128, 128, 0.2)",
+            },
             height=450,
             showlegend=True,
-            legend=dict(
-                orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5
-            ),
-            margin=dict(l=50, r=50, t=100, b=80),
+            legend={
+                "orientation": "h",
+                "yanchor": "bottom",
+                "y": 1.02,
+                "xanchor": "center",
+                "x": 0.5,
+            },
+            margin={"l": 50, "r": 50, "t": 100, "b": 80},
             hovermode="x unified",
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
@@ -863,7 +873,7 @@ class ClaudeCodeObservabilityDashboard:
 
         st.plotly_chart(fig, use_container_width=True)
 
-    def render_events_table(self, events: List[Dict[str, Any]]):
+    def render_events_table(self, events: list[dict[str, Any]]):
         """Render enhanced events table with better formatting."""
         if not events:
             st.markdown(
@@ -980,15 +990,13 @@ class ClaudeCodeObservabilityDashboard:
                     session_id[:8] + "..." if len(session_id) > 8 else session_id
                 )
 
-                table_data.append(
-                    {
-                        "🕐 Time": event["datetime"].strftime("%H:%M:%S"),
-                        "🎯 Event": f"{event_icon} {event_type.replace('_', ' ').title()}",
-                        "🛠️ Tool": event.get("tool_name", "Unknown"),
-                        "👤 Session": session_display,
-                        "📄 Details": details,
-                    }
-                )
+                table_data.append({
+                    "🕐 Time": event["datetime"].strftime("%H:%M:%S"),
+                    "🎯 Event": f"{event_icon} {event_type.replace('_', ' ').title()}",
+                    "🛠️ Tool": event.get("tool_name", "Unknown"),
+                    "👤 Session": session_display,
+                    "📄 Details": details,
+                })
 
             df = pd.DataFrame(table_data)
 
@@ -1033,13 +1041,13 @@ class ClaudeCodeObservabilityDashboard:
                         f"📊 Most active: {max(event_counts, key=event_counts.get)} ({max(event_counts.values())} events)"
                     )
                 with col2:
-                    unique_tools = len(set(row["🛠️ Tool"] for row in table_data))
+                    unique_tools = len({row["🛠️ Tool"] for row in table_data})
                     st.caption(f"🛠️ Tools used: {unique_tools}")
                 with col3:
-                    unique_sessions = len(set(row["👤 Session"] for row in table_data))
+                    unique_sessions = len({row["👤 Session"] for row in table_data})
                     st.caption(f"👥 Active sessions: {unique_sessions}")
 
-    def render_event_card(self, event: Dict[str, Any], index: int):
+    def render_event_card(self, event: dict[str, Any], index: int):
         """Render individual event card with full details."""
         event_type = event.get("event_type", "unknown")
 
@@ -1102,33 +1110,33 @@ class ClaudeCodeObservabilityDashboard:
 
         st.markdown(
             f"""
-        <div style="border-left: 4px solid {border_color}; padding: 1rem; margin: 0.5rem 0; 
+        <div style="border-left: 4px solid {border_color}; padding: 1rem; margin: 0.5rem 0;
                     background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                 <h4 style="margin: 0; color: {border_color};">{icon} {event_type.replace("_", " ").title()}</h4>
                 <small style="color: #6c757d;">{event["datetime"].strftime("%H:%M:%S")}</small>
             </div>
-            
+
             <div style="margin: 0.5rem 0; padding: 0.5rem; background: #f8f9fa; border-radius: 5px;">
                 <strong>📄 Details:</strong> {detail_summary}
             </div>
-            
+
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 0.5rem 0;">
                 <div><strong>🛠️ Tool:</strong> {event.get("tool_name", "Unknown")}</div>
                 <div><strong>👤 Session:</strong> {session_id[:12] + "..." if len(session_id) > 12 else session_id}</div>
             </div>
-            
+
             {f'<div style="margin: 0.5rem 0;"><strong>💻 Full Command:</strong><br><code style="background: #f8f9fa; padding: 0.5rem; border-radius: 3px; display: block; word-break: break-all;">{command}</code></div>' if command else ""}
-            
-            {f'<div style="margin: 0.5rem 0;"><strong>📁 File Paths:</strong><br>' + "<br>".join([f'<code style="background: #e9ecef; padding: 0.2rem; border-radius: 2px;">{fp}</code>' for fp in file_paths[:5]]) + (f"<br><em>...and {len(file_paths) - 5} more files</em>" if len(file_paths) > 5 else "") + "</div>" if file_paths else ""}
-            
+
+            {'<div style="margin: 0.5rem 0;"><strong>📁 File Paths:</strong><br>' + "<br>".join([f'<code style="background: #e9ecef; padding: 0.2rem; border-radius: 2px;">{fp}</code>' for fp in file_paths[:5]]) + (f"<br><em>...and {len(file_paths) - 5} more files</em>" if len(file_paths) > 5 else "") + "</div>" if file_paths else ""}
+
             {f'<div style="margin: 0.5rem 0;"><strong>📊 Metadata:</strong><br><small style="font-family: monospace; background: #f8f9fa; padding: 0.5rem; border-radius: 3px; display: block;">{str(metadata)[:300]}{"..." if len(str(metadata)) > 300 else ""}</small></div>' if metadata else ""}
         </div>
         """,
             unsafe_allow_html=True,
         )
 
-    def render_sidebar(self, metrics: Dict[str, Any]):
+    def render_sidebar(self, metrics: dict[str, Any]):
         """Render sidebar with controls and info."""
         st.sidebar.title("🔍 Observability Control")
 
@@ -1203,7 +1211,6 @@ class ClaudeCodeObservabilityDashboard:
             )
             if st.sidebar.button("🔄 Test Connection"):
                 try:
-                    import asyncio
                     import json
 
                     import websockets
@@ -1233,7 +1240,7 @@ class ClaudeCodeObservabilityDashboard:
 
             subscriber_count = HookEventBroadcaster.get_subscriber_count()
             st.sidebar.write(f"**Subscribers**: {subscriber_count} active")
-        except Exception as e:
+        except Exception:
             st.sidebar.write("**Subscribers**: Unknown")
 
         # Help section
@@ -1242,21 +1249,21 @@ class ClaudeCodeObservabilityDashboard:
             st.markdown(
                 """
             **khive claude** monitors Claude Code hook events in real-time.
-            
+
             **Features:**
             - 📊 Real-time metrics and activity tracking
             - 📈 Interactive charts with time range selection
             - 🔍 Advanced filtering and search
             - 📥 Export data as CSV
             - 🔄 Auto-refresh capabilities
-            
+
             **Hook Types:**
             - **Pre/Post Command**: Bash commands
             - **Pre/Post Edit**: File modifications
             - **Pre/Post Agent Spawn**: Task agent operations
             - **Prompt Submitted**: User prompts
             - **Notification**: System notifications
-            
+
             **Tips:**
             - Click on charts to interact
             - Use filters to focus on specific events
@@ -1290,9 +1297,9 @@ class ClaudeCodeObservabilityDashboard:
 
             with filter_col1:
                 # Event type filter
-                all_event_types = sorted(
-                    list(set([e.get("event_type", "unknown") for e in events]))
-                )
+                all_event_types = sorted({
+                    e.get("event_type", "unknown") for e in events
+                })
                 selected_event_types = st.multiselect(
                     "📋 Event Types",
                     options=all_event_types,
@@ -1301,15 +1308,11 @@ class ClaudeCodeObservabilityDashboard:
                 )
 
                 # Session filter
-                all_sessions = list(
-                    set(
-                        [
-                            e.get("session_id", "unknown")
-                            for e in events
-                            if e.get("session_id")
-                        ]
-                    )
-                )
+                all_sessions = list({
+                    e.get("session_id", "unknown")
+                    for e in events
+                    if e.get("session_id")
+                })
                 selected_sessions = st.multiselect(
                     "👥 Sessions",
                     options=all_sessions[:10],  # Limit to top 10 sessions
@@ -1319,9 +1322,7 @@ class ClaudeCodeObservabilityDashboard:
 
             with filter_col2:
                 # Tool filter
-                all_tools = sorted(
-                    list(set([e.get("tool_name", "unknown") for e in events]))
-                )
+                all_tools = sorted({e.get("tool_name", "unknown") for e in events})
                 selected_tools = st.multiselect(
                     "🛠️ Tools",
                     options=all_tools,
@@ -1470,7 +1471,7 @@ class ClaudeCodeObservabilityDashboard:
             <div style="font-size: 0.875rem; color: #6c757d; text-align: right;">
                 <a href="https://github.com/khive-ai/khive.d" target="_blank" style="color: #1e3c72;">
                     🔗 GitHub
-                </a> | 
+                </a> |
                 <a href="https://github.com/khive-ai/khive.d/issues" target="_blank" style="color: #1e3c72;">
                     🐛 Report Issue
                 </a>

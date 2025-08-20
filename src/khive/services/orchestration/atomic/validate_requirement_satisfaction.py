@@ -59,12 +59,12 @@ class RequirementValidation(BaseModel):
     quality_validation: str = Field(
         description=f"""
         {QUALITY_PROMPT}
-        
+
         Additionally for requirement validation:
         - Have you thoroughly assessed all critical requirements and quality criteria?
         - Is your validation evidence-based and defensible to stakeholders?
         - Does your assessment enable confident approval or rejection decisions?
-        
+
         {CONFIDENCE_PROMPT}
         """
     )

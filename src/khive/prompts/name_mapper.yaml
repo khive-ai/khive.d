@@ -61,7 +61,6 @@ synonyms:
 
   # Additional canonical mappings from feedback
   "security-architecture": "security-engineering"
-  "backend_deployment": "backend-development"
   "ai-architectures": "ai-architecture"
 
   # General pluralization rules

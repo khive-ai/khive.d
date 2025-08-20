@@ -243,17 +243,15 @@ class NewDocCommand(ConfigurableCLICommand):
         template_data = []
         for category, tpls in sorted(categorized.items()):
             for tpl in sorted(tpls, key=lambda t: t.doc_type):
-                template_data.append(
-                    {
-                        "category": category,
-                        "type": tpl.doc_type,
-                        "title": tpl.title,
-                        "description": tpl.description,
-                        "filename": tpl.path.name,
-                        "variables": tpl.variables,
-                        "tags": tpl.tags,
-                    }
-                )
+                template_data.append({
+                    "category": category,
+                    "type": tpl.doc_type,
+                    "title": tpl.title,
+                    "description": tpl.description,
+                    "filename": tpl.path.name,
+                    "variables": tpl.variables,
+                    "tags": tpl.tags,
+                })
 
         return CLIResult(
             status="success",
@@ -303,10 +301,9 @@ class NewDocCommand(ConfigurableCLICommand):
                 message=f"Created template: {template_path.name}",
                 data={"path": str(template_path)},
             )
-        else:
-            return CLIResult(
-                status="failure", message="Failed to write template file", exit_code=1
-            )
+        return CLIResult(
+            status="failure", message="Failed to write template file", exit_code=1
+        )
 
     def _create_document(
         self,
@@ -324,7 +321,7 @@ class NewDocCommand(ConfigurableCLICommand):
         template = self._find_template(type_or_template, templates)
 
         if not template:
-            available = sorted(set(t.doc_type for t in templates))
+            available = sorted({t.doc_type for t in templates})
             return CLIResult(
                 status="failure",
                 message=f"Template '{type_or_template}' not found",
@@ -390,10 +387,9 @@ class NewDocCommand(ConfigurableCLICommand):
                     "variables_used": list(all_vars.keys()),
                 },
             )
-        else:
-            return CLIResult(
-                status="failure", message="Failed to write document", exit_code=1
-            )
+        return CLIResult(
+            status="failure", message="Failed to write document", exit_code=1
+        )
 
     def _discover_templates(
         self, config: NewDocConfig, additional_dir: Path | None = None
@@ -641,9 +637,8 @@ ai_context: |
 ---
 *Generated with khive document scaffolder*
 """
-        else:
-            # Basic template
-            return f"""---
+        # Basic template
+        return f"""---
 doc_type: {name.lower().replace(" ", "_")}
 title: {name} - {{{{IDENTIFIER}}}}
 ---

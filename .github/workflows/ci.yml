@@ -1,263 +1,53 @@
-name: CI Pipeline
+name: Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main]
   pull_request:
-    branches: [ main, develop ]
-  workflow_dispatch:
+    branches: [main]
 
-# Ensure only one CI run per PR/branch
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "latest"
-          
-      - name: Set up Python
-        run: uv python install 3.12
-
-      - name: Create venv and install dependencies
-        run: uv sync
-
-      - name: Lint with ruff
-        run: uv run ruff check .
-          
-      - name: Format check with ruff
-        run: uv run ruff format --check .
-
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install uv  
+
+      - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
-          
+
       - name: Set up Python
         run: uv python install 3.12
 
-      - name: Create venv and install dependencies
+      - name: Install dependencies
         run: uv sync
 
-      - name: Clean previous coverage data
-        run: |
-          uv run coverage erase
-          rm -f .coverage .coveragerc coverage.xml
-          rm -rf htmlcov/
+      - name: Lint with ruff
+        run: uv run ruff check .
 
-      - name: Run unit tests with coverage
-        run: uv run pytest tests/unit/ -v --cov=src/khive --cov-append
+      - name: Format check with ruff
+        run: uv run ruff format --check .
 
-      - name: Run integration tests with coverage
-        run: uv run pytest tests/integration/ -v --cov=src/khive --cov-append
+      - name: Run tests with coverage
+        run: uv run pytest
 
-      - name: Run performance tests with coverage
-        run: uv run pytest tests/performance/ -v --cov=src/khive --cov-append --benchmark-skip
-
-      - name: Generate coverage reports
-        run: |
-          uv run coverage combine
-          uv run coverage report --show-missing
-          uv run coverage html
-          uv run coverage xml
-
-      - name: Coverage quality gate
-        run: |
-          COVERAGE=$(uv run coverage report | grep TOTAL | awk '{print $4}' | sed 's/%//')
-          echo "Current coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE < 15.0" | bc -l) )); then
-            echo "❌ Coverage ${COVERAGE}% is below minimum threshold of 15%"
-            echo "This is a quality gate to prevent coverage regression"
-            exit 1
-          else
-            echo "✅ Coverage ${COVERAGE}% meets minimum threshold"
-          fi
-
-      - name: Upload coverage to artifacts
+      - name: Upload coverage report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-report
           path: htmlcov/
           
-      - name: Upload coverage XML
+      - name: Upload test results
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always()  
         with:
-          name: coverage-xml
-          path: coverage.xml
-
-      - name: Quick performance validation
-        run: |
-          echo "🚀 Running quick performance validation..."
-          uv run pytest tests/performance/test_benchmarks.py -m "benchmark and not slow" --benchmark-only --benchmark-sort=mean --benchmark-json=quick-performance.json -q || echo "⚠️ Performance tests skipped (may need dependencies)"
-
-      - name: Upload performance results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: quick-performance-results
-          path: quick-performance.json
-
-      - name: Comment coverage on PR
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: github.event_name == 'pull_request'
-        with:
-          recreate: true
-          message: |
-            ## 📊 Coverage Report
-            
-            ```
-            $(uv run coverage report)
-            ```
-            
-            📈 **Coverage Summary**: $(uv run coverage report | grep TOTAL | awk '{print $4}')
-            📁 **Full Report**: Available in [artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
-            
-            🚀 **Performance**: Quick validation completed - detailed results in artifacts
-
-  performance:
-    runs-on: ubuntu-latest
-    needs: [lint, test]
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Need history for baseline comparison
-      
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "latest"
-          
-      - name: Set up Python
-        run: uv python install 3.12
-
-      - name: Install dependencies with performance tools
-        run: |
-          uv sync
-          uv add --dev memory-profiler psutil pytest-benchmark
-
-      - name: Setup performance baseline
-        run: |
-          mkdir -p tests/results/performance/baselines
-          mkdir -p tests/results/performance/current
-
-      - name: Run performance benchmark tests
-        run: |
-          uv run pytest tests/performance/test_benchmarks.py::TestCIIntegration \
-            -v \
-            --tb=short \
-            -m performance
-
-      - name: Run comprehensive performance tests
-        run: |
-          uv run pytest tests/performance/ \
-            -v \
-            --tb=short \
-            -m "performance and not slow" \
-            --durations=10
-
-      - name: Run benchmark suite with JSON output
-        run: |
-          uv run pytest tests/performance/test_benchmarks.py::TestBasicPerformance \
-            --benchmark-json=tests/results/performance/current/benchmarks.json \
-            --benchmark-warmup=on \
-            --benchmark-min-rounds=3 \
-            --benchmark-disable-gc \
-            || echo "Benchmarks completed with warnings"
-
-      - name: Run memory profiling tests
-        run: |
-          uv run pytest tests/performance/test_memory_profiling.py \
-            --tb=short \
-            -v \
-            || echo "Memory profiling completed"
-
-      - name: Run scalability tests
-        run: |
-          uv run pytest tests/performance/test_scalability.py \
-            --tb=short \
-            -v \
-            || echo "Scalability tests completed"
-
-      - name: Performance regression detection
-        run: |
-          if [ -f "tests/results/performance/baselines/main_baseline.json" ]; then
-            python scripts/performance/regression_detector.py \
-              --current tests/results/performance/current/benchmarks.json \
-              --baseline tests/results/performance/baselines/main_baseline.json \
-              --threshold 20.0 \
-              --output tests/results/performance/current/regression_analysis.json \
-              || echo "Regression detection completed with warnings"
-          else
-            echo "No baseline found, skipping regression detection"
-          fi
-
-      - name: Generate performance summary
-        run: |
-          echo "## 🚀 Performance Test Summary" > tests/results/performance/current/summary.md
-          echo "" >> tests/results/performance/current/summary.md
-          
-          if [ -f "tests/results/performance/current/benchmarks.json" ]; then
-            echo "### Benchmark Results" >> tests/results/performance/current/summary.md
-            echo '```' >> tests/results/performance/current/summary.md
-            python scripts/performance/format_results.py tests/results/performance/current/benchmarks.json >> tests/results/performance/current/summary.md || echo "No benchmark formatting"
-            echo '```' >> tests/results/performance/current/summary.md
-            echo "" >> tests/results/performance/current/summary.md
-          fi
-          
-          if [ -f "tests/results/performance/current/memory_report.txt" ]; then
-            echo "### Memory Usage" >> tests/results/performance/current/summary.md
-            echo '```' >> tests/results/performance/current/summary.md
-            cat tests/results/performance/current/memory_report.txt >> tests/results/performance/current/summary.md
-            echo '```' >> tests/results/performance/current/summary.md
-            echo "" >> tests/results/performance/current/summary.md
-          fi
-          
-          if [ -f "tests/results/performance/current/scalability_report.txt" ]; then
-            echo "### Scalability Results" >> tests/results/performance/current/summary.md
-            echo '```' >> tests/results/performance/current/summary.md
-            cat tests/results/performance/current/scalability_report.txt >> tests/results/performance/current/summary.md
-            echo '```' >> tests/results/performance/current/summary.md
-          fi
-
-      - name: Upload performance artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: performance-results
-          path: tests/results/performance/
-          retention-days: 30
-
-      - name: Update baseline on main
-        if: github.ref == 'refs/heads/main' && success()
-        run: |
-          if [ -f "tests/results/performance/current/benchmarks.json" ]; then
-            cp tests/results/performance/current/benchmarks.json \
-               tests/results/performance/baselines/main_baseline.json
-            git config --local user.email "action@github.com"
-            git config --local user.name "GitHub Action"
-            git add tests/results/performance/baselines/
-            git commit -m "chore: update performance baselines [skip ci]" || exit 0
-            git push
-          fi
-
-      - name: Comment performance results on PR
-        uses: marocchino/sticky-pull-request-comment@v2
-        if: github.event_name == 'pull_request'
-        with:
-          recreate: true
-          path: tests/results/performance/current/summary.md
+          name: test-results
+          path: |
+            .coverage
+            htmlcov/

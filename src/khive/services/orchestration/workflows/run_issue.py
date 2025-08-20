@@ -3,8 +3,8 @@ from datetime import datetime
 
 from lionagi import Builder
 
-from ..operations.factory import get_worker_session
-from ..parts import Issue, IssuePlan
+from orchestration.operations.factory import get_worker_session
+from orchestration.parts import Issue, IssuePlan
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("KhiveOperations")

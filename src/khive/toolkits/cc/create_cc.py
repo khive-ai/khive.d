@@ -26,10 +26,10 @@ def _calculate_workspace_depth(workspace: str) -> int:
 
 
 def create_orchestrator_cc_model(
-    model: str = None,
-    verbose_output: bool = None,
+    model: str | None = None,
+    verbose_output: bool | None = None,
     permission_mode=None,
-    auto_finish: bool = None,
+    auto_finish: bool | None = None,
 ):
     """
     Create a task orchestrator for Claude Code. Orchestrator will automatically gain
@@ -63,11 +63,11 @@ def create_orchestrator_cc_model(
 
 
 def create_task_cc_model(
-    subdir: str = None,
-    model: str = None,
-    verbose_output: bool = None,
-    permission_mode: str = None,
-    auto_finish: bool = None,
+    subdir: str | None = None,
+    model: str | None = None,
+    verbose_output: bool | None = None,
+    permission_mode: str | None = None,
+    auto_finish: bool | None = None,
     requires_root: bool = False,
 ):
     """Create a task iModel for Claude Code.
@@ -121,16 +121,16 @@ def create_task_cc_model(
 
 async def create_cc(
     as_orchestrator: bool = False,
-    subdir: str = None,
-    model: str = None,
-    verbose_output: bool = None,
-    permission_mode: str = None,
-    auto_finish: bool = None,
+    subdir: str | None = None,
+    model: str | None = None,
+    verbose_output: bool | None = None,
+    permission_mode: str | None = None,
+    auto_finish: bool | None = None,
     requires_root: bool = False,
     overwrite_config: bool = False,
-    copy_mcp_config_from: str | Path = None,
-    copy_settings_from: str | Path = None,
-    copy_claude_md_from: str | Path = None,
+    copy_mcp_config_from: str | Path | None = None,
+    copy_settings_from: str | Path | None = None,
+    copy_claude_md_from: str | Path | None = None,
 ) -> iModel:
     if copy_mcp_config_from:
         if requires_root or as_orchestrator:
@@ -167,7 +167,7 @@ async def create_cc(
                 src_mcp = Path(copy_mcp_config_from)
 
                 async with (
-                    aiofiles.open(src_mcp, "r") as src_file,
+                    aiofiles.open(src_mcp) as src_file,
                     aiofiles.open(fp, "w") as dest_file,
                 ):
                     content = await src_file.read()
@@ -181,7 +181,7 @@ async def create_cc(
                 src_settings = Path(copy_settings_from)
 
                 async with (
-                    aiofiles.open(src_settings, "r") as src_file,
+                    aiofiles.open(src_settings) as src_file,
                     aiofiles.open(fp, "w") as dest_file,
                 ):
                     content = await src_file.read()
@@ -193,7 +193,7 @@ async def create_cc(
                 src_claude_md = Path(copy_claude_md_from)
 
                 async with (
-                    aiofiles.open(src_claude_md, "r") as src_file,
+                    aiofiles.open(src_claude_md) as src_file,
                     aiofiles.open(fp, "w") as dest_file,
                 ):
                     content = await src_file.read()

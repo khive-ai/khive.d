@@ -57,7 +57,7 @@ Apply multi-reasoning to understand current context:
 To increase reasoning context, let me think through with 5 perspectives:
 
 [^Critical]: Question assumptions, find flaws, evaluate current workspace state and pending work
-[^System]: See interconnections, dependencies, ripple effects across projects and recent sessions  
+[^System]: See interconnections, dependencies, ripple effects across projects and recent sessions
 [^Creative]: Generate novel approaches, think outside constraints for session focus and orchestration
 [^Risk]: Identify what could go wrong, mitigation strategies for pending work and orchestration patterns
 [^Practical]: Focus on implementation details, concrete next steps for today's orchestration work
@@ -87,7 +87,7 @@ uv run khive plan "[detailed task description]"
 
 # This provides:
 # - Intelligent agent recommendations with role+domain composition
-# - Task complexity analysis and pattern suggestions  
+# - Task complexity analysis and pattern suggestions
 # - Ready-to-execute commands for agent deployment
 ```
 
@@ -112,7 +112,7 @@ uv run khive plan "[detailed task description]"
 /session-start
 # Then: uv run khive session-start
 
-# Resume with issue context  
+# Resume with issue context
 /session-start --issue 123 --resume
 
 # Recent context only
@@ -135,8 +135,9 @@ uv run khive plan "[detailed task description]"
 ### 🔄 Git Status
 
 - **Modified Files**: 26 files with pending changes
-- **Last Commit**: 1b5cb522 - "Merge pull request #46 from khive-ai/feat/update-claude-code"
-- **Active Issue**: #{issue_number} (if linked)
+- **Last Commit**: 1b5cb522 - "Merge pull request #46 from
+  khive-ai/feat/update-claude-code"
+- **Active Issue**: #{issue_num} (if linked)
 
 ### 🧠 Memory Context Loaded
 
@@ -164,12 +165,10 @@ uv run khive plan "[detailed task description]"
 1. {high_priority_1} (Est: {time_estimate_1})
 2. {high_priority_2} (Est: {time_estimate_2})
 
-**Medium Priority:** 
-3. {medium_priority_1} (Issue #{issue_num}) 
-4. {medium_priority_2} (Issue #{issue_num})
+**Medium Priority:** 3. {medium_priority_1} (Issue #{issue_num}) 4.
+{medium_priority_2} (Issue #{issue_num})
 
-**Low Priority:** 
-5. {low_priority_1} (Technical debt)
+**Low Priority:** 5. {low_priority_1} (Technical debt)
 
 ### 🧠 Recommended Neural Patterns
 
@@ -183,7 +182,8 @@ uv run khive plan "[detailed task description]"
 2. Load neural patterns for optimal orchestration
 3. Initialize todo tracking for session management
 
-**🚨 CRITICAL REMINDER**: 
+**🚨 CRITICAL REMINDER**:
+
 - Use `uv run khive plan "[task]"` for ALL orchestration tasks
 - Ready to begin orchestration. Use `/help` for available commands.
 ```

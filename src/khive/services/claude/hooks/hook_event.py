@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
+from khive.utils import SQLITE_DSN, EventBroadcaster, get_logger
 from lionagi.libs.concurrency import shield
 from lionagi.protocols.types import Node
 from pydantic import field_validator
 from typing_extensions import TypedDict
-
-from khive.utils import SQLITE_DSN, EventBroadcaster, get_logger
 
 hook_event_logger = get_logger("ClaudeHooks", "🪝 [CLAUDE-HOOKS]")
 
@@ -15,9 +14,9 @@ hook_event_logger = get_logger("ClaudeHooks", "🪝 [CLAUDE-HOOKS]")
 class HookEventContent(TypedDict, total=False):
     event_type: str
     tool_name: str
-    command: Optional[str]
-    output: Optional[str]
-    session_id: Optional[str]
+    command: str | None
+    output: str | None
+    session_id: str | None
     file_paths: list[str]
     metadata: dict[str, Any]
 
@@ -40,8 +39,7 @@ class HookEvent(Node):
             if "tool_name" not in value:
                 raise ValueError("Tool name is required")
             return value
-        else:
-            raise ValueError("Content must be a dictionary")
+        raise ValueError("Content must be a dictionary")
 
     async def save(self):
         # Save to database
@@ -176,8 +174,8 @@ class HookEventBroadcaster(EventBroadcaster):
 
 __all__ = (
     "HookEvent",
+    "HookEventBroadcaster",
     "HookEventContent",
     "hook_event_logger",
     "shield",
-    "HookEventBroadcaster",
 )

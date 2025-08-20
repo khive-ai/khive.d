@@ -2,8 +2,8 @@ import logging
 
 from lionagi.fields import Instruct
 
-from ..orchestrator import LionOrchestrator
-from ..parts import (
+from orchestration.orchestrator import LionOrchestrator
+from orchestration.parts import (
     BaseGate,
     ComposerRequest,
     FanoutPatterns,
@@ -12,7 +12,7 @@ from ..parts import (
     IssuePlan,
     IssueResult,
 )
-from ..prompts import CRITIC_REVIEW_INSTRUCTION
+from orchestration.prompts import CRITIC_REVIEW_INSTRUCTION
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("KhiveOperations")
@@ -125,7 +125,7 @@ async def review_gate(issue: Issue, **kw) -> tuple[bool, Issue]:
             issue.content.needs_redo = True
 
     except Exception as e:
-        logger.error(
+        logger.exception(
             f"💥 Critic review gate failed for issue #{issue_plan.issue_num}: {e}"
         )
         issue.content.redo_ctx = None

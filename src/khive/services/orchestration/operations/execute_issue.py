@@ -2,9 +2,15 @@ import logging
 
 from lionagi.libs.concurrency import get_cancelled_exc_class
 
-from ..orchestrator import LionOrchestrator
-from ..parts import FanoutPatterns, Issue, IssueExecution, IssuePlan, IssueResult
-from ..prompts import (
+from orchestration.orchestrator import LionOrchestrator
+from orchestration.parts import (
+    FanoutPatterns,
+    Issue,
+    IssueExecution,
+    IssuePlan,
+    IssueResult,
+)
+from orchestration.prompts import (
     KHIVE_PLAN_REMINDER,
     REDO_ORCHESTRATOR_INSTRUCTION,
     SYNTHESIS_INSTRUCTION,
@@ -19,7 +25,7 @@ async def execute_issue(
 ) -> tuple[bool, Issue]:
     if issue.content.git_processed is True:
         logger.info(f"🔵 Skipping already processed issue #{issue.content.issue_num}")
-        return
+        return None
     issue_result: IssueResult = issue.content.issue_result
     is_redo = issue.content.needs_redo
     redo_ctx = issue.content.redo_ctx
@@ -70,7 +76,7 @@ async def execute_issue(
         logger.warning(f"⚠️ Issue #{issue_plan.issue_num} was cancelled.")
         success = False
     except Exception as e:
-        logger.error(f"💥 Issue #{issue_plan.issue_num} error: {e}")
+        logger.exception(f"💥 Issue #{issue_plan.issue_num} error: {e}")
         success = False
 
     issue_result.executions.append(

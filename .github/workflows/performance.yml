@@ -3,29 +3,29 @@ name: Performance Testing and Benchmarking
 on:
   # Run on performance-critical changes
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
-      - 'src/khive/**'
-      - 'tests/performance/**'
-      - '.github/workflows/performance.yml'
-      - 'pyproject.toml'
-  
+      - "src/khive/**"
+      - "tests/performance/**"
+      - ".github/workflows/performance.yml"
+      - "pyproject.toml"
+
   # Run on PRs that might affect performance
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
-      - 'src/khive/**'
-      - 'tests/performance/**'
-      - '.github/workflows/performance.yml'
-      - 'pyproject.toml'
-  
+      - "src/khive/**"
+      - "tests/performance/**"
+      - ".github/workflows/performance.yml"
+      - "pyproject.toml"
+
   # Allow manual triggering
   workflow_dispatch:
     inputs:
       test_suite:
-        description: 'Performance test suite to run'
+        description: "Performance test suite to run"
         required: false
-        default: 'all'
+        default: "all"
         type: choice
         options:
           - all
@@ -34,9 +34,9 @@ on:
           - memory
           - benchmarks
       baseline_mode:
-        description: 'Baseline mode'
+        description: "Baseline mode"
         required: false
-        default: 'validate'
+        default: "validate"
         type: choice
         options:
           - validate
@@ -45,7 +45,7 @@ on:
 
   # Nightly comprehensive performance testing
   schedule:
-    - cron: '0 2 * * *'  # Run at 2 AM UTC daily
+    - cron: "0 2 * * *" # Run at 2 AM UTC daily
 
 # Ensure only one performance run per branch
 concurrency:
@@ -63,16 +63,16 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     timeout-minutes: 15
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
-          
+
       - name: Set up Python
         run: uv python install 3.12
 
@@ -104,25 +104,25 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     timeout-minutes: 45
-    
+
     strategy:
       fail-fast: false
       matrix:
         test_suite:
           - database
-          - orchestration  
+          - orchestration
           - memory
           - benchmarks
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
-          
+
       - name: Set up Python
         run: uv python install 3.12
 
@@ -134,10 +134,10 @@ jobs:
           # Create baseline directories
           mkdir -p tests/performance/baselines
           mkdir -p tests/performance/reports
-          
+
           # Setup test databases
           mkdir -p /tmp/test_dbs
-          
+
           # Install additional performance tools
           uv add --dev pytest-benchmark matplotlib numpy
 
@@ -181,39 +181,39 @@ jobs:
           import json
           import os
           from pathlib import Path
-          
+
           def generate_performance_report():
               report_lines = ["# Performance Test Report\n"]
               report_lines.append(f"**Test Suite:** ${{ matrix.test_suite }}\n")
               report_lines.append(f"**Branch:** ${{ github.ref }}\n")
               report_lines.append(f"**Commit:** ${{ github.sha }}\n\n")
-              
+
               # Find performance JSON file
               json_file = f"performance-${{ matrix.test_suite }}.json"
               if os.path.exists(json_file):
                   with open(json_file, 'r') as f:
                       data = json.load(f)
-                  
+
                   report_lines.append("## Benchmark Results\n\n")
-                  
+
                   if 'benchmarks' in data:
                       for benchmark in data['benchmarks']:
                           name = benchmark.get('name', 'Unknown')
                           stats = benchmark.get('stats', {})
                           mean = stats.get('mean', 0)
                           stddev = stats.get('stddev', 0)
-                          
+
                           report_lines.append(f"### {name}\n")
                           report_lines.append(f"- **Mean:** {mean:.6f}s\n")
                           report_lines.append(f"- **Std Dev:** {stddev:.6f}s\n\n")
-              
+
               # Write report
               with open(f"performance-report-${{ matrix.test_suite }}.md", 'w') as f:
                   f.writelines(report_lines)
-          
+
           generate_performance_report()
           EOF
-          
+
           python generate_report.py
 
       - name: Baseline regression check
@@ -245,7 +245,7 @@ jobs:
           echo "🔄 Updating performance baselines for ${{ matrix.test_suite }}"
           # Force baseline update by removing existing baselines
           rm -f tests/performance/baselines/${{ matrix.test_suite }}_baselines.json
-          
+
           # Run tests to create new baselines
           uv run pytest tests/performance/test_${{ matrix.test_suite }}_performance.py \
             -m "regression" \
@@ -264,16 +264,16 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.test_suite == 'all')
     timeout-minutes: 60
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
-          
+
       - name: Set up Python
         run: uv python install 3.12
 
@@ -295,15 +295,15 @@ jobs:
           cat > analyze_memory.py << 'EOF'
           import json
           import os
-          
+
           def analyze_memory_results():
               if os.path.exists('memory-leak-detection.json'):
                   with open('memory-leak-detection.json', 'r') as f:
                       data = json.load(f)
-                  
+
                   # Look for memory growth patterns
                   print("🧠 Memory Analysis Results:")
-                  
+
                   for benchmark in data.get('benchmarks', []):
                       name = benchmark.get('name', 'Unknown')
                       if 'memory' in name.lower() or 'leak' in name.lower():
@@ -311,10 +311,10 @@ jobs:
                           print(f"  - {name}: {stats.get('mean', 0):.6f}s")
               else:
                   print("❌ No memory test results found")
-          
+
           analyze_memory_results()
           EOF
-          
+
           python analyze_memory.py
 
       - name: Upload memory leak results
@@ -331,7 +331,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [performance-comprehensive]
     if: always() && (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -349,7 +349,7 @@ jobs:
           import os
           from datetime import datetime
           from pathlib import Path
-          
+
           def aggregate_performance_data():
               dashboard_data = {
                   'timestamp': datetime.utcnow().isoformat(),
@@ -357,7 +357,7 @@ jobs:
                   'branch': '${{ github.ref }}',
                   'test_suites': {}
               }
-              
+
               # Process all performance result files
               results_dir = Path('performance-results')
               if results_dir.exists():
@@ -365,16 +365,16 @@ jobs:
                       if result_dir.is_dir():
                           for json_file in result_dir.glob('performance-*.json'):
                               suite_name = json_file.stem.replace('performance-', '')
-                              
+
                               with open(json_file, 'r') as f:
                                   suite_data = json.load(f)
-                              
+
                               # Extract key metrics
                               dashboard_data['test_suites'][suite_name] = {
                                   'total_benchmarks': len(suite_data.get('benchmarks', [])),
                                   'benchmark_summary': []
                               }
-                              
+
                               for benchmark in suite_data.get('benchmarks', []):
                                   stats = benchmark.get('stats', {})
                                   dashboard_data['test_suites'][suite_name]['benchmark_summary'].append({
@@ -382,16 +382,16 @@ jobs:
                                       'mean': stats.get('mean', 0),
                                       'stddev': stats.get('stddev', 0)
                                   })
-              
+
               # Save dashboard data
               with open('performance-dashboard-data.json', 'w') as f:
                   json.dump(dashboard_data, f, indent=2)
-              
+
               print(f"📊 Generated performance dashboard data with {len(dashboard_data['test_suites'])} test suites")
-          
+
           aggregate_performance_data()
           EOF
-          
+
           python aggregate_performance_data.py
 
       - name: Upload dashboard data
@@ -405,16 +405,16 @@ jobs:
     runs-on: ubuntu-latest
     needs: [performance-comprehensive, memory-leak-detection]
     if: always() && github.event_name == 'schedule'
-    
+
     steps:
       - name: Performance test summary
         run: |
           echo "📊 Performance Testing Summary"
           echo "============================="
           echo "🔍 Comprehensive performance tests completed"
-          echo "🧠 Memory leak detection completed" 
+          echo "🧠 Memory leak detection completed"
           echo "📈 Results uploaded to artifacts"
           echo "🎯 Check individual job results for detailed metrics"
-          
+
           # Could integrate with notification systems here
           # Example: Slack, Discord, email notifications for regressions

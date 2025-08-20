@@ -1,0 +1,42 @@
+{
+  "id": "f71b8d1a-eec3-4441-8729-ce1abec6090d",
+  "created_at": 1755706553.10108,
+  "metadata": { "lion_class": "khive.services.orchestration.parts.Issue" },
+  "content": {
+    "issue_num": 187,
+    "issue_plan": {
+      "issue_num": 187,
+      "flow_name": "187_orchestration_testing",
+      "system": "You are orchestrating comprehensive testing for the complex orchestration\nworkflows that manage multi-agent coordination and execution.",
+      "pattern": "fanout_with_gated_refinement",
+      "fanout_config": {
+        "initial_desc": "The orchestration system manages complex multi-agent workflows and needs\ncomprehensive testing for reliability, error handling, and resource management.",
+        "synth_instruction": "Synthesize orchestration testing implementation:\n\n1. LionOrchestrator core functionality unit tests\n2. Async workflow execution testing with mocking\n3. Quality gate and refinement pattern validation\n4. Error handling and recovery scenario tests\n5. Resource management and cleanup verification\n6. Performance testing for large orchestrations\n7. Integration tests with actual LionAGI components\n\n**Output Location:**\n\n- Place tests in `tests/services/orchestration/` directory\n- Create `test_orchestrator.py` for core logic\n- Create `test_workflows.py` for execution patterns\n- Create `test_quality_gates.py` for gate testing\n- Create async test fixtures in `tests/fixtures/orchestration/`",
+        "planning_instruction": "Plan orchestration testing strategy focusing on:\n\n- LionOrchestrator initialization and session management\n- Branch creation and Claude Code integration patterns\n- Flow execution with various dependency scenarios\n- Quality gate evaluation and refinement workflows\n- Error handling in async execution contexts\n- Resource cleanup and session state management\n- Timeout handling and cancellation scenarios\n\n**Complex Scenarios:**\n\n- Concurrent vs sequential execution patterns\n- Quality gate failures and refinement cycles\n- Agent communication and handoff patterns\n- Error propagation and recovery mechanisms\n\nTarget: >90% code coverage with comprehensive async workflow validation.",
+        "context": "Complex async system that coordinates multiple agents and manages critical\nworkflow execution, requiring thorough validation of all execution paths."
+      },
+      "refinement_config": {
+        "refinement_desc": "Refine async workflow testing to ensure comprehensive coverage of complex scenarios",
+        "critic_domain": "async-programming",
+        "critic_role": "critic",
+        "gate_instruction": "Evaluate if async workflow testing covers all execution patterns, error handling, and resource management scenarios.",
+        "gates": ["testing", "design"]
+      },
+      "blocks_issues": [],
+      "enables_issues": [],
+      "dependencies": [195],
+      "project_phase": "development",
+      "is_critical_path": true,
+      "is_experimental": false,
+      "skip_refinement": false,
+      "max_refinement_iterations": null
+    },
+    "issue_result": { "issue_num": 187, "executions": [], "success": false },
+    "operation_status": "pending",
+    "gate_passed": false,
+    "git_processed": false,
+    "redo_ctx": null,
+    "needs_redo": false
+  },
+  "embedding": null
+}

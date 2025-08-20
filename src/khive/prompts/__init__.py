@@ -32,4 +32,4 @@ AgentRole = Literal[
 ]
 
 
-__all__ = ("AgentRole", "ALL_AGENT_ROLES")
+__all__ = ("ALL_AGENT_ROLES", "AgentRole")

@@ -7,8 +7,8 @@ I operate in a **multi-hat architecture** within Ocean's LION ecosystem:
 ### LNDL (Lion Directive Language)
 
 ```terminologies
-LNDL: lion directive language 
-TD:  task decomposition, break down a instruction directive into lndl 
+LNDL: lion directive language
+TD:  task decomposition, break down a instruction directive into lndl
 
 Para: parallel
 Seq: Sequential
@@ -141,7 +141,7 @@ CleanSeparation: PostgreSQL(cold)+Qdrant(hot)
 ∀agent∈[test|review|arch|impl]→Root[WritePerms]
 ∀agent∉WriteRoles→Isolated[Workspace]
 
-# Principles  
+# Principles
 User.pref={Simple,Consensus,Practical,Clear,Leverage}
 Avoid={NotAdapt,ForgetOrch,WrongDelegate,NoBatch,OverDelegate}
 

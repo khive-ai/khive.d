@@ -1,0 +1,36 @@
+{
+  "id": "6042edd8-b59a-426f-8e82-66e0ab1bc0b4",
+  "created_at": 1755706553.100455,
+  "metadata": { "lion_class": "khive.services.orchestration.parts.Issue" },
+  "content": {
+    "issue_num": 185,
+    "issue_plan": {
+      "issue_num": 185,
+      "flow_name": "185_cli_command_testing",
+      "system": "You are orchestrating comprehensive unit testing for the khive CLI system to\nensure reliable command dispatching and user interactions.",
+      "pattern": "fanout",
+      "fanout_config": {
+        "initial_desc": "The khive CLI system needs comprehensive unit tests to ensure reliable command\ndispatching and argument handling across all commands.",
+        "synth_instruction": "Synthesize CLI testing implementation:\n\n1. Unit tests for `khive_cli.py` main dispatcher logic\n2. Command loading and validation test suite\n3. Argument parsing and forwarding tests\n4. Error handling and edge case coverage\n5. Help system testing and validation\n6. Mock framework setup for command isolation\n7. Integration tests for end-to-end CLI workflows\n\n**Output Location:**\n\n- Place tests in `tests/cli/` directory\n- Create `test_cli_dispatcher.py` for main logic\n- Create `test_command_loading.py` for module discovery\n- Create fixtures in `tests/fixtures/cli/` for reusable test data",
+        "planning_instruction": "Plan CLI testing strategy focusing on:\n\n- Main CLI dispatcher function testing with various argument scenarios\n- Command module loading and error handling validation\n- Entry point discovery and execution testing\n- Help message generation and formatting verification\n- Argument parsing and forwarding to subcommands\n- Error handling for edge cases and invalid inputs\n- Mock external dependencies appropriately\n\nTarget: >90% code coverage for all CLI components with comprehensive error\nhandling validation.\n\n**Notes:**\n\n- Focus on user-facing functionality that affects all khive interactions\n- Test both success and failure paths thoroughly\n- Mock external command modules to isolate CLI logic\n- Validate error messages are user-friendly and actionable",
+        "context": "Critical infrastructure testing that ensures reliable user interaction with all\nkhive functionality through the command-line interface."
+      },
+      "refinement_config": null,
+      "blocks_issues": [],
+      "enables_issues": [],
+      "dependencies": [195],
+      "project_phase": "development",
+      "is_critical_path": true,
+      "is_experimental": false,
+      "skip_refinement": false,
+      "max_refinement_iterations": null
+    },
+    "issue_result": { "issue_num": 185, "executions": [], "success": false },
+    "operation_status": "pending",
+    "gate_passed": false,
+    "git_processed": false,
+    "redo_ctx": null,
+    "needs_redo": false
+  },
+  "embedding": null
+}

@@ -3,10 +3,8 @@ import json
 import logging
 import signal
 from datetime import datetime
-from typing import Set
 
 import websockets
-
 from khive.services.claude.hooks import HookEvent, HookEventBroadcaster
 from khive.utils import get_logger
 
@@ -19,7 +17,7 @@ class HookEventWebSocketServer:
     def __init__(self, host: str = "localhost", port: int = 8767):
         self.host = host
         self.port = port
-        self.clients: Set[websockets.WebSocketServerProtocol] = set()
+        self.clients: set[websockets.WebSocketServerProtocol] = set()
         self.server = None
         self.running = False
 
@@ -71,7 +69,7 @@ class HookEventWebSocketServer:
         except websockets.exceptions.ConnectionClosed:
             logger.info("Client disconnected during welcome message")
         except Exception as e:
-            logger.error(f"Error sending welcome message: {e}")
+            logger.exception(f"Error sending welcome message: {e}")
 
     async def unregister_client(self, websocket: websockets.WebSocketServerProtocol):
         """Unregister a WebSocket client."""
@@ -110,7 +108,7 @@ class HookEventWebSocketServer:
             except websockets.exceptions.ConnectionClosed:
                 disconnected_clients.append(client)
             except Exception as e:
-                logger.error(f"Error broadcasting to client: {e}")
+                logger.exception(f"Error broadcasting to client: {e}")
                 disconnected_clients.append(client)
 
         # Remove disconnected clients
@@ -173,9 +171,9 @@ class HookEventWebSocketServer:
                 await websocket.send(json.dumps(stats_data))
 
         except json.JSONDecodeError:
-            logger.error(f"Invalid JSON received from client: {message}")
+            logger.exception(f"Invalid JSON received from client: {message}")
         except Exception as e:
-            logger.error(f"Error handling client message: {e}")
+            logger.exception(f"Error handling client message: {e}")
 
     async def handle_client(
         self, websocket: websockets.WebSocketServerProtocol, path: str
@@ -191,7 +189,7 @@ class HookEventWebSocketServer:
         except websockets.exceptions.ConnectionClosed:
             logger.info("Client connection closed normally")
         except Exception as e:
-            logger.error(f"Error in client handler: {e}")
+            logger.exception(f"Error in client handler: {e}")
         finally:
             await self.unregister_client(websocket)
 
@@ -218,7 +216,7 @@ class HookEventWebSocketServer:
             )
 
             # Send server start notification
-            start_notification = {
+            {
                 "type": "server_start",
                 "timestamp": datetime.now().isoformat(),
                 "message": f"WebSocket server started on {self.host}:{self.port}",
@@ -228,7 +226,7 @@ class HookEventWebSocketServer:
             await self.server.wait_closed()
 
         except Exception as e:
-            logger.error(f"Failed to start WebSocket server: {e}")
+            logger.exception(f"Failed to start WebSocket server: {e}")
             self.running = False
             raise
 
@@ -271,7 +269,7 @@ class HookEventWebSocketServer:
         except KeyboardInterrupt:
             logger.info("Received keyboard interrupt, shutting down...")
         except Exception as e:
-            logger.error(f"Server error: {e}")
+            logger.exception(f"Server error: {e}")
         finally:
             logger.info("WebSocket server shutdown complete")
 

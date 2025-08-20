@@ -59,12 +59,12 @@ class FeatureImplementation(BaseModel):
     quality_validation: str = Field(
         description=f"""
         {QUALITY_PROMPT}
-        
+
         Additionally for feature implementation:
         - Is your implementation plan specific enough for developers to execute?
         - Have you addressed all critical technical and quality requirements?
         - Does the approach maintain code quality and follow established patterns?
-        
+
         {CONFIDENCE_PROMPT}
         """
     )

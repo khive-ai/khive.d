@@ -62,12 +62,12 @@ class WorkSynthesis(BaseModel):
     quality_validation: str = Field(
         description=f"""
         {QUALITY_PROMPT}
-        
+
         Additionally for work synthesis:
         - Does this synthesis provide complete handoff knowledge for new team members?
         - Have you captured all critical deployment and operational requirements?
         - Is the synthesis actionable for both immediate next steps and long-term planning?
-        
+
         {CONFIDENCE_PROMPT}
         """
     )

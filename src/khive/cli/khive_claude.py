@@ -9,7 +9,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import click
 
@@ -26,7 +26,6 @@ from khive.services.claude.hooks.hook_event import (
 @click.version_option(version=version)
 def cli():
     """Claude Code Observability - Hook monitoring and dashboard."""
-    pass
 
 
 @cli.command()
@@ -132,49 +131,43 @@ def start(
         if not dashboard_only:
             # Start WebSocket server in background
             click.echo(f"🚀 Starting WebSocket server on {host}:{server_port}")
-            server_process = subprocess.Popen(
-                [
-                    sys.executable,
-                    "-m",
-                    "khive.cli.khive_claude",
-                    "server",
-                    "--host",
-                    host,
-                    "--port",
-                    str(server_port),
-                ]
-            )
+            server_process = subprocess.Popen([
+                sys.executable,
+                "-m",
+                "khive.cli.khive_claude",
+                "server",
+                "--host",
+                host,
+                "--port",
+                str(server_port),
+            ])
             processes.append(("WebSocket Server", server_process))
             time.sleep(2)  # Give server time to start
 
         if not server_only:
             # Start dashboard
             click.echo(f"🎛️  Starting dashboard on http://{host}:{dashboard_port}")
-            dashboard_process = subprocess.Popen(
-                [
-                    sys.executable,
-                    "-m",
-                    "khive.cli.khive_claude",
-                    "dashboard",
-                    "--host",
-                    host,
-                    "--port",
-                    str(dashboard_port),
-                ]
-            )
+            dashboard_process = subprocess.Popen([
+                sys.executable,
+                "-m",
+                "khive.cli.khive_claude",
+                "dashboard",
+                "--host",
+                host,
+                "--port",
+                str(dashboard_port),
+            ])
             processes.append(("Dashboard", dashboard_process))
 
         if processes:
             click.echo("✅ Services started successfully!")
             click.echo(
-                "📱 Dashboard: http://{}:{}".format(host, dashboard_port)
+                f"📱 Dashboard: http://{host}:{dashboard_port}"
                 if not server_only
                 else ""
             )
             click.echo(
-                "🔌 WebSocket: ws://{}:{}".format(host, server_port)
-                if not dashboard_only
-                else ""
+                f"🔌 WebSocket: ws://{host}:{server_port}" if not dashboard_only else ""
             )
             click.echo("🛑 Press Ctrl+C to stop all services")
 
@@ -203,7 +196,7 @@ def start(
 @click.option("--limit", default=20, help="Number of recent events to show")
 @click.option("--event-type", help="Filter by event type")
 @click.option("--session-id", help="Filter by session ID")
-def status(limit: int, event_type: Optional[str], session_id: Optional[str]):
+def status(limit: int, event_type: str | None, session_id: str | None):
     """Show system status and recent hook events."""
     click.echo("🔍 Claude Code Observability Status")
     click.echo("=" * 40)
@@ -231,7 +224,7 @@ def status(limit: int, event_type: Optional[str], session_id: Optional[str]):
                 for event in reversed(events[-20:]):  # Show last 20, newest first
                     from datetime import datetime
 
-                    if isinstance(event.created_at, (int, float)):
+                    if isinstance(event.created_at, int | float):
                         event_time = datetime.fromtimestamp(event.created_at).strftime(
                             "%H:%M:%S"
                         )
@@ -289,7 +282,7 @@ def status(limit: int, event_type: Optional[str], session_id: Optional[str]):
 @click.option("--event-type", default="test", help="Event type to create")
 @click.option("--tool-name", default="TestTool", help="Tool name for event")
 @click.option("--session-id", help="Session ID for event")
-def test(event_type: str, tool_name: str, session_id: Optional[str]):
+def test(event_type: str, tool_name: str, session_id: str | None):
     """Create test hook events for testing the system."""
     click.echo(f"🧪 Creating test hook event: {event_type}")
 
@@ -309,7 +302,7 @@ def test(event_type: str, tool_name: str, session_id: Optional[str]):
             )
 
             result = await event.save()
-            click.echo(f"✅ Test event created successfully")
+            click.echo("✅ Test event created successfully")
             click.echo(f"   Event ID: {event.id}")
             click.echo(f"   Event Type: {event_type}")
             click.echo(f"   Tool: {tool_name}")

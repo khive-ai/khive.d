@@ -35,7 +35,7 @@ Evaluate security measures proportional to the issue's ACTUAL risk profile and d
 
 **Red Flags (Always Address):**
 - Hardcoded credentials or secrets
-- SQL injection vulnerabilities  
+- SQL injection vulnerabilities
 - Storing passwords in plain text
 - Exposed sensitive endpoints without auth
 

@@ -12,7 +12,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +63,7 @@ class TimeoutConfig:
     performance_threshold: float = 0.7  # 70% success rate threshold
     timeout_reduction_factor: float = 0.3  # 30% time reduction target
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "agent_execution_timeout": self.agent_execution_timeout,
@@ -84,9 +87,9 @@ class TimeoutResult:
     timeout_type: TimeoutType
     status: TimeoutStatus
     start_time: datetime
-    end_time: Optional[datetime] = None
-    duration: Optional[float] = None
-    error: Optional[str] = None
+    end_time: datetime | None = None
+    duration: float | None = None
+    error: str | None = None
     retry_count: int = 0
 
     def mark_completed(self) -> None:
@@ -109,7 +112,7 @@ class TimeoutResult:
         self.status = TimeoutStatus.ERROR
         self.error = error
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "operation_id": self.operation_id,
@@ -132,7 +135,7 @@ class TimeoutManager:
     """
 
     def __init__(
-        self, config: Optional[TimeoutConfig] = None, session_id: Optional[str] = None
+        self, config: TimeoutConfig | None = None, session_id: str | None = None
     ):
         """
         Initialize timeout manager.
@@ -143,9 +146,9 @@ class TimeoutManager:
         """
         self.config = config or TimeoutConfig()
         self.session_id = session_id
-        self._active_operations: Dict[str, TimeoutResult] = {}
-        self._operation_tasks: Dict[str, asyncio.Task] = {}
-        self._performance_metrics: Dict[str, Any] = {
+        self._active_operations: dict[str, TimeoutResult] = {}
+        self._operation_tasks: dict[str, asyncio.Task] = {}
+        self._performance_metrics: dict[str, Any] = {
             "total_operations": 0,
             "successful_operations": 0,
             "timed_out_operations": 0,
@@ -225,7 +228,7 @@ class TimeoutManager:
                         result = retry_result
 
         except Exception as e:
-            error_msg = f"Operation {operation_id} failed: {str(e)}"
+            error_msg = f"Operation {operation_id} failed: {e!s}"
             result.mark_error(error_msg)
             logger.error(error_msg, exc_info=True)
 
@@ -245,8 +248,7 @@ class TimeoutManager:
         """Execute the operation, handling both sync and async callables."""
         if asyncio.iscoroutinefunction(operation):
             return await operation(*args, **kwargs)
-        else:
-            return operation(*args, **kwargs)
+        return operation(*args, **kwargs)
 
     async def _retry_operation(
         self,
@@ -364,9 +366,9 @@ class TimeoutManager:
             with open(self.metrics_file, "w") as f:
                 json.dump(metrics_data, f, indent=2)
         except Exception as e:
-            logger.error(f"Failed to save metrics: {e}")
+            logger.exception(f"Failed to save metrics: {e}")
 
-    async def get_performance_metrics(self) -> Dict[str, Any]:
+    async def get_performance_metrics(self) -> dict[str, Any]:
         """Get current performance metrics."""
         return self._performance_metrics.copy()
 
@@ -394,7 +396,7 @@ class TimeoutManager:
 
         return cancelled_count
 
-    def get_active_operations(self) -> List[str]:
+    def get_active_operations(self) -> list[str]:
         """Get list of active operation IDs."""
         return list(self._active_operations.keys())
 
@@ -418,7 +420,7 @@ class TimeoutManager:
 
 # Factory function for creating timeout manager
 def create_timeout_manager(
-    session_id: Optional[str] = None, **config_kwargs
+    session_id: str | None = None, **config_kwargs
 ) -> TimeoutManager:
     """
     Create a timeout manager with custom configuration.

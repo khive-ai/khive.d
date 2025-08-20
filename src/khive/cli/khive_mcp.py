@@ -84,8 +84,8 @@ class StdioTransportFixed(StdioTransport):
     def __init__(
         self,
         command: str,
-        args: list[str] = None,
-        env: dict[str, str] = None,
+        args: list[str] | None = None,
+        env: dict[str, str] | None = None,
         buffer_size: int = 65536,
     ):
         super().__init__(command, args or [], env or {})
@@ -331,21 +331,19 @@ class MCPCommand(BaseCLICommand):
                 if not url:
                     warn_msg(f"Transport '{transport}' specified but no URL provided")
                 return transport, url
-            elif transport in ["stdio", "pipe"]:
+            if transport in ["stdio", "pipe"]:
                 return "stdio", None
-            else:
-                warn_msg(f"Unknown transport type '{transport}', defaulting to stdio")
+            warn_msg(f"Unknown transport type '{transport}', defaulting to stdio")
 
         # 2. URL presence indicates SSE/HTTP transport
         if server_config.get("url"):
             url = server_config["url"]
             if url.startswith(("http://", "https://")):
                 return "sse", url
-            elif url.startswith(("ws://", "wss://")):
+            if url.startswith(("ws://", "wss://")):
                 return "websocket", url
-            else:
-                warn_msg(f"Unrecognized URL scheme in '{url}', treating as SSE")
-                return "sse", url
+            warn_msg(f"Unrecognized URL scheme in '{url}', treating as SSE")
+            return "sse", url
 
         # 3. Command-based detection for stdio transport
         command = server_config.get("command", "")
@@ -366,9 +364,8 @@ class MCPCommand(BaseCLICommand):
                     "Detected Docker MCP server, using stdio transport with shorter timeout"
                 )
                 return "stdio", None
-            else:
-                log_msg("Detected Docker command, using stdio transport")
-                return "stdio", None
+            log_msg("Detected Docker command, using stdio transport")
+            return "stdio", None
 
         # Check if it's a Python script or module
         if (
@@ -525,14 +522,14 @@ class MCPCommand(BaseCLICommand):
             log_msg(f"Creating SSE transport for {server_config.url}")
             return StreamableHttpTransport(server_config.url)
 
-        elif transport_type == "sse":
+        if transport_type == "sse":
             if not server_config.url:
                 raise ValueError("URL required for SSE transport")
             log_msg(f"Creating SSE transport for {server_config.url}")
             return SSETransport(server_config.url)
 
         # Handle WebSocket transport (if supported by FastMCP)
-        elif transport_type in ["websocket", "ws", "wss"]:
+        if transport_type in ["websocket", "ws", "wss"]:
             if not server_config.url:
                 raise ValueError(f"URL required for {transport_type} transport")
             # Note: WebSocket transport may not be available in all FastMCP versions
@@ -782,9 +779,8 @@ class MCPCommand(BaseCLICommand):
                 message=f"Status for server '{server_name}'",
                 data={"server": server_info},
             )
-        else:
-            # Return status for all servers
-            return await self._cmd_list_servers(config)
+        # Return status for all servers
+        return await self._cmd_list_servers(config)
 
     async def _cmd_list_tools(self, config: MCPConfig, server_name: str) -> CLIResult:
         """List tools available on a specific server."""
@@ -869,13 +865,11 @@ class MCPCommand(BaseCLICommand):
                                     f"Error processing tool {getattr(tool, 'name', 'unknown')}: {tool_error}"
                                 )
                                 # Add minimal info for problematic tools
-                                tools_info.append(
-                                    {
-                                        "name": getattr(tool, "name", "unknown"),
-                                        "description": f"Error: {tool_error}",
-                                        "error": True,
-                                    }
-                                )
+                                tools_info.append({
+                                    "name": getattr(tool, "name", "unknown"),
+                                    "description": f"Error: {tool_error}",
+                                    "error": True,
+                                })
 
                         return CLIResult(
                             status="success",
@@ -916,13 +910,12 @@ class MCPCommand(BaseCLICommand):
                 },
                 exit_code=1,
             )
-        else:
-            return CLIResult(
-                status="failure",
-                message=f"Failed to list tools after {max_retries} attempts: {last_error}",
-                data={"server": server_name, "attempts": max_retries},
-                exit_code=1,
-            )
+        return CLIResult(
+            status="failure",
+            message=f"Failed to list tools after {max_retries} attempts: {last_error}",
+            data={"server": server_name, "attempts": max_retries},
+            exit_code=1,
+        )
 
     async def _cmd_call_tool(
         self,
@@ -1115,13 +1108,12 @@ class MCPCommand(BaseCLICommand):
                     formatted.append(item)
             return formatted
 
-        elif hasattr(result, "content"):
+        if hasattr(result, "content"):
             # Handle result objects with content attribute
             return self._format_tool_result(result.content)
 
-        else:
-            # Return as-is
-            return result
+        # Return as-is
+        return result
 
     def _handle_result(self, result: CLIResult, json_output: bool) -> None:
         """Override to provide custom formatting for MCP results."""

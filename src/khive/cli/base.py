@@ -487,10 +487,7 @@ class CommandWorkflow:
         Returns:
             True if all required steps succeeded
         """
-        for i, step in enumerate(self.steps):
-            if not self.execute_step(i, executor):
-                return False
-        return True
+        return all(self.execute_step(i, executor) for i, step in enumerate(self.steps))
 
     def get_status(self) -> dict[str, Any]:
         """Get the current workflow status."""
