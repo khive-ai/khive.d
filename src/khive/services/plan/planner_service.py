@@ -31,6 +31,7 @@ from .parts import (
     TaskPhase,
     WorkflowPattern,
 )
+from .triage.complexity_triage import ComplexityTriageService, TriageConsensus
 
 logger = get_logger("khive.services.plan")
 
@@ -1508,6 +1509,18 @@ class PlannerService:
         """Initialize the planner service."""
         self._planner = None
         self._planner_lock = asyncio.Lock()
+        self._triage_service = None
+        self._triage_lock = asyncio.Lock()
+
+        # Metrics tracking
+        self.metrics = {
+            "total_requests": 0,
+            "triage_simple": 0,
+            "triage_complex": 0,
+            "total_cost": 0.0,
+            "total_llm_calls": 0,
+            "escalation_rate": 0.0,
+        }
 
     async def _get_planner(self) -> OrchestrationPlanner:
         """Get or create the orchestration planner."""
@@ -1528,9 +1541,63 @@ class PlannerService:
                     self._planner = OrchestrationPlanner(timeout_config=timeout_config)
         return self._planner
 
+    async def _get_triage_service(self) -> ComplexityTriageService:
+        """Get or create the triage service."""
+        if self._triage_service is None:
+            async with self._triage_lock:
+                if self._triage_service is None:
+                    # Triage service will load API key from environment
+                    self._triage_service = ComplexityTriageService()
+        return self._triage_service
+
+    def _build_simple_response(
+        self,
+        request: PlannerRequest,
+        triage_consensus: TriageConsensus,
+        session_id: str,
+    ) -> PlannerResponse:
+        """Build a simple response from triage consensus."""
+        agent_recommendations = []
+
+        # Build agent recommendations from triage consensus
+        if triage_consensus.final_roles:
+            domains = triage_consensus.final_domains or ["software-architecture"]
+            for i, role in enumerate(triage_consensus.final_roles):
+                domain = domains[i % len(domains)]
+                agent_recommendations.append(
+                    AgentRecommendation(
+                        role=role,
+                        domain=domain,
+                        priority=1.0 - (i * 0.2),
+                        reasoning=triage_consensus.consensus_reasoning
+                        or f"Triage-selected {role} for simple task",
+                    )
+                )
+
+        # Single phase for simple tasks
+        phase = TaskPhase(
+            name="execution_phase",
+            description="Execute the simple task",
+            agents=agent_recommendations,
+            quality_gate=QualityGate.BASIC,
+            coordination_pattern=WorkflowPattern.PARALLEL,
+        )
+
+        return PlannerResponse(
+            success=True,
+            summary=f"Triage consensus (3 LLMs): {triage_consensus.complexity_votes}",
+            complexity=ComplexityLevel.SIMPLE,
+            recommended_agents=triage_consensus.final_agent_count or 2,
+            phases=[phase],
+            spawn_commands=[],  # Simple tasks don't need spawn commands
+            session_id=session_id,
+            confidence=triage_consensus.average_confidence,
+            error=None,
+        )
+
     async def handle_request(self, request: PlannerRequest) -> PlannerResponse:
         """
-        Handle a planning request.
+        Handle a planning request with two-tier triage system.
 
         Args:
             request: The planning request
@@ -1545,13 +1612,57 @@ class PlannerService:
             elif isinstance(request, dict):
                 request = PlannerRequest.model_validate(request)
 
+            # Update metrics
+            self.metrics["total_requests"] += 1
+
+            # === TIER 1: TRIAGE (3 LLMs, temp=0) ===
+            triage_service = await self._get_triage_service()
+            should_escalate, triage_consensus = await triage_service.triage(
+                request.task_description
+            )
+
+            # Track metrics
+            self.metrics["total_llm_calls"] += 3  # 3 triage calls
+            self.metrics["total_cost"] += 0.001  # 3 mini calls
+
+            # Create session ID for either path
+            session_id = (
+                f"{'complex' if should_escalate else 'simple'}_{int(time.time())}"
+            )
+
+            if not should_escalate:
+                # Simple task - use triage consensus
+                self.metrics["triage_simple"] += 1
+                logger.info(
+                    f"Simple task handled by triage: {triage_consensus.final_agent_count} agents, "
+                    f"confidence: {triage_consensus.average_confidence:.2f}"
+                )
+
+                # Build and return simple response
+                response = self._build_simple_response(
+                    request, triage_consensus, session_id
+                )
+
+                # Update escalation rate
+                self.metrics["escalation_rate"] = (
+                    self.metrics["triage_complex"] / self.metrics["total_requests"]
+                )
+
+                return response
+
+            # === TIER 2: FULL CONSENSUS (10 LLMs) ===
+            self.metrics["triage_complex"] += 1
+            logger.info(
+                f"Complex task escalated to full consensus: {triage_consensus.complexity_votes}"
+            )
+
             # Get planner
             planner = await self._get_planner()
 
             # Create orchestration request
             orchestration_request = Request(request.task_description)
 
-            # Create session for coordination
+            # Use existing session ID format for complex tasks
             session_id = planner.create_session(request.task_description)
 
             # Assess complexity
@@ -1679,6 +1790,13 @@ class PlannerService:
             # Use confidence from consensus
             confidence = consensus_data["confidence"]
 
+            # Track metrics for complex path
+            self.metrics["total_llm_calls"] += 10  # 10 consensus agents
+            self.metrics["total_cost"] += 0.0037  # Full consensus cost
+            self.metrics["escalation_rate"] = (
+                self.metrics["triage_complex"] / self.metrics["total_requests"]
+            )
+
             return PlannerResponse(
                 success=True,
                 summary=consensus_output,  # Use the rich consensus output instead of simple summary
@@ -1742,6 +1860,16 @@ class PlannerService:
         except Exception as e:
             logger.exception(f"Parallel fan-out execution failed: {e}")
             raise
+
+    def get_metrics(self) -> dict:
+        """Get current metrics for analysis."""
+        return {
+            **self.metrics,
+            "avg_cost_per_request": self.metrics["total_cost"]
+            / max(self.metrics["total_requests"], 1),
+            "avg_llm_calls_per_request": self.metrics["total_llm_calls"]
+            / max(self.metrics["total_requests"], 1),
+        }
 
     async def close(self) -> None:
         """Clean up resources."""
