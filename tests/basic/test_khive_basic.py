@@ -21,7 +21,7 @@ def test_khive_cli_imports():
 
 def test_project_structure():
     """Test that the project has expected structure."""
-    project_root = Path(__file__).parent.parent
+    project_root = Path(__file__).parent.parent.parent
 
     # Check key files exist
     assert (project_root / "pyproject.toml").exists()
@@ -31,7 +31,7 @@ def test_project_structure():
 
 def test_github_workflows():
     """Test that GitHub workflows exist."""
-    project_root = Path(__file__).parent.parent
+    project_root = Path(__file__).parent.parent.parent
     workflows_dir = project_root / ".github" / "workflows"
 
     assert workflows_dir.exists()
@@ -40,7 +40,7 @@ def test_github_workflows():
 
 def test_tests_directory():
     """Test that tests directory has expected structure."""
-    project_root = Path(__file__).parent.parent
+    project_root = Path(__file__).parent.parent.parent
     tests_dir = project_root / "tests"
 
     assert tests_dir.exists()

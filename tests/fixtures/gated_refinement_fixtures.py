@@ -1,6 +1,6 @@
 """Fixtures for fanout_with_gated_refinement pattern testing."""
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from lionagi.fields import Instruct
@@ -33,6 +33,7 @@ def create_mock_orchestrator(flow_name: str = "test_flow") -> LionOrchestrator:
     orchestrator.session.get_branch = MagicMock()
     orchestrator.session._lookup_branch_by_name = MagicMock(return_value=None)
     orchestrator.session.branches = MagicMock()
+    orchestrator.session.flow = AsyncMock(return_value={"operation_results": {"mock_operation_id": MagicMock()}})
 
     return orchestrator
 

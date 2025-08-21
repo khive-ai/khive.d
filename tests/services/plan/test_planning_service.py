@@ -106,7 +106,7 @@ class TestComplexityAssessment:
 
     def test_complexity_assessment_fallback(self, mock_planner):
         """Test complexity assessment fallback when no patterns match."""
-        request = Request("random text without complexity indicators")
+        request = Request("random text without any indicators")
         result = mock_planner.assess(request)
 
         # Should default to medium
@@ -666,7 +666,7 @@ class TestPlannerServiceUnit:
             mock_planner.create_session.return_value = "test_session"
             mock_planner.assess.return_value = ComplexityTier.MEDIUM
             mock_planner.select_roles.return_value = ["researcher"]
-            mock_planner.evaluate_request.return_value = []
+            mock_planner.evaluate_request = AsyncMock(return_value=[])
             mock_planner.build_consensus.return_value = "consensus"
             mock_get_planner.return_value = mock_planner
 
@@ -720,8 +720,14 @@ class TestPlannerIntegrationScenarios:
             ),
             _load_prompt_templates=MagicMock(
                 return_value={
-                    "agents": {"test_agent": {"name": "test"}},
-                    "base_context_template": "Context: {roles_str}",
+                    "agents": {
+                        "test_agent": {
+                            "name": "test",
+                            "system_prompt_template": "Test agent: {base_context}",
+                            "description": "Test agent for unit tests",
+                        }
+                    },
+                    "base_context_template": "Context: {roles_str} {domains_str} Budget: {token_budget} {latency_budget} {cost_budget} {decision_matrix_content}",
                     "user_prompt_template": "Task: {request}",
                 }
             ),
@@ -830,8 +836,14 @@ class TestExternalModelIntegration:
             _load_available_domains=MagicMock(return_value=["distributed-systems"]),
             _load_prompt_templates=MagicMock(
                 return_value={
-                    "agents": {"test_agent": {"name": "test"}},
-                    "base_context_template": "Context: {roles_str}",
+                    "agents": {
+                        "test_agent": {
+                            "name": "test",
+                            "system_prompt_template": "Test agent: {base_context}",
+                            "description": "Test agent for unit tests",
+                        }
+                    },
+                    "base_context_template": "Context: {roles_str} {domains_str} Budget: {token_budget} {latency_budget} {cost_budget} {decision_matrix_content}",
                     "user_prompt_template": "Task: {request}",
                 }
             ),
@@ -869,7 +881,7 @@ class TestExternalModelIntegration:
         assert result["evaluation"].complexity == "medium"
         assert result["evaluation"].total_agents == 5
         assert result["cost"] > 0
-        assert result["response_time_ms"] > 0
+        assert result["response_time_ms"] >= 0  # Allow 0 for mocked calls
         assert result["usage"].prompt_tokens == 100
         assert result["usage"].completion_tokens == 200
 
@@ -919,17 +931,17 @@ class TestExternalModelIntegration:
 
         # Get initial state
         initial_cost = planner.cost_tracker.total_cost
-        initial_requests = planner.cost_tracker.total_requests
+        initial_requests = planner.cost_tracker.request_count
 
         # Simulate API request cost tracking
         cost = planner.cost_tracker.add_request(
-            prompt_tokens=150, completion_tokens=75, image_tokens=0
+            input_tokens=150, output_tokens=75, cached_tokens=0
         )
 
         # Verify cost tracking works
         assert cost > 0
         assert planner.cost_tracker.total_cost > initial_cost
-        assert planner.cost_tracker.total_requests == initial_requests + 1
+        assert planner.cost_tracker.request_count == initial_requests + 1
 
     def test_budget_constraint_handling(self, mock_planner_with_openai):
         """Test budget awareness in evaluation configuration."""

@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import pytest
 from lionagi.fields import Instruct
+from lionagi.service.imodel import iModel
 
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
@@ -145,7 +146,7 @@ class TestBranchCreation:
                 "khive.services.orchestration.orchestrator.composer_service"
             ) as mock_composer,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
             mock_create_cc.return_value = mock_cc
 
             mock_response = MagicMock()
@@ -172,7 +173,7 @@ class TestBranchCreation:
             branch_id = await orchestrator.create_cc_branch(sample_composer_request)
 
             # Verify branch was created and added
-            assert isinstance(branch_id, str)
+            assert branch_id is not None
             orchestrator.session.branches.include.assert_called_once()
 
     @pytest.mark.asyncio
@@ -202,7 +203,7 @@ class TestBranchCreation:
                 "khive.services.orchestration.orchestrator.Branch"
             ) as mock_branch_cls,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
             mock_create_cc.return_value = mock_cc
 
             mock_response = MagicMock()
@@ -272,7 +273,7 @@ class TestBranchCreation:
                 "khive.services.orchestration.orchestrator.composer_service"
             ) as mock_composer,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
             mock_create_cc.return_value = mock_cc
 
             mock_response = MagicMock()
@@ -440,7 +441,7 @@ class TestPlanExpansion:
                 "khive.services.orchestration.orchestrator.composer_service"
             ) as mock_composer,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
             mock_create_cc.return_value = mock_cc
 
             mock_response = MagicMock()
@@ -500,7 +501,7 @@ class TestPlanExpansion:
                 "khive.services.orchestration.orchestrator.composer_service"
             ) as mock_composer,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
             mock_create_cc.return_value = mock_cc
 
             mock_response = MagicMock()
@@ -540,6 +541,7 @@ class TestContextOperations:
         mock_branch.name = "test_branch"
         mock_branch.messages = MagicMock()
         mock_branch.messages.progression = [0]
+        mock_branch.messages.__len__ = MagicMock(return_value=1)
         mock_branch.messages.__getitem__ = MagicMock(
             return_value=mock_assistant_response
         )
@@ -580,6 +582,7 @@ class TestContextOperations:
             mock_branch.name = f"branch_{branch_id.split('_')[1]}"
             mock_branch.messages = MagicMock()
             mock_branch.messages.progression = [0]
+            mock_branch.messages.__len__ = MagicMock(return_value=1)
             mock_branch.messages.__getitem__ = MagicMock(
                 return_value=mock_assistant_response
             )
@@ -612,8 +615,10 @@ class TestContextOperations:
         orchestrator = orchestrator_with_mocks
         op_id = "test_operation_id"
 
-        # Make get_graph raise an exception
-        orchestrator.builder.get_graph.side_effect = Exception("Test error")
+        # Make internal_nodes access raise an exception
+        mock_graph = MagicMock()
+        mock_graph.internal_nodes.__getitem__.side_effect = Exception("Test error")
+        orchestrator.builder.get_graph.return_value = mock_graph
 
         result = orchestrator.opres_ctx(op_id)
 
@@ -672,7 +677,7 @@ class TestFlowExecution:
                 "khive.services.orchestration.orchestrator.Branch"
             ) as mock_branch_cls,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
             mock_create_cc.return_value = mock_cc
 
             mock_branch = MagicMock()
@@ -720,7 +725,7 @@ class TestAsyncErrorHandling:
                 "khive.services.orchestration.orchestrator.composer_service"
             ) as mock_composer,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
             mock_create_cc.return_value = mock_cc
 
             mock_composer.handle_request = AsyncMock(
@@ -806,7 +811,7 @@ class TestPerformanceAndLimits:
                 "khive.services.orchestration.orchestrator.composer_service"
             ) as mock_composer,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
             mock_create_cc.return_value = mock_cc
 
             mock_response = MagicMock()

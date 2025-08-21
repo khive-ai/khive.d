@@ -160,8 +160,9 @@ class TestFileLoading:
         composer = AgentComposer(str(temp_dir))
         unsafe_path = Path("/etc/passwd")
 
-        result = composer.load_yaml(unsafe_path)
-        assert result == {}
+        # Should raise ValueError for unsafe paths
+        with pytest.raises(ValueError, match="Unsafe file path"):
+            composer.load_yaml(unsafe_path)
 
     def test_load_yaml_file_too_large(self, temp_dir):
         """Test load_yaml rejects files exceeding size limit."""

@@ -76,15 +76,18 @@ def mock_lionagi_builder():
     builder.name = "test_flow"
     builder.last_operation_id = None
 
-    # Mock operations
-    operation_id = str(uuid4())
-    builder.add_operation = MagicMock(return_value=operation_id)
+    # Mock operations - return different UUIDs on each call
+    def mock_add_operation(*args, **kwargs):
+        return str(uuid4())
+    builder.add_operation = MagicMock(side_effect=mock_add_operation)
 
     # Mock graph
     mock_graph = MagicMock(spec=Graph)
     mock_operation = MagicMock(spec=Operation)
     mock_operation.branch_id = str(uuid4())
-    mock_graph.internal_nodes = {operation_id: mock_operation}
+    # Use a placeholder UUID for the mock graph
+    placeholder_operation_id = str(uuid4())
+    mock_graph.internal_nodes = {placeholder_operation_id: mock_operation}
     builder.get_graph = MagicMock(return_value=mock_graph)
     builder.visualize = MagicMock()
 

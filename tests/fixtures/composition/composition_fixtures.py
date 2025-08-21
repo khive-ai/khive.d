@@ -45,7 +45,7 @@ def composer_with_test_data(temp_composition_env):
 
 
 @pytest.fixture
-def mock_file_system():
+def mock_composition_file_system():
     """Create a mock file system for testing without actual file I/O."""
     mock_files = {}
 

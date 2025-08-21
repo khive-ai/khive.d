@@ -6,7 +6,7 @@ including security testing, file operations testing, and performance testing sce
 
 from .composition_fixtures import (
     composer_with_test_data,
-    mock_file_system,
+    mock_composition_file_system,
     temp_composition_env,
 )
 from .performance_fixtures import (
@@ -22,7 +22,7 @@ __all__ = [
     # Performance fixtures
     "concurrent_test_setup",
     "large_composition_data",
-    "mock_file_system",
+    "mock_composition_file_system",
     # Security fixtures
     "path_traversal_attempts",
     "stress_test_environment",

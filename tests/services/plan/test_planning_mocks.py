@@ -198,11 +198,11 @@ class TestErrorHandlingWithMocks:
         # Should return empty list or handle error gracefully
         assert isinstance(evaluations, list)
 
-    def test_missing_environment_variable_error(self):
+    def test_missing_environment_variable_error(self, monkeypatch):
         """Test error handling when API key is missing."""
-        with patch.dict("os.environ", {}, clear=True):  # Clear environment
-            with pytest.raises(ValueError, match="OPENAI_API_KEY.*not set"):
-                OrchestrationPlanner()
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        with pytest.raises(ValueError, match="OPENAI_API_KEY.*not set"):
+            OrchestrationPlanner()
 
     def test_filesystem_error_handling(self, error_prone_planner, tmp_path):
         """Test handling of filesystem errors."""
@@ -424,11 +424,14 @@ class TestMockedIntegrationScenarios:
                     )
 
                     mock_response = MockOpenAIResponse(mock_eval)
+                    
+                    # Create a proper async mock that returns immediately
+                    async def mock_parse(*args, **kwargs):
+                        return mock_response
+                    
                     integration_mocks[
                         "openai_client"
-                    ].beta.chat.completions.parse = AsyncMock(
-                        return_value=mock_response
-                    )
+                    ].beta.chat.completions.parse = mock_parse
 
                     # 5. Run evaluation
                     evaluations = await planner.evaluate_request(

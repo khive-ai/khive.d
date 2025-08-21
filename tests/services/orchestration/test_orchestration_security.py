@@ -16,11 +16,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from lionagi.fields import Instruct
+from pydantic import ValidationError
 
 from khive.services.orchestration.orchestrator import LionOrchestrator
+from khive.services.composition.parts import ComposerRequest
 
 logger = logging.getLogger(__name__)
-from khive.services.orchestration.parts import ComposerRequest
 
 
 class SecurityError(Exception):
@@ -52,42 +53,15 @@ class TestPathTraversalSecurity:
         ],
     )
     def test_malicious_role_path_prevention(self, malicious_role):
-        """Test that malicious role names cannot cause path traversal."""
-        orchestrator = LionOrchestrator("test_flow")
-
-        # Create compose request with malicious role
-        compose_request = ComposerRequest(role=malicious_role, domains="test")
-
-        # Mock file system operations to track what paths are accessed
-        with (
-            patch("pathlib.Path") as mock_path_class,
-            patch("shutil.copytree") as mock_copytree,
-            patch("shutil.copy") as mock_copy,
-        ):
-            mock_path = MagicMock()
-            mock_path_class.return_value = mock_path
-            mock_path.exists.return_value = False
-            mock_path.__truediv__ = MagicMock(return_value=mock_path)
-
-            with contextlib.suppress(ValueError, OSError, FileNotFoundError, Exception):
-                # This should either sanitize the input or raise an exception
-                # Expected behavior - malicious input should be rejected
-                import asyncio
-
-                asyncio.run(orchestrator.create_cc_branch(compose_request))
-
-            # If file operations were called, verify paths don't contain traversal
-            if mock_copytree.called:
-                for call in mock_copytree.call_args_list:
-                    source_path, dest_path = call[0]
-                    assert not self._contains_path_traversal(str(source_path))
-                    assert not self._contains_path_traversal(str(dest_path))
-
-            if mock_copy.called:
-                for call in mock_copy.call_args_list:
-                    source_path, dest_path = call[0]
-                    assert not self._contains_path_traversal(str(source_path))
-                    assert not self._contains_path_traversal(str(dest_path))
+        """Test that malicious role names are rejected by Pydantic validation."""
+        # Pydantic V2 should reject malicious roles at validation time
+        with pytest.raises(ValidationError) as exc_info:
+            ComposerRequest(role=malicious_role, domains="test")
+        
+        # Verify it's a literal_error for invalid role
+        error = exc_info.value.errors()[0]
+        assert error["type"] == "literal_error"
+        assert "role" in error["loc"]
 
     def _contains_path_traversal(self, path_str):
         """Check if path string contains traversal sequences."""
