@@ -109,24 +109,28 @@ domain_selection_rules:
 
 agent_role_selection:
   discovery_phase:
-    roles: ["researcher", "analyst", "theorist"]
-    focus: "information_gathering_and_mathematical_foundation"
+    roles: ["researcher", "analyst"]
+    focus: "information_gathering_and_analysis"
 
   design_phase:
-    roles: ["architect", "strategist", "theorist"]
-    focus: "structure_planning_and_formal_verification"
+    roles: ["architect", "strategist"]
+    focus: "structure_planning_and_strategy"
 
   implementation_phase:
     roles: ["implementer", "innovator"]
     focus: "solution_building"
 
   validation_phase:
-    roles: ["tester", "critic", "auditor", "theorist", "reviewer"]
-    focus: "verification_quality_and_formal_proof"
+    roles: ["tester", "critic", "auditor", "reviewer"]
+    focus: "verification_and_quality"
 
   refinement_phase:
     roles: ["reviewer", "commentator"]
     focus: "improvement_and_documentation"
+  
+  theoretical_phase:
+    roles: ["theorist"]
+    focus: "formal_proofs_when_explicitly_needed"
 
 quality_gate_criteria:
   basic:
@@ -200,75 +204,34 @@ resource_estimation:
     thorough: "15-30min"
     critical: "30-60min"
 
-# RAGRS-Specific Decision Rules
-ragrs_domain_triggers:
-  consensus_systems:
-    keywords: [
-      "consensus",
-      "byzantine",
-      "distributed_agreement",
-      "fault_tolerance",
-    ]
-    required_domains: ["byzantine-fault-tolerance", "distributed-consensus"]
-    optional_domains: ["hierarchical-clustering", "property-testing"]
-    mandatory_roles: ["theorist", "critic"]
-
-  knowledge_management:
-    keywords: ["knowledge", "memory", "information", "learning"]
-    required_domains: ["memory-systems", "knowledge-graph-construction"]
-    optional_domains: ["temporal-reasoning", "graph-theory"]
-    mandatory_roles: ["researcher", "analyst"]
-
-  performance_optimization:
-    keywords: ["performance", "optimization", "efficiency", "energy"]
-    required_domains: ["thermodynamic-optimization"]
-    optional_domains: ["rust-performance", "property-testing"]
-    mandatory_roles: ["theorist", "implementer"]
-
-  formal_verification:
-    keywords: ["verify", "proof", "formal", "mathematical"]
-    required_domains: ["property-testing"]
-    optional_domains: ["byzantine-fault-tolerance", "category-theory"]
-    mandatory_roles: ["theorist", "critic", "tester"]
-
+# Domain-Specific Triggers
+domain_triggers:
+  microservices:
+    keywords: ["microservices", "event-driven", "kafka", "service-mesh"]
+    primary_domains: ["microservices-architecture", "event-sourcing"]
+    optional_domains: ["protocol-design", "distributed-systems"]
+    
+  database_migration:
+    keywords: ["database", "migration", "postgresql", "schema"]
+    primary_domains: ["database-design", "backend-development"]
+    optional_domains: ["ci-cd-pipelines", "devops-automation"]
+    
+  api_development:
+    keywords: ["api", "endpoint", "rest", "graphql", "rate-limiting"]
+    primary_domains: ["api-design", "backend-development"]
+    optional_domains: ["redis", "security-architecture"]
+    
   ui_engineering:
     keywords: ["ui", "frontend", "react", "nextjs", "typescript"]
-    required_domains: ["frontend-development"]
+    primary_domains: ["frontend-development"]
     optional_domains: ["nextjs", "playwright-testing", "typescript"]
-    mandatory_roles: ["researcher", "implementer"]
-
-ragrs_complexity_modifiers:
-  distributed_consensus:
-    complexity_increase: "+1 level"
-    reason: "requires_formal_proofs_and_byzantine_considerations"
-    min_agents: 5
-    required_theorist_count: 2
-
-  energy_constraints:
-    complexity_increase: "+1 level if microsecond_timing"
-    reason: "thermodynamic_bounds_require_careful_analysis"
-    required_domains: ["thermodynamic-optimization"]
-
-  hierarchical_scaling:
-    complexity_increase: "+0 if n < 100, +1 if n >= 100"
-    reason: "k_star_optimization_complexity_depends_on_scale"
-    cluster_threshold: 100
-
-ragrs_quality_gates:
-  mathematical_proofs:
-    requirement: "all_claims_formally_proven"
-    verification: "property_testing_for_key_theorems"
-    roles: ["theorist", "critic"]
-    confidence_threshold: 0.95
-
-  consensus_protocols:
-    requirement: "byzantine_fault_tolerance_verified"
-    verification: "up_to_f_equals_floor_n_minus_1_div_3_tested"
-    roles: ["theorist", "tester", "critic"]
-    confidence_threshold: 0.90
-
-  energy_efficiency:
-    requirement: "thermodynamic_bounds_respected"
-    verification: "efficiency_gap_measured_and_documented"
-    roles: ["theorist", "implementer", "auditor"]
-    confidence_threshold: 0.85
+    
+  security_analysis:
+    keywords: ["security", "authentication", "authorization", "vulnerability"]
+    primary_domains: ["security-architecture"]
+    optional_domains: ["api-design", "backend-development"]
+    
+  performance_optimization:
+    keywords: ["performance", "optimization", "bundle-size", "load-time"]
+    primary_domains: ["frontend-development", "backend-development"]
+    optional_domains: ["redis", "database-design"]

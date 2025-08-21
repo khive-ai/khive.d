@@ -14,6 +14,7 @@ from openai import OpenAI
 from khive.core import TimePolicy
 from khive.services.artifacts.handlers import (
     HandoffAgentSpec,
+    HandoffCoordinator,
     TimeoutConfig,
     TimeoutManager,
     TimeoutType,
@@ -31,6 +32,7 @@ from .parts import (
     TaskPhase,
     WorkflowPattern,
 )
+from .persistence import save_planning_session
 
 logger = get_logger("khive.services.plan")
 
@@ -156,18 +158,9 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         return sorted(domains)
 
     def _load_prompt_templates(self) -> dict:
-        """Load prompt templates from YAML file - prefer user customization"""
-        # First try user-customizable location
-        user_prompts_path = Path(".khive/prompts/agent_prompts.yaml")
-
-        # Fallback to package defaults
-        default_prompts_path = (
-            Path(__file__).parent.parent.parent / "prompts" / "agent_prompts.yaml"
-        )
-
-        # Use user prompts if available
+        """Load prompt templates from YAML file"""
         prompts_path = (
-            user_prompts_path if user_prompts_path.exists() else default_prompts_path
+            Path(__file__).parent.parent.parent / "prompts" / "agent_prompts.yaml"
         )
 
         if not prompts_path.exists():
@@ -185,18 +178,9 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         return templates
 
     def _load_decision_matrix(self) -> dict:
-        """Load decision matrix YAML for complexity assessment - prefer user customization"""
-        # First try user-customizable location
-        user_matrix_path = Path(".khive/prompts/decision_matrix.yaml")
-
-        # Fallback to package defaults
-        default_matrix_path = (
-            Path(__file__).parent.parent.parent / "prompts" / "decision_matrix.yaml"
-        )
-
-        # Use user matrix if available
+        """Load decision matrix YAML for complexity assessment"""
         matrix_path = (
-            user_matrix_path if user_matrix_path.exists() else default_matrix_path
+            Path(__file__).parent.parent.parent / "prompts" / "decision_matrix.yaml"
         )
 
         if not matrix_path.exists():
@@ -713,7 +697,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
         # Run sync OpenAI client in thread pool
         response = await asyncio.to_thread(
             self.client.beta.chat.completions.parse,
-            model="gpt-4.1-nano",
+            model="gpt-4.1-nano",  # Using gpt-4.1-nano for better efficiency (less token usage than reasoning model)
             messages=[
                 {"role": "system", "content": config["system_prompt"]},
                 {"role": "user", "content": user_prompt},
@@ -821,14 +805,8 @@ Be different - show YOUR unique perspective on which roles matter most."""
             },
         ]
 
-    def build_consensus(
-        self, evaluations: list[dict], request: str = ""
-    ) -> tuple[str, dict]:
-        """Build consensus from multiple evaluations
-
-        Returns:
-            Tuple of (formatted_output, consensus_data)
-        """
+    def build_consensus(self, evaluations: list[dict], request: str = "") -> str:
+        """Build consensus from multiple evaluations"""
         output = []
         output.append("## 🎯 Orchestration Planning Consensus\n")
 
@@ -1058,7 +1036,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
 
         # Collect agent specifications with dependency analysis
         agent_specs = []
-        dependency_map = self._analyze_role_dependencies(sorted_roles[:10])
+        self._analyze_role_dependencies(sorted_roles[:10])
 
         for i, (role, score) in enumerate(sorted_roles[:10]):
             if score >= 0.1:  # Show any role with reasonable score
@@ -1087,19 +1065,17 @@ Be different - show YOUR unique perspective on which roles matter most."""
                 ):  # Limit to consensus agent count
                     break
 
-        # Session ID for artifact management (no coordinator needed)
+        # Initialize handoff coordinator for parallel execution
+        self.handoff_coordinator = HandoffCoordinator(session_id, self.workspace_dir)
 
         # Convert AgentRecommendation to HandoffAgentSpec
         handoff_agent_specs = []
         for agent_rec in agent_specs:
-            # Get dependencies for this role from the dependency map
-            role_dependencies = dependency_map.get(agent_rec.role, [])
-
             handoff_spec = HandoffAgentSpec(
                 role=agent_rec.role,
                 domain=agent_rec.domain,
                 priority=agent_rec.priority,
-                dependencies=role_dependencies,  # Use actual dependencies from analysis
+                dependencies=[],  # Basic implementation - no dependencies for now
                 spawn_command=f"uv run khive compose {agent_rec.role} -d {agent_rec.domain}",
                 session_id=session_id,
                 phase="phase1",
@@ -1107,26 +1083,36 @@ Be different - show YOUR unique perspective on which roles matter most."""
             )
             handoff_agent_specs.append(handoff_spec)
 
-        # No dependency graph needed - orchestrator handles phasing
+        # Build dependency graph
+        self.handoff_coordinator.build_dependency_graph(handoff_agent_specs)
 
         # Use the request parameter passed to build_consensus
         if not request:
             request = "Task not specified"
 
-        # Generate parallel execution commands - all agents can run in parallel
-        # Orchestrator will handle phasing based on context
-        for agent_spec in handoff_agent_specs:
-            agent_name = f"{agent_spec.role}_{agent_spec.domain.replace('-', '_')}"
+        # Generate parallel execution commands
+        execution_tiers = self._organize_execution_tiers(handoff_agent_specs)
 
-            # Enhanced context for parallel execution
-            artifact_management = self.get_artifact_management_prompt(
-                session_id, "phase1", agent_spec.role, agent_spec.domain
-            )
+        for tier_num, tier_agents in enumerate(execution_tiers):
+            if tier_num > 0:
+                output.append(
+                    f"  // Tier {tier_num + 1}: Execute after dependencies complete"
+                )
 
-            parallel_context = f"""PARALLEL EXECUTION CONTEXT:
-- All agents executing in parallel
+            # Generate commands for agents in this tier (can execute in parallel)
+            for agent_spec in tier_agents:
+                agent_name = f"{agent_spec.role}_{agent_spec.domain.replace('-', '_')}"
+
+                # Enhanced context for parallel execution
+                artifact_management = self.get_artifact_management_prompt(
+                    session_id, "phase1", agent_spec.role, agent_spec.domain
+                )
+
+                parallel_context = f"""PARALLEL EXECUTION CONTEXT:
+- Tier {tier_num + 1} of {len(execution_tiers)}
+- Dependencies: {", ".join(agent_spec.dependencies) if agent_spec.dependencies else "None"}
 - Priority: {agent_spec.priority:.2f}
-- Coordinate through shared artifacts
+- Can execute simultaneously with other Tier {tier_num + 1} agents
 
 ORIGINAL REQUEST: {request}
 COMPLEXITY: {consensus_complexity_str} (confidence: {avg_confidence:.0%})
@@ -1148,13 +1134,17 @@ YOUR TASK:
 
 Remember: This is PARALLEL EXECUTION - coordinate via shared artifacts!"""
 
-            # Escape prompt for JavaScript
-            escaped_prompt = parallel_context.replace('"', '\\"').replace("\n", "\\n")
-            output.append(
-                f'  Task({{ description: "{agent_name}", prompt: "{escaped_prompt}" }})'
-            )
+                # Escape prompt for JavaScript
+                escaped_prompt = parallel_context.replace('"', '\\"').replace(
+                    "\n", "\\n"
+                )
+                output.append(
+                    f'  Task({{ description: "{agent_name}", prompt: "{escaped_prompt}" }})'
+                )
 
-        # No synchronization points needed - all agents run in parallel
+            # Add synchronization point between tiers
+            if tier_num < len(execution_tiers) - 1:
+                output.append("  // Synchronization point - wait for tier completion")
 
         output.append("```")
         output.append("")
@@ -1186,19 +1176,7 @@ Remember: This is PARALLEL EXECUTION - coordinate via shared artifacts!"""
             f"_Evaluated by {len(evaluations)} agents in {avg_time:.0f}ms avg_"
         )
 
-        # Prepare consensus data structure
-        consensus_data = {
-            "complexity": consensus_complexity,
-            "agent_count": int(avg_agents),
-            "role_recommendations": sorted_roles,
-            "domains": [domain for domain, _ in top_domains],
-            "workflow_pattern": consensus_pattern,
-            "quality_level": consensus_quality,
-            "confidence": avg_confidence,
-            "request": request,
-        }
-
-        return "\n".join(output), consensus_data
+        return "\n".join(output)
 
     def get_artifact_management_prompt(
         self, session_id: str, phase: str, agent_role: str, domain: str
@@ -1269,10 +1247,11 @@ Your deliverable will be automatically registered. Include in your final report:
         total_cost = sum(e["cost"] for e in evaluations)
         output.append(f"Planning Cost: ${total_cost:.4f}")
 
-        if total_cost > self.target_budget:
-            output.append(
-                f"⚠️ Cost Warning: Exceeds ${self.target_budget} target budget"
-            )
+        # Cost warning removed per architectural decision - tracking continues internally
+        # if total_cost > self.target_budget:
+        #     output.append(
+        #         f"⚠️ Cost Warning: Exceeds ${self.target_budget} target budget"
+        #     )
 
         return "\n".join(output)
 
@@ -1431,22 +1410,17 @@ Your deliverable will be automatically registered. Include in your final report:
         """Analyze dependencies between roles for parallel execution"""
         dependency_map = {}
 
-        # Most roles can work independently - orchestrator handles phasing
+        # Standard role dependency patterns
         role_dependencies = {
-            "implementer": [
-                "architect"
-            ],  # Only hard requirement: implementer needs architecture
-            "tester": ["implementer"],  # Tester needs something to test
-            "commentator": ["implementer"],  # Commentator documents what was built
-            "auditor": [],  # Can audit at any phase
-            "critic": [],  # Can provide critique independently
-            "reviewer": [],  # Can review plans or implementations
-            "architect": [],  # Can design independently
-            "strategist": [],  # Can strategize independently
-            "innovator": [],  # Can innovate independently
-            "theorist": [],  # Can theorize independently
-            "researcher": [],  # Can research immediately
-            "analyst": [],  # Can analyze immediately
+            "implementer": ["architect", "researcher"],
+            "architect": ["researcher", "analyst"],
+            "tester": ["implementer"],
+            "critic": ["implementer"],
+            "reviewer": ["implementer", "tester"],
+            "auditor": ["implementer", "tester", "critic"],
+            "strategist": ["analyst"],
+            "innovator": ["researcher"],
+            "commentator": ["implementer", "architect"],
         }
 
         # Extract role names from sorted_roles
@@ -1563,33 +1537,21 @@ class PlannerService:
             # Run evaluation
             evaluations = await planner.evaluate_request(request.task_description)
 
-            # Build consensus - now returns tuple (formatted_output, consensus_data)
-            consensus_output, consensus_data = planner.build_consensus(
-                evaluations, request.task_description
-            )
+            # Build consensus
+            consensus = planner.build_consensus(evaluations, request.task_description)
 
-            # Use consensus complexity instead of separate assessment
-            complexity_level = ComplexityLevel(consensus_data["complexity"])
+            # Convert complexity to our enum
+            complexity_level = ComplexityLevel(complexity.value)
 
-            # Create agent recommendations from consensus
+            # Create agent recommendations
             agent_recommendations = []
-            domains = consensus_data["domains"]
-
-            # Use consensus role recommendations
-            for i, (role, score) in enumerate(
-                consensus_data["role_recommendations"][: consensus_data["agent_count"]]
-            ):
-                # Rotate through top domains for variety
-                domain = (
-                    domains[i % len(domains)] if domains else "software-architecture"
-                )
-
+            for i, role in enumerate(roles[:10]):  # Limit to top 10
                 agent_recommendations.append(
                     AgentRecommendation(
                         role=role,
-                        domain=domain,
-                        priority=score,
-                        reasoning=f"Consensus-selected {role} for {complexity_level} complexity task (score: {score:.2f})",
+                        domain="distributed-systems",  # Default domain
+                        priority=1.0 - (i * 0.1),  # Decreasing priority
+                        reasoning=f"Essential {role} for {complexity_level} complexity task",
                     )
                 )
 
@@ -1668,20 +1630,75 @@ class PlannerService:
                     ]
                 )
 
-            # Extract spawn commands from consensus output
+            # Extract spawn commands from consensus
             spawn_commands = []
-            if "khive compose" in consensus_output:
-                lines = consensus_output.split("\n")
+            if "khive compose" in consensus:
+                lines = consensus.split("\n")
                 spawn_commands.extend(
                     line.strip() for line in lines if "khive compose" in line
                 )
 
-            # Use confidence from consensus
-            confidence = consensus_data["confidence"]
+            # Calculate confidence based on evaluation results
+            confidence = 0.8  # Default confidence
+            if evaluations:
+                confidence = sum(e["evaluation"].confidence for e in evaluations) / len(
+                    evaluations
+                )
+
+            # Calculate total planning cost
+            total_cost = (
+                sum(e.get("cost", 0) for e in evaluations) if evaluations else 0.0
+            )
+
+            # Save planning session to database for persistence
+            try:
+                # Serialize evaluations properly
+                serialized_evaluations = []
+                if evaluations:
+                    for eval_data in evaluations:
+                        serialized_eval = {
+                            "config": eval_data.get("config", {}),
+                            "response_time_ms": eval_data.get("response_time_ms", 0),
+                            "cost": eval_data.get("cost", 0),
+                        }
+                        # Convert evaluation object to dict if it's a Pydantic model
+                        if hasattr(eval_data.get("evaluation"), "model_dump"):
+                            serialized_eval["evaluation"] = eval_data[
+                                "evaluation"
+                            ].model_dump()
+                        else:
+                            serialized_eval["evaluation"] = str(
+                                eval_data.get("evaluation", "")
+                            )
+                        serialized_evaluations.append(serialized_eval)
+
+                await save_planning_session(
+                    session_id=session_id,
+                    task_description=request.task_description,
+                    complexity=complexity_level.value,
+                    agent_count=len(agent_recommendations),
+                    workflow_pattern=WorkflowPattern.PARALLEL.value,  # Default for now
+                    confidence=confidence,
+                    planning_cost=total_cost,
+                    evaluations=serialized_evaluations,
+                    consensus={"summary": consensus},
+                    execution_plan=consensus,
+                    phases=[phase.model_dump() for phase in phases],
+                    metadata={
+                        "timestamp": TimePolicy.now_utc().isoformat(),
+                        "recommended_agents": len(agent_recommendations),
+                    },
+                )
+                logger.info(f"Saved planning session {session_id} to database")
+            except Exception as save_error:
+                # Log error but don't fail the planning request
+                logger.warning(
+                    f"Failed to save planning session to database: {save_error}"
+                )
 
             return PlannerResponse(
                 success=True,
-                summary=consensus_output,  # Use the rich consensus output instead of simple summary
+                summary=consensus,  # Use the rich consensus output instead of simple summary
                 complexity=complexity_level,
                 recommended_agents=len(agent_recommendations),
                 phases=phases,
@@ -1734,10 +1751,24 @@ class PlannerService:
             # Get planner instance
             planner = await self._get_planner()
 
-            # HandoffCoordinator removed - orchestrator handles execution
-            # Returning empty status for now
-            logger.info(f"execute_parallel_fanout deprecated - use orchestrator")
-            return {"status": "deprecated", "message": "Use orchestrator for execution"}
+            # Initialize handoff coordinator
+            coordinator = HandoffCoordinator(session_id, planner.workspace_dir)
+
+            # Build dependency graph and execute
+            coordinator.build_dependency_graph(agent_specs)
+
+            # Optimize execution order
+            coordinator.optimize_execution_order()
+
+            # Execute parallel fan-out
+            logger.info(f"Starting parallel fan-out execution for session {session_id}")
+            execution_status = await coordinator.execute_parallel_fanout(timeout)
+
+            # Get performance metrics
+            metrics = coordinator.get_execution_metrics()
+            logger.info(f"Parallel execution completed. Metrics: {metrics}")
+
+            return execution_status
 
         except Exception as e:
             logger.exception(f"Parallel fan-out execution failed: {e}")

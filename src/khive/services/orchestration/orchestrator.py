@@ -26,9 +26,9 @@ from .atomic import (
 from .parts import (
     AgentRequest,
     ComposerRequest,
-    FanoutResponse,
-    FanoutWithGatedRefinementResponse,
+    GatedMultiPhaseOrchestrationResponse,
     GateOptions,
+    MultiPhaseOrchestrationResponse,
     OrchestrationPlan,
 )
 from .prompts import ATOMIC_WORK_GUIDANCE
@@ -247,6 +247,191 @@ class LionOrchestrator:
             name="quality_gate",
         )
 
+    async def get_dynamic_flow_plans(
+        self,
+        task_description: str,
+        planning_instruction: str,
+        context: str | None = None,
+        visualize: bool = False,
+        root: list[IDType] | None = None,
+        branch: Any | None = None,
+    ) -> tuple[IDType, dict, list[dict]]:
+        """Generate dynamic flow plans using khive plan consensus and structured phases.
+
+        Phase 1: Gather context about the task
+        Phase 2: Execute khive plan CLI to get consensus
+        Phase 3: Reflect and deep think on consensus
+        Phase 4: Produce structured phases
+        Phase 5: Build dynamic model and generate OrchestrationPlans
+
+        Args:
+            task_description: The actual task to plan for
+            planning_instruction: High-level planning instruction for orchestrator
+            context: Additional context for planning
+            visualize: Whether to visualize the flow
+            existing_dependencies: Optional dependencies from previous operations
+
+        Returns:
+            Tuple of (root_node_id, plans_dict) where plans_dict contains
+            the generated OrchestrationPlans
+        """
+        import subprocess
+
+        from lionagi.models import FieldModel
+        from pydantic import BaseModel, Field
+
+        # Phase 1: Gather context
+        context_branch = self.new_orc_branch()
+        context_params = {
+            "operation": "communicate",
+            "branch": context_branch.id,
+            "instruction": f"""Analyze this task and prepare for planning:
+
+Task: {task_description}
+
+Consider:
+1. What are the key requirements and challenges?
+2. What level of complexity does this involve?
+3. What are the critical success factors?
+4. What potential risks or edge cases should we consider?
+
+Provide a thoughtful analysis to inform our planning.""",
+            "context": context,
+        }
+
+        if root:
+            context_params["depends_on"] = root
+
+        context_node = self.builder.add_operation(**context_params)
+        context_results = await self.run_flow(visualize)
+        task_analysis = context_results["operation_results"][context_node]
+
+        # Phase 2: Execute khive plan CLI command
+        khive_plan_command = f'uv run khive plan "{task_description}"'
+        try:
+            result = subprocess.run(
+                khive_plan_command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=60,
+                cwd="/Users/lion/khived",  # Ensure we're in the right directory
+            )
+            consensus_output = result.stdout
+        except subprocess.TimeoutExpired:
+            consensus_output = "Error: khive plan command timed out"
+        except Exception as e:
+            consensus_output = f"Error executing khive plan: {e!s}"
+
+        # Phase 3: Reflect and deep think on consensus
+        # Define Phase model
+        class Phase(BaseModel):
+            name: str = Field(
+                ..., description="Phase name (e.g., 'initial', 'refinement')"
+            )
+            order: int = Field(..., description="Execution order (0-based)")
+            doc: str = Field(..., description="Phase description and objectives")
+
+        class PlanPhases(BaseModel):
+            phases: list[Phase] = Field(..., description="List of execution phases")
+            reasoning: str = Field(
+                ..., description="Reasoning behind the phase structure"
+            )
+
+        # Create field model for phases
+        phases_field = FieldModel(base_type=PlanPhases, name="plan_phases")
+
+        reflection_branch = self.new_orc_branch()
+        reflection_params = {
+            "operation": "operate",
+            "branch": reflection_branch.id,
+            "field_models": [phases_field],
+            "instruct": Instruct(
+                reason=True,
+                instruction="""Based on the task analysis and khive plan consensus, create an execution phase structure.
+
+Carefully consider:
+1. The complexity assessment from khive plan
+2. The recommended agents and their roles
+3. The workflow pattern (parallel/sequential/hybrid)
+4. Dependencies between different work items
+
+Create phases that:
+- Align with the consensus recommendations
+- Respect dependency order
+- Maximize parallel execution where possible
+- Include appropriate validation steps
+
+For each phase, provide:
+- name: Clear phase identifier  
+- order: Execution sequence (0-based)
+- doc: What this phase accomplishes and which agents will be involved""",
+                context={
+                    "task": task_description,
+                    "task_analysis": task_analysis,
+                    "khive_consensus": consensus_output,
+                    "original_context": context,
+                },
+            ),
+            "depends_on": [context_node],
+        }
+
+        reflection_node = self.builder.add_operation(**reflection_params)
+        reflection_results = await self.run_flow(visualize)
+        plan_phases = reflection_results["operation_results"][
+            reflection_node
+        ].plan_phases
+
+        # Phase 4: Build dynamic model and generate actual plans
+        # Create flow plans field based on the phases
+        plans_to_generate = {
+            phase.name: phase.doc
+            for phase in sorted(plan_phases.phases, key=lambda p: p.order)
+        }
+
+        sequence = [
+            {phase.name: phase.order}
+            for phase in sorted(plan_phases.phases, key=lambda p: p.order)
+        ]
+        flow_plans_field = self.generate_flow_plans_field(**plans_to_generate)
+
+        # Use provided branch or create a new one
+        if branch is None:
+            orc_branch = self.new_orc_branch()
+        else:
+            orc_branch = branch
+
+        params = {
+            "operation": "operate",
+            "branch": orc_branch.id,
+            "field_models": [flow_plans_field],
+            "instruct": Instruct(
+                reason=True,
+                instruction=planning_instruction,
+                context={
+                    "task": task_description,
+                    "original_context": context,
+                    "guidance": """Create detailed OrchestrationPlans for each phase.
+                    
+Each agent_request must include:
+- instruct: with clear instruction and context for the agent
+- compose_request: with appropriate role and domains based on the task
+- analysis_type: Choose from (RequirementsAnalysis, CodeContextAnalysis, IntegrationStrategy, 
+                 FeatureImplementation, RequirementValidation, DocumentationPackage, TestStrategy, WorkSynthesis)
+- execution_strategy: concurrent or sequential based on dependencies
+
+Consider the khive plan command context when assigning roles and domains.""",
+                },
+            ),
+            "depends_on": [reflection_node],
+        }
+
+        root_node = self.builder.add_operation(**params)
+        results = await self.run_flow(visualize)
+        plans = results["operation_results"][root_node].flow_plans
+
+        return root_node, plans, sequence
+
     async def expand_with_plan(
         self,
         root: IDType | list[IDType],
@@ -369,7 +554,7 @@ class LionOrchestrator:
         self.session.branches.include(b)
         return b
 
-    async def fanout(
+    async def multi_phase_orchestration(
         self,
         initial_desc: str,
         planning_instruction: str,
@@ -381,29 +566,20 @@ class LionOrchestrator:
         visualize_step = (
             visualize if isinstance(visualize, bool) else visualize == "step"
         )
-        flow_plans_field = self.generate_flow_plans_field(
-            initial=initial_desc,
+
+        # Use the new dynamic flow planning approach
+        existing_deps = (
+            [self.builder.last_operation_id] if self.builder.last_operation_id else None
         )
-        orc_branch = self.new_orc_branch()
-        params = {
-            "operation": "operate",
-            "branch": orc_branch.id,
-            "field_models": [flow_plans_field],
-            "instruct": Instruct(
-                reason=True,
-                instruction=planning_instruction,
-                context=context,
-            ),
-        }
-        if (ln := self.builder.last_operation_id) is not None:
-            params["depends_on"] = [ln]
 
-        # 1. establish root node ---------------------------------------------------------
-        root = self.builder.add_operation(**params)
-
-        # 2. run planning ----------------------------------------------------------------
-        results = await self.run_flow(visualize_step)
-        plans = results["operation_results"][root].flow_plans
+        # Get dynamic plans with khive plan consensus
+        root, plans, sequence = await self.get_dynamic_flow_plans(
+            task_description=initial_desc,
+            planning_instruction=planning_instruction,
+            context=context,
+            visualize=visualize_step,
+            root=existing_deps,
+        )
 
         # 3. run initial phase ------------------------------------------------------------
         initial_nodes = await self.expand_with_plan(
@@ -416,9 +592,10 @@ class LionOrchestrator:
         await self.run_flow(visualize_step)
 
         # 4. synthesis --------------------------------------------------------------------
+        synth_branch = self.new_orc_branch()
         synth_node = self.builder.add_operation(
             "communicate",
-            branch=orc_branch.id,
+            branch=synth_branch.id,
             depends_on=initial_nodes,
             instruction=synth_instruction,
             context=self.opres_ctx(initial_nodes),
@@ -427,14 +604,14 @@ class LionOrchestrator:
         result = await self.run_flow(bool(visualize))
         synth_result = result["operation_results"][synth_node]
 
-        return FanoutResponse(
+        return MultiPhaseOrchestrationResponse(
             synth_node=synth_node,
             synth_result=synth_result,
             flow_results=result,
             initial_nodes=initial_nodes,
         )
 
-    async def fanout_w_gated_refinement(
+    async def gated_multi_phase_orchestration(
         self,
         initial_desc: str,
         refinement_desc: str,
@@ -499,27 +676,27 @@ class LionOrchestrator:
         )
 
         # 2. establish root -----------------------------------------------------------------
-        plan_field = self.generate_flow_plans_field(
-            initial=initial_desc, refinement=refinement_desc
-        )
+        # Create orchestration branch for final synthesis
         orc_branch = self.new_orc_branch()
-        params = {
-            "operation": "operate",
-            "branch": orc_branch.id,
-            "field_models": [plan_field],
-            "instruct": Instruct(
-                reason=True,
-                instruction=planning_instruction,
-                context=context,
-            ),
-        }
 
-        if (ln := self.builder.last_operation_id) is not None:
-            params["depends_on"] = [ln]
+        # Use the new dynamic flow planning approach with khive plan consensus
+        existing_deps = (
+            [self.builder.last_operation_id] if self.builder.last_operation_id else None
+        )
 
-        root_node = self.builder.add_operation(**params)
-        results = await self.run_flow(visualize_step)
-        plans = results["operation_results"][root_node].flow_plans
+        # Get dynamic plans with khive plan consensus, passing in our branch
+        # Include refinement_desc in the task description for proper phase generation
+        task_with_refinement = (
+            f"{initial_desc}\n\nRefinement Phase (if needed): {refinement_desc}"
+        )
+        root_node, plans, sequence = await self.get_dynamic_flow_plans(
+            task_description=task_with_refinement,
+            planning_instruction=planning_instruction,
+            context=context,
+            visualize=visualize_step,
+            root=existing_deps,
+            branch=orc_branch,
+        )
 
         # 3. run initial phase ------------------------------------------------------------
         initial_nodes = await self.expand_with_plan(
@@ -607,7 +784,7 @@ class LionOrchestrator:
         result = await self.run_flow(bool(visualize))
         synth_result = result["operation_results"][synth_node]
 
-        return FanoutWithGatedRefinementResponse(
+        return GatedMultiPhaseOrchestrationResponse(
             synth_node=synth_node,
             synth_result=synth_result,
             flow_results=result,
@@ -615,6 +792,7 @@ class LionOrchestrator:
             final_gate=final_gate,
             gate_passed=gate_passed,
             refinement_executed=bool(refinement_executed),
+            execution_sequence=sequence,
         )
 
     async def save_json(self):
