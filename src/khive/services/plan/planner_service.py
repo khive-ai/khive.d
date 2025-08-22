@@ -12,6 +12,8 @@ import yaml
 from openai import OpenAI
 
 from khive.core import TimePolicy
+from khive.prompts.complexity_heuristics import assess_by_heuristics
+from khive.prompts.phase_determination import determine_required_phases
 from khive.services.artifacts.handlers import (
     HandoffAgentSpec,
     TimeoutConfig,
@@ -49,7 +51,9 @@ class Request:
     """Request model for complexity assessment"""
 
     def __init__(self, text: str):
-        self.text = text.lower()  # For easier pattern matching
+        # Normalize whitespace: convert tabs/newlines to spaces, collapse multiple spaces
+        normalized = " ".join(text.split())
+        self.text = normalized.lower()  # For easier pattern matching
         self.original = text
 
 
@@ -306,101 +310,18 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
 
     def _assess_by_heuristics(self, req: Request) -> list[str]:
         """Assess complexity using heuristic patterns when direct indicators don't match"""
-        hits = []
-        text = req.text
+        # Delegate to the complexity heuristics module for cleaner separation of concerns
+        return assess_by_heuristics(req.text)
 
-        # Simple indicators
-        simple_patterns = [
-            "simple",
-            "basic",
-            "quick",
-            "easy",
-            "straightforward",
-            "single",
-            "one",
-            "just",
-            "only",
-            "minimal",
-        ]
-
-        # Complex indicators
-        complex_patterns = [
-            "complex",
-            "complicated",
-            "advanced",
-            "sophisticated",
-            "distributed",
-            "scalable",
-            "enterprise",
-            "production",
-            "multiple",
-            "many",
-            "various",
-            "comprehensive",
-        ]
-
-        # Very complex indicators
-        very_complex_patterns = [
-            "research",
-            "novel",
-            "innovative",
-            "cutting-edge",
-            "entire",
-            "complete",
-            "full",
-            "platform",
-            "ecosystem",
-            "migration",
-            "transformation",
-            "overhaul",
-        ]
-
-        # Count pattern matches
-        simple_count = sum(1 for pattern in simple_patterns if pattern in text)
-        complex_count = sum(1 for pattern in complex_patterns if pattern in text)
-        very_complex_count = sum(
-            1 for pattern in very_complex_patterns if pattern in text
-        )
-
-        # Special phrases that override pattern counts
-        if "distributed system" in text:
-            hits.append("complex")
-        elif (
-            any(pattern in text for pattern in ["entire system", "complete platform"])
-            or len(text.split()) > 100
-        ):
-            hits.append("very_complex")
-        # When multiple tier patterns exist, select highest complexity
-        elif very_complex_count > 0 and (complex_count > 0 or simple_count > 0):
-            # Mixed patterns with very_complex - return highest tier
-            hits.append("very_complex")
-        elif complex_count > 0 and simple_count > 0:
-            # Mixed patterns with complex - return complex
-            hits.append("complex")
-        # Determine complexity based on pattern density
-        elif very_complex_count >= 2:
-            hits.append("very_complex")
-        elif complex_count >= 2:
-            hits.append("complex")
-        elif simple_count >= 2:
-            hits.append("simple")
-        # Single pattern matches
-        elif very_complex_count >= 1:
-            hits.append("very_complex")
-        elif complex_count >= 1:
-            hits.append("complex")
-        elif simple_count >= 1:
-            hits.append("simple")
-        else:
-            hits.append("medium")
-
-        return hits
-
+    # TODO: Implement RoleSelector mechnanism
     def select_roles(self, req: Request, complexity: ComplexityTier) -> list[str]:
         """Select appropriate roles based on request and complexity.
 
         Returns a list that may contain duplicate roles for parallel work.
         E.g., [researcher, researcher, implementer, tester, implementer]
+
+        Note: This is a simple heuristic used primarily for testing.
+        Production uses the full LLM consensus system.
         """
         role_rules = self.matrix.get("agent_role_selection", {})
 
@@ -414,51 +335,6 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
                 phase_roles = role_rules[phase].get("roles", [])
                 selected_roles.extend(phase_roles)  # Use extend, not update
 
-        # Scale based on complexity - add more agents for complex tasks
-        if complexity == ComplexityTier.SIMPLE:
-            # Simple: 1-4 agents total
-            if len(selected_roles) > 4:
-                selected_roles = selected_roles[:4]
-            elif len(selected_roles) < 2:
-                selected_roles = ["researcher", "implementer"]
-
-        elif complexity == ComplexityTier.MEDIUM:
-            # Medium: 3-12 agents, potentially duplicate roles
-            if len(selected_roles) < 3:
-                selected_roles.extend(["researcher", "implementer", "analyst"])
-
-        elif complexity == ComplexityTier.COMPLEX:
-            # Complex: 5-12 agents, add duplicates for parallel work
-            if len(selected_roles) < 5:
-                selected_roles.extend(
-                    [
-                        "researcher",
-                        "researcher",
-                        "implementer",
-                        "tester",
-                        "reviewer",
-                    ]
-                )
-
-        elif complexity == ComplexityTier.VERY_COMPLEX:
-            # Very complex: 8-20 agents, multiple of each role for parallel work
-            if len(selected_roles) < 8:
-                # Add multiple agents of key roles
-                selected_roles.extend(
-                    [
-                        "researcher",
-                        "researcher",
-                        "researcher",
-                        "implementer",
-                        "implementer",
-                        "analyst",
-                        "analyst",
-                        "tester",
-                        "critic",
-                        "reviewer",
-                    ]
-                )
-
         # Ensure all roles are valid (but keep duplicates)
         final_roles = [r for r in selected_roles if r in self.available_roles]
 
@@ -470,86 +346,8 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
 
     def _determine_required_phases(self, req: Request) -> list[str]:
         """Determine which development phases are needed based on request content"""
-        text = req.text.lower()
-        phases = []
-
-        # Discovery phase - always needed for research/analysis tasks
-        discovery_keywords = [
-            "research",
-            "analyze",
-            "understand",
-            "investigate",
-            "explore",
-            "study",
-            "examine",
-        ]
-        if (
-            any(keyword in text for keyword in discovery_keywords)
-            or "what" in text
-            or "how" in text
-        ):
-            phases.append("discovery_phase")
-
-        # Design phase - needed for architecture/planning tasks
-        design_keywords = [
-            "design",
-            "architect",
-            "plan",
-            "structure",
-            "framework",
-            "strategy",
-            "approach",
-        ]
-        if any(keyword in text for keyword in design_keywords):
-            phases.append("design_phase")
-
-        # Implementation phase - needed for building/coding tasks
-        impl_keywords = [
-            "implement",
-            "build",
-            "create",
-            "develop",
-            "code",
-            "write",
-            "construct",
-            "make",
-        ]
-        if any(keyword in text for keyword in impl_keywords):
-            phases.append("implementation_phase")
-
-        # Validation phase - needed for testing/verification tasks
-        validation_keywords = [
-            "test",
-            "verify",
-            "validate",
-            "check",
-            "audit",
-            "review",
-            "quality",
-            "security",
-        ]
-        if any(keyword in text for keyword in validation_keywords):
-            phases.append("validation_phase")
-
-        # Refinement phase - needed for documentation/improvement tasks
-        refinement_keywords = [
-            "document",
-            "improve",
-            "refine",
-            "optimize",
-            "polish",
-            "comment",
-            "explain",
-        ]
-        if any(keyword in text for keyword in refinement_keywords):
-            phases.append("refinement_phase")
-
-        # Default phases if none detected
-        if not phases:
-            # Most tasks need at least discovery and implementation
-            phases = ["discovery_phase", "implementation_phase"]
-
-        return phases
+        # Delegate to the phase determination module for cleaner separation of concerns
+        return determine_required_phases(req.text)
 
     async def execute_agent_with_timeout(
         self,
@@ -1226,16 +1024,97 @@ Be different - show YOUR unique perspective on which roles matter most."""
             output.append(json.dumps(consensus_json, indent=2))
 
         else:  # claude format (BatchTool)
-            # Generate BatchTool commands for Claude Code
-            for agent_spec in handoff_agent_specs:
-                agent_name = f"{agent_spec.role}_{agent_spec.domain.replace('-', '_')}"
+            # Detect phases for the task
+            from khive.prompts.phase_determination import (
+                determine_required_phases,
+                get_phase_description,
+            )
 
-                # Enhanced context for parallel execution
-                artifact_management = self.get_artifact_management_prompt(
-                    session_id, "phase1", agent_spec.role, agent_spec.domain
+            detected_phases = determine_required_phases(request)
+
+            # If we have multiple phases, organize agents by phase
+            if len(detected_phases) > 1:
+                # Group agents by phase based on their roles
+                phase_agent_groups = self._group_agents_by_phase(
+                    handoff_agent_specs, detected_phases
                 )
 
-                parallel_context = f"""PARALLEL EXECUTION CONTEXT:
+                # Generate commands organized by phase
+                for phase_idx, phase_name in enumerate(detected_phases, 1):
+                    phase_agents = phase_agent_groups.get(phase_name, [])
+                    if not phase_agents:
+                        continue
+
+                    output.append(
+                        f"\n  // Phase {phase_idx}: {phase_name.replace('_phase', '').title()}"
+                    )
+                    output.append(f"  // {get_phase_description(phase_name)}")
+
+                    for agent_spec in phase_agents:
+                        agent_name = (
+                            f"{agent_spec.role}_{agent_spec.domain.replace('-', '_')}"
+                        )
+
+                        # Update phase in spec
+                        agent_spec.phase = f"phase{phase_idx}"
+
+                        # Enhanced context for phase-aware execution
+                        artifact_management = self.get_artifact_management_prompt(
+                            session_id,
+                            f"phase{phase_idx}",
+                            agent_spec.role,
+                            agent_spec.domain,
+                        )
+
+                        phase_context = f"""PHASE {phase_idx} EXECUTION CONTEXT:
+- Phase: {phase_name.replace("_phase", "").title()}
+- Priority: {agent_spec.priority:.2f}
+- Coordinate through shared artifacts
+
+ORIGINAL REQUEST: {request}
+COMPLEXITY: {consensus_complexity_str} (confidence: {avg_confidence:.0%})
+
+{artifact_management}
+
+PHASE EXECUTION INSTRUCTIONS:
+- You are part of Phase {phase_idx}: {phase_name.replace("_phase", "").title()}
+- Check artifact registry for previous phase outputs
+- Your work executes in parallel with other Phase {phase_idx} agents
+- Coordinate through shared artifact registry
+- Build upon previous phase deliverables if available
+
+YOUR TASK:
+1. Run: `uv run khive compose {agent_spec.role} -d {agent_spec.domain} -c "{request}"`
+2. Focus on Phase {phase_idx} objectives: {get_phase_description(phase_name)}
+3. Reference artifacts from earlier phases if applicable
+4. Execute with phase-specific goals in mind
+
+Remember: This is PHASE {phase_idx} - coordinate with phase peers!"""
+
+                        # Escape prompt for JavaScript
+                        escaped_prompt = phase_context.replace('"', '\\"').replace(
+                            "\n", "\\n"
+                        )
+                        output.append(
+                            f'  Task({{ description: "{agent_name}_phase{phase_idx}", prompt: "{escaped_prompt}" }})'
+                        )
+
+                output.append(
+                    f"\n  // Execute phases sequentially or in parallel based on dependencies"
+                )
+            else:
+                # Single phase or no phases detected - use original parallel execution
+                for agent_spec in handoff_agent_specs:
+                    agent_name = (
+                        f"{agent_spec.role}_{agent_spec.domain.replace('-', '_')}"
+                    )
+
+                    # Enhanced context for parallel execution
+                    artifact_management = self.get_artifact_management_prompt(
+                        session_id, "phase1", agent_spec.role, agent_spec.domain
+                    )
+
+                    parallel_context = f"""PARALLEL EXECUTION CONTEXT:
 - All agents executing in parallel
 - Priority: {agent_spec.priority:.2f}
 - Coordinate through shared artifacts
@@ -1260,13 +1139,13 @@ YOUR TASK:
 
 Remember: This is PARALLEL EXECUTION - coordinate via shared artifacts!"""
 
-                # Escape prompt for JavaScript
-                escaped_prompt = parallel_context.replace('"', '\\"').replace(
-                    "\n", "\\n"
-                )
-                output.append(
-                    f'  Task({{ description: "{agent_name}", prompt: "{escaped_prompt}" }})'
-                )
+                    # Escape prompt for JavaScript
+                    escaped_prompt = parallel_context.replace('"', '\\"').replace(
+                        "\n", "\\n"
+                    )
+                    output.append(
+                        f'  Task({{ description: "{agent_name}", prompt: "{escaped_prompt}" }})'
+                    )
 
         output.append("```")
         output.append("")
@@ -1442,11 +1321,18 @@ Your final deliverable MUST include:
         if not evaluations:
             return ""
 
-        # Get agent counts
+        # Get agent counts and complexity consensus
         all_evals = [e["evaluation"] for e in evaluations]
         agent_counts = [e.total_agents for e in all_evals]
         max_agents = max(agent_counts)
         avg_agents = sum(agent_counts) / len(agent_counts)
+
+        # Get complexity consensus
+        complexity_votes = {}
+        for e in all_evals:
+            comp = e.complexity
+            complexity_votes[comp] = complexity_votes.get(comp, 0) + 1
+        final_complexity = max(complexity_votes, key=complexity_votes.get)
 
         # Check for scope indicators in request
         request_lower = request.lower()
@@ -1464,42 +1350,59 @@ Your final deliverable MUST include:
             desc for word, desc in scope_indicators.items() if word in request_lower
         ]
 
-        # Check if agents exceed reasonable limits
-        if max_agents > 12 or avg_agents > 10 or triggered_indicators:
+        # Determine phases using our phase determination module
+        from khive.prompts.phase_determination import (
+            determine_required_phases,
+            estimate_phase_complexity,
+            get_phase_description,
+        )
+
+        detected_phases = determine_required_phases(request)
+
+        # Show phase breakdown for:
+        # 1. Tasks exceeding agent limits
+        # 2. Complex or very_complex tasks
+        # 3. Tasks with multiple phases detected
+        # 4. Tasks with scope indicators
+        show_phases = (
+            max_agents > 12
+            or avg_agents > 10
+            or triggered_indicators
+            or final_complexity in ["complex", "very_complex"]
+            or len(detected_phases) > 2
+        )
+
+        if show_phases:
             output = []
-            output.append("⚠️ Task Scope Analysis")
 
-            if max_agents > 12:
+            # Show warnings if applicable
+            if max_agents > 12 or avg_agents > 10 or triggered_indicators:
+                output.append("⚠️ Task Scope Analysis")
+                if max_agents > 12:
+                    output.append(
+                        f"Agent Count Warning: Max {max_agents} agents exceeds 12-agent limit"
+                    )
+                if triggered_indicators:
+                    output.append(
+                        f"Scope Indicators: {', '.join(triggered_indicators)}"
+                    )
+                output.append("")
+
+            # Show detected phases
+            output.append("📋 Detected Phases:")
+            for i, phase in enumerate(detected_phases, 1):
+                phase_desc = get_phase_description(phase)
+                estimated_agents = estimate_phase_complexity(phase, final_complexity)
+                phase_name = phase.replace("_phase", "").title()
+                output.append(f"- Phase {i}: {phase_name} ({estimated_agents} agents)")
+                output.append(f"  {phase_desc}")
+
+            # Add phase execution tip if multiple phases
+            if len(detected_phases) > 1:
+                output.append("")
                 output.append(
-                    f"Agent Count Warning: Max {max_agents} agents exceeds 12-agent limit"
+                    '💡 Tip: For large tasks, run each phase separately: `khive plan "Phase 1: [specific focus]"`'
                 )
-
-            if triggered_indicators:
-                output.append(f"Scope Indicators: {', '.join(triggered_indicators)}")
-
-            output.append("")
-            output.append("📋 Recommended Phase Breakdown:")
-
-            # Generate phase suggestions based on task type
-            if "migrate" in request_lower:
-                output.append("- Phase 1: Analysis & Planning (5-6 agents)")
-                output.append("- Phase 2: Data Migration Strategy (6-7 agents)")
-                output.append("- Phase 3: Service Implementation (7-8 agents)")
-                output.append("- Phase 4: Cutover & Validation (5-6 agents)")
-            elif "platform" in request_lower or "entire" in request_lower:
-                output.append("- Phase 1: Core Infrastructure (6-8 agents)")
-                output.append("- Phase 2: Business Logic Layer (7-8 agents)")
-                output.append("- Phase 3: User Interface (5-7 agents)")
-                output.append("- Phase 4: Integration & Testing (6-7 agents)")
-            else:
-                output.append("- Phase 1: Research & Architecture (5-7 agents)")
-                output.append("- Phase 2: Core Implementation (6-8 agents)")
-                output.append("- Phase 3: Integration & Testing (5-6 agents)")
-
-            output.append("")
-            output.append(
-                '💡 Tip: Run `khive plan "Phase 1: [specific task]"` for each phase'
-            )
             output.append("")
 
             return "\n".join(output)
@@ -1585,6 +1488,59 @@ Your final deliverable MUST include:
         if self.timeout_manager:
             await self.timeout_manager.cleanup()
             self.timeout_manager = None
+
+    def _group_agents_by_phase(
+        self, agent_specs: list, phases: list[str]
+    ) -> dict[str, list]:
+        """Group agents by their appropriate phases based on role types."""
+        phase_groups = {phase: [] for phase in phases}
+
+        # Role to phase mapping
+        role_phase_map = {
+            # Discovery phase roles
+            "researcher": "discovery_phase",
+            "analyst": "discovery_phase",
+            "theorist": "discovery_phase",
+            # Design phase roles
+            "architect": "design_phase",
+            "strategist": "design_phase",
+            # Implementation phase roles
+            "implementer": "implementation_phase",
+            "innovator": "implementation_phase",
+            # Validation phase roles
+            "tester": "validation_phase",
+            "critic": "validation_phase",
+            "auditor": "validation_phase",
+            # Refinement phase roles
+            "reviewer": "refinement_phase",
+            "commentator": "refinement_phase",
+        }
+
+        # Distribute agents to appropriate phases
+        for agent_spec in agent_specs:
+            assigned_phase = role_phase_map.get(agent_spec.role)
+
+            # Only assign to phases that were detected
+            if assigned_phase and assigned_phase in phases:
+                phase_groups[assigned_phase].append(agent_spec)
+            else:
+                # If role doesn't have a specific phase or phase not detected,
+                # assign to the first available phase
+                if phases:
+                    phase_groups[phases[0]].append(agent_spec)
+
+        # Ensure each phase has at least one agent if we have agents
+        if agent_specs:
+            for phase in phases:
+                if not phase_groups[phase] and agent_specs:
+                    # Take an agent from the phase with the most agents
+                    max_phase = max(
+                        phase_groups.keys(), key=lambda p: len(phase_groups[p])
+                    )
+                    if phase_groups[max_phase]:
+                        phase_groups[phase].append(phase_groups[max_phase].pop())
+
+        return phase_groups
 
     def _analyze_role_dependencies(
         self, sorted_roles: list[tuple]

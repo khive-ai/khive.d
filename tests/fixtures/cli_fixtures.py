@@ -104,16 +104,15 @@ def baseline_manager():
                     "status": "regression",
                     "message": f"Performance regression: {variance:.2%} slower than baseline",
                 }
-            elif variance < -0.1:
+            if variance < -0.1:
                 return {
                     "status": "improvement",
                     "message": f"Performance improvement: {abs(variance):.2%} faster than baseline",
                 }
-            else:
-                return {
-                    "status": "pass",
-                    "message": "Within acceptable performance range",
-                }
+            return {
+                "status": "pass",
+                "message": "Within acceptable performance range",
+            }
 
     return MockBaselineManager()
 
@@ -126,13 +125,11 @@ def no_external_calls():
     original_env = dict(os.environ)
 
     # Set environment variables to disable external calls
-    os.environ.update(
-        {
-            "KHIVE_TEST_MODE": "true",
-            "KHIVE_DISABLE_EXTERNAL_APIS": "true",
-            "OPENAI_API_KEY": "test-key-mock",
-        }
-    )
+    os.environ.update({
+        "KHIVE_TEST_MODE": "true",
+        "KHIVE_DISABLE_EXTERNAL_APIS": "true",
+        "OPENAI_API_KEY": "test-key-mock",
+    })
 
     try:
         yield

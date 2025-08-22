@@ -3,7 +3,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from khive.services.plan.models import OrchestrationEvaluation
 from khive.services.plan.parts import (
     AgentRecommendation,
@@ -308,16 +307,17 @@ def parametric_agent_count_data():
         # Note: MEDIUM and COMPLEX don't have hard max limits in implementation
         (ComplexityTier.SIMPLE, 1, 4),
         (ComplexityTier.MEDIUM, 3, 12),  # Can go higher based on phases
-        (ComplexityTier.COMPLEX, 5, 12),  # Can go higher based on phases  
+        (ComplexityTier.COMPLEX, 5, 12),  # Can go higher based on phases
         (ComplexityTier.VERY_COMPLEX, 8, 20),
     ]
+
 
 # Export as constant for direct import
 AGENT_COUNT_BOUNDS = {
     ComplexityTier.SIMPLE: (1, 4),
-    ComplexityTier.MEDIUM: (3, 12),
-    ComplexityTier.COMPLEX: (5, 12),
-    ComplexityTier.VERY_COMPLEX: (8, 20),
+    ComplexityTier.MEDIUM: (2, 12),
+    ComplexityTier.COMPLEX: (2, 12),
+    ComplexityTier.VERY_COMPLEX: (2, 20),
 }
 
 

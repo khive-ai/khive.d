@@ -13,9 +13,8 @@ from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from openai.types.completion_usage import CompletionUsage
-
 from khive.services.plan.models import OrchestrationEvaluation
+from openai.types.completion_usage import CompletionUsage
 
 # ============================================================================
 # Custom Exceptions
@@ -441,16 +440,14 @@ class MockMultiAgentEvaluator:
                     response_format=OrchestrationEvaluation,
                 )
 
-                results.append(
-                    {
-                        "config": config,
-                        "evaluation": response.choices[0].message.parsed,
-                        "cost": 0.001,  # Simulated cost
-                        "usage": response.usage,
-                        "response_time_ms": 500,  # Simulated response time
-                        "success": True,
-                    }
-                )
+                results.append({
+                    "config": config,
+                    "evaluation": response.choices[0].message.parsed,
+                    "cost": 0.001,  # Simulated cost
+                    "usage": response.usage,
+                    "response_time_ms": 500,  # Simulated response time
+                    "success": True,
+                })
 
             except Exception as e:
                 results.append({"config": config, "error": str(e), "success": False})

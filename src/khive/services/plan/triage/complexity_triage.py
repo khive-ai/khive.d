@@ -227,18 +227,22 @@ class ComplexityTriageService:
 Decide whether to PROCEED with fast triage or ESCALATE to full consensus:
 
 PROCEED (use 3 or fewer agents):
-- Single clear objective
-- Well-defined scope
+- SIMPLE, single-step tasks
+- Well-defined, narrow scope
 - Standard patterns (fix bug, update docs, simple queries)
 - No cross-system dependencies
 - Can be done in one pass
+- NOT research, analysis, or design tasks
 
 ESCALATE (requires full planning consensus):
-- Multiple objectives or phases
+- Research, analysis, or investigation tasks
+- Design, architecture, or planning tasks
+- Multiple objectives or phases (e.g., "research AND analyze")
 - Vague or broad scope ("completely", "entire", "full system")
-- Novel problems requiring research
+- Novel problems or complex algorithms
 - Cross-system dependencies
 - Requires iteration or validation
+- Performance analysis or optimization
 
 Perspective: {perspective}
 - efficiency: Can this be done quickly with minimal agents?

@@ -16,7 +16,6 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 import yaml
-
 from khive.services.composition.agent_composer import AgentComposer
 
 

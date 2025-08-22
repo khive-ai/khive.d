@@ -10,48 +10,43 @@ base_context_template: |
   - Token budget: {token_budget}
   - Latency budget: {latency_budget}s
 
-  COMPLEXITY RULES:
-  - Simple(1-3 agents): Single domain, read-only, no coordination
-  - Medium(4-8): MOST TASKS - 2 domains OR standard implementation
-  - Complex(8-10): 3+ domains OR (distributed/event-driven + implementation)
-  - VeryComplex(10-12): RARE - Distributed AND critical AND 3+ domains
+  COMPLEXITY→AGENTS:
+  S(1-3): 1domain|read-only|no-coord
+  M(4-8): DEFAULT|2domains|std-impl  
+  C(8-10): 3+domains|(distributed+impl)
+  VC(10-12): RARE|distributed∧critical∧3+domains
 
-  EFFICIENCY GUIDELINES:
-  - Target 4-8 agents for MOST tasks (medium complexity default)
-  - Reserve 8-10 agents for truly complex distributed systems
-  - 12+ agents triggers mandatory PHASE split
-  - Prefer parallel execution over sequential
-  - Consider swarm coordination benefits
+  EFFICIENCY:
+  - DEFAULT: 4-8 agents (M complexity)
+  - 8-10: truly complex distributed
+  - 12+: PHASE_SPLIT
+  - parallel > sequential
+  - swarm_benefits
 
   BUDGET: You have up to {cost_budget} per planning round.
 
-  TASK SCOPE GUIDELINES:
-  - Orchestrator handles: Single feature, module, or bounded system
-  - Too large? Suggest breaking into phases:
-    * "Phase 1: Research & Design (5-7 agents)"
-    * "Phase 2: Core Implementation (6-8 agents)"
-    * "Phase 3: Integration & Testing (4-6 agents)"
-  - Examples of appropriate scope:
-    * ✅ "Build auth system with JWT and sessions"
-    * ✅ "Implement real-time chat with WebRTC"
-    * ❌ "Build entire e-commerce platform" → Break into phases
-    * ❌ "Migrate legacy system to microservices" → Break into phases
+  SCOPE:
+  OK: single_feature|module|bounded_system
+  TOO_BIG→PHASES:
+    P1: Research&Design(5-7)
+    P2: Core_Impl(6-8)
+    P3: Integration&Test(4-6)
+  ✅ auth_JWT|realtime_chat
+  ❌ entire_platform|legacy_migration→BREAK
 
   TRIGGERS:
-  - Contains "implement" → Add implementers to top 3 roles
-  - Contains "distributed" → Add auditors and testers
-  - Contains "event-driven" → Careful phase coordination
-  - Research AND implement → Start researchers, end with implementers
+  "implement"→+implementers[top3]
+  "distributed"→+auditors+testers
+  "event-driven"→phase_coord++
+  research∧implement→researchers_first,implementers_last
 
-  DOMAIN NORMALISATION:
-  Map synonyms → canonical ids:
-  - "web dev" / "web development" → frontend-development
-  - "backend_deployment" → backend-development
-  - "websocket" → websocket-communication
-  - "multi_modal_systems" → multi-modal-systems
-  - "microservices" → microservices-architecture
-  - "security" → security-architecture
-  Always use canonical domain names in recommendations.
+  DOMAIN_MAP:
+  web_dev→frontend-development
+  backend_*→backend-development  
+  websocket→websocket-communication
+  multi_modal→multi-modal-systems
+  microservices→microservices-architecture
+  security→security-architecture
 
   {decision_matrix_content}
 
@@ -66,19 +61,15 @@ agents:
       {base_context}
       YOUR BIAS: {bias}
 
-      EFFICIENCY TARGETS:
-      - Simple tasks: 1-3 agents (single domain, read-only)
-      - Medium tasks: 4-6 agents when cost_budget ≤ 0.0025, 6-8 agents when cost_budget > 0.0025
-      - Complex tasks: 4-6 agents when cost_budget ≤ 0.0025, 6-8 agents when cost_budget > 0.0025
-      - Very complex: 6-8 agents when cost_budget ≤ 0.0025, 8-10 agents when cost_budget > 0.0025
-      - 12+ agents = STOP & phase
+      TARGET[budget≤0.0025|budget>0.0025]:
+      S: 1-3|1-3
+      M: 4-6|6-8  
+      C: 4-6|6-8
+      VC: 6-8|8-10
+      12+→STOP&PHASE
 
-      ESCALATION RULE:
-      If critical gate chosen ⇒ escalate to Risk-Auditor for confirmation.
-
-      TOO LARGE CHECK:
-      If task needs >10 agents, add to summary:
-      "RECOMMEND: Break into phases for better efficiency"
+      critical_gate→escalate(risk_auditor)
+      >10agents→"RECOMMEND:phases"
 
       HARD LIMITS:
       - token_budget: {token_budget}
@@ -97,15 +88,13 @@ agents:
       {base_context}
       YOUR BIAS: {bias}
 
-      QUALITY TARGETS:
-      - Simple tasks: 2-4 agents (basic validation)
-      - Medium tasks: 5-8 agents (MOST tasks - with testing)
-      - Complex tasks: 8-10 agents (distributed OR critical systems)
-      - Very complex: 10-12 agents MAX (distributed AND critical)
+      QUALITY_TARGETS:
+      S: 2-4(basic_val)
+      M: 5-8(DEFAULT+testing)  
+      C: 8-10(distributed|critical)
+      VC: 10-12_MAX(distributed∧critical)
 
-      SCOPE CHECK:
-      If task seems unbounded (e.g., "entire platform"), add:
-      "RECOMMEND: Define specific feature/module to orchestrate"
+      unbounded_task→"RECOMMEND:specific_feature"
 
       HARD LIMITS:
       - token_budget: {token_budget}
@@ -123,22 +112,16 @@ agents:
       {base_context}
       YOUR BIAS: {bias}
 
-      GATE ESCALATION:
-      Current gate: {gate}
-      If gate < thorough and risk ≥ high ⇒ propose escalation.
+      gate<thorough∧risk≥high→ESCALATE
 
-      RISK MITIGATION:
-      - Low-risk: 3-5 agents (simple CRUD, read-only)
-      - Medium-risk: 5-8 agents (MOST tasks - standard validation)
-      - High-risk: 8-10 agents (distributed OR security-critical)
-      - Critical: 10-12 agents MAX (distributed AND security-critical)
+      RISK→AGENTS:
+      L: 3-5(CRUD|read-only)
+      M: 5-8(DEFAULT+validation)  
+      H: 8-10(distributed|security)
+      CRIT: 10-12_MAX(distributed∧security)
 
-      MONOLITHIC RISK:
-      If task involves multiple systems/migrations, add:
-      "RISK: Monolithic orchestration. Break into system boundaries"
-
-      AUDITOR GATE CHECK:
-      If Auditor appears under gate < thorough, flag 'ESCALATE_GATE'.
+      multi_systems→"RISK:monolithic→break_boundaries"
+      auditor∧gate<thorough→ESCALATE_GATE
 
       HARD LIMITS:
       - token_budget: {token_budget}
@@ -186,11 +169,11 @@ agents:
       EXPENSIVE: byzantine-fault-tolerance, category-theory, thermodynamic-optimization
       Prefer cheap domains for cost efficiency.
 
-      COST TARGETS:
-      - Simple: 1-2 agents (bare minimum)
-      - Medium: 3-4 agents when cost_budget ≤ 0.0025, 4-6 agents when cost_budget > 0.0025
-      - Complex: 5 agents when cost_budget ≤ 0.0025, 6-8 agents when cost_budget > 0.0025
-      - VeryComplex: 6-8 agents when cost_budget ≥ 0.003, else suggest phases
+      COST[budget≤0.0025|>0.0025]:
+      S: 1-2|1-2
+      M: 3-4|4-6
+      C: 5|6-8
+      VC: phases|6-8(if≥0.003)
 
       HARD LIMITS:
       - token_budget: {token_budget}
@@ -334,7 +317,7 @@ agents:
 
 user_prompt_template: |
   Request: {request}
-
-  Evaluate concisely. Reasons <50 chars.
-  role_priorities: ordered list (e.g. ["researcher", "analyst", "critic"])
-  Show YOUR unique perspective.
+  
+  Eval→concise(<50char)
+  roles→ordered[r1,r2,r3]
+  YOUR_perspective
