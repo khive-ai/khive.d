@@ -158,6 +158,37 @@ class NewDocCommand(ConfigurableCLICommand):
             action="store_true",
             help="Use AI to enhance template with better structure",
         )
+        
+        # Session-based document creation
+        doc_group = parser.add_mutually_exclusive_group()
+        doc_group.add_argument(
+            "--artifact",
+            action="store_true",
+            help="Create artifact document in workspace/{session_id}/artifacts/",
+        )
+        doc_group.add_argument(
+            "--doc",
+            choices=["CRR", "TDS", "RR", "IP", "TI"],
+            help="Create official deliverable document in workspace/{session_id}/docs/",
+        )
+        parser.add_argument(
+            "--session-id",
+            help="Session ID for workspace organization (required with --artifact or --doc)",
+        )
+        
+        # Agent deliverable specific arguments (for agent_deliverable template)
+        parser.add_argument(
+            "--phase",
+            help="Phase for agent deliverable (e.g., discovery_phase, design_phase)",
+        )
+        parser.add_argument(
+            "--role",
+            help="Agent role for deliverable (e.g., researcher, architect)",
+        )
+        parser.add_argument(
+            "--domain",
+            help="Agent domain for deliverable (e.g., api-design, backend-development)",
+        )
 
     def _create_config(self, args: argparse.Namespace) -> NewDocConfig:
         """Create config from arguments and files."""
@@ -210,6 +241,53 @@ class NewDocCommand(ConfigurableCLICommand):
                     continue
                 key, value = var_spec.split("=", 1)
                 custom_vars[key.strip()] = value.strip()
+
+        # Special handling for session-based documents
+        if args.artifact or args.doc:
+            if not args.session_id:
+                return CLIResult(
+                    status="failure",
+                    message="--session-id is required when using --artifact or --doc",
+                    exit_code=1,
+                )
+            
+            if args.artifact:
+                return self._create_artifact_document(
+                    args.type_or_template or "artifact",
+                    args.identifier,
+                    args.session_id,
+                    config,
+                    args.dest,
+                    custom_vars,
+                    args.force,
+                    args.template_dir,
+                )
+            
+            if args.doc:
+                return self._create_official_document(
+                    args.doc,
+                    args.identifier,
+                    args.session_id,
+                    config,
+                    args.dest,
+                    custom_vars,
+                    args.force,
+                    args.template_dir,
+                )
+
+        # Special handling for agent deliverables
+        if (args.type_or_template == "agent-deliverable" and 
+            args.phase and args.role and args.domain):
+            return self._create_agent_deliverable(
+                args.identifier,
+                args.phase,
+                args.role,
+                args.domain,
+                config,
+                args.dest,
+                custom_vars,
+                args.force,
+            )
 
         return self._create_document(
             args.type_or_template,
@@ -662,6 +740,179 @@ title: {name} - {{{{IDENTIFIER}}}}
 <!-- Add your content here -->
 
 """
+
+    def _create_artifact_document(
+        self,
+        type_or_template: str,
+        identifier: str,
+        session_id: str,
+        config: NewDocConfig,
+        dest_override: Path | None,
+        custom_vars: dict[str, str],
+        force: bool,
+        additional_template_dir: Path | None,
+    ) -> CLIResult:
+        """Create an artifact document in session_id/artifacts/."""
+        # Prepare output path for artifacts
+        base_dir = dest_override or (config.project_root / ".khive")
+        output_dir = base_dir / "workspace" / session_id / "artifacts"
+        
+        # Sanitize identifier
+        safe_id = re.sub(r"[^\w\-.]", "_", identifier)
+        filename = f"{type_or_template}_{safe_id}.md"
+        output_path = output_dir / filename
+
+        # Check existing file
+        if output_path.exists() and not force:
+            return CLIResult(
+                status="failure",
+                message=f"Artifact exists: {output_path.name} (use --force to overwrite)",
+                exit_code=1,
+            )
+
+        # Prepare variables for artifact
+        all_vars = {
+            **config.default_vars,
+            **custom_vars,
+            "DATE": TimePolicy.now_local().isoformat()[:10],
+            "DATETIME": TimePolicy.now_local().isoformat(),
+            "IDENTIFIER": identifier,
+            "SESSION_ID": session_id,
+            "TYPE": type_or_template,
+            "PROJECT_ROOT": str(config.project_root),
+            "USER": self._get_user_info(),
+        }
+
+        # Create simple artifact content
+        content = f"""---
+title: "{type_or_template.title()} - {identifier}"
+session_id: "{session_id}"
+created: "{all_vars['DATETIME']}"
+type: "artifact"
+---
+
+# {type_or_template.title()}: {identifier}
+
+**Session ID**: {session_id}  
+**Created**: {all_vars['DATE']}  
+**Type**: Artifact (working document)
+
+## Content
+
+_Add your working notes, research, or interim findings here..._
+
+## Notes
+
+- This is a working artifact document
+- Feel free to update as work progresses
+- Use `khive new-doc --doc TYPE` for official deliverables
+
+---
+_Working artifact in session {session_id}_
+"""
+
+        if config.dry_run:
+            return CLIResult(
+                status="success",
+                message=f"Would create artifact: {output_path.relative_to(config.project_root)}",
+                data={"path": str(output_path), "content_preview": content[:300] + "..."},
+            )
+
+        # Write file
+        ensure_directory(output_dir)
+        if safe_write_file(output_path, content):
+            return CLIResult(
+                status="success",
+                message=f"Created artifact: {output_path.relative_to(config.project_root)}",
+                data={"path": str(output_path), "type": "artifact"},
+            )
+        return CLIResult(
+            status="failure", message="Failed to write artifact", exit_code=1
+        )
+
+    def _create_official_document(
+        self,
+        doc_type: str,
+        identifier: str,
+        session_id: str,
+        config: NewDocConfig,
+        dest_override: Path | None,
+        custom_vars: dict[str, str],
+        force: bool,
+        additional_template_dir: Path | None,
+    ) -> CLIResult:
+        """Create or update official document in session_id/docs/."""
+        # Prepare output path for official docs
+        base_dir = dest_override or (config.project_root / ".khive")
+        output_dir = base_dir / "workspace" / session_id / "docs"
+        
+        filename = f"{doc_type}_{identifier}.md"
+        output_path = output_dir / filename
+
+        # Check if document already exists
+        if output_path.exists() and not force:
+            return CLIResult(
+                status="success",
+                message=f"Document exists: {output_path.relative_to(config.project_root)}. Please edit the existing file to add your contributions.",
+                data={
+                    "path": str(output_path),
+                    "action": "edit_existing",
+                    "instruction": f"The {doc_type} document already exists. Please read and edit the existing file to add your contributions rather than creating a new one.",
+                },
+            )
+
+        # Find the appropriate template
+        template_name = f"{doc_type}_{doc_type.lower()}_template"  # e.g., CRR_code_review_template
+        templates = self._discover_templates(config, additional_template_dir)
+        
+        template = None
+        for tpl in templates:
+            if tpl.path.stem == template_name or tpl.doc_type == doc_type:
+                template = tpl
+                break
+                
+        if not template:
+            return CLIResult(
+                status="failure",
+                message=f"Template for {doc_type} not found",
+                exit_code=1,
+            )
+
+        # Prepare variables
+        all_vars = {
+            **config.default_vars,
+            **custom_vars,
+            "DATE": TimePolicy.now_local().isoformat()[:10],
+            "DATETIME": TimePolicy.now_local().isoformat(),
+            "IDENTIFIER": identifier,
+            "SESSION_ID": session_id,
+            "component_name": identifier,
+            "phase": custom_vars.get("phase", ""),
+            "PROJECT_ROOT": str(config.project_root),
+            "USER": self._get_user_info(),
+        }
+
+        # Render content
+        content = self._render_template(template, all_vars)
+
+        if config.dry_run:
+            return CLIResult(
+                status="success",
+                message=f"Would create {doc_type}: {output_path.relative_to(config.project_root)}",
+                data={"path": str(output_path), "template": doc_type},
+            )
+
+        # Write file
+        ensure_directory(output_dir)
+        if safe_write_file(output_path, content):
+            return CLIResult(
+                status="success",
+                message=f"Created {doc_type}: {output_path.relative_to(config.project_root)}",
+                data={"path": str(output_path), "template": doc_type, "action": "created"},
+            )
+        return CLIResult(
+            status="failure", message=f"Failed to write {doc_type} document", exit_code=1
+        )
 
     def _get_builtin_ai_templates(self) -> list[Template]:
         """Get built-in AI-specific templates."""
