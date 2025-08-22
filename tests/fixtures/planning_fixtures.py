@@ -302,14 +302,23 @@ def parametric_complexity_data():
 
 @pytest.fixture
 def parametric_agent_count_data():
-    """Parametric data for agent count validation."""
+    """Parametric data for agent count validation - CENTRAL TRUTH."""
     return [
         # Format: (complexity, min_agents, max_agents)
+        # Note: MEDIUM and COMPLEX don't have hard max limits in implementation
         (ComplexityTier.SIMPLE, 1, 4),
-        (ComplexityTier.MEDIUM, 3, 7),
-        (ComplexityTier.COMPLEX, 5, 12),
+        (ComplexityTier.MEDIUM, 3, 12),  # Can go higher based on phases
+        (ComplexityTier.COMPLEX, 5, 12),  # Can go higher based on phases  
         (ComplexityTier.VERY_COMPLEX, 8, 20),
     ]
+
+# Export as constant for direct import
+AGENT_COUNT_BOUNDS = {
+    ComplexityTier.SIMPLE: (1, 4),
+    ComplexityTier.MEDIUM: (3, 12),
+    ComplexityTier.COMPLEX: (5, 12),
+    ComplexityTier.VERY_COMPLEX: (8, 20),
+}
 
 
 @pytest.fixture

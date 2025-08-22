@@ -288,24 +288,32 @@ class AgentComposer:
 
         # Task context if provided
         if "task_context" in agent_spec:
-            prompt_parts.append(f"TASK CONTEXT: {agent_spec['task_context']}\n")
+            sanitized_context = self._sanitize_context(str(agent_spec['task_context']))
+            prompt_parts.append(f"TASK CONTEXT: {sanitized_context}\n")
 
         # Identity
         identity = agent_spec.get("identity", {})
-        prompt_parts.append(
-            f"You are executing as: {identity.get('id', 'unknown_agent')}"
-        )
+        id_value = self._sanitize_context(str(identity.get('id', 'unknown_agent')))
+        prompt_parts.append(f"You are executing as: {id_value}")
         prompt_parts.append(f"Type: {identity.get('type', 'general')}")
-        prompt_parts.append(
-            f"Capabilities: {', '.join(identity.get('capabilities', []))}"
-        )
-        prompt_parts.append(f"Tools: {', '.join(identity.get('tools', []))}")
+        
+        # Sanitize capabilities list
+        capabilities = identity.get('capabilities', [])
+        sanitized_caps = [self._sanitize_context(str(cap)) for cap in capabilities]
+        prompt_parts.append(f"Capabilities: {', '.join(sanitized_caps)}")
+        
+        # Sanitize tools list
+        tools = identity.get('tools', [])
+        sanitized_tools = [self._sanitize_context(str(tool)) for tool in tools]
+        prompt_parts.append(f"Tools: {', '.join(sanitized_tools)}")
 
         # Role and Purpose
         if agent_spec.get("role"):
-            prompt_parts.append(f"\nRole: {agent_spec['role']}")
+            sanitized_role = self._sanitize_context(str(agent_spec['role']))
+            prompt_parts.append(f"\nRole: {sanitized_role}")
         if agent_spec.get("purpose"):
-            prompt_parts.append(f"\nPurpose: {agent_spec['purpose']}")
+            sanitized_purpose = self._sanitize_context(str(agent_spec['purpose']))
+            prompt_parts.append(f"\nPurpose: {sanitized_purpose}")
 
         # Domain expertise if loaded
         if agent_spec.get("domains"):
@@ -334,11 +342,13 @@ class AgentComposer:
 
         # Core capabilities
         if agent_spec.get("capabilities"):
-            prompt_parts.append(f"\nCore Capabilities:\n{agent_spec['capabilities']}")
+            sanitized_capabilities = self._sanitize_context(str(agent_spec['capabilities']))
+            prompt_parts.append(f"\nCore Capabilities:\n{sanitized_capabilities}")
 
         # Decision logic
         if agent_spec.get("decision_logic"):
-            prompt_parts.append(f"\nDecision Logic:\n{agent_spec['decision_logic']}")
+            sanitized_logic = self._sanitize_context(str(agent_spec['decision_logic']))
+            prompt_parts.append(f"\nDecision Logic:\n{sanitized_logic}")
 
         if include_coordination:
             prompt_parts.append("\n--- COORDINATION PROTOCOL ---")
@@ -511,6 +521,7 @@ class AgentComposer:
             r"\bsystem\s*:",
             r"\bassistant\s*:",
             r"\buser\s*:",
+            r"\bhuman\s*:",
             r"<\s*/?s*system\s*>",
             r"```\s*system",
             # Command injection patterns

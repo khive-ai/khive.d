@@ -12,11 +12,11 @@ from lionagi.protocols.types import AssistantResponse, Graph
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     AgentRequest,
-    ComposerRequest,
-    FanoutResponse,
-    FanoutWithGatedRefinementResponse,
+    MultiPhaseOrchestrationResponse,
+    GatedMultiPhaseOrchestrationResponse,
     OrchestrationPlan,
 )
+from khive.services.composition.parts import ComposerRequest
 
 
 @pytest.fixture
@@ -157,8 +157,8 @@ def sample_orchestration_plan(sample_agent_request):
 
 @pytest.fixture
 def sample_fanout_response():
-    """Sample FanoutResponse for testing."""
-    return FanoutResponse(
+    """Sample MultiPhaseOrchestrationResponse for testing."""
+    return MultiPhaseOrchestrationResponse(
         synth_result="Test synthesis result",
         initial_nodes=["node1", "node2"],
     )
@@ -166,8 +166,8 @@ def sample_fanout_response():
 
 @pytest.fixture
 def sample_gated_response():
-    """Sample FanoutWithGatedRefinementResponse for testing."""
-    return FanoutWithGatedRefinementResponse(
+    """Sample GatedMultiPhaseOrchestrationResponse for testing."""
+    return GatedMultiPhaseOrchestrationResponse(
         synth_result="Test synthesis result",
         initial_nodes=["node1", "node2"],
         gate_passed=True,

@@ -12,9 +12,9 @@ from lionagi.service.imodel import iModel
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     AgentRequest,
-    ComposerRequest,
     OrchestrationPlan,
 )
+from khive.services.composition.parts import ComposerRequest
 
 
 class TestLionOrchestratorInitialization:

@@ -10,7 +10,7 @@ import pytest
 from lionagi.service.imodel import iModel
 
 from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.orchestration.parts import FanoutWithGatedRefinementResponse
+from khive.services.orchestration.parts import GatedMultiPhaseOrchestrationResponse
 
 
 class TestSessionLifecycleManagement:
@@ -699,7 +699,7 @@ class TestAdvancedWorkflowCoordination:
                 assert len(gate_events) >= 1  # At least one gate evaluation
 
                 # Verify result structure
-                assert isinstance(result, dict | FanoutWithGatedRefinementResponse)
+                assert isinstance(result, dict | GatedMultiPhaseOrchestrationResponse)
 
     @pytest.mark.asyncio
     async def test_multi_agent_coordination_with_dependencies(
