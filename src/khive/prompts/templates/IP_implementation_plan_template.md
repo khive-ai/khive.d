@@ -1,13 +1,13 @@
 ---
-title: "Implementation Plan Template"
-by: "khive-implementer"
-created: "2025-04-12"
-updated: "2025-04-12"
-version: "1.2"
-doc_type: "IP"
-output_subdir: "workspace/{session_id}/docs"
-filename_prefix: "IP"
-description: "Template for creating detailed implementation plans for khive components following TDD principles"
+title: "Implementation Plan - Issue #{{ISSUE_NUMBER}}"
+description: "Detailed implementation plan for khive components"
+file_path: ".khive/reports/IP/IP_{{ISSUE_NUMBER_PADDED}}.md"  # e.g., IP_00123.md
+issue: "#{{ISSUE_NUMBER}}"  # GitHub issue number
+by: "{{AGENT_ROLE}}"  # Agent should add their role here (e.g., implementer, architect)
+created: "{{DATE}}"
+updated: "{{DATE}}"
+version: "1.0"
+tags: ["implementation", "planning", "deliverable"]
 ---
 
 # Guidance

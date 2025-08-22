@@ -1,13 +1,13 @@
 ---
-title: "Code Review Template"
-by: "khive-reviewer"
-created: "2025-04-12"
-updated: "2025-04-12"
-version: "1.2"
-doc_type: "CRR"
-output_subdir: "workspace/{session_id}/docs"
-filename_prefix: "CRR"
-description: "Template for conducting thorough code reviews of khive components"
+title: "Code Review Report - Issue #{{ISSUE_NUMBER}}"
+description: "Code review for khive components"
+file_path: ".khive/reports/CRR/CRR_{{ISSUE_NUMBER_PADDED}}.md"  # e.g., CRR_00123.md
+issue: "#{{ISSUE_NUMBER}}"  # GitHub issue number
+by: "{{AGENT_ROLE}}"  # Agent should add their role here (e.g., reviewer, tester)
+created: "{{DATE}}"
+updated: "{{DATE}}"
+version: "1.0"
+tags: ["review", "code-quality", "deliverable"]
 ---
 
 # Guidance

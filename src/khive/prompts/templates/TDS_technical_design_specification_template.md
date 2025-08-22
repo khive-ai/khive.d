@@ -1,13 +1,13 @@
 ---
-title: "Technical Design Specification Template"
-by: "khive-architect"
-created: "2025-04-12"
-updated: "2025-04-12"
-version: "1.2"
-doc_type: "TDS"
-output_subdir: "workspace/{session_id}/docs"
-filename_prefix: "TDS"
-description: "Template for creating detailed technical specifications for khive components and services"
+title: "Technical Design Specification - Issue #{{ISSUE_NUMBER}}"
+description: "Detailed technical specification for khive components and services"
+file_path: ".khive/reports/TDS/TDS_{{ISSUE_NUMBER_PADDED}}.md"  # e.g., TDS_00123.md
+issue: "#{{ISSUE_NUMBER}}"  # GitHub issue number
+by: "{{AGENT_ROLE}}"  # Agent should add their role here (e.g., architect, designer)
+created: "{{DATE}}"
+updated: "{{DATE}}"
+version: "1.0"
+tags: ["design", "architecture", "deliverable"]
 ---
 
 # Guidance

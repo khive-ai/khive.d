@@ -1,13 +1,13 @@
 ---
-title: "Research Report Template"
-by: "khive-researcher"
-created: "2025-04-12"
-updated: "2025-04-12"
-version: "1.2"
-doc_type: "RR"
-output_subdir: "workspace/{session_id}/docs"
-filename_prefix: "RR"
-description: "Template for creating comprehensive research reports on technologies and components for the khive project"
+title: "Research Report - Issue #{{ISSUE_NUMBER}}"
+description: "Research findings and analysis for khive project"
+file_path: ".khive/reports/RR/RR_{{ISSUE_NUMBER_PADDED}}.md"  # e.g., RR_00123.md
+issue: "#{{ISSUE_NUMBER}}"  # GitHub issue number
+by: "{{AGENT_ROLE}}"  # Agent should add their role here (e.g., researcher, analyst)
+created: "{{DATE}}"
+updated: "{{DATE}}"
+version: "1.0"
+tags: ["research", "analysis", "deliverable"]
 ---
 
 # Guidance

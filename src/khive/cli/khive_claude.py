@@ -131,36 +131,32 @@ def start(
         if not dashboard_only:
             # Start WebSocket server in background
             click.echo(f"🚀 Starting WebSocket server on {host}:{server_port}")
-            server_process = subprocess.Popen(
-                [
-                    sys.executable,
-                    "-m",
-                    "khive.cli.khive_claude",
-                    "server",
-                    "--host",
-                    host,
-                    "--port",
-                    str(server_port),
-                ]
-            )
+            server_process = subprocess.Popen([
+                sys.executable,
+                "-m",
+                "khive.cli.khive_claude",
+                "server",
+                "--host",
+                host,
+                "--port",
+                str(server_port),
+            ])
             processes.append(("WebSocket Server", server_process))
             time.sleep(2)  # Give server time to start
 
         if not server_only:
             # Start dashboard
             click.echo(f"🎛️  Starting dashboard on http://{host}:{dashboard_port}")
-            dashboard_process = subprocess.Popen(
-                [
-                    sys.executable,
-                    "-m",
-                    "khive.cli.khive_claude",
-                    "dashboard",
-                    "--host",
-                    host,
-                    "--port",
-                    str(dashboard_port),
-                ]
-            )
+            dashboard_process = subprocess.Popen([
+                sys.executable,
+                "-m",
+                "khive.cli.khive_claude",
+                "dashboard",
+                "--host",
+                host,
+                "--port",
+                str(dashboard_port),
+            ])
             processes.append(("Dashboard", dashboard_process))
 
         if processes:

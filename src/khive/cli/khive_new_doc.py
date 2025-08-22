@@ -31,7 +31,21 @@ from typing import Any
 
 from khive.cli.base import CLIResult, ConfigurableCLICommand, cli_command
 from khive.core import TimePolicy
-from khive.utils import BaseConfig, ensure_directory, log_msg, safe_write_file, warn_msg
+from khive.services.artifacts import (
+    ArtifactsConfig,
+    Author,
+    DocumentType,
+    SessionAlreadyExists,
+    create_artifacts_service,
+)
+from khive.utils import (
+    KHIVE_CONFIG_DIR,
+    BaseConfig,
+    ensure_directory,
+    log_msg,
+    safe_write_file,
+    warn_msg,
+)
 
 
 # --- Template Data Classes ---
@@ -151,31 +165,33 @@ class NewDocCommand(ConfigurableCLICommand):
         )
         parser.add_argument(
             "--description",
-            help="Description for new template (with --create-template)",
+            help="Description for new template (with --create-template) or document (with --artifact/--doc)",
         )
-        parser.add_argument(
-            "--ai-enhance",
-            action="store_true",
-            help="Use AI to enhance template with better structure",
-        )
-        
+
         # Session-based document creation
         doc_group = parser.add_mutually_exclusive_group()
         doc_group.add_argument(
             "--artifact",
-            action="store_true",
-            help="Create artifact document in workspace/{session_id}/artifacts/",
+            metavar="NAME",
+            help="Create artifact document in workspace/{session_id}/scratchpad/ with given name",
         )
         doc_group.add_argument(
             "--doc",
             choices=["CRR", "TDS", "RR", "IP", "TI"],
-            help="Create official deliverable document in workspace/{session_id}/docs/",
+            help="Create official deliverable document in .khive/reports/{TYPE}/",
         )
         parser.add_argument(
             "--session-id",
-            help="Session ID for workspace organization (required with --artifact or --doc)",
+            "-s",
+            help="Session ID for workspace organization (required with --artifact)",
         )
-        
+        parser.add_argument(
+            "--issue",
+            "-i",
+            type=int,
+            help="GitHub issue number (required with --doc, will be padded to 5 digits)",
+        )
+
         # Agent deliverable specific arguments (for agent_deliverable template)
         parser.add_argument(
             "--phase",
@@ -210,7 +226,9 @@ class NewDocCommand(ConfigurableCLICommand):
 
         return config
 
-    def _execute(self, args: argparse.Namespace, config: NewDocConfig) -> CLIResult:
+    async def _execute(
+        self, args: argparse.Namespace, config: NewDocConfig
+    ) -> CLIResult:
         """Execute the document creation command."""
         # List templates
         if args.list_templates:
@@ -218,19 +236,9 @@ class NewDocCommand(ConfigurableCLICommand):
 
         # Create new template
         if args.create_template:
-            return self._create_template(
-                args.create_template, args.description, config, args.ai_enhance
-            )
+            return self._create_template(args.create_template, args.description, config)
 
-        # Create document
-        if not args.type_or_template or not args.identifier:
-            return CLIResult(
-                status="failure",
-                message="Both template/type and identifier required",
-                exit_code=1,
-            )
-
-        # Parse variables
+        # Parse variables first (needed for all document types)
         custom_vars = {}
         if args.var:
             for var_spec in args.var:
@@ -242,51 +250,57 @@ class NewDocCommand(ConfigurableCLICommand):
                 key, value = var_spec.split("=", 1)
                 custom_vars[key.strip()] = value.strip()
 
-        # Special handling for session-based documents
-        if args.artifact or args.doc:
+        # Special handling for artifact documents (session-based)
+        if args.artifact:
             if not args.session_id:
                 return CLIResult(
                     status="failure",
-                    message="--session-id is required when using --artifact or --doc",
+                    message="-s/--session-id is required when using --artifact",
                     exit_code=1,
                 )
-            
-            if args.artifact:
-                return self._create_artifact_document(
-                    args.type_or_template or "artifact",
-                    args.identifier,
-                    args.session_id,
-                    config,
-                    args.dest,
-                    custom_vars,
-                    args.force,
-                    args.template_dir,
-                )
-            
-            if args.doc:
-                return self._create_official_document(
-                    args.doc,
-                    args.identifier,
-                    args.session_id,
-                    config,
-                    args.dest,
-                    custom_vars,
-                    args.force,
-                    args.template_dir,
-                )
 
-        # Special handling for agent deliverables
-        if (args.type_or_template == "agent-deliverable" and 
-            args.phase and args.role and args.domain):
-            return self._create_agent_deliverable(
-                args.identifier,
-                args.phase,
-                args.role,
-                args.domain,
+            artifact_name = args.artifact
+            return await self._create_artifact_document(
+                "artifact",  # Always use "artifact" as the type
+                artifact_name,
+                args.session_id,
                 config,
                 args.dest,
                 custom_vars,
                 args.force,
+                args.template_dir,
+                args.description,
+            )
+
+        # Special handling for official deliverable documents (issue-based)
+        if args.doc:
+            if not args.issue:
+                return CLIResult(
+                    status="failure",
+                    message="-i/--issue is required when using --doc (e.g., 'khive new-doc --doc CRR -i 123')",
+                    exit_code=1,
+                )
+
+            return self._create_official_report(
+                args.doc,
+                args.issue,
+                config,
+                args.dest,  # dest_override
+                custom_vars,
+                args.force,
+                args.template_dir,
+                args.description,
+            )
+
+        # Agent deliverables should use regular template system
+        # The agent-deliverable template file should be available in templates directory
+
+        # Regular template-based document creation
+        if not args.type_or_template or not args.identifier:
+            return CLIResult(
+                status="failure",
+                message="Both template/type and identifier required for regular document creation",
+                exit_code=1,
             )
 
         return self._create_document(
@@ -322,17 +336,15 @@ class NewDocCommand(ConfigurableCLICommand):
         template_data = []
         for category, tpls in sorted(categorized.items()):
             for tpl in sorted(tpls, key=lambda t: t.doc_type):
-                template_data.append(
-                    {
-                        "category": category,
-                        "type": tpl.doc_type,
-                        "title": tpl.title,
-                        "description": tpl.description,
-                        "filename": tpl.path.name,
-                        "variables": tpl.variables,
-                        "tags": tpl.tags,
-                    }
-                )
+                template_data.append({
+                    "category": category,
+                    "type": tpl.doc_type,
+                    "title": tpl.title,
+                    "description": tpl.description,
+                    "filename": tpl.path.name,
+                    "variables": tpl.variables,
+                    "tags": tpl.tags,
+                })
 
         return CLIResult(
             status="success",
@@ -345,7 +357,6 @@ class NewDocCommand(ConfigurableCLICommand):
         name: str,
         description: str | None,
         config: NewDocConfig,
-        ai_enhance: bool,
     ) -> CLIResult:
         """Create a new template."""
         # Determine template type and path
@@ -364,9 +375,7 @@ class NewDocCommand(ConfigurableCLICommand):
             )
 
         # Create template content
-        template_content = self._generate_template_content(
-            name, description, ai_enhance
-        )
+        template_content = self._generate_template_content(name, description)
 
         if config.dry_run:
             return CLIResult(
@@ -475,7 +484,16 @@ class NewDocCommand(ConfigurableCLICommand):
     def _discover_templates(
         self, config: NewDocConfig, additional_dir: Path | None = None
     ) -> list[Template]:
-        """Discover all available templates."""
+        """Discover all available templates with copy-from-package logic."""
+        # Primary template directory in KHIVE_CONFIG_DIR
+        primary_template_dir = KHIVE_CONFIG_DIR / "prompts" / "templates"
+
+        # Package template directory (source for copying)
+        package_template_dir = Path(__file__).parent.parent / "prompts" / "templates"
+
+        # Ensure primary template directory exists and copy missing templates
+        self._ensure_templates_available(primary_template_dir, package_template_dir)
+
         search_dirs = []
 
         # Add directories in priority order
@@ -489,13 +507,8 @@ class NewDocCommand(ConfigurableCLICommand):
             else:
                 search_dirs.append(config.project_root / path)
 
-        for default_path in config.default_search_paths:
-            search_dirs.append(config.project_root / default_path)
-
-        # Also check package templates
-        package_templates = Path(__file__).parent / "templates"
-        if package_templates.exists():
-            search_dirs.append(package_templates)
+        # Primary template directory from KHIVE_CONFIG_DIR
+        search_dirs.append(primary_template_dir)
 
         # Find templates
         templates = []
@@ -520,29 +533,56 @@ class NewDocCommand(ConfigurableCLICommand):
                 except Exception as e:
                     warn_msg(f"Error parsing template {template_path.name}: {e}")
 
-        # Add built-in AI templates if none found
-        if not templates and config.ai_mode:
-            templates.extend(self._get_builtin_ai_templates())
-
         return templates
+
+    def _ensure_templates_available(self, target_dir: Path, source_dir: Path) -> None:
+        """Ensure templates are available in target directory, copying from source if needed."""
+        try:
+            # Create target directory if it doesn't exist
+            ensure_directory(target_dir)
+
+            # Check if source directory exists
+            if not source_dir.exists():
+                log_msg(f"Package template directory not found: {source_dir}")
+                return
+
+            # Copy missing templates from package to KHIVE_CONFIG_DIR
+            for source_template in source_dir.glob("*_template.md"):
+                target_template = target_dir / source_template.name
+
+                if not target_template.exists():
+                    log_msg(f"Copying template: {source_template.name}")
+                    try:
+                        content = source_template.read_text(encoding="utf-8")
+                        safe_write_file(target_template, content)
+                    except Exception as e:
+                        warn_msg(f"Failed to copy template {source_template.name}: {e}")
+
+        except Exception as e:
+            warn_msg(f"Failed to ensure templates available: {e}")
 
     def _parse_template(self, path: Path) -> Template:
         """Parse a template file."""
         content = path.read_text(encoding="utf-8")
 
-        # Parse front matter
+        # Parse front matter using YAML
         front_matter_match = re.match(
             r"^---\s*\n(.*?)\n---\s*\n(.*)$", content, re.DOTALL
         )
 
         if front_matter_match:
             front_matter_text, body = front_matter_match.groups()
-            meta = {}
+            try:
+                import yaml
 
-            for line in front_matter_text.splitlines():
-                if ":" in line:
-                    key, value = line.split(":", 1)
-                    meta[key.strip()] = value.strip().strip("\"'")
+                meta = yaml.safe_load(front_matter_text) or {}
+            except yaml.YAMLError:
+                # Fallback to simple parsing if YAML fails
+                meta = {}
+                for line in front_matter_text.splitlines():
+                    if ":" in line:
+                        key, value = line.split(":", 1)
+                        meta[key.strip()] = value.strip().strip("\"'")
         else:
             meta = {}
             body = content
@@ -556,10 +596,20 @@ class NewDocCommand(ConfigurableCLICommand):
 
         # AI-specific metadata
         ai_context = meta.get("ai_context", "")
-        variables = [
-            v.strip() for v in meta.get("variables", "").split(",") if v.strip()
-        ]
-        tags = [t.strip() for t in meta.get("tags", "").split(",") if t.strip()]
+
+        # Handle variables - can be comma-separated string or list
+        variables_raw = meta.get("variables", "")
+        if isinstance(variables_raw, list):
+            variables = variables_raw
+        else:
+            variables = [v.strip() for v in str(variables_raw).split(",") if v.strip()]
+
+        # Handle tags - can be YAML list or comma-separated string
+        tags_raw = meta.get("tags", "")
+        if isinstance(tags_raw, list):
+            tags = tags_raw
+        else:
+            tags = [t.strip() for t in str(tags_raw).split(",") if t.strip()]
 
         # Find variables in body
         found_vars = set(re.findall(r"\{\{(\w+)\}\}", body))
@@ -624,16 +674,17 @@ class NewDocCommand(ConfigurableCLICommand):
             "identifier": variables.get("IDENTIFIER", ""),
         }
 
-        # Add custom metadata
-        for key, value in template.meta.items():
-            if key not in [
-                "doc_type",
-                "output_subdir",
-                "filename_prefix",
-                "variables",
-                "tags",
-            ]:
-                output_meta[key] = self._substitute_vars(value, variables)
+        # Add custom metadata (ensure meta is a dict)
+        if isinstance(template.meta, dict):
+            for key, value in template.meta.items():
+                if key not in [
+                    "doc_type",
+                    "output_subdir",
+                    "filename_prefix",
+                    "variables",
+                    "tags",
+                ]:
+                    output_meta[key] = self._substitute_vars(value, variables)
 
         # Build final document
         lines = ["---"]
@@ -643,8 +694,12 @@ class NewDocCommand(ConfigurableCLICommand):
 
         return "\n".join(lines)
 
-    def _substitute_vars(self, text: str, variables: dict[str, str]) -> str:
+    def _substitute_vars(self, text: str | Any, variables: dict[str, str]) -> str | Any:
         """Substitute variables in text."""
+        # Handle non-string values (lists, bools, etc.)
+        if not isinstance(text, str):
+            return text
+
         for key, value in variables.items():
             text = text.replace(f"{{{{{key}}}}}", str(value))
             text = text.replace(f"{{{key}}}", str(value))
@@ -666,82 +721,24 @@ class NewDocCommand(ConfigurableCLICommand):
             )
             return os.environ.get("USER", "Unknown")
 
-    def _generate_template_content(
-        self, name: str, description: str | None, ai_enhance: bool
-    ) -> str:
-        """Generate content for a new template."""
-        if ai_enhance:
-            # Enhanced AI-aware template
-            return f"""---
+    def _generate_template_content(self, name: str, description: str | None) -> str:
+        """Generate minimal template metadata - actual templates should be files."""
+        # Generate only minimal metadata, templates should be actual files
+        return f"""---
 doc_type: {name.lower().replace(" ", "_")}
 title: {{{{IDENTIFIER}}}} - {name}
 description: {description or f"Template for {name} documents"}
 output_subdir: {name.lower().replace(" ", "_")}s
 filename_prefix: {name.upper().replace(" ", "_")}
-variables: IDENTIFIER, DATE, AUTHOR, PROJECT
-tags: ai, documentation
-ai_context: |
-  This template is used for creating {name} documents.
-  It should help structure information in a clear, AI-friendly format.
+variables: IDENTIFIER, DATE
 ---
 
-# {{{{title}}}}
+# {{{{IDENTIFIER}}}}
 
-**Date**: {{{{DATE}}}}
-**Author**: {{{{AUTHOR}}}}
-**Project**: {{{{PROJECT}}}}
-**Identifier**: {{{{IDENTIFIER}}}}
-
-## Overview
-
-<!-- Brief description of this {name} -->
-
-## Context
-
-<!-- Relevant background information -->
-
-## Content
-
-<!-- Main content goes here -->
-
-### Key Points
-
-1.
-2.
-3.
-
-## Metadata
-
-- **Created**: {{{{DATE}}}}
-- **Last Modified**: {{{{DATE}}}}
-- **Status**: Draft
-- **Version**: 1.0.0
-
-## References
-
-<!-- Links to related documents, code, or resources -->
-
----
-*Generated with khive document scaffolder*
-"""
-        # Basic template
-        return f"""---
-doc_type: {name.lower().replace(" ", "_")}
-title: {name} - {{{{IDENTIFIER}}}}
----
-
-# {{{{title}}}}
-
-**Date**: {{{{DATE}}}}
-**Identifier**: {{{{IDENTIFIER}}}}
-
-## Content
-
-<!-- Add your content here -->
-
+_Template content should be added here_
 """
 
-    def _create_artifact_document(
+    async def _create_artifact_document(
         self,
         type_or_template: str,
         identifier: str,
@@ -751,340 +748,248 @@ title: {name} - {{{{IDENTIFIER}}}}
         custom_vars: dict[str, str],
         force: bool,
         additional_template_dir: Path | None,
+        description: str | None = None,
     ) -> CLIResult:
-        """Create an artifact document in session_id/artifacts/."""
-        # Prepare output path for artifacts
-        base_dir = dest_override or (config.project_root / ".khive")
-        output_dir = base_dir / "workspace" / session_id / "artifacts"
-        
-        # Sanitize identifier
-        safe_id = re.sub(r"[^\w\-.]", "_", identifier)
-        filename = f"{type_or_template}_{safe_id}.md"
-        output_path = output_dir / filename
+        """Create an artifact document using the artifacts service."""
+        try:
+            # Initialize artifacts service
+            workspace_dir = dest_override or (
+                config.project_root / ".khive" / "workspace"
+            )
+            artifacts_config = ArtifactsConfig(workspace_root=workspace_dir)
+            artifacts_service = create_artifacts_service(artifacts_config)
 
-        # Check existing file
-        if output_path.exists() and not force:
-            return CLIResult(
-                status="failure",
-                message=f"Artifact exists: {output_path.name} (use --force to overwrite)",
-                exit_code=1,
+            # Create author from user info
+            author = Author(id=f"cli_user_{session_id}", role="user")
+
+            # Sanitize identifier for document name
+            safe_id = re.sub(r"[^\w\-.]", "_", identifier)
+            doc_name = f"{type_or_template}_{safe_id}"
+
+            # Check if document already exists and handle accordingly
+            doc_exists = await artifacts_service.document_exists(
+                session_id, doc_name, DocumentType.SCRATCHPAD
             )
 
-        # Prepare variables for artifact
-        all_vars = {
-            **config.default_vars,
-            **custom_vars,
-            "DATE": TimePolicy.now_local().isoformat()[:10],
-            "DATETIME": TimePolicy.now_local().isoformat(),
-            "IDENTIFIER": identifier,
-            "SESSION_ID": session_id,
-            "TYPE": type_or_template,
-            "PROJECT_ROOT": str(config.project_root),
-            "USER": self._get_user_info(),
-        }
+            if doc_exists and not force:
+                return CLIResult(
+                    status="failure",
+                    message=f"Artifact exists: {doc_name}.md (use --force to overwrite)",
+                    exit_code=1,
+                )
 
-        # Create simple artifact content
-        content = f"""---
-title: "{type_or_template.title()} - {identifier}"
-session_id: "{session_id}"
-created: "{all_vars['DATETIME']}"
-type: "artifact"
----
+            # Prepare content with template variables
+            all_vars = {
+                **config.default_vars,
+                **custom_vars,
+                "DATE": TimePolicy.now_local().isoformat()[:10],
+                "DATETIME": TimePolicy.now_local().isoformat(),
+                "IDENTIFIER": identifier,
+                "SESSION_ID": session_id,
+                "TYPE": type_or_template,
+                "PROJECT_ROOT": str(config.project_root),
+                "USER": self._get_user_info(),
+            }
 
-# {type_or_template.title()}: {identifier}
+            # Try to find a template for artifacts
+            templates = self._discover_templates(config, additional_template_dir)
+            artifact_template = None
+            for tpl in templates:
+                if tpl.doc_type == "artifact" or tpl.doc_type == "scratchpad":
+                    artifact_template = tpl
+                    break
 
-**Session ID**: {session_id}  
-**Created**: {all_vars['DATE']}  
-**Type**: Artifact (working document)
+            if artifact_template:
+                # Use template if found
+                content = self._render_template(artifact_template, all_vars)
+            else:
+                # Minimal fallback if no template
+                content = f"# {identifier}\n\nSession: {session_id}\nDate: {all_vars['DATE']}\n\n"
 
-## Content
+            if config.dry_run:
+                return CLIResult(
+                    status="success",
+                    message=f"Would create artifact: workspace/{session_id}/scratchpad/{doc_name}.md",
+                    data={
+                        "session_id": session_id,
+                        "doc_name": doc_name,
+                        "content_preview": content[:300] + "...",
+                    },
+                )
 
-_Add your working notes, research, or interim findings here..._
+            # Create session if it doesn't exist
+            try:
+                await artifacts_service.create_session(session_id)
+            except SessionAlreadyExists:
+                # Session already exists, which is fine
+                pass
 
-## Notes
+            # Create or update the document using artifacts service
+            if doc_exists and force:
+                # Update existing document
+                document = await artifacts_service.update_document(
+                    session_id=session_id,
+                    doc_name=doc_name,
+                    doc_type=DocumentType.SCRATCHPAD,
+                    new_content=content,
+                    author=author,
+                )
+            else:
+                # Create new document
+                document = await artifacts_service.create_document(
+                    session_id=session_id,
+                    doc_name=doc_name,
+                    doc_type=DocumentType.SCRATCHPAD,
+                    content=content,
+                    author=author,
+                    description=description or custom_vars.get("description"),
+                    agent_role=author.role,
+                    agent_domain=None,  # No domain for CLI user
+                    metadata={
+                        "created_via": "cli",
+                        "type_or_template": type_or_template,
+                    },
+                )
 
-- This is a working artifact document
-- Feel free to update as work progresses
-- Use `khive new-doc --doc TYPE` for official deliverables
+            # Get the actual file path for user feedback
+            doc_path = workspace_dir / session_id / "scratchpad" / f"{doc_name}.md"
+            relative_path = (
+                doc_path.relative_to(config.project_root)
+                if config.project_root in doc_path.parents
+                else doc_path
+            )
 
----
-_Working artifact in session {session_id}_
-"""
-
-        if config.dry_run:
             return CLIResult(
                 status="success",
-                message=f"Would create artifact: {output_path.relative_to(config.project_root)}",
-                data={"path": str(output_path), "content_preview": content[:300] + "..."},
+                message=f"Created artifact: {relative_path}",
+                data={
+                    "path": str(doc_path),
+                    "session_id": session_id,
+                    "document_name": doc_name,
+                    "type": "artifact",
+                    "version": document.version,
+                },
             )
 
-        # Write file
-        ensure_directory(output_dir)
-        if safe_write_file(output_path, content):
+        except Exception as e:
             return CLIResult(
-                status="success",
-                message=f"Created artifact: {output_path.relative_to(config.project_root)}",
-                data={"path": str(output_path), "type": "artifact"},
+                status="failure", message=f"Failed to create artifact: {e}", exit_code=1
             )
-        return CLIResult(
-            status="failure", message="Failed to write artifact", exit_code=1
-        )
 
-    def _create_official_document(
+    def _create_official_report(
         self,
         doc_type: str,
-        identifier: str,
-        session_id: str,
+        issue_number: int,
         config: NewDocConfig,
         dest_override: Path | None,
         custom_vars: dict[str, str],
         force: bool,
         additional_template_dir: Path | None,
+        description: str | None = None,
     ) -> CLIResult:
-        """Create or update official document in session_id/docs/."""
-        # Prepare output path for official docs
-        base_dir = dest_override or (config.project_root / ".khive")
-        output_dir = base_dir / "workspace" / session_id / "docs"
-        
-        filename = f"{doc_type}_{identifier}.md"
-        output_path = output_dir / filename
+        """Create official report document in .khive/reports/{TYPE}/ structure."""
+        try:
+            # Pad issue number to 5 digits
+            issue_padded = str(issue_number).zfill(5)
 
-        # Check if document already exists
-        if output_path.exists() and not force:
-            return CLIResult(
-                status="success",
-                message=f"Document exists: {output_path.relative_to(config.project_root)}. Please edit the existing file to add your contributions.",
-                data={
-                    "path": str(output_path),
-                    "action": "edit_existing",
-                    "instruction": f"The {doc_type} document already exists. Please read and edit the existing file to add your contributions rather than creating a new one.",
-                },
+            # Determine output path
+            reports_dir = dest_override or (
+                config.project_root / ".khive" / "reports" / doc_type
             )
+            ensure_directory(reports_dir)
 
-        # Find the appropriate template
-        template_name = f"{doc_type}_{doc_type.lower()}_template"  # e.g., CRR_code_review_template
-        templates = self._discover_templates(config, additional_template_dir)
-        
-        template = None
-        for tpl in templates:
-            if tpl.path.stem == template_name or tpl.doc_type == doc_type:
-                template = tpl
-                break
-                
-        if not template:
+            # Create document name with padded issue number
+            doc_name = f"{doc_type}_{issue_padded}"
+            doc_path = reports_dir / f"{doc_name}.md"
+
+            # Check if document already exists
+            if doc_path.exists() and not force:
+                relative_path = (
+                    doc_path.relative_to(config.project_root)
+                    if config.project_root in doc_path.parents
+                    else doc_path
+                )
+                return CLIResult(
+                    status="failure",
+                    message=f"Report exists: {relative_path} (use --force to overwrite)",
+                    exit_code=1,
+                )
+
+            # Find the appropriate template
+            templates = self._discover_templates(config, additional_template_dir)
+
+            template = None
+            for tpl in templates:
+                # Match by template file name pattern
+                if tpl.path.stem.startswith(f"{doc_type}_"):
+                    template = tpl
+                    break
+
+            if not template:
+                return CLIResult(
+                    status="failure",
+                    message=f"Template for {doc_type} not found",
+                    exit_code=1,
+                )
+
+            # Prepare variables
+            all_vars = {
+                **config.default_vars,
+                **custom_vars,
+                "DATE": TimePolicy.now_local().isoformat()[:10],
+                "DATETIME": TimePolicy.now_local().isoformat(),
+                "ISSUE_NUMBER": str(issue_number),
+                "ISSUE_NUMBER_PADDED": issue_padded,
+                "AGENT_ROLE": custom_vars.get("role", "user"),
+                "PROJECT_ROOT": str(config.project_root),
+                "USER": self._get_user_info(),
+            }
+
+            # Render content using existing template system
+            content = self._render_template(template, all_vars)
+
+            if config.dry_run:
+                return CLIResult(
+                    status="success",
+                    message=f"Would create {doc_type} report: {doc_path.relative_to(config.project_root)}",
+                    data={
+                        "path": str(doc_path),
+                        "issue": issue_number,
+                        "template": doc_type,
+                    },
+                )
+
+            # Write the report file
+            if safe_write_file(doc_path, content):
+                relative_path = (
+                    doc_path.relative_to(config.project_root)
+                    if config.project_root in doc_path.parents
+                    else doc_path
+                )
+
+                return CLIResult(
+                    status="success",
+                    message=f"Created {doc_type} report: {relative_path}",
+                    data={
+                        "path": str(doc_path),
+                        "template": doc_type,
+                        "issue": issue_number,
+                        "issue_padded": issue_padded,
+                        "action": "created",
+                    },
+                )
             return CLIResult(
                 status="failure",
-                message=f"Template for {doc_type} not found",
+                message=f"Failed to write {doc_type} report",
                 exit_code=1,
             )
 
-        # Prepare variables
-        all_vars = {
-            **config.default_vars,
-            **custom_vars,
-            "DATE": TimePolicy.now_local().isoformat()[:10],
-            "DATETIME": TimePolicy.now_local().isoformat(),
-            "IDENTIFIER": identifier,
-            "SESSION_ID": session_id,
-            "component_name": identifier,
-            "phase": custom_vars.get("phase", ""),
-            "PROJECT_ROOT": str(config.project_root),
-            "USER": self._get_user_info(),
-        }
-
-        # Render content
-        content = self._render_template(template, all_vars)
-
-        if config.dry_run:
+        except Exception as e:
             return CLIResult(
-                status="success",
-                message=f"Would create {doc_type}: {output_path.relative_to(config.project_root)}",
-                data={"path": str(output_path), "template": doc_type},
+                status="failure",
+                message=f"Failed to create {doc_type} document: {e}",
+                exit_code=1,
             )
-
-        # Write file
-        ensure_directory(output_dir)
-        if safe_write_file(output_path, content):
-            return CLIResult(
-                status="success",
-                message=f"Created {doc_type}: {output_path.relative_to(config.project_root)}",
-                data={"path": str(output_path), "template": doc_type, "action": "created"},
-            )
-        return CLIResult(
-            status="failure", message=f"Failed to write {doc_type} document", exit_code=1
-        )
-
-    def _get_builtin_ai_templates(self) -> list[Template]:
-        """Get built-in AI-specific templates."""
-        builtin = []
-
-        # System Prompt Template
-        builtin.append(
-            Template(
-                path=Path("builtin://system_prompt"),
-                doc_type="system_prompt",
-                title="System Prompt",
-                description="AI system prompt configuration",
-                output_subdir="prompts/system",
-                filename_prefix="PROMPT",
-                meta={},
-                body_template="""# System Prompt: {{IDENTIFIER}}
-
-## Purpose
-{{PURPOSE}}
-
-## Core Instructions
-You are an AI assistant with the following capabilities and constraints:
-
-### Capabilities
-- {{CAPABILITY_1}}
-- {{CAPABILITY_2}}
-- {{CAPABILITY_3}}
-
-### Constraints
-- {{CONSTRAINT_1}}
-- {{CONSTRAINT_2}}
-
-## Response Guidelines
-1. Always maintain a {{TONE}} tone
-2. Prioritize {{PRIORITY}}
-3. Format responses as {{FORMAT}}
-
-## Context
-{{CONTEXT}}
-
-## Examples
-### Good Response
-```
-{{GOOD_EXAMPLE}}
-```
-
-### Avoid
-```
-{{BAD_EXAMPLE}}
-```
-""",
-                ai_context="System prompt for configuring AI behavior",
-                variables=["IDENTIFIER", "PURPOSE", "CAPABILITY_1", "TONE", "PRIORITY"],
-                tags=["ai", "prompts", "system"],
-            )
-        )
-
-        # Conversation Log Template
-        builtin.append(
-            Template(
-                path=Path("builtin://conversation"),
-                doc_type="conversation",
-                title="AI Conversation Log",
-                description="Record of AI conversation for analysis",
-                output_subdir="conversations",
-                filename_prefix="CONV",
-                meta={},
-                body_template="""# Conversation: {{IDENTIFIER}}
-
-## Metadata
-- **Date**: {{DATE}}
-- **Participants**: {{PARTICIPANTS}}
-- **Model**: {{MODEL}}
-- **Purpose**: {{PURPOSE}}
-- **Duration**: {{DURATION}}
-
-## Settings
-- Temperature: {{TEMPERATURE}}
-- Max Tokens: {{MAX_TOKENS}}
-- System Prompt: {{SYSTEM_PROMPT_REF}}
-
-## Conversation
-
-### Turn 1 - User
-{{USER_1}}
-
-### Turn 1 - Assistant
-{{ASSISTANT_1}}
-
-### Turn 2 - User
-{{USER_2}}
-
-### Turn 2 - Assistant
-{{ASSISTANT_2}}
-
-## Analysis
-### Key Topics
-- {{TOPIC_1}}
-- {{TOPIC_2}}
-
-### Outcomes
-{{OUTCOMES}}
-
-### Follow-up Actions
-1. {{ACTION_1}}
-2. {{ACTION_2}}
-""",
-                ai_context="Log AI conversations for review and analysis",
-                variables=["IDENTIFIER", "MODEL", "PURPOSE", "PARTICIPANTS"],
-                tags=["ai", "conversations", "logs"],
-            )
-        )
-
-        # Evaluation Report Template
-        builtin.append(
-            Template(
-                path=Path("builtin://evaluation"),
-                doc_type="evaluation",
-                title="AI Evaluation Report",
-                description="Evaluation results for AI models or prompts",
-                output_subdir="evaluations",
-                filename_prefix="EVAL",
-                meta={},
-                body_template="""# Evaluation Report: {{IDENTIFIER}}
-
-## Summary
-- **Date**: {{DATE}}
-- **Evaluator**: {{EVALUATOR}}
-- **Subject**: {{SUBJECT}}
-- **Overall Score**: {{SCORE}}/10
-
-## Test Configuration
-- **Model**: {{MODEL}}
-- **Dataset**: {{DATASET}}
-- **Metrics**: {{METRICS}}
-- **Test Cases**: {{NUM_CASES}}
-
-## Results
-
-### Quantitative Metrics
-| Metric | Value | Baseline | Delta |
-|--------|-------|----------|-------|
-| {{METRIC_1}} | {{VALUE_1}} | {{BASELINE_1}} | {{DELTA_1}} |
-| {{METRIC_2}} | {{VALUE_2}} | {{BASELINE_2}} | {{DELTA_2}} |
-
-### Qualitative Assessment
-#### Strengths
-- {{STRENGTH_1}}
-- {{STRENGTH_2}}
-
-#### Weaknesses
-- {{WEAKNESS_1}}
-- {{WEAKNESS_2}}
-
-## Recommendations
-1. {{RECOMMENDATION_1}}
-2. {{RECOMMENDATION_2}}
-
-## Appendix
-### Test Case Examples
-{{TEST_EXAMPLES}}
-
-### Raw Data
-{{RAW_DATA_REF}}
-""",
-                ai_context="Document AI model or prompt evaluation results",
-                variables=["IDENTIFIER", "MODEL", "DATASET", "SCORE", "EVALUATOR"],
-                tags=["ai", "evaluation", "testing"],
-            )
-        )
-
-        return builtin
 
 
 def main(argv: list[str] | None = None) -> None:

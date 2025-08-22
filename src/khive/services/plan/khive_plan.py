@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 
-from .parts import PlannerRequest
+from .parts import ComplexityLevel, PlannerRequest
 from .planner_service import PlannerService
 
 __all__ = ("main",)
@@ -147,6 +147,30 @@ async def run_planning(
                                 f"     • {agent.role} ({agent.domain}) - Priority: {agent.priority:.1f}"
                             )
                             print(f"       Reasoning: {agent.reasoning}")
+
+            # Show spawn commands for Claude Code
+            if response.spawn_commands and not json_format:
+                print("\n🚀 Task Agent Commands (for Claude Code):")
+                print("=" * 60)
+
+                # For simple tasks, show as single BatchTool command
+                if (
+                    response.complexity == ComplexityLevel.SIMPLE
+                    and len(response.spawn_commands) > 1
+                ):
+                    print("\n[BatchTool]:")
+                    for cmd in response.spawn_commands:
+                        # Show each Task on its own line
+                        print(f"\n{cmd}")
+                else:
+                    # For complex tasks or single agent, show commands directly
+                    for cmd in response.spawn_commands:
+                        print(f"\n{cmd}")
+
+                print("\n" + "=" * 60)
+                print(
+                    "\n💡 Copy and execute these commands in Claude Code to spawn agents"
+                )
         else:
             print(f"❌ Planning failed: {response.summary}")
             if response.error:
@@ -192,11 +216,11 @@ def main():
     )
 
     parser.add_argument("--json", action="store_true", help="Output raw JSON response")
-    
+
     parser.add_argument(
-        "--json-format", 
-        action="store_true", 
-        help="Use JSON format (OrchestrationPlan) for commands instead of BatchTool format"
+        "--json-format",
+        action="store_true",
+        help="Use JSON format (OrchestrationPlan) for commands instead of BatchTool format",
     )
 
     args = parser.parse_args()
@@ -234,11 +258,7 @@ def main():
     # Run the planning
     asyncio.run(
         run_planning(
-            task_description, 
-            context, 
-            args.time_budget, 
-            args.json,
-            args.json_format
+            task_description, context, args.time_budget, args.json, args.json_format
         )
     )
 

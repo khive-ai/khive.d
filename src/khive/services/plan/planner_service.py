@@ -126,6 +126,7 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
     def _load_available_roles(self) -> list[str]:
         """Scan agents directory for available roles"""
         from khive.utils import KHIVE_CONFIG_DIR
+
         # Get path to user's prompts directory
         agents_path = KHIVE_CONFIG_DIR / "prompts" / "roles"
         roles = []
@@ -140,6 +141,7 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
     def _load_available_domains(self) -> list[str]:
         """Scan domains directory for available domains"""
         from khive.utils import KHIVE_CONFIG_DIR
+
         # Get path to user's prompts directory
         domains_path = KHIVE_CONFIG_DIR / "prompts" / "domains"
         domains = []
@@ -161,6 +163,7 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
     def _load_prompt_templates(self) -> dict:
         """Load prompt templates from YAML file - prefer user customization"""
         from khive.utils import KHIVE_CONFIG_DIR
+
         # First try user-customizable location
         user_prompts_path = KHIVE_CONFIG_DIR / "prompts" / "agent_prompts.yaml"
 
@@ -191,6 +194,7 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
     def _load_decision_matrix(self) -> dict:
         """Load decision matrix YAML for complexity assessment - prefer user customization"""
         from khive.utils import KHIVE_CONFIG_DIR
+
         # First try user-customizable location
         user_matrix_path = KHIVE_CONFIG_DIR / "prompts" / "decision_matrix.yaml"
 
@@ -233,17 +237,22 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
             )
         return self.timeout_manager
 
-    def create_session(self, task_description: str) -> str:
+    def create_session(self, task_description: str, session_id: str = None) -> str:
         """Create new session with artifact management structure"""
-        # Generate session ID with timestamp first for better ordering
-        timestamp = TimePolicy.now_utc().strftime("%Y%m%d_%H%M%S")
-        task_slug = "".join(
-            c for c in task_description.lower()[:15] if c.isalnum() or c in "-_"
-        )
-        session_id = f"{timestamp}_{task_slug}"
+        if session_id is None:
+            # Generate session ID with timestamp first for better ordering
+            timestamp = TimePolicy.now_utc().strftime("%Y%m%d_%H%M%S")
+            task_slug = "".join(
+                c for c in task_description.lower()[:15] if c.isalnum() or c in "-_"
+            )
+            session_id = f"{timestamp}_{task_slug}"
 
         session_dir = self.workspace_dir / session_id
         session_dir.mkdir(exist_ok=True)
+
+        # Create workspace subdirectories
+        (session_dir / "scratchpad").mkdir(exist_ok=True)
+        (session_dir / "deliverable").mkdir(exist_ok=True)
 
         # Initialize artifact registry
         registry = {
@@ -356,10 +365,7 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         # Special phrases that override pattern counts
         if "distributed system" in text:
             hits.append("complex")
-        elif any(pattern in text for pattern in ["entire system", "complete platform"]):
-            hits.append("very_complex")
-        # Check for extremely long requests (likely complex)
-        elif len(text.split()) > 100:
+        elif any(pattern in text for pattern in ["entire system", "complete platform"]) or len(text.split()) > 100:
             hits.append("very_complex")
         # When multiple tier patterns exist, select highest complexity
         elif very_complex_count > 0 and (complex_count > 0 or simple_count > 0):
@@ -387,10 +393,9 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
 
         return hits
 
-
     def select_roles(self, req: Request, complexity: ComplexityTier) -> list[str]:
         """Select appropriate roles based on request and complexity.
-        
+
         Returns a list that may contain duplicate roles for parallel work.
         E.g., [researcher, researcher, implementer, tester, implementer]
         """
@@ -413,31 +418,43 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
                 selected_roles = selected_roles[:4]
             elif len(selected_roles) < 2:
                 selected_roles = ["researcher", "implementer"]
-                
+
         elif complexity == ComplexityTier.MEDIUM:
             # Medium: 3-12 agents, potentially duplicate roles
             if len(selected_roles) < 3:
                 selected_roles.extend(["researcher", "implementer", "analyst"])
-                
+
         elif complexity == ComplexityTier.COMPLEX:
             # Complex: 5-12 agents, add duplicates for parallel work
             if len(selected_roles) < 5:
-                selected_roles.extend(["researcher", "researcher", "implementer", "tester", "reviewer"])
-                
+                selected_roles.extend([
+                    "researcher",
+                    "researcher",
+                    "implementer",
+                    "tester",
+                    "reviewer",
+                ])
+
         elif complexity == ComplexityTier.VERY_COMPLEX:
             # Very complex: 8-20 agents, multiple of each role for parallel work
             if len(selected_roles) < 8:
                 # Add multiple agents of key roles
                 selected_roles.extend([
-                    "researcher", "researcher", "researcher",
-                    "implementer", "implementer", 
-                    "analyst", "analyst",
-                    "tester", "critic", "reviewer"
+                    "researcher",
+                    "researcher",
+                    "researcher",
+                    "implementer",
+                    "implementer",
+                    "analyst",
+                    "analyst",
+                    "tester",
+                    "critic",
+                    "reviewer",
                 ])
 
         # Ensure all roles are valid (but keep duplicates)
         final_roles = [r for r in selected_roles if r in self.available_roles]
-        
+
         # Fallback to minimal set if no roles selected
         if not final_roles:
             final_roles = ["researcher", "implementer"]
@@ -608,16 +625,14 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 agent_id = agent_tasks[i][0]
-                processed_results.append(
-                    {
-                        "agent_id": agent_id,
-                        "status": "error",
-                        "duration": None,
-                        "retry_count": 0,
-                        "error": str(result),
-                        "execution_time": None,
-                    }
-                )
+                processed_results.append({
+                    "agent_id": agent_id,
+                    "status": "error",
+                    "duration": None,
+                    "retry_count": 0,
+                    "error": str(result),
+                    "execution_time": None,
+                })
             else:
                 processed_results.append(result)
 
@@ -725,6 +740,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
     def get_evaluation_configs(self) -> list[dict]:
         """Define different agent perspectives using YAML templates"""
         from khive.utils import KHIVE_CONFIG_DIR
+
         # Get path to user's prompts directory
         dp = KHIVE_CONFIG_DIR / "prompts" / "decision_matrix.yaml"
         decision_matrix_text = dp.read_text() if dp.exists() else ""
@@ -767,14 +783,12 @@ Be different - show YOUR unique perspective on which roles matter most."""
                 gate="thorough",  # Default gate for template
             )
 
-            configs.append(
-                {
-                    "name": agent_config.get("name", agent_name),
-                    "system_prompt": system_prompt,
-                    # "temperature": agent_config.get("temperature", 0.3),
-                    "description": agent_config.get("description", ""),
-                }
-            )
+            configs.append({
+                "name": agent_config.get("name", agent_name),
+                "system_prompt": system_prompt,
+                # "temperature": agent_config.get("temperature", 0.3),
+                "description": agent_config.get("description", ""),
+            })
 
         # Fallback to hardcoded if YAML not available
         if not configs:
@@ -804,7 +818,11 @@ Be different - show YOUR unique perspective on which roles matter most."""
         ]
 
     def build_consensus(
-        self, evaluations: list[dict], request: str = "", command_format: str = "claude", session_id: str = None
+        self,
+        evaluations: list[dict],
+        request: str = "",
+        command_format: str = "claude",
+        session_id: str = None,
     ) -> tuple[str, dict]:
         """Build consensus from multiple evaluations
 
@@ -813,7 +831,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
             request: The original request text
             command_format: Either "claude" for BatchTool format or "json" for orchestration format
             session_id: Session ID for artifact management (created once per orchestration)
-            
+
         Returns:
             Tuple of (formatted_output, consensus_data)
         """
@@ -1016,7 +1034,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
         else:  # claude format (BatchTool)
             output.append("📋 Execution Commands (BatchTool Format for Claude Code):")
             output.append("```javascript")
-        
+
         # Use actual top domains from consensus for the consensus data
         domain_list = (
             [domain for domain, _ in top_domains[:3]]
@@ -1042,24 +1060,28 @@ Be different - show YOUR unique perspective on which roles matter most."""
 
         # NOTE: We don't generate commands here anymore - phases handle this
         # The command generation below is deprecated and will be removed
-        
+
         # Collect agent specifications (allow duplicates for parallel work)
         agent_specs = []
-        dependency_map = self._analyze_role_dependencies(sorted_roles[:15])  # Get more for selection
+        dependency_map = self._analyze_role_dependencies(
+            sorted_roles[:15]
+        )  # Get more for selection
 
         # Build agent list based on consensus with proportional distribution
         agent_specs = []
         target_count = int(avg_agents)
-        
+
         # Calculate total score for normalization
         # Only consider roles with meaningful scores
-        relevant_roles = [(role, score) for role, score in sorted_roles if score >= 0.05]
+        relevant_roles = [
+            (role, score) for role, score in sorted_roles if score >= 0.05
+        ]
         total_score = sum(score for _, score in relevant_roles)
-        
+
         if total_score == 0:
             # Fallback if no scores
             total_score = 1
-            
+
         # Calculate how many agents each role should get based on their weight
         role_allocations = []
         for role, score in relevant_roles:
@@ -1069,37 +1091,37 @@ Be different - show YOUR unique perspective on which roles matter most."""
             # Cap at 3 instances of same role per phase
             agent_count_for_role = min(agent_count_for_role, 3)
             role_allocations.append((role, score, agent_count_for_role))
-        
+
         # Sort by score to prioritize higher-scoring roles
         role_allocations.sort(key=lambda x: x[1], reverse=True)
-        
+
         # Build the agent list
         agent_count = 0
         domain_index = 0
-        
+
         for role, score, allocated_count in role_allocations:
             if agent_count >= target_count:
                 break
-                
+
             # Create the allocated number of agents for this role
             for instance in range(allocated_count):
                 if agent_count >= target_count:
                     break
-                    
+
                 # Rotate through domains for variety
                 raw_domain = domain_list[domain_index % len(domain_list)]
                 canonical_domain = composer.canonicalize_domain(raw_domain)
                 domain_index += 1
-                
+
                 # Adjust priority slightly for duplicate instances
-                adjusted_priority = score * (0.95 ** instance)
-                
+                adjusted_priority = score * (0.95**instance)
+
                 reasoning = (
                     f"{'Parallel instance ' + str(instance + 1) + ' of ' if instance > 0 else ''}"
                     f"{role} for {consensus_complexity} complexity task "
-                    f"(score: {score:.2f}, weight: {score/total_score:.1%})"
+                    f"(score: {score:.2f}, weight: {score / total_score:.1%})"
                 )
-                
+
                 agent_spec = AgentRecommendation(
                     role=role,
                     domain=canonical_domain,
@@ -1108,26 +1130,26 @@ Be different - show YOUR unique perspective on which roles matter most."""
                 )
                 agent_specs.append(agent_spec)
                 agent_count += 1
-        
+
         # If we still need more agents, fill with next best roles
         if agent_count < target_count:
             for role, score in sorted_roles:
                 if agent_count >= target_count:
                     break
-                    
+
                 # Skip if we already have 3 of this role
                 existing_count = sum(1 for spec in agent_specs if spec.role == role)
                 if existing_count >= 3:
                     continue
-                    
+
                 # Skip very low scores
                 if score < 0.05:
                     continue
-                    
+
                 raw_domain = domain_list[domain_index % len(domain_list)]
                 canonical_domain = composer.canonicalize_domain(raw_domain)
                 domain_index += 1
-                
+
                 agent_spec = AgentRecommendation(
                     role=role,
                     domain=canonical_domain,
@@ -1167,7 +1189,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
         if command_format == "json":
             # JSON format for orchestration - just provide the consensus data
             # The orchestrator will determine analysis_type based on its own logic
-            
+
             consensus_json = {
                 "session_id": session_id,
                 "complexity": consensus_complexity_str,
@@ -1175,9 +1197,9 @@ Be different - show YOUR unique perspective on which roles matter most."""
                 "workflow_pattern": consensus_pattern,
                 "quality_level": consensus_quality,
                 "request": request,
-                "agents": []
+                "agents": [],
             }
-            
+
             # Add agent specifications
             for agent_spec in handoff_agent_specs:
                 agent_data = {
@@ -1190,13 +1212,13 @@ Be different - show YOUR unique perspective on which roles matter most."""
                     "context": agent_spec.context,
                     "artifact_path": self.generate_artifact_path(
                         session_id, agent_spec.phase, agent_spec.role, agent_spec.domain
-                    )
+                    ),
                 }
                 consensus_json["agents"].append(agent_data)
-            
+
             # Output the consensus data as JSON
             output.append(json.dumps(consensus_json, indent=2))
-            
+
         else:  # claude format (BatchTool)
             # Generate BatchTool commands for Claude Code
             for agent_spec in handoff_agent_specs:
@@ -1233,7 +1255,9 @@ YOUR TASK:
 Remember: This is PARALLEL EXECUTION - coordinate via shared artifacts!"""
 
                 # Escape prompt for JavaScript
-                escaped_prompt = parallel_context.replace('"', '\\"').replace("\n", "\\n")
+                escaped_prompt = parallel_context.replace('"', '\\"').replace(
+                    "\n", "\\n"
+                )
                 output.append(
                     f'  Task({{ description: "{agent_name}", prompt: "{escaped_prompt}" }})'
                 )
@@ -1287,8 +1311,8 @@ Remember: This is PARALLEL EXECUTION - coordinate via shared artifacts!"""
     ) -> str:
         """Generate artifact management section for Task agent prompts"""
         session_dir = self.workspace_dir / session_id
-        artifact_path = self.generate_artifact_path(
-            session_id, phase, agent_role, domain
+        deliverable_path = (
+            session_dir / "deliverable" / f"{phase}_{agent_role}_{domain}.md"
         )
         registry_path = session_dir / "artifact_registry.json"
 
@@ -1298,59 +1322,84 @@ Remember: This is PARALLEL EXECUTION - coordinate via shared artifacts!"""
             "discovery_phase": [],
             "design_phase": ["discovery_phase"],
             "implementation_phase": ["discovery_phase", "design_phase"],
-            "validation_phase": ["discovery_phase", "design_phase", "implementation_phase"],
-            "refinement_phase": ["discovery_phase", "design_phase", "implementation_phase", "validation_phase"],
+            "validation_phase": [
+                "discovery_phase",
+                "design_phase",
+                "implementation_phase",
+            ],
+            "refinement_phase": [
+                "discovery_phase",
+                "design_phase",
+                "implementation_phase",
+                "validation_phase",
+            ],
             "execution_phase": [],  # Single phase execution
         }
-        
+
         expected_phases = phase_dependencies.get(phase, [])
         expected_artifacts_msg = ""
-        
+
         if expected_phases:
             expected_artifacts_msg = f"""
 
 📚 EXPECTED ARTIFACTS FROM PREVIOUS PHASES:
-- {', '.join(expected_phases)} should be complete
-- Check registry for specific deliverables from these phases"""
+- {", ".join(expected_phases)} should be complete
+- Check scratchpad/ and deliverable/ folders for previous work"""
 
         return f"""
-🗂️ ARTIFACT MANAGEMENT (MANDATORY DELIVERABLE):
-1. **Session ID**: {session_id}
-2. **YOUR MANDATORY DELIVERABLE**: `{artifact_path}`
-3. **Registry**: Automatically managed when you use khive new-doc
-4. **Current Phase**: {phase}{expected_artifacts_msg}
+🗂️ WORKSPACE STRUCTURE:
+- **Session**: {session_id}
+- **Structure**: workspace/{session_id}/
+  - `scratchpad/` - Working documents shared among all agents
+  - `deliverable/` - Final phase deliverables 
+  - `artifact_registry.json` - Auto-managed artifact tracking
 
-📋 DELIVERABLE CREATION PROTOCOL:
-1. **CREATE**: Use `uv run khive new-doc agent-deliverable {session_id} --phase {phase} --role {agent_role} --domain {domain}`
-   - This creates your deliverable template AND registers it safely
-   - No registry conflicts - handled atomically by new-doc
-2. **FILL**: Read the created template and complete all sections
-3. **REFERENCE**: Check `{registry_path}` for previous phase artifacts to build upon
+📋 ARTIFACT CREATION PROTOCOL:
 
-⚠️ REGISTRY SAFETY:
-- **NEVER manually edit** registry.json - let khive new-doc handle it
-- **RESPECT PEERS**: Never modify other agents' deliverables
-- **ATOMIC UPDATES**: khive new-doc ensures safe concurrent registry updates
+1. **WORKING DOCUMENTS** (for notes, research, interim findings):
+   ```bash
+   uv run khive new-doc --artifact "{{name}}" -s {session_id} --description "{{purpose}}"
+   ```
+   - Creates in: `workspace/{session_id}/scratchpad/`
+   - Visible to ALL agents in this session
+   - Use for: Research notes, API findings, design drafts
+
+2. **PHASE DELIVERABLE** (your final output):
+   ```bash
+   uv run khive new-doc agent-deliverable {{identifier}} --phase {phase} --role {agent_role} --domain {domain} -s {session_id}
+   ```
+   - Creates in: `workspace/{session_id}/deliverable/`
+   - Your MANDATORY deliverable: `{deliverable_path.name}`
+   - Registered automatically in artifact registry
+
+3. **COLLABORATION**:
+   - Check `scratchpad/` for other agents' working documents
+   - Reference findings from previous phases
+   - Build upon existing work{expected_artifacts_msg}
+
+⚠️ IMPORTANT RULES:
+- **NEVER manually edit** artifact_registry.json
+- **RESPECT PEERS**: Never modify other agents' documents
+- **USE khive new-doc**: Ensures atomic updates and proper registration
 
 🔗 DELIVERABLE REQUIREMENTS:
-Your MD file MUST include:
+Your final deliverable MUST include:
 - **Summary**: Executive summary of your work
 - **Key Findings**: 3-5 bullet points of main discoveries
-- **Dependencies**: Which previous artifacts you built upon
-- **Details**: Your analysis, design, or implementation
+- **Dependencies**: Which artifacts you referenced
+- **Details**: Your complete analysis/design/implementation
 - **Next Steps**: Recommendations for subsequent phases
 
-⚠️ CRITICAL: Use `khive new-doc` to create your deliverable - it handles both file creation AND registry update!
+💡 TIP: Create multiple working artifacts in scratchpad/ as you research, then consolidate into your final deliverable!
 """
 
     def generate_artifact_path(
         self, session_id: str, phase: str, agent_role: str, domain: str
     ) -> str:
-        """Generate standardized artifact path"""
+        """Generate standardized artifact path for deliverables"""
         session_dir = self.workspace_dir / session_id
-        timestamp = TimePolicy.now_utc().strftime("%H%M%S")
-        filename = f"{phase}_{agent_role}_{domain}_{timestamp}.md"
-        return str(session_dir / filename)
+        filename = f"{phase}_{agent_role}_{domain}.md"
+        return str(session_dir / "deliverable" / filename)
 
     def _analyze_meta_insights(self, evaluations: list[dict]) -> str:
         """Analyze meta-orchestration insights"""
@@ -1612,7 +1661,7 @@ class PlannerService:
 
     def __init__(self, command_format: str = "claude"):
         """Initialize the planner service.
-        
+
         Args:
             command_format: Either "claude" for BatchTool format or "json" for OrchestrationPlan format
         """
@@ -1665,9 +1714,11 @@ class PlannerService:
         request: PlannerRequest,
         triage_consensus: TriageConsensus,
         session_id: str,
+        planner: OrchestratorPlanner,
     ) -> PlannerResponse:
-        """Build a simple response from triage consensus."""
+        """Build a simple response from triage consensus with proper commands."""
         agent_recommendations = []
+        spawn_commands = []
 
         # Build agent recommendations from triage consensus
         if triage_consensus.final_roles:
@@ -1684,6 +1735,33 @@ class PlannerService:
                     )
                 )
 
+        # Generate spawn commands for simple tasks
+        for agent_spec in agent_recommendations:
+            # Get artifact management prompt
+            artifact_management = planner.get_artifact_management_prompt(
+                session_id, "execution_phase", agent_spec.role, agent_spec.domain
+            )
+
+            # Build Task command
+            task_prompt = f"""TASK: {request.task_description}
+
+{artifact_management}
+
+YOUR ROLE: {agent_spec.role} ({agent_spec.domain})
+PRIORITY: {agent_spec.priority:.2f}
+
+INSTRUCTIONS:
+1. First run: `uv run khive compose {agent_spec.role} -d {agent_spec.domain} -c "{request.task_description}"`
+2. Create working documents in scratchpad/ as needed
+3. Complete your assigned task
+4. Create final deliverable using khive new-doc
+
+Remember: This is a simple task - focus on direct execution."""
+
+            spawn_commands.append(
+                f'Task("{agent_spec.role}_{agent_spec.domain}: {task_prompt}")'
+            )
+
         # Single phase for simple tasks
         phase = TaskPhase(
             name="execution_phase",
@@ -1699,7 +1777,7 @@ class PlannerService:
             complexity=ComplexityLevel.SIMPLE,
             recommended_agents=triage_consensus.final_agent_count or 2,
             phases=[phase],
-            spawn_commands=[],  # Simple tasks don't need spawn commands
+            spawn_commands=spawn_commands,
             session_id=session_id,
             confidence=triage_consensus.average_confidence,
             error=None,
@@ -1735,10 +1813,22 @@ class PlannerService:
             self.metrics["total_llm_calls"] += 3  # 3 triage calls
             self.metrics["total_cost"] += 0.001  # 3 mini calls
 
-            # Create session ID for either path
-            session_id = (
-                f"{'complex' if should_escalate else 'simple'}_{int(time.time())}"
+            # Get planner instance early to create session
+            planner = await self._get_planner()
+
+            # Create session ID and workspace with timestamp first for better ordering
+            timestamp = TimePolicy.now_utc().strftime("%Y%m%d_%H%M%S")
+            task_type = "complex" if should_escalate else "simple"
+            task_slug = "".join(
+                c
+                for c in request.task_description.lower()[:15]
+                if c.isalnum() or c in "-_"
             )
+            session_id = f"{timestamp}_{task_type}_{task_slug}"
+
+            # Create the actual session workspace
+            planner.create_session(request.task_description, session_id)
+            planner.current_session_id = session_id
 
             if not should_escalate:
                 # Simple task - use triage consensus
@@ -1750,7 +1840,7 @@ class PlannerService:
 
                 # Build and return simple response
                 response = self._build_simple_response(
-                    request, triage_consensus, session_id
+                    request, triage_consensus, session_id, planner
                 )
 
                 # Update escalation rate
@@ -1766,16 +1856,14 @@ class PlannerService:
                 f"Complex task escalated to full consensus: {triage_consensus.complexity_votes}"
             )
 
-            # Get planner
-            planner = await self._get_planner()
+            # Planner already created above
 
             # Create orchestration request
             orchestration_request = Request(request.task_description)
 
-            # Use existing session ID format for complex tasks
-            session_id = planner.create_session(request.task_description)
-            # Store session ID for consistent use across all phases
-            planner.current_session_id = session_id
+            # Session already created above for both simple and complex tasks
+            # Just use the existing session_id that was created
+            # planner.current_session_id is already set
 
             # Run evaluation - let LLMs determine complexity and roles
             evaluations = await planner.evaluate_request(request.task_description)
@@ -1829,61 +1917,59 @@ class PlannerService:
                 )
             else:
                 # Multi-phase execution
-                phases.extend(
-                    [
-                        TaskPhase(
-                            name="discovery_phase",
-                            description="Research and analyze requirements",
-                            agents=[
-                                a
-                                for a in agent_recommendations
-                                if a.role in ["researcher", "analyst"]
-                            ][:3],
-                            quality_gate=QualityGate.THOROUGH,
-                            coordination_pattern=WorkflowPattern.PARALLEL,
+                phases.extend([
+                    TaskPhase(
+                        name="discovery_phase",
+                        description="Research and analyze requirements",
+                        agents=[
+                            a
+                            for a in agent_recommendations
+                            if a.role in ["researcher", "analyst"]
+                        ][:3],
+                        quality_gate=QualityGate.THOROUGH,
+                        coordination_pattern=WorkflowPattern.PARALLEL,
+                    ),
+                    TaskPhase(
+                        name="design_phase",
+                        description="Design architecture and approach",
+                        agents=[
+                            a
+                            for a in agent_recommendations
+                            if a.role in ["architect", "strategist"]
+                        ][:2],
+                        dependencies=["discovery_phase"],
+                        quality_gate=QualityGate.THOROUGH,
+                        coordination_pattern=WorkflowPattern.SEQUENTIAL,
+                    ),
+                    TaskPhase(
+                        name="implementation_phase",
+                        description="Implement the solution",
+                        agents=[
+                            a
+                            for a in agent_recommendations
+                            if a.role in ["implementer", "innovator"]
+                        ][:3],
+                        dependencies=["design_phase"],
+                        quality_gate=QualityGate.THOROUGH,
+                        coordination_pattern=WorkflowPattern.PARALLEL,
+                    ),
+                    TaskPhase(
+                        name="validation_phase",
+                        description="Validate and test the solution",
+                        agents=[
+                            a
+                            for a in agent_recommendations
+                            if a.role in ["tester", "critic", "auditor"]
+                        ][:2],
+                        dependencies=["implementation_phase"],
+                        quality_gate=(
+                            QualityGate.CRITICAL
+                            if complexity_level == ComplexityLevel.VERY_COMPLEX
+                            else QualityGate.THOROUGH
                         ),
-                        TaskPhase(
-                            name="design_phase",
-                            description="Design architecture and approach",
-                            agents=[
-                                a
-                                for a in agent_recommendations
-                                if a.role in ["architect", "strategist"]
-                            ][:2],
-                            dependencies=["discovery_phase"],
-                            quality_gate=QualityGate.THOROUGH,
-                            coordination_pattern=WorkflowPattern.SEQUENTIAL,
-                        ),
-                        TaskPhase(
-                            name="implementation_phase",
-                            description="Implement the solution",
-                            agents=[
-                                a
-                                for a in agent_recommendations
-                                if a.role in ["implementer", "innovator"]
-                            ][:3],
-                            dependencies=["design_phase"],
-                            quality_gate=QualityGate.THOROUGH,
-                            coordination_pattern=WorkflowPattern.PARALLEL,
-                        ),
-                        TaskPhase(
-                            name="validation_phase",
-                            description="Validate and test the solution",
-                            agents=[
-                                a
-                                for a in agent_recommendations
-                                if a.role in ["tester", "critic", "auditor"]
-                            ][:2],
-                            dependencies=["implementation_phase"],
-                            quality_gate=(
-                                QualityGate.CRITICAL
-                                if complexity_level == ComplexityLevel.VERY_COMPLEX
-                                else QualityGate.THOROUGH
-                            ),
-                            coordination_pattern=WorkflowPattern.PARALLEL,
-                        ),
-                    ]
-                )
+                        coordination_pattern=WorkflowPattern.PARALLEL,
+                    ),
+                ])
 
             # Extract spawn commands from consensus output
             spawn_commands = []

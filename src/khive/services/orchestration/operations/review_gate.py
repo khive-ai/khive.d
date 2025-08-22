@@ -7,10 +7,10 @@ from khive.services.orchestration.parts import (
     BaseGate,
     ComposerRequest,
     FanoutPatterns,
-    MultiPhaseOrchestrationResponse,
     Issue,
     IssuePlan,
     IssueResult,
+    MultiPhaseOrchestrationResponse,
 )
 from khive.services.orchestration.prompts import CRITIC_REVIEW_INSTRUCTION
 

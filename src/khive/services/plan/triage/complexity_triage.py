@@ -93,7 +93,7 @@ class ComplexityTriageService:
                 raise ValueError("OPENAI_API_KEY not provided and not in environment")
 
         self.client = AsyncOpenAI(api_key=api_key)
-        self.model = "gpt-4o-mini"  # Fast and cheap
+        self.model = "gpt-4.1-nano"  # Fast and cheap
         self.temperature = 0.0  # Deterministic
 
         # Data collection for future tuning
@@ -319,16 +319,14 @@ class TriageAnalyzer:
                     record = json.loads(line)
 
                     # Format for fine-tuning
-                    training_data.append(
-                        {
-                            "prompt": record["prompt"],
-                            "completion": {
-                                "complexity": record["final_complexity"],
-                                "agent_count": record.get("actual_agents_used"),
-                                "success": record.get("execution_success"),
-                            },
-                        }
-                    )
+                    training_data.append({
+                        "prompt": record["prompt"],
+                        "completion": {
+                            "complexity": record["final_complexity"],
+                            "agent_count": record.get("actual_agents_used"),
+                            "success": record.get("execution_success"),
+                        },
+                    })
 
         with open(output_file, "w") as f:
             json.dump(training_data, f, indent=2)

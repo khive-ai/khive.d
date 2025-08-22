@@ -1,13 +1,13 @@
 ---
-title: "Test Implementation Template"
-by: "khive-tester"
-created: "2025-04-12"
-updated: "2025-04-12"
-version: "1.2"
-doc_type: "TI"
-output_subdir: "workspace/{session_id}/docs"
-filename_prefix: "TI"
-description: "Template for creating comprehensive test suites for khive components"
+title: "Test Implementation - Issue #{{ISSUE_NUMBER}}"
+description: "Comprehensive test suite for khive components"
+file_path: ".khive/reports/TI/TI_{{ISSUE_NUMBER_PADDED}}.md"  # e.g., TI_00123.md
+issue: "#{{ISSUE_NUMBER}}"  # GitHub issue number
+by: "{{AGENT_ROLE}}"  # Agent should add their role here (e.g., tester, qa-engineer)
+created: "{{DATE}}"
+updated: "{{DATE}}"
+version: "1.0"
+tags: ["testing", "quality-assurance", "deliverable"]
 ---
 
 # Guidance

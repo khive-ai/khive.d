@@ -38,19 +38,19 @@ class OrchestrationEvaluation(BaseModel):
     # Domains (just lists)
     primary_domains: list[str] = Field(max_length=3)
     domain_reason: str = Field(max_length=200)
-    
+
     @field_validator("role_priorities", mode="before")
     @classmethod
     def validate_roles(cls, v):
         """Validate and fix role names using string similarity."""
         from khive.prompts import ALL_AGENT_ROLES
         from khive.utils import get_logger
-        
+
         logger = get_logger("khive.services.plan")
-        
+
         if not v:
             return v
-            
+
         validated_roles = []
         for role in v:
             if role in ALL_AGENT_ROLES:
@@ -60,10 +60,10 @@ class OrchestrationEvaluation(BaseModel):
                 from lionagi.libs.validate.string_similarity import (
                     string_similarity,
                 )
-                
+
                 # Convert set to list for string_similarity
                 valid_roles_list = list(ALL_AGENT_ROLES)
-                
+
                 best_match = string_similarity(
                     role,
                     valid_roles_list,
@@ -71,35 +71,35 @@ class OrchestrationEvaluation(BaseModel):
                     case_sensitive=False,
                     return_most_similar=True,
                 )
-                
+
                 if best_match:
                     logger.debug(f"Corrected role '{role}' to '{best_match}'")
                     validated_roles.append(best_match)
                 else:
                     logger.warning(f"Could not match role '{role}' to any valid role")
                     # Skip if no good match found (don't add invalid roles)
-                    
+
         return validated_roles
-    
+
     @field_validator("primary_domains", mode="before")
-    @classmethod  
+    @classmethod
     def validate_domains(cls, v):
         """Validate domain names - canonicalize them."""
-        from khive.utils import KHIVE_CONFIG_DIR
         from khive.services.composition import AgentComposer
-        
+        from khive.utils import KHIVE_CONFIG_DIR
+
         if not v:
             return v
-            
+
         # Initialize composer using the established config directory
         composer = AgentComposer(KHIVE_CONFIG_DIR / "prompts")
-        
+
         validated_domains = []
         for domain in v:
             # Canonicalize the domain
             canonical = composer.canonicalize_domain(domain)
             validated_domains.append(canonical)
-            
+
         return validated_domains
 
     # Workflow
