@@ -30,7 +30,7 @@ DeliverableType = Literal[
 class AgentRequest(BaseModel):
     instruct: Instruct
     compose_request: ComposerRequest
-    analysis_type: DeliverableType | None = None
+    analysis_type: DeliverableType
     """Type of operation deliverable (e.g., 'RequirementsAnalysis', 'CodeContextAnalysis')"""
 
 

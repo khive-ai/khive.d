@@ -21,11 +21,11 @@ from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     AgentRequest,
     BaseGate,
-    ComposerRequest,
-    FanoutWithGatedRefinementResponse,
+    GatedMultiPhaseOrchestrationResponse,
     GateComponent,
     OrchestrationPlan,
 )
+from khive.services.composition.parts import ComposerRequest
 from tests.fixtures.gated_refinement_fixtures import create_mock_orchestrator
 
 
@@ -165,7 +165,7 @@ class TestFanoutGatedRefinementPattern:
             )
 
             # Verify response structure
-            assert isinstance(result, FanoutWithGatedRefinementResponse)
+            assert isinstance(result, GatedMultiPhaseOrchestrationResponse)
             assert hasattr(result, "gate_passed")
             assert hasattr(result, "refinement_executed")
             assert result.gate_passed is True

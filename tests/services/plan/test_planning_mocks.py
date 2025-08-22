@@ -103,9 +103,9 @@ class TestExternalDependencyMocking:
             summary="Test evaluation summary",
         )
 
-        # Mock the API response
+        # Mock the API response (sync method, not async)
         mock_response = MockOpenAIResponse(mock_evaluation)
-        mock_client.beta.chat.completions.parse = AsyncMock(return_value=mock_response)
+        mock_client.beta.chat.completions.parse = MagicMock(return_value=mock_response)
 
         # Test evaluation
         request = "Test task for evaluation"
@@ -201,8 +201,10 @@ class TestErrorHandlingWithMocks:
     def test_missing_environment_variable_error(self, monkeypatch):
         """Test error handling when API key is missing."""
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        with pytest.raises(ValueError, match="OPENAI_API_KEY.*not set"):
-            OrchestrationPlanner()
+        # Mock load_dotenv at the dotenv module level
+        with patch("dotenv.load_dotenv"):
+            with pytest.raises(ValueError, match="OPENAI_API_KEY.*not set"):
+                OrchestrationPlanner()
 
     def test_filesystem_error_handling(self, error_prone_planner, tmp_path):
         """Test handling of filesystem errors."""
@@ -235,7 +237,7 @@ class TestErrorHandlingWithMocks:
                 # Should still work with defaults
                 request = Request("test task")
                 complexity = planner.assess(request)
-                assert complexity == planner.ComplexityTier.MEDIUM  # Default fallback
+                assert complexity == ComplexityTier.MEDIUM  # Default fallback
 
 
 @pytest.mark.unit
@@ -253,10 +255,22 @@ class TestPlannerServiceMocking:
         mock_planner.assess.return_value = ComplexityTier.MEDIUM
         mock_planner.select_roles.return_value = ["researcher", "implementer"]
         mock_planner.evaluate_request = AsyncMock(return_value=[])
-        mock_planner.build_consensus.return_value = "Mock consensus output"
+        mock_planner.build_consensus.return_value = ("Mock consensus output", {"agent_count": 1, "complexity": "simple"})
 
         # Mock the planner getter
         service._get_planner = AsyncMock(return_value=mock_planner)
+        
+        # Mock triage service to return simple task
+        mock_triage = MagicMock()
+        from khive.services.plan.triage.complexity_triage import TriageConsensus
+        mock_consensus = TriageConsensus(
+            should_escalate=False,  # Simple task
+            complexity_votes={"simple": 3, "complex": 0},
+            average_confidence=0.9,
+            final_agent_count=1
+        )
+        mock_triage.triage = AsyncMock(return_value=(False, mock_consensus))
+        service._get_triage_service = AsyncMock(return_value=mock_triage)
 
         return service, mock_planner
 
@@ -275,9 +289,9 @@ class TestPlannerServiceMocking:
         response = await service.handle_request(request)
 
         assert response.success is True
-        assert response.summary == "Mock consensus output"
-        assert response.complexity == ComplexityLevel.MEDIUM
-        assert response.session_id == "mock_session_123"
+        assert "Triage consensus" in response.summary  # Simple task handled by triage
+        assert response.complexity == ComplexityLevel.SIMPLE  # Triage returned simple
+        assert response.session_id.startswith("simple_")  # Simple task session ID
 
     @pytest.mark.asyncio
     async def test_mocked_json_request_handling(self, mocked_planner_service):
@@ -290,21 +304,21 @@ class TestPlannerServiceMocking:
         response = await service.handle_request(request_json)
 
         assert response.success is True
-        assert response.summary == "Mock consensus output"
+        assert "Triage consensus" in response.summary  # Simple task handled by triage
 
     @pytest.mark.asyncio
     async def test_mocked_error_scenarios(self, mocked_planner_service):
         """Test error scenarios with mocked dependencies."""
         service, mock_planner = mocked_planner_service
 
-        # Simulate planner error
-        service._get_planner = AsyncMock(side_effect=Exception("Mock planner error"))
+        # Simulate triage service error (happens first)
+        service._get_triage_service = AsyncMock(side_effect=Exception("Mock triage error"))
 
         request = PlannerRequest(task_description="Error test")
         response = await service.handle_request(request)
 
         assert response.success is False
-        assert "Mock planner error" in response.error
+        assert "Mock triage error" in response.error
         assert response.complexity == ComplexityLevel.MEDIUM  # Default fallback
 
     @pytest.mark.asyncio
@@ -366,7 +380,7 @@ class TestMockedIntegrationScenarios:
         with patch.multiple(
             OrchestrationPlanner,
             _load_available_roles=MagicMock(
-                return_value=["researcher", "architect", "implementer"]
+                return_value=['analyst', 'architect', 'auditor', 'commentator', 'critic', 'implementer', 'innovator', 'researcher', 'reviewer', 'strategist', 'tester', 'theorist']
             ),
             _load_available_domains=MagicMock(return_value=["distributed-systems"]),
             _load_prompt_templates=MagicMock(
@@ -394,7 +408,7 @@ class TestMockedIntegrationScenarios:
 
                     # 1. Assess complexity
                     complexity = planner.assess(request)
-                    assert isinstance(complexity, planner.ComplexityTier)
+                    assert isinstance(complexity, ComplexityTier)
 
                     # 2. Select roles
                     roles = planner.select_roles(request, complexity)
@@ -425,12 +439,9 @@ class TestMockedIntegrationScenarios:
 
                     mock_response = MockOpenAIResponse(mock_eval)
 
-                    # Create a proper async mock that returns immediately
-                    async def mock_parse(*args, **kwargs):
-                        return mock_response
-
-                    integration_mocks["openai_client"].beta.chat.completions.parse = (
-                        mock_parse
+                    # Mock sync method (not async since it runs in thread pool)
+                    integration_mocks["openai_client"].beta.chat.completions.parse = MagicMock(
+                        return_value=mock_response
                     )
 
                     # 5. Run evaluation

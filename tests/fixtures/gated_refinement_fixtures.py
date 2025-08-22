@@ -9,11 +9,11 @@ from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     AgentRequest,
     BaseGate,
-    ComposerRequest,
-    FanoutWithGatedRefinementResponse,
+    GatedMultiPhaseOrchestrationResponse,
     GateComponent,
     OrchestrationPlan,
 )
+from khive.services.composition.parts import ComposerRequest
 
 
 def create_mock_orchestrator(flow_name: str = "test_flow") -> LionOrchestrator:
@@ -489,9 +489,9 @@ def create_test_fanout_response(
     gate_passed: bool = True,
     refinement_executed: bool = False,
     synth_result: str = "Test synthesis result",
-) -> FanoutWithGatedRefinementResponse:
+) -> GatedMultiPhaseOrchestrationResponse:
     """Create a test fanout response."""
-    return FanoutWithGatedRefinementResponse(
+    return GatedMultiPhaseOrchestrationResponse(
         synth_result=synth_result,
         gate_passed=gate_passed,
         refinement_executed=refinement_executed,

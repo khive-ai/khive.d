@@ -9,7 +9,7 @@ from khive.services.plan.planner_service import (
     OrchestrationPlanner,
     Request,
 )
-from tests.fixtures.planning_fixtures import MockDecisionMatrix
+from tests.fixtures.planning_fixtures import MockDecisionMatrix, AGENT_COUNT_BOUNDS
 
 
 @pytest.mark.unit
@@ -21,7 +21,7 @@ class TestComplexityAlgorithmDetails:
         """Create planner focused on algorithm testing."""
         with patch.multiple(
             OrchestrationPlanner,
-            _load_available_roles=MagicMock(return_value=["researcher", "architect"]),
+            _load_available_roles=MagicMock(return_value=['analyst', 'architect', 'auditor', 'commentator', 'critic', 'implementer', 'innovator', 'researcher', 'reviewer', 'strategist', 'tester', 'theorist']),
             _load_available_domains=MagicMock(return_value=["distributed-systems"]),
             _load_prompt_templates=MagicMock(return_value={"agents": {}}),
             _load_decision_matrix=MagicMock(return_value=MockDecisionMatrix().data),
@@ -206,7 +206,7 @@ class TestRoleSelectionAlgorithms:
             ComplexityTier.MEDIUM: {"max_roles": 8, "expected_min": 3},
             ComplexityTier.COMPLEX: {"max_roles": 12, "expected_min": 5},
             ComplexityTier.VERY_COMPLEX: {
-                "expected_min": 6,
+                "expected_min": 8,
                 "critical_roles": ["researcher", "theorist"],
             },
         }
@@ -326,10 +326,8 @@ class TestAgentCountOptimization:
     @pytest.mark.parametrize(
         "complexity,min_expected,max_expected",
         [
-            (ComplexityTier.SIMPLE, 1, 4),
-            (ComplexityTier.MEDIUM, 2, 6),
-            (ComplexityTier.COMPLEX, 4, 6),  # Based on available roles
-            (ComplexityTier.VERY_COMPLEX, 4, 6),  # Based on available roles
+            (tier, bounds[0], bounds[1]) 
+            for tier, bounds in AGENT_COUNT_BOUNDS.items()
         ],
     )
     def test_agent_count_optimization_bounds(

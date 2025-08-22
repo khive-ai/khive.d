@@ -85,6 +85,7 @@ async def run_planning(
     context: str | None,
     time_budget: float,
     json_output: bool,
+    json_format: bool = False,
     _issue_num: str | None = None,
 ) -> None:
     """Execute planning and print results.
@@ -94,9 +95,10 @@ async def run_planning(
         context: Additional context for planning
         time_budget: Time budget in seconds
         json_output: Whether to output results as JSON
+        json_format: Whether to use JSON format for command output
         _issue_num: GitHub issue number (reserved for future issue tracking integration)
     """
-    service = PlannerService()
+    service = PlannerService(command_format="json" if json_format else "claude")
 
     try:
         # Build request
@@ -137,7 +139,7 @@ async def run_planning(
                     if phase.dependencies:
                         print(f"   Dependencies: {', '.join(phase.dependencies)}")
 
-                    # Show agent details
+                    # Show agent details (no truncation)
                     if phase.agents:
                         print("   Agent Details:")
                         for agent in phase.agents:
@@ -145,8 +147,6 @@ async def run_planning(
                                 f"     • {agent.role} ({agent.domain}) - Priority: {agent.priority:.1f}"
                             )
                             print(f"       Reasoning: {agent.reasoning}")
-                        if len(phase.agents) > 3:
-                            print(f"     ... and {len(phase.agents) - 3} more agents")
         else:
             print(f"❌ Planning failed: {response.summary}")
             if response.error:
@@ -192,6 +192,12 @@ def main():
     )
 
     parser.add_argument("--json", action="store_true", help="Output raw JSON response")
+    
+    parser.add_argument(
+        "--json-format", 
+        action="store_true", 
+        help="Use JSON format (OrchestrationPlan) for commands instead of BatchTool format"
+    )
 
     args = parser.parse_args()
 
@@ -226,7 +232,15 @@ def main():
         context = args.context
 
     # Run the planning
-    asyncio.run(run_planning(task_description, context, args.time_budget, args.json))
+    asyncio.run(
+        run_planning(
+            task_description, 
+            context, 
+            args.time_budget, 
+            args.json,
+            args.json_format
+        )
+    )
 
 
 if __name__ == "__main__":

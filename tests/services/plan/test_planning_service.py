@@ -27,7 +27,7 @@ from khive.services.plan.planner_service import (
 )
 
 # Import test fixtures
-from tests.fixtures.planning_fixtures import MockDecisionMatrix, MockOpenAIResponse
+from tests.fixtures.planning_fixtures import MockDecisionMatrix, MockOpenAIResponse, AGENT_COUNT_BOUNDS
 
 
 class MockOpenAIError(Exception):
@@ -69,7 +69,7 @@ class TestComplexityAssessment:
         """Create a mock planner with decision matrix."""
         with patch.multiple(
             OrchestrationPlanner,
-            _load_available_roles=MagicMock(return_value=["researcher", "architect"]),
+            _load_available_roles=MagicMock(return_value=['analyst', 'architect', 'auditor', 'commentator', 'critic', 'implementer', 'innovator', 'researcher', 'reviewer', 'strategist', 'tester', 'theorist']),
             _load_available_domains=MagicMock(return_value=["distributed-systems"]),
             _load_prompt_templates=MagicMock(return_value={"agents": {}}),
             _load_decision_matrix=MagicMock(return_value=MockDecisionMatrix().data),
@@ -327,7 +327,7 @@ class TestDomainMatching:
         """Create mock planner with domain handling."""
         with patch.multiple(
             OrchestrationPlanner,
-            _load_available_roles=MagicMock(return_value=["researcher", "architect"]),
+            _load_available_roles=MagicMock(return_value=['analyst', 'architect', 'auditor', 'commentator', 'critic', 'implementer', 'innovator', 'researcher', 'reviewer', 'strategist', 'tester', 'theorist']),
             _load_available_domains=MagicMock(
                 return_value=[
                     "distributed-systems",
@@ -362,7 +362,7 @@ class TestDomainMatching:
 
     def test_available_roles_loading(self, mock_planner):
         """Test that available roles are loaded correctly."""
-        expected_roles = ["researcher", "architect"]
+        expected_roles = ['analyst', 'architect', 'auditor', 'commentator', 'critic', 'implementer', 'innovator', 'researcher', 'reviewer', 'strategist', 'tester', 'theorist']
 
         assert mock_planner.available_roles == expected_roles
 
@@ -377,7 +377,7 @@ class TestAgentCountCalculation:
         with patch.multiple(
             OrchestrationPlanner,
             _load_available_roles=MagicMock(
-                return_value=["researcher", "architect", "implementer"]
+                return_value=['analyst', 'architect', 'auditor', 'commentator', 'critic', 'implementer', 'innovator', 'researcher', 'reviewer', 'strategist', 'tester', 'theorist']
             ),
             _load_available_domains=MagicMock(return_value=["distributed-systems"]),
             _load_prompt_templates=MagicMock(return_value={"agents": {}}),
@@ -391,10 +391,8 @@ class TestAgentCountCalculation:
     @pytest.mark.parametrize(
         "complexity,expected_min,expected_max",
         [
-            (ComplexityTier.SIMPLE, 1, 4),
-            (ComplexityTier.MEDIUM, 3, 8),
-            (ComplexityTier.COMPLEX, 5, 12),
-            (ComplexityTier.VERY_COMPLEX, 6, 20),
+            (tier, bounds[0], bounds[1])
+            for tier, bounds in AGENT_COUNT_BOUNDS.items()
         ],
     )
     def test_agent_count_by_complexity(
@@ -405,7 +403,7 @@ class TestAgentCountCalculation:
         expected_max: int,
     ):
         """Test agent count calculation based on complexity."""
-        request = Request("test task requiring multiple phases")
+        request = Request("research design implement test and document the system")
         roles = mock_planner.select_roles(request, complexity)
 
         assert expected_min <= len(roles) <= expected_max
@@ -664,14 +662,38 @@ class TestPlannerServiceUnit:
             mock_planner.assess.return_value = ComplexityTier.MEDIUM
             mock_planner.select_roles.return_value = ["researcher"]
             mock_planner.evaluate_request = AsyncMock(return_value=[])
-            mock_planner.build_consensus.return_value = "consensus"
+            mock_planner.build_consensus.return_value = (
+                "consensus", 
+                {
+                    "agent_count": 1, 
+                    "complexity": "medium",
+                    "domains": [],
+                    "confidence": 0.9,
+                    "quality_level": "thorough",
+                    "coordination_pattern": "sequential",
+                    "role_recommendations": [("researcher", 1.0)]
+                }
+            )
             mock_get_planner.return_value = mock_planner
+            
+            # Mock triage service to escalate to full consensus
+            with patch.object(mock_planner_service, "_get_triage_service") as mock_get_triage:
+                mock_triage = MagicMock()
+                # Create a mock triage consensus
+                from khive.services.plan.triage.complexity_triage import TriageConsensus
+                mock_consensus = TriageConsensus(
+                    should_escalate=True,
+                    complexity_votes={"simple": 0, "complex": 3},
+                    average_confidence=0.9
+                )
+                mock_triage.triage = AsyncMock(return_value=(True, mock_consensus))  # Escalate to complex
+                mock_get_triage.return_value = mock_triage
 
-            request_json = '{"task_description": "test task"}'
-            response = await mock_planner_service.handle_request(request_json)
+                request_json = '{"task_description": "test task"}'
+                response = await mock_planner_service.handle_request(request_json)
 
-            assert response.success is True
-            assert response.summary == "consensus"
+                assert response.success is True
+                assert response.summary == "consensus"
 
     @pytest.mark.asyncio
     async def test_error_handling(self, mock_planner_service):
@@ -816,7 +838,10 @@ class TestPlannerIntegrationScenarios:
             consensus = mock_planner_full.build_consensus(evaluations, request_text)
 
             assert len(evaluations) == 1
-            assert "Complex distributed system task" in consensus
+            # Check consensus returns a tuple with formatted output and data
+            assert isinstance(consensus, tuple)
+            assert "Orchestration Planning Consensus" in consensus[0]  # Check formatted output
+            assert isinstance(consensus[1], dict)  # Check consensus data
             assert session_id is not None
 
 
@@ -829,7 +854,7 @@ class TestExternalModelIntegration:
         """Create planner with mocked OpenAI integration."""
         with patch.multiple(
             OrchestrationPlanner,
-            _load_available_roles=MagicMock(return_value=["researcher", "architect"]),
+            _load_available_roles=MagicMock(return_value=['analyst', 'architect', 'auditor', 'commentator', 'critic', 'implementer', 'innovator', 'researcher', 'reviewer', 'strategist', 'tester', 'theorist']),
             _load_available_domains=MagicMock(return_value=["distributed-systems"]),
             _load_prompt_templates=MagicMock(
                 return_value={
@@ -1511,42 +1536,66 @@ class TestPlannerServiceIntegration:
                 }
             ]
         )
-        mock_planner.build_consensus.return_value = "Test consensus output"
+        mock_planner.build_consensus.return_value = (
+            "Test consensus output", 
+            {
+                "agent_count": 5, 
+                "complexity": "medium",
+                "domains": ["test"],
+                "confidence": 0.8,
+                "quality_level": "thorough",
+                "coordination_pattern": "parallel",
+                "role_recommendations": [("researcher", 0.9), ("architect", 0.8), ("implementer", 0.7)]
+            }
+        )
+
+        # Mock triage service to escalate to complex path
+        mock_triage_service = MagicMock()
+        from khive.services.plan.triage.complexity_triage import TriageConsensus
+        mock_triage_consensus = TriageConsensus(
+            should_escalate=True,
+            complexity_votes={"simple": 0, "complex": 3},
+            average_confidence=0.9
+        )
+        mock_triage_service.triage = AsyncMock(return_value=(True, mock_triage_consensus))
 
         # Test with different request formats
         with patch.object(planner_service, "_get_planner", return_value=mock_planner):
-            # Test with PlannerRequest object
-            request_obj = PlannerRequest(task_description="Build distributed system")
-            response = await planner_service.handle_request(request_obj)
+            with patch.object(planner_service, "_get_triage_service", return_value=mock_triage_service):
+                # Test with PlannerRequest object
+                request_obj = PlannerRequest(task_description="Build distributed system")
+                response = await planner_service.handle_request(request_obj)
 
-            assert response.success is True
-            assert response.summary == "Test consensus output"
-            assert response.complexity == ComplexityLevel.MEDIUM
-            assert response.session_id == "test_session_123"
+                assert response.success is True
+                assert response.summary == "Test consensus output"
+                assert response.complexity == ComplexityLevel.MEDIUM
+                assert response.session_id == "test_session_123"
 
-            # Test with JSON string
-            request_json = (
-                '{"task_description": "Build API", "context": "High performance"}'
-            )
-            response = await planner_service.handle_request(request_json)
+                # Test with JSON string
+                request_json = (
+                    '{"task_description": "Build API", "context": "High performance"}'
+                )
+                response = await planner_service.handle_request(request_json)
 
-            assert response.success is True
-            assert response.summary == "Test consensus output"
+                assert response.success is True
+                assert response.summary == "Test consensus output"
 
     @pytest.mark.asyncio
     async def test_error_handling_and_fallbacks(self, planner_service):
         """Test comprehensive error handling."""
-        # Test planner initialization failure
+        # Test planner initialization failure - mock both planner and triage
         with patch.object(planner_service, "_get_planner") as mock_get_planner:
-            mock_get_planner.side_effect = Exception("OpenAI API key not found")
+            with patch.object(planner_service, "_get_triage_service") as mock_get_triage:
+                # Make triage service raise the error immediately
+                mock_get_triage.side_effect = Exception("OpenAI API key not found")
 
-            request = PlannerRequest(task_description="test task")
-            response = await planner_service.handle_request(request)
+                request = PlannerRequest(task_description="test task")
+                response = await planner_service.handle_request(request)
 
-            assert response.success is False
-            assert "OpenAI API key not found" in response.error
-            assert response.complexity == ComplexityLevel.MEDIUM  # Default fallback
-            assert response.confidence == 0.0
+                assert response.success is False
+                assert "OpenAI API key not found" in response.error
+                assert response.complexity == ComplexityLevel.MEDIUM  # Default fallback
+                assert response.confidence == 0.0
 
     @pytest.mark.asyncio
     async def test_parallel_fanout_orchestration(self, planner_service):
@@ -1558,7 +1607,7 @@ class TestPlannerServiceIntegration:
         # Mock HandoffCoordinator
         with patch.object(planner_service, "_get_planner", return_value=mock_planner):
             with patch(
-                "khive.services.plan.planner_service.HandoffCoordinator"
+                "khive.services.artifacts.handlers.handoff_coordinator.HandoffCoordinator"
             ) as mock_coordinator_class:
                 mock_coordinator = MagicMock()
                 mock_coordinator.execute_parallel_fanout = AsyncMock(
@@ -1595,10 +1644,10 @@ class TestPlannerServiceIntegration:
                     agent_specs, "test_session", timeout=30.0
                 )
 
-                assert result["status"] == "completed"
-                assert result["total_agents"] == 5
-                mock_coordinator.build_dependency_graph.assert_called_once()
-                mock_coordinator.optimize_execution_order.assert_called_once()
+                # Method is deprecated and returns simple message
+                assert result["status"] == "deprecated"
+                assert "message" in result
+                assert "orchestrator" in result["message"]
 
     @pytest.mark.asyncio
     async def test_service_cleanup(self, planner_service):
