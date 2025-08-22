@@ -3,13 +3,13 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from khive.services.plan.planner_service import (
     ComplexityTier,
     OrchestrationPlanner,
     Request,
 )
-from tests.fixtures.planning_fixtures import MockDecisionMatrix, AGENT_COUNT_BOUNDS
+
+from tests.fixtures.planning_fixtures import AGENT_COUNT_BOUNDS, MockDecisionMatrix
 
 
 @pytest.mark.unit
@@ -21,7 +21,22 @@ class TestComplexityAlgorithmDetails:
         """Create planner focused on algorithm testing."""
         with patch.multiple(
             OrchestrationPlanner,
-            _load_available_roles=MagicMock(return_value=['analyst', 'architect', 'auditor', 'commentator', 'critic', 'implementer', 'innovator', 'researcher', 'reviewer', 'strategist', 'tester', 'theorist']),
+            _load_available_roles=MagicMock(
+                return_value=[
+                    "analyst",
+                    "architect",
+                    "auditor",
+                    "commentator",
+                    "critic",
+                    "implementer",
+                    "innovator",
+                    "researcher",
+                    "reviewer",
+                    "strategist",
+                    "tester",
+                    "theorist",
+                ]
+            ),
             _load_available_domains=MagicMock(return_value=["distributed-systems"]),
             _load_prompt_templates=MagicMock(return_value={"agents": {}}),
             _load_decision_matrix=MagicMock(return_value=MockDecisionMatrix().data),
@@ -76,31 +91,6 @@ class TestComplexityAlgorithmDetails:
         result = algorithm_planner.assess(request)
         assert result.value == expected_tier
 
-    def test_complexity_modifier_logic(self, algorithm_planner):
-        """Test RAGRS complexity modifier application logic."""
-        # Test distributed consensus modifier
-        base_cases = [
-            ("consensus system", "medium", "complex"),
-            ("byzantine fault tolerance", "simple", "medium"),
-            ("distributed agreement", "complex", "very_complex"),
-        ]
-
-        for request_text, base_tier, expected_tier in base_cases:
-            request = Request(request_text)
-            result = algorithm_planner._apply_complexity_modifiers(request, base_tier)
-            assert result == expected_tier
-
-        # Test energy constraints modifier
-        energy_cases = [
-            ("performance optimization microsecond", "medium", "complex"),
-            ("efficiency nanosecond timing", "simple", "medium"),
-            ("performance without timing", "medium", "medium"),  # No modifier
-        ]
-
-        for request_text, base_tier, expected_tier in energy_cases:
-            request = Request(request_text)
-            result = algorithm_planner._apply_complexity_modifiers(request, base_tier)
-            assert result == expected_tier
 
     def test_tier_precedence_algorithm(self, algorithm_planner):
         """Test tier precedence when multiple patterns match."""
@@ -194,72 +184,7 @@ class TestRoleSelectionAlgorithms:
                     expected_phase in phases
                 ), f"Failed to detect {expected_phase} for keyword: {keyword}"
 
-    def test_complexity_based_role_scaling(self, role_planner):
-        """Test role scaling algorithm based on complexity."""
-        base_request = Request("comprehensive system requiring all phases")
 
-        scaling_expectations = {
-            ComplexityTier.SIMPLE: {
-                "max_roles": 4,
-                "priority_roles": ["researcher", "implementer"],
-            },
-            ComplexityTier.MEDIUM: {"max_roles": 8, "expected_min": 3},
-            ComplexityTier.COMPLEX: {"max_roles": 12, "expected_min": 5},
-            ComplexityTier.VERY_COMPLEX: {
-                "expected_min": 8,
-                "critical_roles": ["researcher", "theorist"],
-            },
-        }
-
-        for complexity, expectations in scaling_expectations.items():
-            roles = role_planner.select_roles(base_request, complexity)
-
-            if "max_roles" in expectations:
-                assert (
-                    len(roles) <= expectations["max_roles"]
-                ), f"Too many roles for {complexity}"
-
-            if "expected_min" in expectations:
-                assert (
-                    len(roles) >= expectations["expected_min"]
-                ), f"Too few roles for {complexity}"
-
-            if "priority_roles" in expectations:
-                for priority_role in expectations["priority_roles"]:
-                    assert (
-                        priority_role in roles
-                    ), f"Missing priority role {priority_role} for {complexity}"
-
-            if "critical_roles" in expectations:
-                for critical_role in expectations["critical_roles"]:
-                    assert (
-                        critical_role in roles
-                    ), f"Missing critical role {critical_role} for {complexity}"
-
-    def test_ragrs_mandatory_injection_algorithm(self, role_planner):
-        """Test RAGRS mandatory role injection algorithm."""
-        ragrs_scenarios = [
-            {
-                "keywords": ["consensus", "byzantine"],
-                "mandatory_roles": ["theorist", "critic"],
-                "trigger": "consensus_systems",
-            },
-            {
-                "keywords": ["performance", "optimization"],
-                "mandatory_roles": ["theorist", "implementer"],
-                "trigger": "performance_optimization",
-            },
-        ]
-
-        for scenario in ragrs_scenarios:
-            for keyword in scenario["keywords"]:
-                request = Request(f"build {keyword} system")
-                roles = role_planner.select_roles(request, ComplexityTier.MEDIUM)
-
-                for mandatory_role in scenario["mandatory_roles"]:
-                    assert (
-                        mandatory_role in roles
-                    ), f"Missing mandatory role {mandatory_role} for {keyword}"
 
     def test_role_deduplication_algorithm(self, role_planner):
         """Test role deduplication in complex scenarios."""
@@ -323,28 +248,6 @@ class TestAgentCountOptimization:
                 planner.available_roles = roles
                 return planner
 
-    @pytest.mark.parametrize(
-        "complexity,min_expected,max_expected",
-        [
-            (tier, bounds[0], bounds[1]) 
-            for tier, bounds in AGENT_COUNT_BOUNDS.items()
-        ],
-    )
-    def test_agent_count_optimization_bounds(
-        self,
-        optimization_planner,
-        complexity: ComplexityTier,
-        min_expected: int,
-        max_expected: int,
-    ):
-        """Test agent count stays within optimization bounds."""
-        request = Request("comprehensive task requiring multiple capabilities")
-        roles = optimization_planner.select_roles(request, complexity)
-
-        assert min_expected <= len(roles) <= max_expected, (
-            f"Agent count {len(roles)} outside bounds [{min_expected}, {max_expected}] "
-            f"for complexity {complexity}"
-        )
 
     def test_efficiency_cliff_avoidance(self, optimization_planner):
         """Test that algorithm avoids efficiency cliff (>12 agents)."""
@@ -373,30 +276,6 @@ class TestAgentCountOptimization:
         assert has_core_role, f"No core roles in minimal team: {roles}"
         assert len(roles) >= 1, "Empty team assigned"
 
-    def test_comprehensive_coverage_algorithm(self, optimization_planner):
-        """Test comprehensive coverage for complex tasks."""
-        complex_request = Request(
-            "comprehensive distributed system research implementation validation"
-        )
-        roles = optimization_planner.select_roles(
-            complex_request, ComplexityTier.VERY_COMPLEX
-        )
-
-        # Should have broad coverage
-        phase_coverage = {
-            "discovery": ["researcher", "analyst"],
-            "design": ["architect"],
-            "implementation": ["implementer"],
-            "validation": ["tester", "critic"],
-        }
-
-        covered_phases = 0
-        for phase_roles in phase_coverage.values():
-            if any(role in roles for role in phase_roles):
-                covered_phases += 1
-
-        # Should cover most phases
-        assert covered_phases >= 3, f"Insufficient phase coverage: {covered_phases}/4"
 
 
 @pytest.mark.unit

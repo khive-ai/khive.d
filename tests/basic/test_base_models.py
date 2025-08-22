@@ -1,9 +1,8 @@
 """Unit tests for khive base models and types."""
 
 import pytest
-from pydantic import ValidationError
-
 from khive._types import BaseModel
+from pydantic import ValidationError
 
 
 class SampleModel(BaseModel):

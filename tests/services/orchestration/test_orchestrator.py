@@ -6,15 +6,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from lionagi.fields import Instruct
-from lionagi.service.imodel import iModel
-
+from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     AgentRequest,
     OrchestrationPlan,
 )
-from khive.services.composition.parts import ComposerRequest
+from lionagi.fields import Instruct
+from lionagi.service.imodel import iModel
 
 
 class TestLionOrchestratorInitialization:

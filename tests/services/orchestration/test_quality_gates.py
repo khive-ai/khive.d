@@ -13,19 +13,19 @@ import contextlib
 from unittest.mock import MagicMock, patch
 
 import pytest
-from lionagi.fields import Instruct
-from lionagi.protocols.types import AssistantResponse
-from pydantic import ValidationError
-
+from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     AgentRequest,
     BaseGate,
-    GatedMultiPhaseOrchestrationResponse,
     GateComponent,
+    GatedMultiPhaseOrchestrationResponse,
     OrchestrationPlan,
 )
-from khive.services.composition.parts import ComposerRequest
+from lionagi.fields import Instruct
+from lionagi.protocols.types import AssistantResponse
+from pydantic import ValidationError
+
 from tests.fixtures.gated_refinement_fixtures import create_mock_orchestrator
 
 

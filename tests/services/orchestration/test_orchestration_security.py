@@ -14,11 +14,10 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from lionagi.fields import Instruct
-from pydantic import ValidationError
-
 from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
+from lionagi.fields import Instruct
+from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 

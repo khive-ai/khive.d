@@ -5,18 +5,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from lionagi import Branch, Builder, Operation, Session
-from lionagi.fields import Instruct
-from lionagi.protocols.types import AssistantResponse, Graph
-
+from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     AgentRequest,
-    MultiPhaseOrchestrationResponse,
     GatedMultiPhaseOrchestrationResponse,
+    MultiPhaseOrchestrationResponse,
     OrchestrationPlan,
 )
-from khive.services.composition.parts import ComposerRequest
+from lionagi import Branch, Builder, Operation, Session
+from lionagi.fields import Instruct
+from lionagi.protocols.types import AssistantResponse, Graph
 
 
 @pytest.fixture

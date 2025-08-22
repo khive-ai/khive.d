@@ -7,7 +7,6 @@ Focus on command structure, argument validation, and help generation.
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
 from khive.cli.khive_cli import main
 
 

@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
-
 from khive.services.composition.agent_composer import AgentComposer
 
 

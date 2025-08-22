@@ -13,8 +13,6 @@ import time
 from unittest.mock import Mock, patch
 
 import pytest
-from pydantic import ValidationError
-
 from khive.services.plan.cost_tracker import CostTracker
 from khive.services.plan.models import OrchestrationEvaluation
 from khive.services.plan.parts import (
@@ -32,6 +30,8 @@ from khive.services.plan.planner_service import (
     PlannerService,
     Request,
 )
+from pydantic import ValidationError
+
 from tests.fixtures.planning_fixtures import MockOpenAIResponse
 
 

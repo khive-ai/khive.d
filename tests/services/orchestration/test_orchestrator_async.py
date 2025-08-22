@@ -6,9 +6,8 @@ import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.composition.parts import ComposerRequest
+from khive.services.orchestration.orchestrator import LionOrchestrator
 
 
 class TestAsyncPatterns:
