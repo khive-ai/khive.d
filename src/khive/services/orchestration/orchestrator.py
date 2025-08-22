@@ -363,7 +363,7 @@ Create phases that:
 - Include appropriate validation steps
 
 For each phase, provide:
-- name: Clear phase identifier  
+- name: Clear phase identifier
 - order: Execution sequence (0-based)
 - doc: What this phase accomplishes and which agents will be involved""",
                 context={
@@ -412,11 +412,11 @@ For each phase, provide:
                     "task": task_description,
                     "original_context": context,
                     "guidance": """Create detailed OrchestrationPlans for each phase.
-                    
+
 Each agent_request must include:
 - instruct: with clear instruction and context for the agent
 - compose_request: with appropriate role and domains based on the task
-- analysis_type: Choose from (RequirementsAnalysis, CodeContextAnalysis, IntegrationStrategy, 
+- analysis_type: Choose from (RequirementsAnalysis, CodeContextAnalysis, IntegrationStrategy,
                  FeatureImplementation, RequirementValidation, DocumentationPackage, TestStrategy, WorkSynthesis)
 - execution_strategy: concurrent or sequential based on dependencies
 

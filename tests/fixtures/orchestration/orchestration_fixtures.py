@@ -79,6 +79,7 @@ def mock_lionagi_builder():
     # Mock operations - return different UUIDs on each call
     def mock_add_operation(*args, **kwargs):
         return str(uuid4())
+
     builder.add_operation = MagicMock(side_effect=mock_add_operation)
 
     # Mock graph

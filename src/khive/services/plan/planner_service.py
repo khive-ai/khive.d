@@ -1854,7 +1854,7 @@ class PlannerService:
 
             # HandoffCoordinator removed - orchestrator handles execution
             # Returning empty status for now
-            logger.info(f"execute_parallel_fanout deprecated - use orchestrator")
+            logger.info("execute_parallel_fanout deprecated - use orchestrator")
             return {"status": "deprecated", "message": "Use orchestrator for execution"}
 
         except Exception as e:

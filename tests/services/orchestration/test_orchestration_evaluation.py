@@ -32,9 +32,7 @@ from khive.services.plan.planner_service import (
     PlannerService,
     Request,
 )
-from tests.fixtures.planning_fixtures import (
-    MockOpenAIResponse,
-)
+from tests.fixtures.planning_fixtures import MockOpenAIResponse
 
 
 @pytest.mark.unit
@@ -114,7 +112,7 @@ class TestDecisionMatrixValidation:
                 # Missing complexity_assessment section
                 invalid_matrix = {"agent_role_selection": {}}
                 mock_load.return_value = invalid_matrix
-                
+
                 planner = OrchestrationPlanner()
                 planner.matrix = invalid_matrix
                 # Should not crash, may return default values
@@ -124,10 +122,10 @@ class TestDecisionMatrixValidation:
             with patch(
                 "khive.services.plan.planner_service.OrchestrationPlanner._load_decision_matrix"
             ) as mock_load:
-                # Missing agent_role_selection section  
+                # Missing agent_role_selection section
                 invalid_matrix = {"complexity_assessment": {}}
                 mock_load.return_value = invalid_matrix
-                
+
                 planner = OrchestrationPlanner()
                 planner.matrix = invalid_matrix
                 # Should not crash, may return empty list

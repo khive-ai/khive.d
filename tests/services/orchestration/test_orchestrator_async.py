@@ -8,9 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.orchestration.parts import (
-    ComposerRequest,
-)
+from khive.services.orchestration.parts import ComposerRequest
 
 
 class TestAsyncPatterns:
@@ -43,17 +41,20 @@ class TestAsyncPatterns:
             # Mock the create_cc to return a proper async coroutine
             async def mock_cc_return(*args, **kwargs):
                 return MagicMock()
+
             mock_create_cc.return_value = mock_cc_return()
 
             # Mock the Branch class to avoid iModel issues
             # Each call should return a unique branch ID
             branch_counter = 0
+
             def create_mock_branch(*args, **kwargs):
                 nonlocal branch_counter
                 mock_branch = MagicMock()
                 mock_branch.id = f"test_branch_{branch_counter}"
                 branch_counter += 1
                 return mock_branch
+
             mock_branch_cls.side_effect = create_mock_branch
 
             mock_response = MagicMock()
@@ -470,17 +471,20 @@ class TestAsyncDeadlockPrevention:
             # Mock the create_cc to return a proper async coroutine
             async def mock_cc_return(*args, **kwargs):
                 return MagicMock()
+
             mock_create_cc.return_value = mock_cc_return()
 
             # Mock the Branch class to avoid iModel issues
             # Each call should return a unique branch ID
             branch_counter = 0
+
             def create_mock_branch(*args, **kwargs):
                 nonlocal branch_counter
                 mock_branch = MagicMock()
                 mock_branch.id = f"race_test_branch_{branch_counter}"
                 branch_counter += 1
                 return mock_branch
+
             mock_branch_cls.side_effect = create_mock_branch
 
             mock_response = MagicMock()

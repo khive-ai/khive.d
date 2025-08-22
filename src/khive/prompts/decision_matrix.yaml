@@ -127,7 +127,7 @@ agent_role_selection:
   refinement_phase:
     roles: ["reviewer", "commentator"]
     focus: "improvement_and_documentation"
-  
+
   theoretical_phase:
     roles: ["theorist"]
     focus: "formal_proofs_when_explicitly_needed"
@@ -210,27 +210,27 @@ domain_triggers:
     keywords: ["microservices", "event-driven", "kafka", "service-mesh"]
     primary_domains: ["microservices-architecture", "event-sourcing"]
     optional_domains: ["protocol-design", "distributed-systems"]
-    
+
   database_migration:
     keywords: ["database", "migration", "postgresql", "schema"]
     primary_domains: ["database-design", "backend-development"]
     optional_domains: ["ci-cd-pipelines", "devops-automation"]
-    
+
   api_development:
     keywords: ["api", "endpoint", "rest", "graphql", "rate-limiting"]
     primary_domains: ["api-design", "backend-development"]
     optional_domains: ["redis", "security-architecture"]
-    
+
   ui_engineering:
     keywords: ["ui", "frontend", "react", "nextjs", "typescript"]
     primary_domains: ["frontend-development"]
     optional_domains: ["nextjs", "playwright-testing", "typescript"]
-    
+
   security_analysis:
     keywords: ["security", "authentication", "authorization", "vulnerability"]
     primary_domains: ["security-architecture"]
     optional_domains: ["api-design", "backend-development"]
-    
+
   performance_optimization:
     keywords: ["performance", "optimization", "bundle-size", "load-time"]
     primary_domains: ["frontend-development", "backend-development"]

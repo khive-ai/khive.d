@@ -2,16 +2,9 @@
 
 import asyncio
 import contextlib
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.orchestration.parts import (
-    FanoutResponse,
-    FanoutWithGatedRefinementResponse,
-)
 
 
 class TestFanoutPattern:
@@ -20,40 +13,40 @@ class TestFanoutPattern:
     def test_orchestrator_configuration(self, orchestrator_with_mocks):
         """Test orchestrator basic configuration and setup."""
         orchestrator = orchestrator_with_mocks
-        
+
         # Test basic properties
         assert orchestrator.builder is not None
         assert orchestrator.session is not None
-        assert hasattr(orchestrator, 'flow_name')
-        
+        assert hasattr(orchestrator, "flow_name")
+
         # Test builder has expected methods
-        assert hasattr(orchestrator.builder, 'add_operation')
-        assert hasattr(orchestrator.builder, 'get_graph')
-        
-        # Test session has expected methods  
-        assert hasattr(orchestrator.session, 'default_branch')
-        
+        assert hasattr(orchestrator.builder, "add_operation")
+        assert hasattr(orchestrator.builder, "get_graph")
+
+        # Test session has expected methods
+        assert hasattr(orchestrator.session, "default_branch")
+
     def test_add_operations_to_builder(self, orchestrator_with_mocks):
         """Test that operations can be added to the builder."""
         orchestrator = orchestrator_with_mocks
-        
+
         # Test adding operations returns valid IDs
         op_id_1 = orchestrator.builder.add_operation("operate", instruction="Test 1")
         op_id_2 = orchestrator.builder.add_operation("operate", instruction="Test 2")
-        
+
         assert op_id_1 is not None
         assert op_id_2 is not None
         assert op_id_1 != op_id_2  # Should be different UUIDs
-        
+
     def test_orchestrator_helper_methods(self, orchestrator_with_mocks):
         """Test orchestrator helper methods work correctly."""
         orchestrator = orchestrator_with_mocks
-        
+
         # Test opres_ctx method
         nodes = ["node1", "node2"]
         context = orchestrator.opres_ctx(nodes)
         assert isinstance(context, list)
-        
+
         # Test flow plans field generation
         flow_field = orchestrator.generate_flow_plans_field(initial="test description")
         assert flow_field is not None
@@ -61,36 +54,40 @@ class TestFanoutPattern:
     def test_orchestrator_branch_creation(self, orchestrator_with_mocks):
         """Test orchestrator branch creation methods."""
         orchestrator = orchestrator_with_mocks
-        
+
         # Test new orchestrator branch creation
         branch = orchestrator.new_orc_branch()
         assert branch is not None
-        
+
     def test_builder_graph_access(self, orchestrator_with_mocks):
         """Test builder graph access and operations."""
         orchestrator = orchestrator_with_mocks
-        
+
         # Test getting graph from builder
         graph = orchestrator.builder.get_graph()
         assert graph is not None
-        
+
         # Test builder visualization method exists
-        assert hasattr(orchestrator.builder, 'visualize')
+        assert hasattr(orchestrator.builder, "visualize")
 
     def test_orchestrator_dependency_handling(self, orchestrator_with_mocks):
         """Test orchestrator dependency handling with builder operations."""
         orchestrator = orchestrator_with_mocks
-        
+
         # Test setting and getting last operation ID
         orchestrator.builder.last_operation_id = "test_op_id"
         assert orchestrator.builder.last_operation_id == "test_op_id"
-        
+
         # Test that operations can be added with dependencies
-        op_id_1 = orchestrator.builder.add_operation("operate", instruction="First operation")
+        op_id_1 = orchestrator.builder.add_operation(
+            "operate", instruction="First operation"
+        )
         orchestrator.builder.last_operation_id = op_id_1
-        
-        op_id_2 = orchestrator.builder.add_operation("operate", instruction="Second operation")
-        
+
+        op_id_2 = orchestrator.builder.add_operation(
+            "operate", instruction="Second operation"
+        )
+
         # Verify both operations have different IDs
         assert op_id_1 != op_id_2
         assert op_id_1 is not None
@@ -99,51 +96,59 @@ class TestFanoutPattern:
 
 class TestFanoutWithGatedRefinement:
     """Test fanout with gated refinement pattern."""
-    
+
     def test_gated_refinement_field_generation(self, orchestrator_with_mocks):
         """Test gated refinement field generation methods."""
         orchestrator = orchestrator_with_mocks
-        
+
         # Test generating flow plans field with refinement
         flow_field = orchestrator.generate_flow_plans_field(
             initial="Initial description",
             refinement="Refinement description",
-            context_aware="Context aware description"
+            context_aware="Context aware description",
         )
         assert flow_field is not None
-        
+
     def test_gated_refinement_branch_creation(self, orchestrator_with_mocks):
         """Test branch creation for gated refinement."""
         orchestrator = orchestrator_with_mocks
-        
+
         # Test creating branches for different roles
         branch1 = orchestrator.new_orc_branch()
         branch2 = orchestrator.new_orc_branch()
-        
+
         assert branch1 is not None
         assert branch2 is not None
         # Branches should be different objects
         assert branch1 != branch2
-        
+
     def test_gated_refinement_operations_setup(self, orchestrator_with_mocks):
         """Test setting up operations for gated refinement workflow."""
         orchestrator = orchestrator_with_mocks
-        
+
         # Test adding multiple operations for gated workflow
-        planning_op = orchestrator.builder.add_operation("operate", instruction="Plan work")
-        initial_op = orchestrator.builder.add_operation("operate", instruction="Initial work")
-        gate_op = orchestrator.builder.add_operation("operate", instruction="Quality gate")
-        refinement_op = orchestrator.builder.add_operation("operate", instruction="Refinement work")
-        
+        planning_op = orchestrator.builder.add_operation(
+            "operate", instruction="Plan work"
+        )
+        initial_op = orchestrator.builder.add_operation(
+            "operate", instruction="Initial work"
+        )
+        gate_op = orchestrator.builder.add_operation(
+            "operate", instruction="Quality gate"
+        )
+        refinement_op = orchestrator.builder.add_operation(
+            "operate", instruction="Refinement work"
+        )
+
         # All operations should have unique IDs
         ops = [planning_op, initial_op, gate_op, refinement_op]
         assert len(set(ops)) == 4  # All unique
         assert all(op is not None for op in ops)
-        
+
     def test_gated_refinement_context_operations(self, orchestrator_with_mocks):
         """Test context operations for gated refinement."""
         orchestrator = orchestrator_with_mocks
-        
+
         # Test opres_ctx with multiple nodes (as in gated refinement)
         nodes = ["gate1", "gate2", "refinement1"]
         context = orchestrator.opres_ctx(nodes)

@@ -424,14 +424,14 @@ class TestMockedIntegrationScenarios:
                     )
 
                     mock_response = MockOpenAIResponse(mock_eval)
-                    
+
                     # Create a proper async mock that returns immediately
                     async def mock_parse(*args, **kwargs):
                         return mock_response
-                    
-                    integration_mocks[
-                        "openai_client"
-                    ].beta.chat.completions.parse = mock_parse
+
+                    integration_mocks["openai_client"].beta.chat.completions.parse = (
+                        mock_parse
+                    )
 
                     # 5. Run evaluation
                     evaluations = await planner.evaluate_request(

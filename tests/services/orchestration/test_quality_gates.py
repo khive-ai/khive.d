@@ -239,7 +239,9 @@ class TestFanoutGatedRefinementPattern:
             assert result.refinement_executed is True
 
             # Verify correct number of flow executions (with refinement)
-            assert mock_run_flow.call_count == 5  # planning, initial, gate1, gate2, synthesis
+            assert (
+                mock_run_flow.call_count == 5
+            )  # planning, initial, gate1, gate2, synthesis
 
             # Verify refinement phase was executed
             assert mock_expand.call_count == 2
@@ -652,7 +654,9 @@ class TestCoverageScenarios:
                         )
                     }
                 },
-                {"operation_results": {"mock_operation_id": "Final synthesis result"}},  # Final synthesis
+                {
+                    "operation_results": {"mock_operation_id": "Final synthesis result"}
+                },  # Final synthesis
             ]
 
             mock_expand.side_effect = [
@@ -677,7 +681,9 @@ class TestCoverageScenarios:
             # Verify comprehensive execution
             assert result.gate_passed is True
             assert result.refinement_executed is True
-            assert mock_run_flow.call_count == 5  # Updated count: planning, initial, gate1, gate2, synthesis
+            assert (
+                mock_run_flow.call_count == 5
+            )  # Updated count: planning, initial, gate1, gate2, synthesis
 
     def test_gate_component_validation(self):
         """Test comprehensive gate component validation."""
@@ -745,7 +751,7 @@ class TestCoverageScenarios:
         mock_branch.name = "test_branch"
         mock_branch.messages = MagicMock()
 
-        # Mock messages progression  
+        # Mock messages progression
         mock_assistant_response = MagicMock(spec=AssistantResponse)
         mock_assistant_response.model_response = {
             "result": "Test result",
@@ -768,7 +774,7 @@ class TestCoverageScenarios:
 
         # Test context extraction
         context = orchestrator.opres_ctx("op1")
-        
+
         assert len(context) == 1
         assert context[0]["branch_id"] == "test_branch_id"
         assert context[0]["branch_name"] == "test_branch"

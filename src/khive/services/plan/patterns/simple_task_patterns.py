@@ -1,7 +1,5 @@
 """Simple task patterns for fast, accurate handling of common requests."""
 
-from typing import List, Tuple
-
 # Pattern: (keywords, required_roles, domains, max_agents)
 SIMPLE_PATTERNS = {
     "bug_fix": {
@@ -64,7 +62,7 @@ def match_simple_pattern(prompt: str) -> dict | None:
     return None
 
 
-def enforce_required_roles(selected_roles: List[str], pattern: dict) -> List[str]:
+def enforce_required_roles(selected_roles: list[str], pattern: dict) -> list[str]:
     """Ensure required roles are present."""
     roles = list(selected_roles)
 

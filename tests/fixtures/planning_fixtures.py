@@ -386,8 +386,8 @@ def integration_test_scenarios():
             "expected_phases": 4,
             "validation_criteria": {
                 "has_theorist": False,  # Role validation unreliable due to phase vs agent creation mismatch
-                "has_critic": False,    # Actual system creates correct agents but phases show different roles
-                "has_auditor": False,   # Disabling detailed role checks to focus on core functionality
+                "has_critic": False,  # Actual system creates correct agents but phases show different roles
+                "has_auditor": False,  # Disabling detailed role checks to focus on core functionality
                 "multi_phase": True,
                 "includes_validation_phase": False,  # Phase naming inconsistent with actual implementation
             },

@@ -21,10 +21,10 @@ fi
 for dir in "$WORKSPACES"/*; do
     if [[ -d "$dir" ]]; then
         dir_name=$(basename "$dir")
-        
+
         # Check if directory contains any files other than standard MCP files
         has_custom_files=false
-        
+
         # Find all files in the directory (recursively)
         while IFS= read -r file; do
             filename=$(basename "$file")
@@ -37,7 +37,7 @@ for dir in "$WORKSPACES"/*; do
                 break
             fi
         done < <(find "$dir" -type f 2>/dev/null)
-        
+
         if [[ "$has_custom_files" == true ]]; then
             echo "✅ KEEP: $dir_name (contains custom files)"
             ((KEPT_COUNT++))

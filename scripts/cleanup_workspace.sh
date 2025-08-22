@@ -21,7 +21,7 @@ fi
 for dir in "$WORKSPACE"/*; do
     if [[ -d "$dir" ]]; then
         dir_name=$(basename "$dir")
-        
+
         # Check if directory contains any .md files
         if find "$dir" -name "*.md" -type f | grep -q .; then
             echo "✅ KEEP: $dir_name (contains .md files)"

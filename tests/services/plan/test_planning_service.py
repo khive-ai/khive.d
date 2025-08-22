@@ -27,10 +27,7 @@ from khive.services.plan.planner_service import (
 )
 
 # Import test fixtures
-from tests.fixtures.planning_fixtures import (
-    MockDecisionMatrix,
-    MockOpenAIResponse,
-)
+from tests.fixtures.planning_fixtures import MockDecisionMatrix, MockOpenAIResponse
 
 
 class MockOpenAIError(Exception):

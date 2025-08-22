@@ -373,7 +373,7 @@ class AgentComposer:
                 if fallback_path.exists():
                     # Load directly with yaml.safe_load to bypass path security for config files
                     try:
-                        with open(fallback_path, "r", encoding="utf-8") as f:
+                        with open(fallback_path, encoding="utf-8") as f:
                             return yaml.safe_load(f) or {}
                     except Exception:
                         continue
@@ -405,7 +405,7 @@ class AgentComposer:
                 if fallback_path.exists():
                     # Load directly with yaml.safe_load to bypass path security for config files
                     try:
-                        with open(fallback_path, "r", encoding="utf-8") as f:
+                        with open(fallback_path, encoding="utf-8") as f:
                             return yaml.safe_load(f) or {
                                 "synonyms": {},
                                 "canonical_domains": [],

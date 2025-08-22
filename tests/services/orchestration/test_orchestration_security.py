@@ -8,7 +8,6 @@ This module addresses critical security vulnerabilities identified in the orches
 - Authorization bypass prevention
 """
 
-import contextlib
 import logging
 import tempfile
 from pathlib import Path
@@ -18,8 +17,8 @@ import pytest
 from lionagi.fields import Instruct
 from pydantic import ValidationError
 
-from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.composition.parts import ComposerRequest
+from khive.services.orchestration.orchestrator import LionOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +56,7 @@ class TestPathTraversalSecurity:
         # Pydantic V2 should reject malicious roles at validation time
         with pytest.raises(ValidationError) as exc_info:
             ComposerRequest(role=malicious_role, domains="test")
-        
+
         # Verify it's a literal_error for invalid role
         error = exc_info.value.errors()[0]
         assert error["type"] == "literal_error"

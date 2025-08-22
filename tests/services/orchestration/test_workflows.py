@@ -10,9 +10,7 @@ from uuid import uuid4
 import pytest
 
 from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.orchestration.parts import (
-    ComposerRequest,
-)
+from khive.services.orchestration.parts import ComposerRequest
 
 
 class TestAsyncExecutionPatterns:
@@ -33,6 +31,7 @@ class TestAsyncExecutionPatterns:
                     await asyncio.sleep(0.2)  # Realistic API delay
                     # Create proper iModel mock
                     from lionagi.service.imodel import iModel
+
                     mock_cc = MagicMock(spec=iModel)
                     mock_cc.model = "claude-3-5-sonnet-20241022"
                     mock_cc.provider = "anthropic"
@@ -42,12 +41,15 @@ class TestAsyncExecutionPatterns:
                 mock_create_cc.side_effect = slow_create_cc
 
                 # Mock initialize method to prevent real API calls
-                with patch.object(orchestrator, 'initialize', new_callable=AsyncMock) as mock_init:
+                with patch.object(
+                    orchestrator, "initialize", new_callable=AsyncMock
+                ) as mock_init:
+
                     async def mock_initialize_with_delay():
                         await asyncio.sleep(0.2)  # Simulate delay
                         orchestrator.session = MagicMock()
                         orchestrator.builder = MagicMock()
-                    
+
                     mock_init.side_effect = mock_initialize_with_delay
 
                     start_time = time.time()
@@ -94,6 +96,7 @@ class TestAsyncExecutionPatterns:
                 file_operation_count += 1
                 await asyncio.sleep(0.1)  # Simulate filesystem I/O
                 from lionagi.service.imodel import iModel
+
                 mock_cc = MagicMock(spec=iModel)
                 mock_cc.model = "claude-3-5-sonnet-20241022"
                 mock_cc.provider = "anthropic"
@@ -212,11 +215,13 @@ class TestAsyncExecutionPatterns:
             phase = getattr(realistic_fanout_flow, "phase_counter", 0)
             realistic_fanout_flow.phase_counter = phase + 1
 
-            execution_log.append({
-                "phase": phase + 1,
-                "start_time": time.time(),
-                "graph_nodes": len(getattr(graph, "internal_nodes", {})),
-            })
+            execution_log.append(
+                {
+                    "phase": phase + 1,
+                    "start_time": time.time(),
+                    "graph_nodes": len(getattr(graph, "internal_nodes", {})),
+                }
+            )
 
             # Simulate different phase timings
             if phase == 0:  # Planning phase
@@ -227,11 +232,7 @@ class TestAsyncExecutionPatterns:
                 root_id = getattr(realistic_fanout_flow, "root_id", "mock_root_id")
                 mock_result = MagicMock()
                 mock_result.flow_plans = MagicMock(initial=mock_plan)
-                return {
-                    "operation_results": {
-                        root_id: mock_result
-                    }
-                }
+                return {"operation_results": {root_id: mock_result}}
             if phase == 1:  # Initial execution
                 await asyncio.sleep(0.2)  # Simulate longer execution
                 return {"operation_results": {"agent1": "result1", "agent2": "result2"}}
@@ -239,13 +240,15 @@ class TestAsyncExecutionPatterns:
             await asyncio.sleep(0.05)
             # Return with the synth_node ID that the orchestrator expects
             # This should match what builder.add_operation returns for synthesis
-            synth_node_id = "mock_root_id"  # This matches our builder.add_operation mock
+            synth_node_id = (
+                "mock_root_id"  # This matches our builder.add_operation mock
+            )
             return {"operation_results": {synth_node_id: "final_result"}}
 
         orchestrator.session.flow = realistic_fanout_flow
         orchestrator.expand_with_plan = AsyncMock(return_value=["agent1", "agent2"])
         orchestrator.opres_ctx = MagicMock(return_value=[])
-        
+
         # Set up consistent root ID for the mock flow
         realistic_fanout_flow.root_id = "mock_root_id"
         # Mock builder.add_operation to return the expected root ID
@@ -261,6 +264,7 @@ class TestAsyncExecutionPatterns:
             ) as mock_branch_cls,
         ):
             from lionagi.service.imodel import iModel
+
             mock_cc = MagicMock(spec=iModel)
             mock_cc.model = "claude-3-5-sonnet-20241022"
             mock_cc.provider = "anthropic"
@@ -325,6 +329,7 @@ class TestAsyncResourceLifecycle:
             try:
                 await asyncio.sleep(2.0)  # Long operation
                 from lionagi.service.imodel import iModel
+
                 mock_cc = MagicMock(spec=iModel)
                 mock_cc.model = "claude-3-5-sonnet-20241022"
                 mock_cc.provider = "anthropic"
@@ -376,6 +381,7 @@ class TestAsyncResourceLifecycle:
             ) as mock_composer,
         ):
             from lionagi.service.imodel import iModel
+
             mock_cc = MagicMock(spec=iModel)
             mock_cc.model = "claude-3-5-sonnet-20241022"
             mock_cc.provider = "anthropic"
@@ -528,7 +534,7 @@ class TestAsyncResourceLifecycle:
         async def mock_run_flow():
             graph = MagicMock()  # Mock graph object
             return await pooled_flow_operation(graph)
-        
+
         start_time = time.time()
         result = await mock_run_flow()
         end_time = time.time()
@@ -596,7 +602,9 @@ class TestAsyncSecurityAndResilience:
 
             # Verify amplification was controlled
             assert result["operation_results"]["amplified_results"] == 100
-            assert max_concurrent_tasks <= 150  # Reasonable limit for mocked environment
+            assert (
+                max_concurrent_tasks <= 150
+            )  # Reasonable limit for mocked environment
 
     @pytest.mark.asyncio
     async def test_timeout_propagation_chain(self, orchestrator_with_mocks):
@@ -655,7 +663,9 @@ class TestAsyncSecurityAndResilience:
             await orchestrator.run_flow()
 
         # Verify timeout propagation (can be timeout or cancellation)
-        assert any("op2_" in event for event in timeout_events)  # op2_timeout or op2_cancelled
+        assert any(
+            "op2_" in event for event in timeout_events
+        )  # op2_timeout or op2_cancelled
         assert "chain_timeout" in timeout_events
 
     @pytest.mark.asyncio
@@ -785,15 +795,18 @@ class TestClaudeCodeIntegrationScenarios:
             model_id = str(uuid4())
             creation_time = time.time()
 
-            model_creation_calls.append({
-                "model_id": model_id,
-                "args": args,
-                "kwargs": kwargs,
-                "creation_time": creation_time,
-            })
+            model_creation_calls.append(
+                {
+                    "model_id": model_id,
+                    "args": args,
+                    "kwargs": kwargs,
+                    "creation_time": creation_time,
+                }
+            )
 
             # Simulate Claude Code model
             from lionagi.service.imodel import iModel
+
             mock_model = MagicMock(spec=iModel)
             mock_model.id = model_id
             mock_model.model = "claude-3-5-sonnet-20241022"
@@ -812,13 +825,17 @@ class TestClaudeCodeIntegrationScenarios:
             # Test concurrent orchestrator initialization
             async def create_orchestrator_with_branches():
                 orchestrator = LionOrchestrator("cc_integration_test")
-                
+
                 # Mock the initialize method to prevent real API calls
-                with patch.object(orchestrator, 'initialize', new_callable=AsyncMock) as mock_init:
+                with patch.object(
+                    orchestrator, "initialize", new_callable=AsyncMock
+                ) as mock_init:
                     mock_init.return_value = None  # Simulate successful initialization
                     # Set up proper session and builder mocks
                     orchestrator.session = MagicMock()
-                    orchestrator.session._lookup_branch_by_name = MagicMock(return_value=None)
+                    orchestrator.session._lookup_branch_by_name = MagicMock(
+                        return_value=None
+                    )
                     orchestrator.session.branches = MagicMock()
                     orchestrator.session.branches.include = MagicMock()
                     orchestrator.builder = MagicMock()
@@ -878,12 +895,14 @@ class TestClaudeCodeIntegrationScenarios:
         fs_operations = []
 
         def track_file_operation(operation, path):
-            fs_operations.append({
-                "operation": operation,
-                "path": str(path),
-                "timestamp": time.time(),
-                "thread": threading.current_thread().name,
-            })
+            fs_operations.append(
+                {
+                    "operation": operation,
+                    "path": str(path),
+                    "timestamp": time.time(),
+                    "thread": threading.current_thread().name,
+                }
+            )
 
         # Mock file system operations with tracking
         original_copytree = None
@@ -907,6 +926,7 @@ class TestClaudeCodeIntegrationScenarios:
             ) as mock_create_cc,
         ):
             from lionagi.service.imodel import iModel
+
             mock_cc = MagicMock(spec=iModel)
             mock_cc.model = "claude-3-5-sonnet-20241022"
             mock_cc.provider = "anthropic"
@@ -918,12 +938,16 @@ class TestClaudeCodeIntegrationScenarios:
                 # Use unique orchestrator name to avoid branch conflicts
                 unique_id = str(uuid4())[:8]
                 orchestrator = LionOrchestrator(f"permission_test_{role}_{unique_id}")
-                
+
                 # Mock initialize method to prevent real API calls
-                with patch.object(orchestrator, 'initialize', new_callable=AsyncMock) as mock_init:
+                with patch.object(
+                    orchestrator, "initialize", new_callable=AsyncMock
+                ) as mock_init:
                     mock_init.return_value = None
                     orchestrator.session = MagicMock()
-                    orchestrator.session._lookup_branch_by_name = MagicMock(return_value=None)  # Always return None to avoid conflicts
+                    orchestrator.session._lookup_branch_by_name = MagicMock(
+                        return_value=None
+                    )  # Always return None to avoid conflicts
                     orchestrator.session.branches = MagicMock()
                     orchestrator.session.branches.include = MagicMock()
                     orchestrator.builder = MagicMock()
@@ -1009,16 +1033,19 @@ class TestClaudeCodeIntegrationScenarios:
             # Simulate transient failures that eventually succeed
             if call_count <= len(error_scenarios):
                 error_type, error = error_scenarios[call_count - 1]
-                recovery_attempts.append({
-                    "attempt": call_count,
-                    "error_type": error_type,
-                    "timestamp": time.time(),
-                })
+                recovery_attempts.append(
+                    {
+                        "attempt": call_count,
+                        "error_type": error_type,
+                        "timestamp": time.time(),
+                    }
+                )
                 raise error
 
             # Eventually succeed
             successful_operations.append(call_count)
             from lionagi.service.imodel import iModel
+
             mock_cc = MagicMock(spec=iModel)
             mock_cc.model = "claude-3-5-sonnet-20241022"
             mock_cc.provider = "anthropic"

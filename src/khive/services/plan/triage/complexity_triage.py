@@ -9,7 +9,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Tuple
+from typing import Any, Literal
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel, ConfigDict, Field
@@ -32,12 +32,12 @@ class TriageVote(BaseModel):
     recommended_agents: int = Field(
         ge=0, le=10, description="Number of agents (0 if complex)"
     )
-    suggested_roles: List[str] = Field(
+    suggested_roles: list[str] = Field(
         default_factory=list,
         max_items=3,
         description="Suggested roles (empty if complex)",
     )
-    suggested_domains: List[str] = Field(
+    suggested_domains: list[str] = Field(
         default_factory=list,
         max_items=2,
         description="Suggested domains (empty if complex)",
@@ -48,13 +48,13 @@ class TriageConsensus(BaseModel):
     """Consensus from 3 triage agents."""
 
     should_escalate: bool
-    complexity_votes: Dict[str, int]  # {"simple": 2, "complex": 1}
+    complexity_votes: dict[str, int]  # {"simple": 2, "complex": 1}
     average_confidence: float
 
     # Consensus recommendations if not escalating
     final_agent_count: int | None = None
-    final_roles: List[str] | None = None
-    final_domains: List[str] | None = None
+    final_roles: list[str] | None = None
+    final_domains: list[str] | None = None
     consensus_reasoning: str | None = None
 
 
@@ -65,8 +65,8 @@ class TriageRecord:
     timestamp: str
     prompt: str
     word_count: int
-    votes: List[Dict[str, Any]]
-    consensus: Dict[str, Any]
+    votes: list[dict[str, Any]]
+    consensus: dict[str, Any]
     escalated: bool
     final_complexity: str | None = None
     actual_agents_used: int | None = None
@@ -101,7 +101,7 @@ class ComplexityTriageService:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.data_file = self.data_dir / f"triage_{datetime.now():%Y%m%d}.jsonl"
 
-    async def triage(self, prompt: str) -> Tuple[bool, TriageConsensus]:
+    async def triage(self, prompt: str) -> tuple[bool, TriageConsensus]:
         """
         Perform complexity triage with 3 LLMs.
 
@@ -127,12 +127,12 @@ class ComplexityTriageService:
         """Single triage agent evaluation."""
 
         system_prompt = f"""You are a complexity triage specialist focused on {perspective}.
-        
+
 Assess if this task is SIMPLE or COMPLEX:
 
 SIMPLE tasks (use 3 or fewer agents):
 - Single clear objective
-- Well-defined scope  
+- Well-defined scope
 - Standard patterns (fix bug, update docs, simple queries)
 - No cross-system dependencies
 - Can be done in one pass
@@ -178,7 +178,7 @@ Provide your assessment in this exact JSON format:
         vote_data = json.loads(response.choices[0].message.content)
         return TriageVote(**vote_data)
 
-    def _build_consensus(self, votes: List[TriageVote]) -> TriageConsensus:
+    def _build_consensus(self, votes: list[TriageVote]) -> TriageConsensus:
         """Build consensus from 3 votes."""
 
         # Count complexity votes
@@ -236,7 +236,7 @@ Provide your assessment in this exact JSON format:
         return consensus
 
     async def _record_triage(
-        self, prompt: str, votes: List[TriageVote], consensus: TriageConsensus
+        self, prompt: str, votes: list[TriageVote], consensus: TriageConsensus
     ):
         """Record triage decision for future model training."""
 
@@ -259,7 +259,6 @@ Provide your assessment in this exact JSON format:
         """Update record with actual execution outcome for learning."""
         # This would update the last record for this prompt
         # Used to validate if triage decisions were correct
-        pass
 
 
 class TriageAnalyzer:
@@ -268,7 +267,7 @@ class TriageAnalyzer:
     def __init__(self, data_dir: Path = Path(".khive/data/triage")):
         self.data_dir = data_dir
 
-    def analyze_accuracy(self) -> Dict[str, Any]:
+    def analyze_accuracy(self) -> dict[str, Any]:
         """Analyze triage accuracy from recorded data."""
 
         records = []
