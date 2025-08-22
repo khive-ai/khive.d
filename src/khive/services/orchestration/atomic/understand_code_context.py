@@ -62,12 +62,12 @@ class CodeContextAnalysis(BaseModel):
     quality_validation: str = Field(
         description=f"""
         {QUALITY_PROMPT}
-        
+
         Additionally for code context analysis:
         - Have you identified all critical integration points and dependencies?
         - Is your architectural understanding detailed enough for implementation decisions?
         - Have you captured the essential patterns that new code must follow?
-        
+
         {CONFIDENCE_PROMPT}
         """
     )

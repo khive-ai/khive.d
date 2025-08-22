@@ -1,6 +1,6 @@
 """Quality gate prompt factory for composable validation instructions"""
 
-from typing import Literal, Optional
+from typing import Literal
 
 from .design import DESIGN_GATE_PROMPT, MINIMAL_DESIGN_GATE_PROMPT
 from .documentation import DOCUMENTATION_GATE_PROMPT, MINIMAL_DOCUMENTATION_GATE_PROMPT
@@ -14,7 +14,7 @@ GateType = Literal["design", "security", "performance", "testing", "documentatio
 
 def get_gate_prompt(
     gate_type: GateType,
-    phase: Optional[ProjectPhase] = None,
+    phase: ProjectPhase | None = None,
     is_critical_path: bool = False,
     is_experimental: bool = False,
 ) -> str:
@@ -77,7 +77,7 @@ def get_gate_prompt(
 
 def get_composite_gate_prompt(
     gate_types: list[GateType],
-    phase: Optional[ProjectPhase] = None,
+    phase: ProjectPhase | None = None,
     is_critical_path: bool = False,
     is_experimental: bool = False,
 ) -> str:
@@ -93,12 +93,15 @@ def get_composite_gate_prompt(
     Returns:
         Combined gate prompt
     """
-    prompts = []
-    for gate_type in gate_types:
-        if prompt := get_gate_prompt(
-            gate_type, phase, is_critical_path, is_experimental
-        ):
-            prompts.append(f"## {gate_type.upper()} GATE\n{prompt}")
+    prompts = [
+        f"## {gate_type.upper()} GATE\n{prompt}"
+        for gate_type in gate_types
+        if (
+            prompt := get_gate_prompt(
+                gate_type, phase, is_critical_path, is_experimental
+            )
+        )
+    ]
 
     if not prompts:
         return ""

@@ -1,0 +1,53 @@
+{
+  "id": "2da43415-7aea-4975-9a7e-4b4f9c1c2786",
+  "created_at": 1755706553.100696,
+  "metadata": {
+    "lion_class": "khive.services.orchestration.parts.Issue"
+  },
+  "content": {
+    "issue_num": 186,
+    "issue_plan": {
+      "issue_num": 186,
+      "flow_name": "186_agent_composer_testing",
+      "system": "You are orchestrating comprehensive testing for the agent composition system\nwith special focus on security validation and reliability.",
+      "pattern": "fanout_with_gated_refinement",
+      "fanout_config": {
+        "initial_desc": "The agent composition system is core to khive's functionality and needs thorough\ntesting for security vulnerabilities and operational reliability.",
+        "synth_instruction": "Synthesize AgentComposer testing implementation:\n\n1. Core composition logic unit tests with all combinations\n2. Security test suite covering all attack vectors\n3. File operations testing with malicious inputs\n4. Thread safety and concurrency validation tests\n5. Error handling and recovery testing\n6. Performance testing for large compositions\n7. Integration tests with actual role/domain files\n\n**Output Location:**\n\n- Place tests in `tests/services/composition/` directory\n- Create `test_agent_composer.py` for core logic\n- Create `test_security_validation.py` for security tests\n- Create `test_file_operations.py` for file handling tests\n- Place test fixtures in `tests/fixtures/composition/`",
+        "planning_instruction": "Plan AgentComposer testing strategy focusing on:\n\n- Core composition logic with role and domain merging\n- Security validation against path traversal attacks\n- Input sanitization effectiveness for all user inputs\n- File loading with malformed and malicious content\n- Thread safety and concurrent composition scenarios\n- Cache management and invalidation logic\n- Domain taxonomy navigation and validation\n\n**Security Testing Priority:**\n\n- Path traversal attack prevention validation\n- Prompt injection prevention in context fields\n- File size limit enforcement testing\n- Input validation boundary testing\n\nTarget: >95% code coverage with comprehensive security validation.",
+        "context": "Core functionality with significant security implications that handles user\ninput and file system operations, requiring comprehensive validation."
+      },
+      "refinement_config": {
+        "refinement_desc": "Refine security testing to ensure comprehensive protection against attacks",
+        "critic_domain": "security",
+        "critic_role": "critic",
+        "gate_instruction": "Evaluate if security testing covers all attack vectors including path traversal, prompt injection, and input validation.",
+        "gates": [
+          "security",
+          "testing"
+        ]
+      },
+      "blocks_issues": [],
+      "enables_issues": [],
+      "dependencies": [
+        195
+      ],
+      "project_phase": "development",
+      "is_critical_path": true,
+      "is_experimental": false,
+      "skip_refinement": false,
+      "max_refinement_iterations": null
+    },
+    "issue_result": {
+      "issue_num": 186,
+      "executions": [],
+      "success": false
+    },
+    "operation_status": "pending",
+    "gate_passed": false,
+    "git_processed": false,
+    "redo_ctx": null,
+    "needs_redo": false
+  },
+  "embedding": null
+}

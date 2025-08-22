@@ -75,7 +75,7 @@ class ComposerService:
                     from lionagi.libs.file.file_ops import list_files
 
                     fps = list_files(khive_prompts / "roles", ".md")
-                    all_existing_roles = set(fp.stem for fp in fps if fp.is_file())
+                    all_existing_roles = {fp.stem for fp in fps if fp.is_file()}
                     if not ALL_AGENT_ROLES.issubset(all_existing_roles):
                         for role in ALL_AGENT_ROLES:
                             if role not in all_existing_roles:
@@ -144,23 +144,19 @@ class ComposerService:
             # Process domain expertise
             domain_expertise = []
             if "domains" in agent_spec:
-                for domain_data in agent_spec["domains"]:
-                    if isinstance(domain_data, dict):
-                        domain_expertise.append(
-                            DomainExpertise(
-                                domain_id=domain_data.get("id", "unknown"),
-                                knowledge_patterns=agent_spec.get(
-                                    "domain_patterns", {}
-                                ),
-                                decision_rules=agent_spec.get("domain_rules", {}),
-                                specialized_tools=agent_spec.get(
-                                    "domain_tools", {}
-                                ).get("specialized", []),
-                                confidence_thresholds=agent_spec.get(
-                                    "domain_thresholds", {}
-                                ),
-                            )
-                        )
+                domain_expertise.extend(
+                    DomainExpertise(
+                        domain_id=domain_data.get("id", "unknown"),
+                        knowledge_patterns=agent_spec.get("domain_patterns", {}),
+                        decision_rules=agent_spec.get("domain_rules", {}),
+                        specialized_tools=agent_spec.get("domain_tools", {}).get(
+                            "specialized", []
+                        ),
+                        confidence_thresholds=agent_spec.get("domain_thresholds", {}),
+                    )
+                    for domain_data in agent_spec["domains"]
+                    if isinstance(domain_data, dict)
+                )
 
             # Extract domain names
             domain_names = []
@@ -184,7 +180,7 @@ class ComposerService:
             logger.error(f"Error in handle_request: {e}", exc_info=True)
             return ComposerResponse(
                 success=False,
-                summary=f"Composition failed: {str(e)}",
+                summary=f"Composition failed: {e!s}",
                 agent_id="",
                 role=request.role,
                 system_prompt="",

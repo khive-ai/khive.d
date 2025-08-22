@@ -482,10 +482,11 @@ class AgentComposer:
 
     def list_available_roles(self) -> list[str]:
         """List all available agent roles"""
-        roles = []
-        for file_path in self.roles_path.glob("*"):
-            if file_path.suffix in [".md", ".yaml"]:
-                roles.append(file_path.stem)
+        roles = [
+            file_path.stem
+            for file_path in self.roles_path.glob("*")
+            if file_path.suffix in [".md", ".yaml"]
+        ]
         return sorted(roles)
 
     def list_available_domains(self) -> list[str]:
@@ -493,18 +494,22 @@ class AgentComposer:
         domains = []
 
         # Include flat structure domains for backward compatibility
-        for file_path in self.domains_path.glob("*.yaml"):
-            # Skip TAXONOMY.md and other non-domain files
-            if file_path.stem not in ["TAXONOMY", "README"]:
-                domains.append(file_path.stem)
+        domains.extend(
+            file_path.stem
+            for file_path in self.domains_path.glob("*.yaml")
+            if file_path.stem not in ["TAXONOMY", "README"]
+        )
 
         # Include hierarchical domains
-        for file_path in self.domains_path.rglob("*.yaml"):
+        domains.extend(
+            file_path.stem
+            for file_path in self.domains_path.rglob("*.yaml")
             # Skip files in the root (already processed above)
-            if file_path.parent != self.domains_path:
-                # Skip TAXONOMY.md and other non-domain files
-                if file_path.stem not in ["TAXONOMY", "README"]:
-                    domains.append(file_path.stem)
+            if (
+                file_path.parent != self.domains_path
+                and file_path.stem not in ["TAXONOMY", "README"]
+            )
+        )
 
         return sorted(set(domains))  # Remove duplicates
 
@@ -519,9 +524,9 @@ class AgentComposer:
                 taxonomy[category_name] = {}
 
                 # Check for domains directly in category folder
-                direct_domains = []
-                for yaml_file in category_path.glob("*.yaml"):
-                    direct_domains.append(yaml_file.stem)
+                direct_domains = [
+                    yaml_file.stem for yaml_file in category_path.glob("*.yaml")
+                ]
 
                 if direct_domains:
                     taxonomy[category_name]["_root"] = sorted(direct_domains)
@@ -530,10 +535,10 @@ class AgentComposer:
                 for subcategory_path in category_path.iterdir():
                     if subcategory_path.is_dir():
                         subcategory_name = subcategory_path.name
-                        domains = []
-
-                        for yaml_file in subcategory_path.glob("*.yaml"):
-                            domains.append(yaml_file.stem)
+                        domains = [
+                            yaml_file.stem
+                            for yaml_file in subcategory_path.glob("*.yaml")
+                        ]
 
                         if domains:  # Only include non-empty subcategories
                             taxonomy[category_name][subcategory_name] = sorted(domains)

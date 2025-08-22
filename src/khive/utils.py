@@ -9,21 +9,23 @@ import os
 import shutil
 import subprocess
 import sys
-from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import cache
 from pathlib import Path
-from typing import Any, ClassVar, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover
-    import tomli as tomllib  # type: ignore
+    import tomli as tomllib  # type: ignore[import-untyped]
 
 # --- Type Variables ---
 T = TypeVar("T")
@@ -40,16 +42,16 @@ verbose_mode = False
 
 
 __all__ = (
-    "get_bins",
-    "import_module",
-    "sha256_of_dict",
-    "convert_to_datetime",
-    "validate_uuid",
-    "validate_model_to_dict",
-    "is_package_installed",
-    "is_coroutine_function",
     "as_async_fn",
+    "convert_to_datetime",
+    "get_bins",
     "get_logger",
+    "import_module",
+    "is_coroutine_function",
+    "is_package_installed",
+    "sha256_of_dict",
+    "validate_model_to_dict",
+    "validate_uuid",
 )
 
 
@@ -225,8 +227,11 @@ def get_project_root() -> Path:
     Falls back to current working directory if not in a Git repository.
     """
     try:
-        result = subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"], text=True, stderr=subprocess.PIPE
+        git_cmd = shutil.which("git")
+        if not git_cmd:
+            return Path.cwd()
+        result = subprocess.check_output(  # noqa: S603
+            [git_cmd, "rev-parse", "--show-toplevel"], text=True, stderr=subprocess.PIPE
         ).strip()
         return Path(result)
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -447,7 +452,7 @@ def run_command(
         if env:
             final_env.update(env)
 
-        process = subprocess.run(
+        process = subprocess.run(  # noqa: S603
             cmd_args,
             text=True,
             capture_output=capture,
@@ -455,6 +460,7 @@ def run_command(
             cwd=cwd,
             env=final_env,
             timeout=timeout,
+            shell=False,
         )
 
         duration = time.time() - start_time
@@ -546,7 +552,7 @@ def git_run(
         CommandResult object if capture=True, exit code if capture=False
     """
     return run_command(
-        ["git"] + cmd_args,
+        ["git", *cmd_args],
         capture=capture,
         check=check,
         dry_run=dry_run,
@@ -697,7 +703,7 @@ SQLITE_DSN = f"sqlite+aiosqlite:///{KHIVE_CONFIG_DIR}/claude_hooks.db"
 class EventBroadcaster:
     """Real-time event broadcasting system for hook events."""
 
-    _instance: ClassVar["EventBroadcaster | None"] = None
+    _instance: ClassVar[EventBroadcaster | None] = None
     _subscribers: ClassVar[list[Callable[[Any], None]]] = []
     _async_subscribers: ClassVar[list[Callable[[Any], Any]]] = []
     _event_type: ClassVar[type]

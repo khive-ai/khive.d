@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
 
 from pydantic import Field
 
@@ -37,7 +36,7 @@ class PlannerRequest(BaseModel):
     """Request to the planner service."""
 
     task_description: str = Field(..., description="Description of the task to plan")
-    context: Optional[str] = Field(None, description="Additional context for planning")
+    context: str | None = Field(None, description="Additional context for planning")
     time_budget_seconds: float = Field(30.0, description="Maximum time for planning")
 
     class Config:
@@ -85,10 +84,10 @@ class PlannerResponse(BaseModel):
         default_factory=list, description="Agent spawn commands"
     )
 
-    session_id: Optional[str] = Field(None, description="Session ID for coordination")
+    session_id: str | None = Field(None, description="Session ID for coordination")
 
     confidence: float = Field(..., description="Confidence in the plan (0.0-1.0)")
-    error: Optional[str] = Field(None, description="Error message if planning failed")
+    error: str | None = Field(None, description="Error message if planning failed")
 
     class Config:
         extra = "allow"

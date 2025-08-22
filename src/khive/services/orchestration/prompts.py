@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 __all__ = (
-    "KHIVE_PLAN_REMINDER",
     "CRITIC_REVIEW_INSTRUCTION",
+    "KHIVE_PLAN_REMINDER",
     "REDO_ORCHESTRATOR_INSTRUCTION",
     "SYNTHESIS_INSTRUCTION",
 )
@@ -122,7 +122,7 @@ Work Execution Rules:
 
 STOP Rules (DO NOT add):
 - "Future-proofing" features not requested
-- Extra abstractions "just in case"  
+- Extra abstractions "just in case"
 - Performance optimizations not required
 - Generic improvements beyond issue scope
 

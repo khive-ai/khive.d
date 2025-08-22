@@ -1,7 +1,6 @@
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import yaml
 
@@ -19,9 +18,9 @@ class ParsedIssue:
     project_phase: str
     is_critical_path: bool
     is_experimental: bool
-    blocks_issues: List[int]
-    enables_issues: List[int]
-    dependencies: List[int]
+    blocks_issues: list[int]
+    enables_issues: list[int]
+    dependencies: list[int]
     workspace_path: str
 
     # Content sections
@@ -33,10 +32,10 @@ class ParsedIssue:
 
     # Refinement (optional)
     refinement_enabled: bool = False
-    refinement_desc: Optional[str] = None
-    critic_domain: Optional[str] = None
-    gate_instruction: Optional[str] = None
-    gates: Optional[List[str]] = None
+    refinement_desc: str | None = None
+    critic_domain: str | None = None
+    gate_instruction: str | None = None
+    gates: list[str] | None = None
     skip_refinement: bool = False
 
 
@@ -94,7 +93,7 @@ class IssueMarkdownParser:
             skip_refinement=frontmatter.get("skip_refinement", False),
         )
 
-    def _parse_markdown_sections(self, content: str) -> Dict[str, str]:
+    def _parse_markdown_sections(self, content: str) -> dict[str, str]:
         """Parse markdown content into sections"""
         sections = {}
 
@@ -116,7 +115,7 @@ class IssueMarkdownParser:
 
         return sections
 
-    def parse_all_issues(self) -> Dict[str, ParsedIssue]:
+    def parse_all_issues(self) -> dict[str, ParsedIssue]:
         """Parse all markdown issues in the directory"""
         issues = {}
 
@@ -175,7 +174,7 @@ class IssueMarkdownParser:
             skip_refinement=parsed.skip_refinement,
         )
 
-    def load_all_issue_plans(self) -> Dict[str, IssuePlan]:
+    def load_all_issue_plans(self) -> dict[str, IssuePlan]:
         """Load all issues as IssuePlan objects for compatibility"""
         parsed_issues = self.parse_all_issues()
         issue_plans = {}
@@ -186,7 +185,7 @@ class IssueMarkdownParser:
         return issue_plans
 
 
-def load_all_issues(issues_dir: Path) -> Dict[str, IssuePlan]:
+def load_all_issues(issues_dir: Path) -> dict[str, IssuePlan]:
     """
     Load all issues from markdown files
     """

@@ -12,9 +12,13 @@ import json
 import logging
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime
-from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING
+
+from khive.core import TimePolicy
+
+if TYPE_CHECKING:
+    from datetime import datetime
+    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +30,7 @@ class AgentSpec:
     role: str
     domain: str
     priority: float
-    dependencies: List[str] = field(default_factory=list)
+    dependencies: list[str] = field(default_factory=list)
     spawn_command: str = ""
     session_id: str = ""
     phase: str = ""
@@ -39,11 +43,11 @@ class ExecutionNode:
 
     agent_spec: AgentSpec
     status: str = "pending"  # pending, ready, running, completed, failed
-    start_time: Optional[datetime] = None
-    completion_time: Optional[datetime] = None
-    artifacts: List[str] = field(default_factory=list)
-    dependencies_met: Set[str] = field(default_factory=set)
-    dependents: Set[str] = field(default_factory=set)
+    start_time: datetime | None = None
+    completion_time: datetime | None = None
+    artifacts: list[str] = field(default_factory=list)
+    dependencies_met: set[str] = field(default_factory=set)
+    dependents: set[str] = field(default_factory=set)
 
 
 class HandoffCoordinator:
@@ -72,11 +76,11 @@ class HandoffCoordinator:
         self.session_dir.mkdir(parents=True, exist_ok=True)
 
         # Execution state
-        self.execution_graph: Dict[str, ExecutionNode] = {}
+        self.execution_graph: dict[str, ExecutionNode] = {}
         self.ready_queue: deque[str] = deque()
-        self.running_agents: Set[str] = set()
-        self.completed_agents: Set[str] = set()
-        self.failed_agents: Set[str] = set()
+        self.running_agents: set[str] = set()
+        self.completed_agents: set[str] = set()
+        self.failed_agents: set[str] = set()
 
         # Configuration
         self.max_concurrent_agents = 8
@@ -84,8 +88,8 @@ class HandoffCoordinator:
         self.quality_gate_timeout = 60  # 1 minute
 
         # Metrics
-        self.start_time: Optional[datetime] = None
-        self.execution_metrics: Dict[str, float] = {}
+        self.start_time: datetime | None = None
+        self.execution_metrics: dict[str, float] = {}
 
         # Artifact registry
         self.registry_path = self.session_dir / "artifact_registry.json"
@@ -94,12 +98,12 @@ class HandoffCoordinator:
     def load_artifact_registry(self) -> None:
         """Load existing artifact registry or create new one"""
         if self.registry_path.exists():
-            with open(self.registry_path, "r") as f:
+            with open(self.registry_path) as f:
                 self.artifact_registry = json.load(f)
         else:
             self.artifact_registry = {
                 "session_id": self.session_id,
-                "created_at": datetime.now().isoformat(),
+                "created_at": TimePolicy.now_utc().isoformat(),
                 "artifacts": [],
                 "phases": [],
                 "status": "active",
@@ -153,7 +157,7 @@ class HandoffCoordinator:
 
         return True
 
-    def build_dependency_graph(self, agent_specs: List[AgentSpec]) -> None:
+    def build_dependency_graph(self, agent_specs: list[AgentSpec]) -> None:
         """
         Build the complete dependency graph from agent specifications.
 
@@ -200,9 +204,9 @@ class HandoffCoordinator:
                 in_degree[agent_id] += 1
 
         # Find nodes with no incoming edges
-        queue = deque(
-            [agent_id for agent_id in self.execution_graph if in_degree[agent_id] == 0]
-        )
+        queue = deque([
+            agent_id for agent_id in self.execution_graph if in_degree[agent_id] == 0
+        ])
         processed = 0
 
         while queue:
@@ -218,8 +222,8 @@ class HandoffCoordinator:
         return processed == len(self.execution_graph)
 
     async def execute_parallel_fanout(
-        self, timeout: Optional[float] = None
-    ) -> Dict[str, str]:
+        self, timeout: float | None = None
+    ) -> dict[str, str]:
         """
         Execute agents in parallel with dependency resolution.
 
@@ -229,7 +233,7 @@ class HandoffCoordinator:
         Returns:
             Dictionary mapping agent IDs to their execution status
         """
-        self.start_time = datetime.now()
+        self.start_time = TimePolicy.now_utc()
         logger.info(
             f"Starting parallel fan-out execution with {len(self.execution_graph)} agents"
         )
@@ -263,7 +267,7 @@ class HandoffCoordinator:
                             agent_id, status = await task
                             self._handle_agent_completion(agent_id, status)
                         except Exception as e:
-                            logger.error(f"Agent execution failed: {e}")
+                            logger.exception(f"Agent execution failed: {e}")
 
                     # Update task list
                     execution_tasks = list(pending)
@@ -271,13 +275,14 @@ class HandoffCoordinator:
                 # Check for timeout
                 if (
                     timeout
-                    and (datetime.now() - self.start_time).total_seconds() > timeout
+                    and (TimePolicy.now_utc() - self.start_time).total_seconds()
+                    > timeout
                 ):
                     logger.warning("Parallel execution timeout reached")
                     break
 
         except Exception as e:
-            logger.error(f"Parallel execution error: {e}")
+            logger.exception(f"Parallel execution error: {e}")
             raise
 
         finally:
@@ -286,7 +291,7 @@ class HandoffCoordinator:
                 task.cancel()
 
         # Generate execution report
-        execution_time = (datetime.now() - self.start_time).total_seconds()
+        execution_time = (TimePolicy.now_utc() - self.start_time).total_seconds()
         self.execution_metrics["total_time"] = execution_time
         self.execution_metrics["agents_completed"] = len(self.completed_agents)
         self.execution_metrics["agents_failed"] = len(self.failed_agents)
@@ -295,7 +300,7 @@ class HandoffCoordinator:
 
         return self._generate_execution_status()
 
-    async def _execute_agent(self, agent_id: str) -> Tuple[str, str]:
+    async def _execute_agent(self, agent_id: str) -> tuple[str, str]:
         """
         Execute a single agent.
 
@@ -307,14 +312,14 @@ class HandoffCoordinator:
         """
         node = self.execution_graph[agent_id]
         node.status = "running"
-        node.start_time = datetime.now()
+        node.start_time = TimePolicy.now_utc()
         self.running_agents.add(agent_id)
 
         logger.info(f"Starting execution of agent {agent_id}")
 
         try:
             # Generate spawn command with enhanced context
-            spawn_command = self._generate_spawn_command(node.agent_spec)
+            self._generate_spawn_command(node.agent_spec)
 
             # Execute the agent (simulate with async task)
             # In real implementation, this would spawn the actual Task agent
@@ -328,15 +333,15 @@ class HandoffCoordinator:
             self._register_artifact(agent_id, artifact_path)
 
             node.status = "completed"
-            node.completion_time = datetime.now()
+            node.completion_time = TimePolicy.now_utc()
 
             logger.info(f"Agent {agent_id} completed successfully")
             return agent_id, "completed"
 
         except Exception as e:
             node.status = "failed"
-            node.completion_time = datetime.now()
-            logger.error(f"Agent {agent_id} failed: {e}")
+            node.completion_time = TimePolicy.now_utc()
+            logger.exception(f"Agent {agent_id} failed: {e}")
             return agent_id, "failed"
 
         finally:
@@ -424,7 +429,7 @@ COORDINATION INSTRUCTIONS:
 
     def _generate_artifact_path(self, agent_spec: AgentSpec) -> str:
         """Generate artifact path for an agent"""
-        timestamp = datetime.now().strftime("%H%M%S")
+        timestamp = TimePolicy.now_utc().strftime("%H%M%S")
         filename = (
             f"{agent_spec.phase}_{agent_spec.role}_{agent_spec.domain}_{timestamp}.md"
         )
@@ -435,7 +440,7 @@ COORDINATION INSTRUCTIONS:
         artifact_entry = {
             "agent_id": agent_id,
             "artifact_path": artifact_path,
-            "created_at": datetime.now().isoformat(),
+            "created_at": TimePolicy.now_utc().isoformat(),
             "phase": self.execution_graph[agent_id].agent_spec.phase,
             "role": self.execution_graph[agent_id].agent_spec.role,
             "domain": self.execution_graph[agent_id].agent_spec.domain,
@@ -444,7 +449,7 @@ COORDINATION INSTRUCTIONS:
         self.artifact_registry["artifacts"].append(artifact_entry)
         self.save_artifact_registry()
 
-    def _generate_execution_status(self) -> Dict[str, str]:
+    def _generate_execution_status(self) -> dict[str, str]:
         """Generate execution status report"""
         status = {}
 
@@ -462,12 +467,12 @@ COORDINATION INSTRUCTIONS:
 
         return status
 
-    def get_execution_metrics(self) -> Dict[str, float]:
+    def get_execution_metrics(self) -> dict[str, float]:
         """Get execution performance metrics"""
         metrics = self.execution_metrics.copy()
 
         if self.start_time:
-            current_time = datetime.now()
+            current_time = TimePolicy.now_utc()
             metrics["elapsed_time"] = (current_time - self.start_time).total_seconds()
 
         metrics["completion_rate"] = (
@@ -484,19 +489,19 @@ COORDINATION INSTRUCTIONS:
 
         return metrics
 
-    def get_ready_agents(self) -> List[str]:
+    def get_ready_agents(self) -> list[str]:
         """Get list of agents ready for execution"""
         return list(self.ready_queue)
 
-    def get_running_agents(self) -> List[str]:
+    def get_running_agents(self) -> list[str]:
         """Get list of currently running agents"""
         return list(self.running_agents)
 
-    def get_completed_agents(self) -> List[str]:
+    def get_completed_agents(self) -> list[str]:
         """Get list of completed agents"""
         return list(self.completed_agents)
 
-    def get_failed_agents(self) -> List[str]:
+    def get_failed_agents(self) -> list[str]:
         """Get list of failed agents"""
         return list(self.failed_agents)
 
@@ -541,11 +546,10 @@ COORDINATION INSTRUCTIONS:
         if completion_rate >= required_rate:
             logger.info(f"Quality gate passed: {completion_rate:.1%} completion rate")
             return True
-        else:
-            logger.warning(
-                f"Quality gate failed: {completion_rate:.1%} < {required_rate:.1%}"
-            )
-            return False
+        logger.warning(
+            f"Quality gate failed: {completion_rate:.1%} < {required_rate:.1%}"
+        )
+        return False
 
     def optimize_execution_order(self) -> None:
         """

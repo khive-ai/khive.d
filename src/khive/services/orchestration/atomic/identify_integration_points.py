@@ -59,12 +59,12 @@ class IntegrationStrategy(BaseModel):
     quality_validation: str = Field(
         description=f"""
         {QUALITY_PROMPT}
-        
+
         Additionally for integration strategy:
         - Have you identified all critical integration points and dependencies?
         - Is your strategy specific enough for implementation teams to execute?
         - Does the approach minimize risk while maintaining architectural integrity?
-        
+
         {CONFIDENCE_PROMPT}
         """
     )

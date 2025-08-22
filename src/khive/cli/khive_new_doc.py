@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from khive.cli.base import CLIResult, ConfigurableCLICommand, cli_command
+from khive.core import TimePolicy
 from khive.utils import BaseConfig, ensure_directory, log_msg, safe_write_file, warn_msg
 
 
@@ -243,17 +244,15 @@ class NewDocCommand(ConfigurableCLICommand):
         template_data = []
         for category, tpls in sorted(categorized.items()):
             for tpl in sorted(tpls, key=lambda t: t.doc_type):
-                template_data.append(
-                    {
-                        "category": category,
-                        "type": tpl.doc_type,
-                        "title": tpl.title,
-                        "description": tpl.description,
-                        "filename": tpl.path.name,
-                        "variables": tpl.variables,
-                        "tags": tpl.tags,
-                    }
-                )
+                template_data.append({
+                    "category": category,
+                    "type": tpl.doc_type,
+                    "title": tpl.title,
+                    "description": tpl.description,
+                    "filename": tpl.path.name,
+                    "variables": tpl.variables,
+                    "tags": tpl.tags,
+                })
 
         return CLIResult(
             status="success",
@@ -303,10 +302,9 @@ class NewDocCommand(ConfigurableCLICommand):
                 message=f"Created template: {template_path.name}",
                 data={"path": str(template_path)},
             )
-        else:
-            return CLIResult(
-                status="failure", message="Failed to write template file", exit_code=1
-            )
+        return CLIResult(
+            status="failure", message="Failed to write template file", exit_code=1
+        )
 
     def _create_document(
         self,
@@ -324,7 +322,7 @@ class NewDocCommand(ConfigurableCLICommand):
         template = self._find_template(type_or_template, templates)
 
         if not template:
-            available = sorted(set(t.doc_type for t in templates))
+            available = sorted({t.doc_type for t in templates})
             return CLIResult(
                 status="failure",
                 message=f"Template '{type_or_template}' not found",
@@ -356,7 +354,7 @@ class NewDocCommand(ConfigurableCLICommand):
             **config.default_vars,
             **custom_vars,
             "DATE": dt.date.today().isoformat(),
-            "DATETIME": dt.datetime.now().isoformat(),
+            "DATETIME": TimePolicy.now_local().isoformat(),
             "IDENTIFIER": identifier,
             "PROJECT_ROOT": str(config.project_root),
             "USER": self._get_user_info(),
@@ -390,10 +388,9 @@ class NewDocCommand(ConfigurableCLICommand):
                     "variables_used": list(all_vars.keys()),
                 },
             )
-        else:
-            return CLIResult(
-                status="failure", message="Failed to write document", exit_code=1
-            )
+        return CLIResult(
+            status="failure", message="Failed to write document", exit_code=1
+        )
 
     def _discover_templates(
         self, config: NewDocConfig, additional_dir: Path | None = None
@@ -580,7 +577,13 @@ class NewDocCommand(ConfigurableCLICommand):
 
         try:
             return pwd.getpwuid(os.getuid()).pw_gecos.split(",")[0] or os.getlogin()
-        except:
+        except (KeyError, OSError, AttributeError, IndexError) as e:
+            # Expected user info retrieval failure - fallback to environment
+            import logging
+
+            logging.getLogger(__name__).debug(
+                f"User info retrieval failed (using fallback): {e}"
+            )
             return os.environ.get("USER", "Unknown")
 
     def _generate_template_content(
@@ -641,9 +644,8 @@ ai_context: |
 ---
 *Generated with khive document scaffolder*
 """
-        else:
-            # Basic template
-            return f"""---
+        # Basic template
+        return f"""---
 doc_type: {name.lower().replace(" ", "_")}
 title: {name} - {{{{IDENTIFIER}}}}
 ---

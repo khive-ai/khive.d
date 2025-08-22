@@ -1,12 +1,22 @@
-"""Global test configuration and fixtures for khive testing."""
+"""Simple test configuration and fixtures for khive testing."""
 
 import asyncio
+import os
+import sys
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import AsyncGenerator, Generator
-from unittest.mock import AsyncMock, MagicMock
+from typing import Any
 
 import pytest
+
+# Import CLI fixtures - pytest auto-discovers these
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "fixtures"))
+
+# Import orchestration fixtures - pytest auto-discovers these
+# from fixtures.orchestration.orchestration_fixtures import *
+
+# Import planning fixtures
 
 
 @pytest.fixture(scope="session")
@@ -20,29 +30,30 @@ def event_loop():
 
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
-    """Create a temporary directory for test isolation."""
+    """Create a temporary directory for test files."""
     with tempfile.TemporaryDirectory() as temp_dir:
         yield Path(temp_dir)
 
 
 @pytest.fixture
-def mock_openai_client():
-    """Mock OpenAI client for testing."""
-    client = MagicMock()
-    client.chat.completions.create = AsyncMock(
-        return_value=MagicMock(
-            choices=[MagicMock(message=MagicMock(content="Test response"))]
-        )
-    )
-    return client
+def mock_env() -> Generator[dict[str, Any], None, None]:
+    """Mock environment variables for testing."""
+    original_env = dict(os.environ)
+    test_env = {
+        "KHIVE_TEST_MODE": "true",
+        "KHIVE_DISABLE_EXTERNAL_APIS": "true",
+    }
+    os.environ.update(test_env)
+    yield test_env
+    os.environ.clear()
+    os.environ.update(original_env)
 
 
 @pytest.fixture
 def sample_project_dir(temp_dir: Path) -> Path:
-    """Create a sample project directory structure."""
+    """Create a sample project directory for CLI testing."""
     project = temp_dir / "test_project"
     project.mkdir()
     (project / "src").mkdir()
-    (project / "tests").mkdir()
     (project / "pyproject.toml").write_text("[project]\nname = 'test-project'")
     return project

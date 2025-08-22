@@ -52,12 +52,12 @@ class RequirementsAnalysis(BaseModel):
     quality_validation: str = Field(
         description=f"""
         {QUALITY_PROMPT}
-        
+
         Additionally for requirements analysis:
         - Are the requirements specific enough for unambiguous implementation?
         - Have you identified all critical dependencies and integration points?
         - Do the requirements enable accurate effort estimation?
-        
+
         {CONFIDENCE_PROMPT}
         """
     )

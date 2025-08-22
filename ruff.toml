@@ -107,6 +107,7 @@ ignore = [
     "S106",   # Possible hardcoded password assigned to argument: "password"
     "S108",   # Probable insecure usage of temporary file or directory: "/tmp"
     "ARG001", # Unused function argument
+    "ARG002", # Unused method argument (test fixtures and mocks)
     "F841",   # Local variable is assigned to but never used
     "SLF001", # Private member accessed (Can be more specific if needed, though globally ignored too)
     "ARG005", # Unused lambda argument
@@ -115,6 +116,8 @@ ignore = [
     "PGH003", # Use specific rule codes when ignoring type issues
     "SIM103", # Return the condition directly
     "SIM117", # Use a single `with` statement with multiple contexts
+    "RUF001", # Ambiguous unicode characters (intentional security test cases)
+    "PERF203", # Try-except in loops (intentional robustness test patterns)
     "E402",
 ]
 "cookiecutter/*" = [
@@ -158,6 +161,27 @@ ignore = [
 ]
 "src/khive/clients/resilience.py" = [
     "PERF203", # `try`-`except` within a loop incurs performance overhead
+]
+# Intentional architectural robustness patterns identified by systematic analysis
+"src/khive/services/artifacts/handlers/*" = [
+    "PERF203", # Agent coordination robustness patterns (intentional)
+]
+"src/khive/services/claude/frontend/*" = [
+    "PERF203", # WebSocket client handling robustness (intentional)
+    "RUF001",  # UI symbols and intentional unicode usage
+]
+"src/khive/services/orchestration/*" = [
+    "PERF203", # File parsing robustness patterns (intentional)
+]
+"src/khive/services/session/*" = [
+    "PERF203", # Session management robustness patterns (intentional)
+    "ARG002",  # Service interface contracts (unused args for API compatibility)
+]
+"src/khive/services/plan/*" = [
+    "ARG002",  # Planner service interface contracts (unused args for API compatibility)
+]
+"src/khive/utils.py" = [
+    "PERF203", # Utility robustness patterns (intentional)
 ]
 
 # Configuration for the 'isort' import sorter.

@@ -9,10 +9,17 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
+
+import aiofiles
+
+from khive.core import TimePolicy
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +67,7 @@ class TimeoutConfig:
     performance_threshold: float = 0.7  # 70% success rate threshold
     timeout_reduction_factor: float = 0.3  # 30% time reduction target
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "agent_execution_timeout": self.agent_execution_timeout,
@@ -84,32 +91,32 @@ class TimeoutResult:
     timeout_type: TimeoutType
     status: TimeoutStatus
     start_time: datetime
-    end_time: Optional[datetime] = None
-    duration: Optional[float] = None
-    error: Optional[str] = None
+    end_time: datetime | None = None
+    duration: float | None = None
+    error: str | None = None
     retry_count: int = 0
 
     def mark_completed(self) -> None:
         """Mark operation as completed."""
-        self.end_time = datetime.now()
+        self.end_time = TimePolicy.now_utc()
         self.duration = (self.end_time - self.start_time).total_seconds()
         self.status = TimeoutStatus.COMPLETED
 
     def mark_timed_out(self, error: str) -> None:
         """Mark operation as timed out."""
-        self.end_time = datetime.now()
+        self.end_time = TimePolicy.now_utc()
         self.duration = (self.end_time - self.start_time).total_seconds()
         self.status = TimeoutStatus.TIMED_OUT
         self.error = error
 
     def mark_error(self, error: str) -> None:
         """Mark operation as failed with error."""
-        self.end_time = datetime.now()
+        self.end_time = TimePolicy.now_utc()
         self.duration = (self.end_time - self.start_time).total_seconds()
         self.status = TimeoutStatus.ERROR
         self.error = error
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "operation_id": self.operation_id,
@@ -132,7 +139,7 @@ class TimeoutManager:
     """
 
     def __init__(
-        self, config: Optional[TimeoutConfig] = None, session_id: Optional[str] = None
+        self, config: TimeoutConfig | None = None, session_id: str | None = None
     ):
         """
         Initialize timeout manager.
@@ -143,9 +150,9 @@ class TimeoutManager:
         """
         self.config = config or TimeoutConfig()
         self.session_id = session_id
-        self._active_operations: Dict[str, TimeoutResult] = {}
-        self._operation_tasks: Dict[str, asyncio.Task] = {}
-        self._performance_metrics: Dict[str, Any] = {
+        self._active_operations: dict[str, TimeoutResult] = {}
+        self._operation_tasks: dict[str, asyncio.Task] = {}
+        self._performance_metrics: dict[str, Any] = {
             "total_operations": 0,
             "successful_operations": 0,
             "timed_out_operations": 0,
@@ -189,7 +196,7 @@ class TimeoutManager:
             operation_id=operation_id,
             timeout_type=timeout_type,
             status=TimeoutStatus.PENDING,
-            start_time=datetime.now(),
+            start_time=TimePolicy.now_utc(),
         )
 
         self._active_operations[operation_id] = result
@@ -225,7 +232,7 @@ class TimeoutManager:
                         result = retry_result
 
         except Exception as e:
-            error_msg = f"Operation {operation_id} failed: {str(e)}"
+            error_msg = f"Operation {operation_id} failed: {e!s}"
             result.mark_error(error_msg)
             logger.error(error_msg, exc_info=True)
 
@@ -245,8 +252,7 @@ class TimeoutManager:
         """Execute the operation, handling both sync and async callables."""
         if asyncio.iscoroutinefunction(operation):
             return await operation(*args, **kwargs)
-        else:
-            return operation(*args, **kwargs)
+        return operation(*args, **kwargs)
 
     async def _retry_operation(
         self,
@@ -281,7 +287,7 @@ class TimeoutManager:
             operation_id=operation_id,
             timeout_type=timeout_type,
             status=TimeoutStatus.TIMED_OUT,
-            start_time=datetime.now(),
+            start_time=TimePolicy.now_utc(),
             retry_count=self.config.max_retries,
         )
         final_result.mark_timed_out(
@@ -354,19 +360,19 @@ class TimeoutManager:
 
         metrics_data = {
             "session_id": self.session_id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": TimePolicy.now_utc().isoformat(),
             "config": self.config.to_dict(),
             "metrics": self._performance_metrics,
             "active_operations": len(self._active_operations),
         }
 
         try:
-            with open(self.metrics_file, "w") as f:
-                json.dump(metrics_data, f, indent=2)
+            async with aiofiles.open(self.metrics_file, "w") as f:
+                await f.write(json.dumps(metrics_data, indent=2))
         except Exception as e:
-            logger.error(f"Failed to save metrics: {e}")
+            logger.exception(f"Failed to save metrics: {e}")
 
-    async def get_performance_metrics(self) -> Dict[str, Any]:
+    async def get_performance_metrics(self) -> dict[str, Any]:
         """Get current performance metrics."""
         return self._performance_metrics.copy()
 
@@ -394,7 +400,7 @@ class TimeoutManager:
 
         return cancelled_count
 
-    def get_active_operations(self) -> List[str]:
+    def get_active_operations(self) -> list[str]:
         """Get list of active operation IDs."""
         return list(self._active_operations.keys())
 
@@ -418,7 +424,7 @@ class TimeoutManager:
 
 # Factory function for creating timeout manager
 def create_timeout_manager(
-    session_id: Optional[str] = None, **config_kwargs
+    session_id: str | None = None, **config_kwargs
 ) -> TimeoutManager:
     """
     Create a timeout manager with custom configuration.
@@ -444,9 +450,9 @@ async def timeout_agent_execution(
 ) -> TimeoutResult:
     """Execute an agent task with timeout handling."""
     return await timeout_manager.execute_with_timeout(
-        operation_id=operation_id,
-        timeout_type=TimeoutType.AGENT_EXECUTION,
-        operation=agent_task,
+        operation_id,
+        TimeoutType.AGENT_EXECUTION,
+        agent_task,
         *args,
         **kwargs,
     )
@@ -461,9 +467,9 @@ async def timeout_phase_completion(
 ) -> TimeoutResult:
     """Execute a phase task with timeout handling."""
     return await timeout_manager.execute_with_timeout(
-        operation_id=f"phase_{phase_name}",
-        timeout_type=TimeoutType.PHASE_COMPLETION,
-        operation=phase_task,
+        f"phase_{phase_name}",
+        TimeoutType.PHASE_COMPLETION,
+        phase_task,
         *args,
         **kwargs,
     )

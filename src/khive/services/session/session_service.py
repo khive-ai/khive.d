@@ -45,22 +45,21 @@ class SessionService:
             async with self._session_lock:
                 if request.action == "init":
                     return await self._handle_init(request)
-                elif request.action == "end":
+                if request.action == "end":
                     return await self._handle_end(request)
-                elif request.action == "status":
+                if request.action == "status":
                     return await self._handle_status(request)
-                else:
-                    return SessionResponse(
-                        success=False,
-                        summary=f"Unknown action: {request.action}",
-                        error="Supported actions: init, end, status",
-                    )
+                return SessionResponse(
+                    success=False,
+                    summary=f"Unknown action: {request.action}",
+                    error="Supported actions: init, end, status",
+                )
 
         except Exception as e:
             logger.error(f"Error in handle_request: {e}", exc_info=True)
             return SessionResponse(
                 success=False,
-                summary=f"Session operation failed: {str(e)}",
+                summary=f"Session operation failed: {e!s}",
                 error=str(e),
             )
 

@@ -59,12 +59,12 @@ class DocumentationPackage(BaseModel):
     quality_validation: str = Field(
         description=f"""
         {QUALITY_PROMPT}
-        
+
         Additionally for documentation generation:
         - Does your documentation plan address all critical user needs and scenarios?
         - Is the documentation clear, accurate, and immediately actionable?
         - Have you provided sufficient examples and practical guidance for successful adoption?
-        
+
         {CONFIDENCE_PROMPT}
         """
     )

@@ -1,17 +1,22 @@
 import logging
-from datetime import datetime
 
 from lionagi import Builder
 
-from ..operations.factory import get_worker_session
-from ..parts import Issue, IssuePlan
+from khive.core import TimePolicy
+from khive.services.orchestration.operations.factory import get_worker_session
+from khive.services.orchestration.parts import Issue, IssuePlan
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("KhiveOperations")
 
 
-async def run_issue(issue_plan: IssuePlan, **kw) -> bool:
-    """Run all issues sequentially with git cycles"""
+async def run_issue(issue_plan: IssuePlan, **_kw) -> bool:
+    """Run all issues sequentially with git cycles.
+
+    Args:
+        issue_plan: Plan for issue execution
+        **_kw: Framework parameters passed by orchestration system
+    """
 
     issue_num = issue_plan.issue_num
     issue = await Issue.get(issue_num, issue_plan)
@@ -19,7 +24,7 @@ async def run_issue(issue_plan: IssuePlan, **kw) -> bool:
         logger.info(f"🔵 Skipping already completed issue #{issue.content.issue_num}")
         return True
 
-    _current_timestamp = datetime.now().isoformat()
+    _current_timestamp = TimePolicy.now_local().isoformat()
     print(f"\n🔄 Running Issue #{issue_num} at {_current_timestamp}")
 
     w = get_worker_session()
@@ -29,7 +34,7 @@ async def run_issue(issue_plan: IssuePlan, **kw) -> bool:
 
     dep_on = None
     while not gate_passed and num_attempts > 0:
-        logging.info(
+        logger.info(
             f"🔄 Attempting issue #{issue.content.issue_num} (remaining attempts: {num_attempts})"
         )
         _a = b.add_operation(

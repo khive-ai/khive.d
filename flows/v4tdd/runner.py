@@ -6,11 +6,11 @@ async def main():
 
     ir = IssueRunner(
         issue_dir=Path("flows/v4tdd/issues"),
-        delay_before_start=5,
-        max_concurrent=3,
-        throttle_period=60,
+        # delay_before_start=5,
+        # max_concurrent=3,
+        # throttle_period=60,
     )
-    issue_seq = [195, 185, 186, 187, 190, 188, 189, 191, 192, 193, 194]
+    issue_seq = [185, 186, 187, 190, 188, 189, 191, 192, 193, 194]
 
     ir.load(issue_seq)
     await ir.run(visualize=True)

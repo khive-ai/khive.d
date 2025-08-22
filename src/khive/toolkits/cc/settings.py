@@ -3,7 +3,7 @@
 from pydantic import field_validator
 from pydantic_settings import SettingsConfigDict
 
-from ..base.settings import BaseKhiveSettings
+from khive.toolkits.base.settings import BaseKhiveSettings
 
 
 class CCSettings(BaseKhiveSettings):

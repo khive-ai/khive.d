@@ -217,8 +217,13 @@ class BaseCLICommand(ABC):
                             # Ensure proper cleanup
                             try:
                                 new_loop.close()
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                # Expected cleanup failure - loop may already be closed
+                                import logging
+
+                                logging.getLogger(__name__).debug(
+                                    f"Event loop cleanup exception (expected): {e}"
+                                )
                             asyncio.set_event_loop(None)
                     except Exception as e:
                         exception_container["exception"] = e
@@ -487,10 +492,7 @@ class CommandWorkflow:
         Returns:
             True if all required steps succeeded
         """
-        for i, step in enumerate(self.steps):
-            if not self.execute_step(i, executor):
-                return False
-        return True
+        return all(self.execute_step(i, executor) for i, step in enumerate(self.steps))
 
     def get_status(self) -> dict[str, Any]:
         """Get the current workflow status."""

@@ -2,14 +2,20 @@ import logging
 
 from lionagi import ln as ln
 
-from ..orchestrator import LionOrchestrator
-from ..parts import Issue, IssuePlan
+from khive.services.orchestration.orchestrator import LionOrchestrator
+from khive.services.orchestration.parts import Issue, IssuePlan
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("KhiveOperations")
 
 
-async def git_cycle(issue: Issue, **kw) -> Issue:
+async def git_cycle(issue: Issue, **_kw) -> Issue:
+    """Execute git cycle workflow for an issue.
+
+    Args:
+        issue: Issue to process through git workflow
+        **_kw: Framework parameters (branch, depends_on) passed by orchestration registry
+    """
     issue_plan: IssuePlan = issue.content.issue_plan
     success = issue.last_execution_success
     allow_merge = success is True and issue.content.gate_passed
@@ -54,7 +60,7 @@ COMMIT MESSAGE TO USE:
 
 DELIVERABLES:
 - ✅ Pre-commit checks passing
-- ✅ Clean feature branch with only relevant changes  
+- ✅ Clean feature branch with only relevant changes
 - ✅ Conventional commit with proper messaging
 - ✅ Pull request created and linked to issue
 - ✅ GitHub issue updated with progress
@@ -80,7 +86,7 @@ HUMAN REVIEW REQUIRED: This step requires human validation before proceeding to 
         logger.warning(f"⚠️ Issue #{issue_plan.issue_num} git cycle was cancelled.")
         issue.content.operation_status = "cancelled"
     except Exception as e:
-        logger.error(f"💥 Issue #{issue_plan.issue_num} error: {e}")
+        logger.exception(f"💥 Issue #{issue_plan.issue_num} error: {e}")
         issue.content.operation_status = "failed"
     await orc.save_json()
     await issue.sync()

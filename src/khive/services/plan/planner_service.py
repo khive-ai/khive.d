@@ -4,23 +4,23 @@ import asyncio
 import json
 import os
 import time
-from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Protocol
+from typing import Protocol
 
 import yaml
 from openai import OpenAI
 
-from khive.utils import get_logger
-
-from ..artifacts.handlers import (
+from khive.core import TimePolicy
+from khive.services.artifacts.handlers import (
     HandoffAgentSpec,
     HandoffCoordinator,
     TimeoutConfig,
     TimeoutManager,
     TimeoutType,
 )
+from khive.utils import get_logger
+
 from .cost_tracker import CostTracker
 from .models import OrchestrationEvaluation
 from .parts import (
@@ -70,7 +70,7 @@ class RoleSelector(Protocol):
 
 
 class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
-    def __init__(self, timeout_config: Optional[TimeoutConfig] = None):
+    def __init__(self, timeout_config: TimeoutConfig | None = None):
         from dotenv import load_dotenv
 
         load_dotenv()
@@ -86,7 +86,8 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         self.log_dir = Path(".khive/logs/orchestration_planning")
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = (
-            self.log_dir / f"evaluations_{datetime.now().strftime('%Y%m%d')}.jsonl"
+            self.log_dir
+            / f"evaluations_{TimePolicy.now_utc().strftime('%Y%m%d')}.jsonl"
         )
 
         # Artifact management - use .khive folder instead of .claude
@@ -213,7 +214,7 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
     def create_session(self, task_description: str) -> str:
         """Create new session with artifact management structure"""
         # Generate session ID from timestamp and task
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = TimePolicy.now_utc().strftime("%Y%m%d_%H%M%S")
         task_slug = "".join(
             c for c in task_description.lower()[:20] if c.isalnum() or c in "-_"
         )
@@ -225,7 +226,7 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         # Initialize artifact registry
         registry = {
             "session_id": session_id,
-            "created_at": datetime.now().isoformat(),
+            "created_at": TimePolicy.now_utc().isoformat(),
             "task_description": task_description,
             "artifacts": [],
             "phases": [],
@@ -263,10 +264,7 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
             hits = self._assess_by_heuristics(req)
 
         # Return the highest complexity tier found
-        if hits:
-            tier = max(hits, key=self._tier_rank)
-        else:
-            tier = "medium"  # Default fallback
+        tier = max(hits, key=self._tier_rank) if hits else "medium"
 
         # Apply RAGRS complexity modifiers if applicable
         tier = self._apply_complexity_modifiers(req, tier)
@@ -374,19 +372,22 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
                     return tier_order[current_idx + 1]
 
         # Check for energy constraints
-        if any(
-            keyword in req.text
-            for keyword in ["energy", "optimization", "performance", "efficiency"]
-        ) and ("microsecond" in req.text or "nanosecond" in req.text):
-            if "energy_constraints" in modifiers:
-                modifier = modifiers["energy_constraints"]
-                if "+1 level" in modifier.get("complexity_increase", ""):
-                    tier_order = ["simple", "medium", "complex", "very_complex"]
-                    current_idx = (
-                        tier_order.index(base_tier) if base_tier in tier_order else 1
-                    )
-                    if current_idx < len(tier_order) - 1:
-                        return tier_order[current_idx + 1]
+        if (
+            any(
+                keyword in req.text
+                for keyword in ["energy", "optimization", "performance", "efficiency"]
+            )
+            and ("microsecond" in req.text or "nanosecond" in req.text)
+            and "energy_constraints" in modifiers
+        ):
+            modifier = modifiers["energy_constraints"]
+            if "+1 level" in modifier.get("complexity_increase", ""):
+                tier_order = ["simple", "medium", "complex", "very_complex"]
+                current_idx = (
+                    tier_order.index(base_tier) if base_tier in tier_order else 1
+                )
+                if current_idx < len(tier_order) - 1:
+                    return tier_order[current_idx + 1]
 
         return base_tier
 
@@ -556,9 +557,9 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
 
         # Execute agent task with timeout
         result = await timeout_manager.execute_with_timeout(
-            operation_id=agent_id,
-            timeout_type=timeout_type,
-            operation=agent_task,
+            agent_id,
+            timeout_type,
+            agent_task,
             *args,
             **kwargs,
         )
@@ -609,16 +610,14 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 agent_id = agent_tasks[i][0]
-                processed_results.append(
-                    {
-                        "agent_id": agent_id,
-                        "status": "error",
-                        "duration": None,
-                        "retry_count": 0,
-                        "error": str(result),
-                        "execution_time": None,
-                    }
-                )
+                processed_results.append({
+                    "agent_id": agent_id,
+                    "status": "error",
+                    "duration": None,
+                    "retry_count": 0,
+                    "error": str(result),
+                    "execution_time": None,
+                })
             else:
                 processed_results.append(result)
 
@@ -767,14 +766,12 @@ Be different - show YOUR unique perspective on which roles matter most."""
                 gate="thorough",  # Default gate for template
             )
 
-            configs.append(
-                {
-                    "name": agent_config.get("name", agent_name),
-                    "system_prompt": system_prompt,
-                    # "temperature": agent_config.get("temperature", 0.3),
-                    "description": agent_config.get("description", ""),
-                }
-            )
+            configs.append({
+                "name": agent_config.get("name", agent_name),
+                "system_prompt": system_prompt,
+                # "temperature": agent_config.get("temperature", 0.3),
+                "description": agent_config.get("description", ""),
+            })
 
         # Fallback to hardcoded if YAML not available
         if not configs:
@@ -823,17 +820,17 @@ Be different - show YOUR unique perspective on which roles matter most."""
 
         output.append(f"Complexity Consensus: {consensus_complexity}")
         output.append("Agent assessments:")
-        for eval in evaluations:
-            e = eval["evaluation"]
+        for evaluation in evaluations:
+            e = evaluation["evaluation"]
             output.append(
-                f"- {eval['config']['name']}: {e.complexity} - {e.complexity_reason}"
+                f"- {evaluation['config']['name']}: {e.complexity} - {e.complexity_reason}"
             )
         output.append("")
 
         # Agent count consensus with weighted voting
         agent_counts = [e.total_agents for e in all_evals]
 
-        # Apply weighted voting (cost_optimizer and efficiency_analyst get ×2 weight when budget tight)
+        # Apply weighted voting (cost_optimizer and efficiency_analyst get x2 weight when budget tight)
         is_budget_tight = self.cost_tracker.total_cost >= (
             self.cost_tracker.get_cost_budget() * 0.8
         )
@@ -841,9 +838,9 @@ Be different - show YOUR unique perspective on which roles matter most."""
         weighted_sum = 0
         total_weight = 0
 
-        for eval in evaluations:
-            e = eval["evaluation"]
-            agent_name = eval["config"]["name"]
+        for evaluation in evaluations:
+            e = evaluation["evaluation"]
+            agent_name = evaluation["config"]["name"]
 
             # Default weight
             weight = 1.0
@@ -868,10 +865,10 @@ Be different - show YOUR unique perspective on which roles matter most."""
             f"Total Agents: {min(agent_counts)}-{max(agent_counts)} (avg: {avg_agents:.0f})"
         )
         output.append("Agent recommendations:")
-        for eval in evaluations:
-            e = eval["evaluation"]
+        for evaluation in evaluations:
+            e = evaluation["evaluation"]
             output.append(
-                f"- {eval['config']['name']}: {e.total_agents} agents - {e.agent_reason}"
+                f"- {evaluation['config']['name']}: {e.total_agents} agents - {e.agent_reason}"
             )
         output.append("")
 
@@ -880,8 +877,8 @@ Be different - show YOUR unique perspective on which roles matter most."""
         role_scores = {}
         role_mentions = {}  # Track how many agents mentioned each role
 
-        for eval in evaluations:
-            e = eval["evaluation"]
+        for evaluation in evaluations:
+            e = evaluation["evaluation"]
             agent_weight = e.confidence
 
             # Score based on position in priority list
@@ -912,11 +909,11 @@ Be different - show YOUR unique perspective on which roles matter most."""
 
         # Show individual agent recommendations
         output.append("Individual Agent Priority Lists:")
-        for eval in evaluations:
-            e = eval["evaluation"]
+        for evaluation in evaluations:
+            e = evaluation["evaluation"]
             roles_str = " → ".join(e.role_priorities[:5])  # Show top 5
             output.append(
-                f"- {eval['config']['name']} ({e.confidence:.0%}): {roles_str}"
+                f"- {evaluation['config']['name']} ({e.confidence:.0%}): {roles_str}"
             )
         output.append("")
 
@@ -977,10 +974,10 @@ Be different - show YOUR unique perspective on which roles matter most."""
 
         output.append(f"Overall Confidence: {avg_confidence:.0%}")
         output.append("Individual confidence scores:")
-        for eval in evaluations:
-            output.append(
-                f"- {eval['config']['name']}: {eval['evaluation'].confidence:.0%}"
-            )
+        output.extend(
+            f"- {evaluation['config']['name']}: {evaluation['evaluation'].confidence:.0%}"
+            for evaluation in evaluations
+        )
         output.append("")
 
         # Add context reminder for orchestrator
@@ -1019,7 +1016,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
         avg_confidence = sum(e.confidence for e in all_evals) / len(all_evals)
 
         # Initialize Composer for domain canonicalization and duplicate prevention
-        from ..composition import AgentComposer
+        from khive.services.composition import AgentComposer
 
         composer = AgentComposer(Path(__file__).parent.parent.parent / "prompts")
 
@@ -1034,7 +1031,7 @@ Be different - show YOUR unique perspective on which roles matter most."""
 
         # Collect agent specifications with dependency analysis
         agent_specs = []
-        dependency_map = self._analyze_role_dependencies(sorted_roles[:10])
+        self._analyze_role_dependencies(sorted_roles[:10])
 
         for i, (role, score) in enumerate(sorted_roles[:10]):
             if score >= 0.1:  # Show any role with reasonable score
@@ -1176,35 +1173,6 @@ Remember: This is PARALLEL EXECUTION - coordinate via shared artifacts!"""
 
         return "\n".join(output)
 
-    def create_session(self, task_description: str) -> str:
-        """Create new session with artifact management structure"""
-        # Generate session ID from timestamp and task
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        task_slug = "".join(
-            c for c in task_description.lower()[:20] if c.isalnum() or c in "-_"
-        )
-        session_id = f"{timestamp}_{task_slug}"
-
-        session_dir = self.workspace_dir / session_id
-        session_dir.mkdir(exist_ok=True)
-
-        # Initialize artifact registry
-        registry = {
-            "session_id": session_id,
-            "created_at": datetime.now().isoformat(),
-            "task_description": task_description,
-            "artifacts": [],
-            "phases": [],
-            "status": "active",
-        }
-
-        registry_path = session_dir / "artifact_registry.json"
-        with open(registry_path, "w") as f:
-            json.dump(registry, f, indent=2)
-
-        self.current_session_id = session_id
-        return session_id
-
     def get_artifact_management_prompt(
         self, session_id: str, phase: str, agent_role: str, domain: str
     ) -> str:
@@ -1218,7 +1186,7 @@ Remember: This is PARALLEL EXECUTION - coordinate via shared artifacts!"""
         # Get existing artifacts for coordination
         existing_artifacts = []
         if registry_path.exists():
-            with open(registry_path, "r") as f:
+            with open(registry_path) as f:
                 registry = json.load(f)
                 existing_artifacts = [a["artifact_path"] for a in registry["artifacts"]]
 
@@ -1247,7 +1215,7 @@ Your deliverable will be automatically registered. Include in your final report:
     ) -> str:
         """Generate standardized artifact path"""
         session_dir = self.workspace_dir / session_id
-        timestamp = datetime.now().strftime("%H%M%S")
+        timestamp = TimePolicy.now_utc().strftime("%H%M%S")
         filename = f"{phase}_{agent_role}_{domain}_{timestamp}.md"
         return str(session_dir / filename)
 
@@ -1431,8 +1399,8 @@ Your deliverable will be automatically registered. Include in your final report:
             self.timeout_manager = None
 
     def _analyze_role_dependencies(
-        self, sorted_roles: List[tuple]
-    ) -> Dict[str, List[str]]:
+        self, sorted_roles: list[tuple]
+    ) -> dict[str, list[str]]:
         """Analyze dependencies between roles for parallel execution"""
         dependency_map = {}
 
@@ -1454,18 +1422,16 @@ Your deliverable will be automatically registered. Include in your final report:
 
         # Build dependency map for available roles only
         for role in available_roles:
-            dependencies = []
-            if role in role_dependencies:
-                for dep in role_dependencies[role]:
-                    if dep in available_roles:
-                        dependencies.append(dep)
+            dependencies = [
+                dep for dep in role_dependencies.get(role, []) if dep in available_roles
+            ]
             dependency_map[role] = dependencies
 
         return dependency_map
 
     def _organize_execution_tiers(
-        self, agent_specs: List[HandoffAgentSpec]
-    ) -> List[List[HandoffAgentSpec]]:
+        self, agent_specs: list[HandoffAgentSpec]
+    ) -> list[list[HandoffAgentSpec]]:
         """Organize agents into execution tiers based on dependencies"""
         tiers = []
         remaining_agents = agent_specs.copy()
@@ -1602,69 +1568,67 @@ class PlannerService:
                 )
             else:
                 # Multi-phase execution
-                phases.extend(
-                    [
-                        TaskPhase(
-                            name="discovery_phase",
-                            description="Research and analyze requirements",
-                            agents=[
-                                a
-                                for a in agent_recommendations
-                                if a.role in ["researcher", "analyst"]
-                            ][:3],
-                            quality_gate=QualityGate.THOROUGH,
-                            coordination_pattern=WorkflowPattern.PARALLEL,
+                phases.extend([
+                    TaskPhase(
+                        name="discovery_phase",
+                        description="Research and analyze requirements",
+                        agents=[
+                            a
+                            for a in agent_recommendations
+                            if a.role in ["researcher", "analyst"]
+                        ][:3],
+                        quality_gate=QualityGate.THOROUGH,
+                        coordination_pattern=WorkflowPattern.PARALLEL,
+                    ),
+                    TaskPhase(
+                        name="design_phase",
+                        description="Design architecture and approach",
+                        agents=[
+                            a
+                            for a in agent_recommendations
+                            if a.role in ["architect", "strategist"]
+                        ][:2],
+                        dependencies=["discovery_phase"],
+                        quality_gate=QualityGate.THOROUGH,
+                        coordination_pattern=WorkflowPattern.SEQUENTIAL,
+                    ),
+                    TaskPhase(
+                        name="implementation_phase",
+                        description="Implement the solution",
+                        agents=[
+                            a
+                            for a in agent_recommendations
+                            if a.role in ["implementer", "innovator"]
+                        ][:3],
+                        dependencies=["design_phase"],
+                        quality_gate=QualityGate.THOROUGH,
+                        coordination_pattern=WorkflowPattern.PARALLEL,
+                    ),
+                    TaskPhase(
+                        name="validation_phase",
+                        description="Validate and test the solution",
+                        agents=[
+                            a
+                            for a in agent_recommendations
+                            if a.role in ["tester", "critic", "auditor"]
+                        ][:2],
+                        dependencies=["implementation_phase"],
+                        quality_gate=(
+                            QualityGate.CRITICAL
+                            if complexity_level == ComplexityLevel.VERY_COMPLEX
+                            else QualityGate.THOROUGH
                         ),
-                        TaskPhase(
-                            name="design_phase",
-                            description="Design architecture and approach",
-                            agents=[
-                                a
-                                for a in agent_recommendations
-                                if a.role in ["architect", "strategist"]
-                            ][:2],
-                            dependencies=["discovery_phase"],
-                            quality_gate=QualityGate.THOROUGH,
-                            coordination_pattern=WorkflowPattern.SEQUENTIAL,
-                        ),
-                        TaskPhase(
-                            name="implementation_phase",
-                            description="Implement the solution",
-                            agents=[
-                                a
-                                for a in agent_recommendations
-                                if a.role in ["implementer", "innovator"]
-                            ][:3],
-                            dependencies=["design_phase"],
-                            quality_gate=QualityGate.THOROUGH,
-                            coordination_pattern=WorkflowPattern.PARALLEL,
-                        ),
-                        TaskPhase(
-                            name="validation_phase",
-                            description="Validate and test the solution",
-                            agents=[
-                                a
-                                for a in agent_recommendations
-                                if a.role in ["tester", "critic", "auditor"]
-                            ][:2],
-                            dependencies=["implementation_phase"],
-                            quality_gate=(
-                                QualityGate.CRITICAL
-                                if complexity_level == ComplexityLevel.VERY_COMPLEX
-                                else QualityGate.THOROUGH
-                            ),
-                            coordination_pattern=WorkflowPattern.PARALLEL,
-                        ),
-                    ]
-                )
+                        coordination_pattern=WorkflowPattern.PARALLEL,
+                    ),
+                ])
 
             # Extract spawn commands from consensus
             spawn_commands = []
             if "khive compose" in consensus:
                 lines = consensus.split("\n")
-                for line in lines:
-                    if "khive compose" in line:
-                        spawn_commands.append(line.strip())
+                spawn_commands.extend(
+                    line.strip() for line in lines if "khive compose" in line
+                )
 
             # Calculate confidence based on evaluation results
             confidence = 0.8  # Default confidence
@@ -1688,7 +1652,7 @@ class PlannerService:
             logger.error(f"Error in handle_request: {e}", exc_info=True)
             return PlannerResponse(
                 success=False,
-                summary=f"Planning failed: {str(e)}",
+                summary=f"Planning failed: {e!s}",
                 complexity=ComplexityLevel.MEDIUM,
                 recommended_agents=0,
                 confidence=0.0,
@@ -1709,10 +1673,10 @@ class PlannerService:
 
     async def execute_parallel_fanout(
         self,
-        agent_specs: List[AgentRecommendation],
+        agent_specs: list[AgentRecommendation],
         session_id: str,
-        timeout: Optional[float] = None,
-    ) -> Dict[str, str]:
+        timeout: float | None = None,
+    ) -> dict[str, str]:
         """
         Execute parallel fan-out orchestration with dependency resolution.
 
@@ -1748,7 +1712,7 @@ class PlannerService:
             return execution_status
 
         except Exception as e:
-            logger.error(f"Parallel fan-out execution failed: {e}")
+            logger.exception(f"Parallel fan-out execution failed: {e}")
             raise
 
     async def close(self) -> None:
