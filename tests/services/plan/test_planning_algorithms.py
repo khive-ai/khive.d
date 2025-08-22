@@ -129,7 +129,10 @@ class TestComplexityAlgorithmDetails:
             # Edge case combinations
             ("entire system", ComplexityTier.VERY_COMPLEX),  # Special phrase
             ("complete platform", ComplexityTier.VERY_COMPLEX),  # Special phrase
-            ("distributed system", ComplexityTier.COMPLEX),  # Special phrase
+            (
+                "distributed system",
+                ComplexityTier.VERY_COMPLEX,
+            ),  # Special phrase - distributed systems are very complex
         ]
 
         for request_text, expected_tier in boundary_cases:

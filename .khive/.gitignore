@@ -4,3 +4,5 @@ notes/
 workspaces/
 claude_roles/
 prompts/
+*.db
+data/

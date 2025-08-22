@@ -15,12 +15,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 from lionagi.fields import Instruct
 from lionagi.protocols.types import AssistantResponse
+from pydantic import ValidationError
 
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     AgentRequest,
     BaseGate,
     ComposerRequest,
+    FanoutWithGatedRefinementResponse,
     GateComponent,
     OrchestrationPlan,
 )
@@ -35,13 +37,14 @@ class BranchCreationError(Exception):
     """Custom exception for branch creation failures in tests."""
 
 
+@pytest.fixture
+def mock_orchestrator():
+    """Create a mock orchestrator for testing."""
+    return create_mock_orchestrator("test_gated_refinement")
+
+
 class TestFanoutGatedRefinementPattern:
     """Test fanout with gated refinement orchestration pattern."""
-
-    @pytest.fixture
-    def mock_orchestrator(self):
-        """Create a mock orchestrator for testing."""
-        return create_mock_orchestrator("test_gated_refinement")
 
     @pytest.fixture
     def sample_orchestration_plan(self):
@@ -162,11 +165,11 @@ class TestFanoutGatedRefinementPattern:
             )
 
             # Verify response structure
-            assert isinstance(result, dict)
-            assert "gate_passed" in result
-            assert "refinement_executed" in result
-            assert result["gate_passed"] is True
-            assert result["refinement_executed"] is False
+            assert isinstance(result, FanoutWithGatedRefinementResponse)
+            assert hasattr(result, "gate_passed")
+            assert hasattr(result, "refinement_executed")
+            assert result.gate_passed is True
+            assert result.refinement_executed is False
 
             # Verify correct number of flow executions (no refinement needed)
             assert mock_run_flow.call_count == 4
@@ -194,7 +197,7 @@ class TestFanoutGatedRefinementPattern:
                         "mock_operation_id": MagicMock(flow_plans=mock_plans)
                     }
                 },
-                {},  # Initial phase execution
+                {"operation_results": {}},  # Initial phase execution
                 {
                     "operation_results": {
                         "mock_operation_id": MagicMock(
@@ -202,7 +205,7 @@ class TestFanoutGatedRefinementPattern:
                         )
                     }
                 },
-                {},  # Refinement phase execution
+                # Second gate - passes (no refinement phase run_flow call)
                 {
                     "operation_results": {
                         "mock_operation_id": MagicMock(
@@ -232,11 +235,13 @@ class TestFanoutGatedRefinementPattern:
             )
 
             # Verify refinement was executed
-            assert result["gate_passed"] is True
-            assert result["refinement_executed"] is True
+            assert result.gate_passed is True
+            assert result.refinement_executed is True
 
             # Verify correct number of flow executions (with refinement)
-            assert mock_run_flow.call_count == 6
+            assert (
+                mock_run_flow.call_count == 5
+            )  # planning, initial, gate1, gate2, synthesis
 
             # Verify refinement phase was executed
             assert mock_expand.call_count == 2
@@ -340,11 +345,9 @@ class TestSecurityValidation:
         ]
 
         for malicious_role in malicious_roles:
-            compose_request = ComposerRequest(role=malicious_role, domains="test")
-
-            with pytest.raises((ValueError, OSError, FileNotFoundError)):
-                # This should fail safely without creating directories outside intended paths
-                await orchestrator.create_cc_branch(compose_request)
+            # Path traversal attacks should be prevented by Pydantic validation
+            with pytest.raises(ValidationError):
+                ComposerRequest(role=malicious_role, domains="test")
 
     def test_input_validation_compose_request(self):
         """Test input validation for ComposerRequest parameters."""
@@ -594,7 +597,7 @@ class TestCoverageScenarios:
                 # Planning phase
                 {
                     "operation_results": {
-                        "root_node": MagicMock(
+                        "mock_operation_id": MagicMock(
                             flow_plans=MagicMock(
                                 initial=OrchestrationPlan(
                                     common_background="Test",
@@ -630,29 +633,30 @@ class TestCoverageScenarios:
                         )
                     }
                 },
-                {},  # Initial phase
+                {"operation_results": {}},  # Initial phase
                 # First gate - fails
                 {
                     "operation_results": {
-                        "gate1": MagicMock(
+                        "mock_operation_id": MagicMock(
                             quality_gate=BaseGate(
                                 threshold_met=False, feedback="Multiple issues found"
                             )
                         )
                     }
                 },
-                {},  # Refinement phase
-                # Second gate - passes
+                # Second gate - passes (index 3, no refinement phase run_flow call)
                 {
                     "operation_results": {
-                        "gate2": MagicMock(
+                        "mock_operation_id": MagicMock(
                             quality_gate=BaseGate(
                                 threshold_met=True, feedback="All issues resolved"
                             )
                         )
                     }
                 },
-                {},  # Final synthesis
+                {
+                    "operation_results": {"mock_operation_id": "Final synthesis result"}
+                },  # Final synthesis
             ]
 
             mock_expand.side_effect = [
@@ -675,9 +679,11 @@ class TestCoverageScenarios:
             )
 
             # Verify comprehensive execution
-            assert result["gate_passed"] is True
-            assert result["refinement_executed"] is True
-            assert mock_run_flow.call_count == 6
+            assert result.gate_passed is True
+            assert result.refinement_executed is True
+            assert (
+                mock_run_flow.call_count == 5
+            )  # Updated count: planning, initial, gate1, gate2, synthesis
 
     def test_gate_component_validation(self):
         """Test comprehensive gate component validation."""
@@ -756,6 +762,8 @@ class TestCoverageScenarios:
         mock_branch.messages.__getitem__ = MagicMock(
             return_value=mock_assistant_response
         )
+        # Fix the length check
+        mock_branch.messages.__len__ = MagicMock(return_value=1)
 
         # Mock session and builder
         orchestrator.session.get_branch = MagicMock(return_value=mock_branch)

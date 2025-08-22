@@ -8,9 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.orchestration.parts import (
-    ComposerRequest,
-)
+from khive.services.orchestration.parts import ComposerRequest
 
 
 class TestAsyncPatterns:
@@ -36,9 +34,28 @@ class TestAsyncPatterns:
             patch(
                 "khive.services.orchestration.orchestrator.composer_service"
             ) as mock_composer,
+            patch(
+                "khive.services.orchestration.orchestrator.Branch"
+            ) as mock_branch_cls,
         ):
-            mock_cc = MagicMock()
-            mock_create_cc.return_value = mock_cc
+            # Mock the create_cc to return a proper async coroutine
+            async def mock_cc_return(*args, **kwargs):
+                return MagicMock()
+
+            mock_create_cc.return_value = mock_cc_return()
+
+            # Mock the Branch class to avoid iModel issues
+            # Each call should return a unique branch ID
+            branch_counter = 0
+
+            def create_mock_branch(*args, **kwargs):
+                nonlocal branch_counter
+                mock_branch = MagicMock()
+                mock_branch.id = f"test_branch_{branch_counter}"
+                branch_counter += 1
+                return mock_branch
+
+            mock_branch_cls.side_effect = create_mock_branch
 
             mock_response = MagicMock()
             mock_response.system_prompt = "Test system prompt"
@@ -418,9 +435,9 @@ class TestAsyncDeadlockPrevention:
             return "completed"
 
         # This should complete without deadlock
-        with pytest.raises(asyncio.TimeoutError):
-            # Use timeout to detect deadlock
-            await asyncio.wait_for(operation_a(), timeout=1.0)
+        # Use timeout to detect deadlock - should NOT timeout
+        result = await asyncio.wait_for(operation_a(), timeout=1.0)
+        assert result == "completed"
 
     @pytest.mark.asyncio
     async def test_race_condition_in_branch_naming(
@@ -447,9 +464,28 @@ class TestAsyncDeadlockPrevention:
             patch(
                 "khive.services.orchestration.orchestrator.composer_service"
             ) as mock_composer,
+            patch(
+                "khive.services.orchestration.orchestrator.Branch"
+            ) as mock_branch_cls,
         ):
-            mock_cc = MagicMock()
-            mock_create_cc.return_value = mock_cc
+            # Mock the create_cc to return a proper async coroutine
+            async def mock_cc_return(*args, **kwargs):
+                return MagicMock()
+
+            mock_create_cc.return_value = mock_cc_return()
+
+            # Mock the Branch class to avoid iModel issues
+            # Each call should return a unique branch ID
+            branch_counter = 0
+
+            def create_mock_branch(*args, **kwargs):
+                nonlocal branch_counter
+                mock_branch = MagicMock()
+                mock_branch.id = f"race_test_branch_{branch_counter}"
+                branch_counter += 1
+                return mock_branch
+
+            mock_branch_cls.side_effect = create_mock_branch
 
             mock_response = MagicMock()
             mock_response.system_prompt = "Test"

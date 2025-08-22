@@ -7,10 +7,11 @@ requires-python = ">=3.10"
 dependencies = [
     "aiofiles>=22.1.0",
     "fastmcp>=2.10.0",
-    "lionagi[graph,postgres,rich,sqlite]>=0.15.8",
+    "lionagi[graph,postgres,rich,sqlite]>=0.15.9",
     "nest-asyncio>=1.5.0",
     "openai>=1.100.0",
     "plotly>=6.0.0",
+    "python-dotenv>=1.1.1",
     "pyyaml>=6.0",
     "streamlit>=1.45.0",
     "tenacity>=8.5.0",

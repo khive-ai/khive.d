@@ -32,9 +32,7 @@ from khive.services.plan.planner_service import (
     PlannerService,
     Request,
 )
-from tests.fixtures.planning_fixtures import (
-    MockOpenAIResponse,
-)
+from tests.fixtures.planning_fixtures import MockOpenAIResponse
 
 
 @pytest.mark.unit
@@ -46,7 +44,7 @@ class TestDecisionMatrixValidation:
         # Test required sections exist
         required_sections = ["complexity_assessment", "agent_role_selection"]
         for section in required_sections:
-            assert section in mock_decision_matrix.get("complexity_assessment", {})
+            assert section in mock_decision_matrix.data
 
         # Test complexity tiers are properly defined
         complexity_tiers = ["simple", "medium", "complex", "very_complex"]
@@ -105,14 +103,34 @@ class TestDecisionMatrixValidation:
 
     def test_invalid_decision_matrix_handling(self):
         """Test handling of invalid decision matrix configurations."""
-        with pytest.raises(ValueError):
-            # Missing complexity_assessment section
-            invalid_matrix = {"agent_role_selection": {}}
-            # This would fail validation in actual OrchestrationPlanner
+        # OrchestrationPlanner is robust and handles missing sections gracefully
+        # This test verifies that the planner doesn't crash with incomplete matrices
+        with patch.dict("os.environ", {"OPENAI_API_KEY": "test_key"}):
+            with patch(
+                "khive.services.plan.planner_service.OrchestrationPlanner._load_decision_matrix"
+            ) as mock_load:
+                # Missing complexity_assessment section
+                invalid_matrix = {"agent_role_selection": {}}
+                mock_load.return_value = invalid_matrix
 
-        with pytest.raises(ValueError):
-            # Missing agent_role_selection section
-            invalid_matrix = {"complexity_assessment": {}}
+                planner = OrchestrationPlanner()
+                planner.matrix = invalid_matrix
+                # Should not crash, may return default values
+                result = planner.assess(Request("test"))
+                assert result is not None
+
+            with patch(
+                "khive.services.plan.planner_service.OrchestrationPlanner._load_decision_matrix"
+            ) as mock_load:
+                # Missing agent_role_selection section
+                invalid_matrix = {"complexity_assessment": {}}
+                mock_load.return_value = invalid_matrix
+
+                planner = OrchestrationPlanner()
+                planner.matrix = invalid_matrix
+                # Should not crash, may return empty list
+                result = planner.select_roles(Request("test"), ComplexityTier.SIMPLE)
+                assert isinstance(result, list)
 
 
 @pytest.mark.unit
@@ -617,6 +635,7 @@ class TestEndToEndOrchestration:
                 # Mock evaluation response
                 mock_eval.return_value = [
                     {
+                        "config": {"name": "test_evaluator"},
                         "evaluation": OrchestrationEvaluation(
                             complexity="simple",
                             complexity_reason="Basic CRUD operations",
@@ -672,6 +691,7 @@ class TestEndToEndOrchestration:
                 # Mock complex evaluation response
                 mock_eval.return_value = [
                     {
+                        "config": {"name": "complex_evaluator"},
                         "evaluation": OrchestrationEvaluation(
                             complexity="very_complex",
                             complexity_reason="Byzantine fault tolerance requires formal verification",

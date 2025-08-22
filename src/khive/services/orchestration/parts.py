@@ -4,13 +4,13 @@ import json
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 import aiofiles
-from lionagi.fields import Instruct  # noqa: TC002
+from lionagi.fields import Instruct
 from lionagi.protocols.types import Node
 from lionagi.utils import Enum, create_path
 from pydantic import Field, field_validator, model_validator
 
 from khive._types import BaseModel
-from khive.services.composition.parts import AgentRole, ComposerRequest  # noqa: TC001
+from khive.services.composition.parts import AgentRole, ComposerRequest
 
 if TYPE_CHECKING:
     from pathlib import Path  # type: ignore[import-untyped]
@@ -132,7 +132,9 @@ class RefinementConfig(BaseModel):
     """Optional gates for additional quality checks, can be a list or dict"""
 
 
-class FanoutResponse(BaseModel):
+class MultiPhaseOrchestrationResponse(BaseModel):
+    """Response from multi-phase orchestration with dynamic planning."""
+
     synth_node: Any | None = Field(None, exclude=True)
     """The synthesis node from the orchestration graph, if applicable"""
 
@@ -145,8 +147,13 @@ class FanoutResponse(BaseModel):
     initial_nodes: list[Any] | None = Field(None, exclude=True)
     """The initial nodes from the orchestration graph, if applicable"""
 
+    execution_sequence: list[dict] | None = None
+    """Execution sequence showing phase order for concurrency control"""
 
-class FanoutWithGatedRefinementResponse(FanoutResponse):
+
+class GatedMultiPhaseOrchestrationResponse(MultiPhaseOrchestrationResponse):
+    """Response from quality-gated multi-phase orchestration with conditional refinement."""
+
     final_gate: Any | None = Field(None, exclude=True)
     """The final gate node from the orchestration graph, if applicable"""
 
@@ -165,7 +172,7 @@ IssueNum = int
 
 class IssueExecution(BaseModel):
     success: bool
-    result: FanoutResponse | FanoutWithGatedRefinementResponse
+    result: MultiPhaseOrchestrationResponse | GatedMultiPhaseOrchestrationResponse
     is_redo: bool = False
 
 
@@ -333,8 +340,8 @@ class Issue(Node):
 
 # Rebuild models to resolve forward references
 RefinementConfig.model_rebuild()
-FanoutResponse.model_rebuild()
-FanoutWithGatedRefinementResponse.model_rebuild()
+MultiPhaseOrchestrationResponse.model_rebuild()
+GatedMultiPhaseOrchestrationResponse.model_rebuild()
 IssuePlan.model_rebuild()
 
 
@@ -344,13 +351,13 @@ __all__ = (
     "ComplexityAssessment",
     "FanoutConfig",
     "FanoutPatterns",
-    "FanoutResponse",
-    "FanoutWithGatedRefinementResponse",
     "GateComponent",
+    "GatedMultiPhaseOrchestrationResponse",
     "IssueExecution",
     "IssueNum",
     "IssuePlan",
     "IssueResult",
+    "MultiPhaseOrchestrationResponse",
     "OrchestrationPlan",
     "RefinementConfig",
 )
