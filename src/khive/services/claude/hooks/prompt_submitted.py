@@ -42,9 +42,7 @@ def handle_prompt_submitted(
         estimated_complexity = (
             "high"
             if prompt_length > 1000
-            else "medium"
-            if prompt_length > 200
-            else "low"
+            else "medium" if prompt_length > 200 else "low"
         )
 
         event = HookEvent(

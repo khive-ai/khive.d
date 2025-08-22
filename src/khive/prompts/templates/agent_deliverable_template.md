@@ -13,10 +13,8 @@ tags: ["agent-deliverable", "{{PHASE}}", "{{AGENT_ROLE}}"]
 
 # {{PHASE}} Deliverable: {{AGENT_ROLE}}
 
-**Session**: {{SESSION_ID}}  
-**Phase**: {{PHASE}}  
-**Agent**: {{AGENT_ROLE}} ({{AGENT_DOMAIN}})  
-**Created**: {{DATE}}  
+**Session**: {{SESSION_ID}} **Phase**: {{PHASE}} **Agent**: {{AGENT_ROLE}}
+({{AGENT_DOMAIN}}) **Created**: {{DATE}}
 
 ## Executive Summary
 
@@ -35,7 +33,7 @@ _Brief summary of the work completed in this phase..._
 1. **Finding 1**
    - Details...
    - Impact...
-   
+
 2. **Finding 2**
    - Details...
    - Impact...
@@ -49,7 +47,7 @@ _Detailed technical analysis, code snippets, or implementation details..._
 1. **Recommendation 1**
    - Rationale...
    - Implementation approach...
-   
+
 2. **Recommendation 2**
    - Rationale...
    - Implementation approach...
@@ -63,9 +61,11 @@ _Detailed technical analysis, code snippets, or implementation details..._
 ## Dependencies & Blockers
 
 ### Dependencies
+
 - Dependency on...
 
 ### Blockers
+
 - None identified / Blocker description...
 
 ## Next Steps
@@ -87,4 +87,5 @@ _Detailed technical analysis, code snippets, or implementation details..._
 - External resources...
 
 ---
+
 _Agent: {{AGENT_ROLE}} | Domain: {{AGENT_DOMAIN}} | Phase: {{PHASE}}_

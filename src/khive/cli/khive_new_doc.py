@@ -336,15 +336,17 @@ class NewDocCommand(ConfigurableCLICommand):
         template_data = []
         for category, tpls in sorted(categorized.items()):
             for tpl in sorted(tpls, key=lambda t: t.doc_type):
-                template_data.append({
-                    "category": category,
-                    "type": tpl.doc_type,
-                    "title": tpl.title,
-                    "description": tpl.description,
-                    "filename": tpl.path.name,
-                    "variables": tpl.variables,
-                    "tags": tpl.tags,
-                })
+                template_data.append(
+                    {
+                        "category": category,
+                        "type": tpl.doc_type,
+                        "title": tpl.title,
+                        "description": tpl.description,
+                        "filename": tpl.path.name,
+                        "variables": tpl.variables,
+                        "tags": tpl.tags,
+                    }
+                )
 
         return CLIResult(
             status="success",

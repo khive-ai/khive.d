@@ -8,17 +8,18 @@ Based on Gemini Deep Think V2 architecture.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import os
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
 import aiofiles
+import yaml
 
 from .exceptions import DocumentNotFound, StorageError
-from .models import Document, DocumentType
+from .models import Author, ContributionMetadata, Document, DocumentType
 from .sessions import SessionManager
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,7 @@ class FileSystemStorageRepository(IStorageRepository):
     """
     File system implementation of the storage repository.
 
-    Documents are stored as JSON files to preserve all metadata.
+    Documents are stored as markdown files with YAML front matter to preserve metadata.
     Uses atomic write-to-temp-and-rename for consistency.
     """
 
@@ -78,15 +79,42 @@ class FileSystemStorageRepository(IStorageRepository):
         """
         Securely resolves the file path for a document.
 
-        Returns path with .json extension for structured storage.
+        Returns path with .md extension for markdown storage.
         """
         return self._sessions.resolve_document_path(
             session_id, doc_name, doc_type
-        ).with_suffix(".json")
+        ).with_suffix(".md")
+
+    def _document_to_markdown(self, document: Document) -> str:
+        """
+        Converts a Document to markdown format with YAML front matter.
+        """
+        # Create front matter with essential metadata
+        front_matter = {
+            "session_id": document.session_id,
+            "name": document.name,
+            "type": document.type.value,
+            "version": document.version,
+            "last_modified": document.last_modified.isoformat(),
+            "contributions": [
+                {
+                    "author_id": contrib.author.id,
+                    "author_role": contrib.author.role,
+                    "timestamp": contrib.timestamp.isoformat(),
+                    "content_length": contrib.content_length,
+                }
+                for contrib in document.contributions
+            ],
+        }
+
+        # Generate markdown with YAML front matter
+        yaml_header = yaml.dump(front_matter, default_flow_style=False, sort_keys=False)
+        return f"---\n{yaml_header}---\n\n{document.content}"
 
     async def save(self, document: Document) -> None:
         """
         Implements atomic save using write-to-temp-and-rename.
+        Saves as markdown with YAML front matter instead of JSON.
 
         This ensures that readers never see partially written files
         and the filesystem state remains consistent even if the process crashes.
@@ -99,9 +127,9 @@ class FileSystemStorageRepository(IStorageRepository):
         # Ensure the directory exists (blocking operation run in thread)
         await asyncio.to_thread(parent_dir.mkdir, parents=True, exist_ok=True)
 
-        # 1. Serialize the document (Pydantic handles this efficiently)
+        # 1. Serialize the document to markdown with YAML front matter
         try:
-            data_to_write = document.model_dump_json(indent=2)
+            data_to_write = self._document_to_markdown(document)
         except Exception as e:
             raise StorageError(
                 f"Failed to serialize document {document.name}: {e}"
@@ -109,7 +137,7 @@ class FileSystemStorageRepository(IStorageRepository):
 
         # 2. Create a unique temporary file path in the same directory.
         #    Crucial: Must be on the same filesystem for os.replace() to be atomic.
-        temp_path = parent_dir / f".tmp.{document.name}.{uuid.uuid4().hex}.json"
+        temp_path = parent_dir / f".tmp.{document.name}.{uuid.uuid4().hex}.md"
 
         try:
             # 3. Write content to the temporary file asynchronously.
@@ -137,11 +165,57 @@ class FileSystemStorageRepository(IStorageRepository):
                     logger.warning(f"Failed to cleanup temp file {temp_path}")
             raise StorageError(f"Atomic save failed for {document.name}: {e}") from e
 
+    def _markdown_to_document(self, content: str) -> Document:
+        """
+        Converts markdown with YAML front matter back to a Document object.
+        """
+        # Split front matter and content
+        if not content.startswith("---\n"):
+            raise ValueError("Invalid markdown format: missing YAML front matter")
+
+        parts = content.split("---\n", 2)
+        if len(parts) != 3:
+            raise ValueError("Invalid markdown format: malformed YAML front matter")
+
+        yaml_content = parts[1]
+        markdown_content = parts[2].lstrip("\n")
+
+        # Parse YAML front matter
+        try:
+            metadata = yaml.safe_load(yaml_content)
+        except yaml.YAMLError as e:
+            raise ValueError(f"Failed to parse YAML front matter: {e}")
+
+        # Reconstruct contributions
+        contributions = []
+        for contrib_data in metadata.get("contributions", []):
+            author = Author(
+                id=contrib_data["author_id"], role=contrib_data["author_role"]
+            )
+            contribution = ContributionMetadata(
+                author=author,
+                timestamp=datetime.fromisoformat(contrib_data["timestamp"]),
+                content_length=contrib_data["content_length"],
+            )
+            contributions.append(contribution)
+
+        # Create Document object
+        return Document(
+            session_id=metadata["session_id"],
+            name=metadata["name"],
+            type=DocumentType(metadata["type"]),
+            content=markdown_content,
+            version=metadata["version"],
+            last_modified=datetime.fromisoformat(metadata["last_modified"]),
+            contributions=contributions,
+        )
+
     async def read(
         self, session_id: str, doc_name: str, doc_type: DocumentType
     ) -> Document:
         """
         Reads a document from storage.
+        Now handles markdown format with YAML front matter instead of JSON.
 
         Args:
             session_id: Session identifier
@@ -166,9 +240,9 @@ class FileSystemStorageRepository(IStorageRepository):
             raise StorageError(f"Failed to read document {doc_name}: {e}") from e
 
         try:
-            # Deserialize using Pydantic
-            return Document.model_validate_json(data)
-        except (json.JSONDecodeError, ValueError) as e:
+            # Parse markdown with YAML front matter
+            return self._markdown_to_document(data)
+        except (ValueError, yaml.YAMLError) as e:
             raise StorageError(f"Failed to parse document {doc_name}: {e}") from e
 
     async def exists(

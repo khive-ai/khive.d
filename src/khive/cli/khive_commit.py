@@ -245,7 +245,9 @@ def git_run(
             json_output_flag=True,
         )  # Use a global or passed json_output
     except subprocess.CalledProcessError as e:
-        if check:  # if check is True, CalledProcessError is raised, otherwise it's handled by return code
+        if (
+            check
+        ):  # if check is True, CalledProcessError is raised, otherwise it's handled by return code
             error_msg(
                 f"Git command failed: git {' '.join(cmd_args)}\nStderr: {e.stderr}",
                 console=True,

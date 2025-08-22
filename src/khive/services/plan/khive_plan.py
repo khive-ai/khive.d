@@ -3,12 +3,17 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import shutil
 import subprocess
 import sys
 
-from .parts import ComplexityLevel, PlannerRequest
+from .parts import PlannerRequest
 from .planner_service import PlannerService
+
+# Suppress verbose logging for clean CLI output
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("khive.services.plan").setLevel(logging.WARNING)
 
 __all__ = ("main",)
 
@@ -115,8 +120,10 @@ async def run_planning(
         if json_output:
             print(json.dumps(response.model_dump(exclude_none=True), indent=2))
         elif response.success:
-            # Print summary
-            print(f"\n🎯 {response.summary}")
+            # Print the complete planning output from planner service
+            print(f"{response.summary}")
+
+            # Add basic metadata not included in summary
             print(
                 f"📊 Complexity: {getattr(response.complexity, 'value', response.complexity)}"
             )
@@ -124,53 +131,7 @@ async def run_planning(
             print(f"🔗 Session ID: {response.session_id}")
             print(f"✨ Confidence: {response.confidence:.0%}")
 
-            if response.phases:
-                print(f"\n📋 Execution Phases ({len(response.phases)}):")
-                for i, phase in enumerate(response.phases, 1):
-                    print(f"\n{i}. {phase.name.replace('_', ' ').title()}")
-                    print(f"   Description: {phase.description}")
-                    print(f"   Agents: {len(phase.agents)}")
-                    print(
-                        f"   Quality Gate: {getattr(phase.quality_gate, 'value', phase.quality_gate)}"
-                    )
-                    print(
-                        f"   Pattern: {getattr(phase.coordination_pattern, 'value', phase.coordination_pattern)}"
-                    )
-                    if phase.dependencies:
-                        print(f"   Dependencies: {', '.join(phase.dependencies)}")
-
-                    # Show agent details (no truncation)
-                    if phase.agents:
-                        print("   Agent Details:")
-                        for agent in phase.agents:
-                            print(
-                                f"     • {agent.role} ({agent.domain}) - Priority: {agent.priority:.1f}"
-                            )
-                            print(f"       Reasoning: {agent.reasoning}")
-
-            # Show spawn commands for Claude Code
-            if response.spawn_commands and not json_format:
-                print("\n🚀 Task Agent Commands (for Claude Code):")
-                print("=" * 60)
-
-                # For simple tasks, show as single BatchTool command
-                if (
-                    response.complexity == ComplexityLevel.SIMPLE
-                    and len(response.spawn_commands) > 1
-                ):
-                    print("\n[BatchTool]:")
-                    for cmd in response.spawn_commands:
-                        # Show each Task on its own line
-                        print(f"\n{cmd}")
-                else:
-                    # For complex tasks or single agent, show commands directly
-                    for cmd in response.spawn_commands:
-                        print(f"\n{cmd}")
-
-                print("\n" + "=" * 60)
-                print(
-                    "\n💡 Copy and execute these commands in Claude Code to spawn agents"
-                )
+            # All phase details and spawn commands are now included in response.summary
         else:
             print(f"❌ Planning failed: {response.summary}")
             if response.error:

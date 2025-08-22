@@ -10,41 +10,33 @@ class ArtifactsError(Exception):
     """Base exception for the Artifacts system."""
 
 
-
 # Business Logic Errors
 class NotFoundError(ArtifactsError):
     """Base class for resource not found errors."""
-
 
 
 class DocumentNotFound(NotFoundError):
     """Raised when a requested document does not exist."""
 
 
-
 class SessionNotFound(NotFoundError):
     """Raised when a requested session does not exist."""
-
 
 
 class TemplateNotFound(NotFoundError):
     """Raised when a requested template does not exist."""
 
 
-
 class AlreadyExistsError(ArtifactsError):
     """Base class for resource already exists errors."""
-
 
 
 class DocumentAlreadyExists(AlreadyExistsError):
     """Raised when trying to create a document that already exists."""
 
 
-
 class SessionAlreadyExists(AlreadyExistsError):
     """Raised when trying to create a session that already exists."""
-
 
 
 class ValidationError(ArtifactsError):
@@ -54,7 +46,6 @@ class ValidationError(ArtifactsError):
     This is a critical security exception - it often indicates malicious input
     or programming errors that could lead to security vulnerabilities.
     """
-
 
 
 # Infrastructure Errors
@@ -67,15 +58,12 @@ class StorageError(ArtifactsError):
     """
 
 
-
 class TemplateError(ArtifactsError):
     """Raised for template parsing, loading, or rendering errors."""
 
 
-
 class ConfigurationError(ArtifactsError):
     """Raised for invalid configuration or dependency setup errors."""
-
 
 
 class ConcurrencyError(ArtifactsError):
@@ -84,4 +72,3 @@ class ConcurrencyError(ArtifactsError):
 
     This typically indicates high contention and the operation should be retried.
     """
-

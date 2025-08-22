@@ -415,16 +415,12 @@ class ClaudeCodeObservabilityDashboard:
         activity_level = (
             "High"
             if metrics["recent_events_5m"] > 10
-            else "Medium"
-            if metrics["recent_events_5m"] > 3
-            else "Low"
+            else "Medium" if metrics["recent_events_5m"] > 3 else "Low"
         )
         activity_color = (
             "#28a745"
             if activity_level == "High"
-            else "#ffc107"
-            if activity_level == "Medium"
-            else "#6c757d"
+            else "#ffc107" if activity_level == "Medium" else "#6c757d"
         )
 
         # Calculate event rate
@@ -513,9 +509,7 @@ class ClaudeCodeObservabilityDashboard:
             agent_color = (
                 "#dc3545"
                 if metrics["estimated_active_agents"] > 5
-                else "#28a745"
-                if metrics["estimated_active_agents"] > 0
-                else "#6c757d"
+                else "#28a745" if metrics["estimated_active_agents"] > 0 else "#6c757d"
             )
             st.markdown(
                 f"""
@@ -573,15 +567,17 @@ class ClaudeCodeObservabilityDashboard:
         }
 
         for hook_type, count in metrics["hook_types"].items():
-            hook_data.append({
-                "Hook Type": hook_type.replace("_", " ").title(),
-                "Count": count,
-                "Percentage": round(
-                    (count / sum(metrics["hook_types"].values())) * 100, 1
-                ),
-                "Color": color_map.get(hook_type, "#6c757d"),
-                "Original": hook_type,
-            })
+            hook_data.append(
+                {
+                    "Hook Type": hook_type.replace("_", " ").title(),
+                    "Count": count,
+                    "Percentage": round(
+                        (count / sum(metrics["hook_types"].values())) * 100, 1
+                    ),
+                    "Color": color_map.get(hook_type, "#6c757d"),
+                    "Original": hook_type,
+                }
+            )
 
         df = pd.DataFrame(hook_data)
         df = df.sort_values("Count", ascending=True)
@@ -1001,13 +997,15 @@ class ClaudeCodeObservabilityDashboard:
                     session_id[:8] + "..." if len(session_id) > 8 else session_id
                 )
 
-                table_data.append({
-                    "🕐 Time": event["datetime"].strftime("%H:%M:%S"),
-                    "🎯 Event": f"{event_icon} {event_type.replace('_', ' ').title()}",
-                    "🛠️ Tool": event.get("tool_name", "Unknown"),
-                    "👤 Session": session_display,
-                    "📄 Details": details,
-                })
+                table_data.append(
+                    {
+                        "🕐 Time": event["datetime"].strftime("%H:%M:%S"),
+                        "🎯 Event": f"{event_icon} {event_type.replace('_', ' ').title()}",
+                        "🛠️ Tool": event.get("tool_name", "Unknown"),
+                        "👤 Session": session_display,
+                        "📄 Details": details,
+                    }
+                )
 
             df = pd.DataFrame(table_data)
 
@@ -1318,9 +1316,9 @@ class ClaudeCodeObservabilityDashboard:
 
             with filter_col1:
                 # Event type filter
-                all_event_types = sorted({
-                    e.get("event_type", "unknown") for e in events
-                })
+                all_event_types = sorted(
+                    {e.get("event_type", "unknown") for e in events}
+                )
                 selected_event_types = st.multiselect(
                     "📋 Event Types",
                     options=all_event_types,
@@ -1329,11 +1327,13 @@ class ClaudeCodeObservabilityDashboard:
                 )
 
                 # Session filter
-                all_sessions = list({
-                    e.get("session_id", "unknown")
-                    for e in events
-                    if e.get("session_id")
-                })
+                all_sessions = list(
+                    {
+                        e.get("session_id", "unknown")
+                        for e in events
+                        if e.get("session_id")
+                    }
+                )
                 selected_sessions = st.multiselect(
                     "👥 Sessions",
                     options=all_sessions[:10],  # Limit to top 10 sessions

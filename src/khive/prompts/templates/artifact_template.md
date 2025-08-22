@@ -11,9 +11,7 @@ tags: ["artifact", "working-document", "session"]
 
 # {{IDENTIFIER}}
 
-**Session**: {{SESSION_ID}}  
-**Created**: {{DATE}}  
-**Updated By**: {{AGENT_ROLE}}  
+**Session**: {{SESSION_ID}} **Created**: {{DATE}} **Updated By**: {{AGENT_ROLE}}
 
 ## Purpose
 
@@ -34,4 +32,5 @@ _Add your working notes, research findings, or interim work here..._
 _Additional notes and context..._
 
 ---
+
 _This is a working artifact in session {{SESSION_ID}}_

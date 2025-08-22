@@ -365,7 +365,10 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         # Special phrases that override pattern counts
         if "distributed system" in text:
             hits.append("complex")
-        elif any(pattern in text for pattern in ["entire system", "complete platform"]) or len(text.split()) > 100:
+        elif (
+            any(pattern in text for pattern in ["entire system", "complete platform"])
+            or len(text.split()) > 100
+        ):
             hits.append("very_complex")
         # When multiple tier patterns exist, select highest complexity
         elif very_complex_count > 0 and (complex_count > 0 or simple_count > 0):
@@ -427,30 +430,34 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         elif complexity == ComplexityTier.COMPLEX:
             # Complex: 5-12 agents, add duplicates for parallel work
             if len(selected_roles) < 5:
-                selected_roles.extend([
-                    "researcher",
-                    "researcher",
-                    "implementer",
-                    "tester",
-                    "reviewer",
-                ])
+                selected_roles.extend(
+                    [
+                        "researcher",
+                        "researcher",
+                        "implementer",
+                        "tester",
+                        "reviewer",
+                    ]
+                )
 
         elif complexity == ComplexityTier.VERY_COMPLEX:
             # Very complex: 8-20 agents, multiple of each role for parallel work
             if len(selected_roles) < 8:
                 # Add multiple agents of key roles
-                selected_roles.extend([
-                    "researcher",
-                    "researcher",
-                    "researcher",
-                    "implementer",
-                    "implementer",
-                    "analyst",
-                    "analyst",
-                    "tester",
-                    "critic",
-                    "reviewer",
-                ])
+                selected_roles.extend(
+                    [
+                        "researcher",
+                        "researcher",
+                        "researcher",
+                        "implementer",
+                        "implementer",
+                        "analyst",
+                        "analyst",
+                        "tester",
+                        "critic",
+                        "reviewer",
+                    ]
+                )
 
         # Ensure all roles are valid (but keep duplicates)
         final_roles = [r for r in selected_roles if r in self.available_roles]
@@ -625,14 +632,16 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 agent_id = agent_tasks[i][0]
-                processed_results.append({
-                    "agent_id": agent_id,
-                    "status": "error",
-                    "duration": None,
-                    "retry_count": 0,
-                    "error": str(result),
-                    "execution_time": None,
-                })
+                processed_results.append(
+                    {
+                        "agent_id": agent_id,
+                        "status": "error",
+                        "duration": None,
+                        "retry_count": 0,
+                        "error": str(result),
+                        "execution_time": None,
+                    }
+                )
             else:
                 processed_results.append(result)
 
@@ -656,8 +665,6 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         configs = self.get_evaluation_configs()
         evaluations = []
 
-        print(f"📊 Evaluating with {len(configs)} agents concurrently...")
-
         # Create tasks that handle their own exceptions
         tasks = []
         for config in configs:
@@ -671,12 +678,9 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         for config, result in zip(configs, results, strict=False):
             if result is not None:
                 if "error" in result:
-                    print(f"❌ {config['name']} failed: {result['error']}")
+                    logger.warning(f"Agent {config['name']} failed: {result['error']}")
                 else:
                     evaluations.append(result)
-                    print(f"✅ {config['name']}")
-
-        print(f"\n📊 Evaluated {len(evaluations)} agents successfully")
 
         return evaluations
 
@@ -783,12 +787,14 @@ Be different - show YOUR unique perspective on which roles matter most."""
                 gate="thorough",  # Default gate for template
             )
 
-            configs.append({
-                "name": agent_config.get("name", agent_name),
-                "system_prompt": system_prompt,
-                # "temperature": agent_config.get("temperature", 0.3),
-                "description": agent_config.get("description", ""),
-            })
+            configs.append(
+                {
+                    "name": agent_config.get("name", agent_name),
+                    "system_prompt": system_prompt,
+                    # "temperature": agent_config.get("temperature", 0.3),
+                    "description": agent_config.get("description", ""),
+                }
+            )
 
         # Fallback to hardcoded if YAML not available
         if not configs:
@@ -1351,7 +1357,7 @@ Remember: This is PARALLEL EXECUTION - coordinate via shared artifacts!"""
 - **Session**: {session_id}
 - **Structure**: workspace/{session_id}/
   - `scratchpad/` - Working documents shared among all agents
-  - `deliverable/` - Final phase deliverables 
+  - `deliverable/` - Final phase deliverables
   - `artifact_registry.json` - Auto-managed artifact tracking
 
 📋 ARTIFACT CREATION PROTOCOL:
@@ -1714,7 +1720,6 @@ class PlannerService:
         request: PlannerRequest,
         triage_consensus: TriageConsensus,
         session_id: str,
-        planner: OrchestratorPlanner,
     ) -> PlannerResponse:
         """Build a simple response from triage consensus with proper commands."""
         agent_recommendations = []
@@ -1735,48 +1740,72 @@ class PlannerService:
                     )
                 )
 
-        # Generate spawn commands for simple tasks
-        for agent_spec in agent_recommendations:
-            # Get artifact management prompt
-            artifact_management = planner.get_artifact_management_prompt(
-                session_id, "execution_phase", agent_spec.role, agent_spec.domain
+        # Check for explicit phases even in simple tasks
+        detected_phases = self._detect_explicit_phases(request.task_description)
+
+        if detected_phases:
+            # Even "simple" tasks can have explicit phases
+            phases = self._create_phases_from_detection(
+                detected_phases, agent_recommendations
+            )
+            spawn_commands = self._generate_batched_spawn_commands(
+                phases, request.task_description, session_id
+            )
+        else:
+            # Single phase for truly simple tasks
+            phase = TaskPhase(
+                name="execution_phase",
+                description="Execute the simple task",
+                agents=agent_recommendations,
+                quality_gate=QualityGate.BASIC,
+                coordination_pattern=WorkflowPattern.PARALLEL,
+            )
+            phases = [phase]
+            spawn_commands = self._generate_batched_spawn_commands(
+                phases, request.task_description, session_id
             )
 
-            # Build Task command
-            task_prompt = f"""TASK: {request.task_description}
+        # Generate rich summary like the complex consensus path
+        if detected_phases:
+            # For explicit phases, create detailed summary with BatchTool commands
+            phase_summary = f"📋 Execution Phases ({len(phases)}):\n\n"
+            for i, phase in enumerate(phases, 1):
+                phase_summary += f"{i}. {phase.name.replace('_', ' ').title()}\n"
+                phase_summary += f"   Description: {phase.description}\n"
+                phase_summary += f"   Agents: {len(phase.agents)}\n"
+                phase_summary += f"   Quality Gate: {phase.quality_gate}\n"
+                phase_summary += f"   Pattern: {phase.coordination_pattern}\n"
+                if phase.dependencies:
+                    phase_summary += (
+                        f"   Dependencies: {', '.join(phase.dependencies)}\n"
+                    )
+                phase_summary += "   Agent Details:\n"
+                for agent in phase.agents:
+                    phase_summary += f"     • {agent.role} ({agent.domain}) - Priority: {agent.priority:.1f}\n"
+                    phase_summary += f"       Reasoning: {agent.reasoning}\n"
+                phase_summary += "\n"
 
-{artifact_management}
-
-YOUR ROLE: {agent_spec.role} ({agent_spec.domain})
-PRIORITY: {agent_spec.priority:.2f}
-
-INSTRUCTIONS:
-1. First run: `uv run khive compose {agent_spec.role} -d {agent_spec.domain} -c "{request.task_description}"`
-2. Create working documents in scratchpad/ as needed
-3. Complete your assigned task
-4. Create final deliverable using khive new-doc
-
-Remember: This is a simple task - focus on direct execution."""
-
-            spawn_commands.append(
-                f'Task("{agent_spec.role}_{agent_spec.domain}: {task_prompt}")'
+            phase_summary += "🚀 Task Agent Commands (for Claude Code):\n"
+            phase_summary += "=" * 60 + "\n\n"
+            phase_summary += "\n".join(spawn_commands)
+            phase_summary += "\n" + "=" * 60 + "\n\n"
+            phase_summary += (
+                "💡 Copy and execute these commands in Claude Code to spawn agents"
             )
 
-        # Single phase for simple tasks
-        phase = TaskPhase(
-            name="execution_phase",
-            description="Execute the simple task",
-            agents=agent_recommendations,
-            quality_gate=QualityGate.BASIC,
-            coordination_pattern=WorkflowPattern.PARALLEL,
-        )
+            final_summary = f"🎯 {phase_summary}"
+        else:
+            # Simple single-phase task
+            final_summary = (
+                f"🎯 Triage consensus (3 LLMs): {triage_consensus.decision_votes}"
+            )
 
         return PlannerResponse(
             success=True,
-            summary=f"Triage consensus (3 LLMs): {triage_consensus.complexity_votes}",
+            summary=final_summary,
             complexity=ComplexityLevel.SIMPLE,
             recommended_agents=triage_consensus.final_agent_count or 2,
-            phases=[phase],
+            phases=phases,
             spawn_commands=spawn_commands,
             session_id=session_id,
             confidence=triage_consensus.average_confidence,
@@ -1833,14 +1862,15 @@ Remember: This is a simple task - focus on direct execution."""
             if not should_escalate:
                 # Simple task - use triage consensus
                 self.metrics["triage_simple"] += 1
-                logger.info(
-                    f"Simple task handled by triage: {triage_consensus.final_agent_count} agents, "
-                    f"confidence: {triage_consensus.average_confidence:.2f}"
-                )
+                # Suppress verbose logging for clean CLI output
+                # logger.info(
+                #     f"Simple task handled by triage: {triage_consensus.final_agent_count} agents, "
+                #     f"confidence: {triage_consensus.average_confidence:.2f}"
+                # )
 
                 # Build and return simple response
                 response = self._build_simple_response(
-                    request, triage_consensus, session_id, planner
+                    request, triage_consensus, session_id
                 )
 
                 # Update escalation rate
@@ -1852,9 +1882,10 @@ Remember: This is a simple task - focus on direct execution."""
 
             # === TIER 2: FULL CONSENSUS (10 LLMs) ===
             self.metrics["triage_complex"] += 1
-            logger.info(
-                f"Complex task escalated to full consensus: {triage_consensus.complexity_votes}"
-            )
+            # Suppress verbose logging for clean CLI output
+            # logger.info(
+            #     f"Complex task escalated to full consensus: {triage_consensus.decision_votes}"
+            # )
 
             # Planner already created above
 
@@ -1898,9 +1929,22 @@ Remember: This is a simple task - focus on direct execution."""
                     )
                 )
 
-            # Create phases based on complexity
+            # Create phases based on explicit phase detection or complexity
             phases = []
-            if complexity_level in [ComplexityLevel.SIMPLE, ComplexityLevel.MEDIUM]:
+            # Extract task description properly
+            task_description = (
+                request.task_description
+                if hasattr(request, "task_description")
+                else str(request)
+            )
+            detected_phases = self._detect_explicit_phases(task_description)
+
+            if detected_phases:
+                # Task explicitly mentions phases - create sequential multi-phase workflow
+                phases = self._create_phases_from_detection(
+                    detected_phases, agent_recommendations
+                )
+            elif complexity_level in [ComplexityLevel.SIMPLE, ComplexityLevel.MEDIUM]:
                 # Single execution phase
                 phases.append(
                     TaskPhase(
@@ -1917,70 +1961,103 @@ Remember: This is a simple task - focus on direct execution."""
                 )
             else:
                 # Multi-phase execution
-                phases.extend([
-                    TaskPhase(
-                        name="discovery_phase",
-                        description="Research and analyze requirements",
-                        agents=[
-                            a
-                            for a in agent_recommendations
-                            if a.role in ["researcher", "analyst"]
-                        ][:3],
-                        quality_gate=QualityGate.THOROUGH,
-                        coordination_pattern=WorkflowPattern.PARALLEL,
-                    ),
-                    TaskPhase(
-                        name="design_phase",
-                        description="Design architecture and approach",
-                        agents=[
-                            a
-                            for a in agent_recommendations
-                            if a.role in ["architect", "strategist"]
-                        ][:2],
-                        dependencies=["discovery_phase"],
-                        quality_gate=QualityGate.THOROUGH,
-                        coordination_pattern=WorkflowPattern.SEQUENTIAL,
-                    ),
-                    TaskPhase(
-                        name="implementation_phase",
-                        description="Implement the solution",
-                        agents=[
-                            a
-                            for a in agent_recommendations
-                            if a.role in ["implementer", "innovator"]
-                        ][:3],
-                        dependencies=["design_phase"],
-                        quality_gate=QualityGate.THOROUGH,
-                        coordination_pattern=WorkflowPattern.PARALLEL,
-                    ),
-                    TaskPhase(
-                        name="validation_phase",
-                        description="Validate and test the solution",
-                        agents=[
-                            a
-                            for a in agent_recommendations
-                            if a.role in ["tester", "critic", "auditor"]
-                        ][:2],
-                        dependencies=["implementation_phase"],
-                        quality_gate=(
-                            QualityGate.CRITICAL
-                            if complexity_level == ComplexityLevel.VERY_COMPLEX
-                            else QualityGate.THOROUGH
+                phases.extend(
+                    [
+                        TaskPhase(
+                            name="discovery_phase",
+                            description="Research and analyze requirements",
+                            agents=[
+                                a
+                                for a in agent_recommendations
+                                if a.role in ["researcher", "analyst"]
+                            ][:3],
+                            quality_gate=QualityGate.THOROUGH,
+                            coordination_pattern=WorkflowPattern.PARALLEL,
                         ),
-                        coordination_pattern=WorkflowPattern.PARALLEL,
-                    ),
-                ])
+                        TaskPhase(
+                            name="design_phase",
+                            description="Design architecture and approach",
+                            agents=[
+                                a
+                                for a in agent_recommendations
+                                if a.role in ["architect", "strategist"]
+                            ][:2],
+                            dependencies=["discovery_phase"],
+                            quality_gate=QualityGate.THOROUGH,
+                            coordination_pattern=WorkflowPattern.SEQUENTIAL,
+                        ),
+                        TaskPhase(
+                            name="implementation_phase",
+                            description="Implement the solution",
+                            agents=[
+                                a
+                                for a in agent_recommendations
+                                if a.role in ["implementer", "innovator"]
+                            ][:3],
+                            dependencies=["design_phase"],
+                            quality_gate=QualityGate.THOROUGH,
+                            coordination_pattern=WorkflowPattern.PARALLEL,
+                        ),
+                        TaskPhase(
+                            name="validation_phase",
+                            description="Validate and test the solution",
+                            agents=[
+                                a
+                                for a in agent_recommendations
+                                if a.role in ["tester", "critic", "auditor"]
+                            ][:2],
+                            dependencies=["implementation_phase"],
+                            quality_gate=(
+                                QualityGate.CRITICAL
+                                if complexity_level == ComplexityLevel.VERY_COMPLEX
+                                else QualityGate.THOROUGH
+                            ),
+                            coordination_pattern=WorkflowPattern.PARALLEL,
+                        ),
+                    ]
+                )
 
             # Extract spawn commands from consensus output
-            spawn_commands = []
-            if "khive compose" in consensus_output:
-                lines = consensus_output.split("\n")
-                spawn_commands.extend(
-                    line.strip() for line in lines if "khive compose" in line
-                )
+            # Generate proper BatchTool commands grouped by phase
+            spawn_commands = self._generate_batched_spawn_commands(
+                phases, task_description, session_id
+            )
 
             # Use confidence from consensus
             confidence = consensus_data["confidence"]
+
+            # Use proper summary format based on whether we have explicit phases
+            if detected_phases:
+                # For explicit phases, create summary with our BatchTool commands
+                phase_summary = f"📋 Execution Phases ({len(phases)}):\n\n"
+                for i, phase in enumerate(phases, 1):
+                    phase_summary += f"{i}. {phase.name.replace('_', ' ').title()}\n"
+                    phase_summary += f"   Description: {phase.description}\n"
+                    phase_summary += f"   Agents: {len(phase.agents)}\n"
+                    phase_summary += f"   Quality Gate: {phase.quality_gate}\n"
+                    phase_summary += f"   Pattern: {phase.coordination_pattern}\n"
+                    if phase.dependencies:
+                        phase_summary += (
+                            f"   Dependencies: {', '.join(phase.dependencies)}\n"
+                        )
+                    phase_summary += "   Agent Details:\n"
+                    for agent in phase.agents:
+                        phase_summary += f"     • {agent.role} ({agent.domain}) - Priority: {agent.priority:.1f}\n"
+                        phase_summary += f"       Reasoning: {agent.reasoning}\n"
+                    phase_summary += "\n"
+
+                phase_summary += "🚀 Task Agent Commands (for Claude Code):\n"
+                phase_summary += "=" * 60 + "\n\n"
+                phase_summary += "\n".join(spawn_commands)
+                phase_summary += "\n" + "=" * 60 + "\n\n"
+                phase_summary += (
+                    "💡 Copy and execute these commands in Claude Code to spawn agents"
+                )
+
+                final_summary = phase_summary
+            else:
+                # For non-phase tasks, use consensus output
+                final_summary = consensus_output
 
             # Track metrics for complex path
             self.metrics["total_llm_calls"] += 10  # 10 consensus agents
@@ -1991,7 +2068,7 @@ Remember: This is a simple task - focus on direct execution."""
 
             return PlannerResponse(
                 success=True,
-                summary=consensus_output,  # Use the rich consensus output instead of simple summary
+                summary=final_summary,  # Use phase-grouped commands when available
                 complexity=complexity_level,
                 recommended_agents=len(agent_recommendations),
                 phases=phases,
@@ -2023,35 +2100,168 @@ Remember: This is a simple task - focus on direct execution."""
         """
         return await self.handle_request(request)
 
-    async def execute_parallel_fanout(
+    def _generate_batched_spawn_commands(
+        self, phases: list[TaskPhase], request: str, session_id: str = None
+    ) -> list[str]:
+        """Generate BatchTool commands grouped by phase."""
+        batched_commands = []
+
+        for phase in phases:
+            if not phase.agents:
+                continue
+
+            # Create BatchTool header for this phase
+            phase_commands = [f"# Phase: {phase.name}"]
+            phase_commands.append("[BatchTool]")
+
+            # Generate Task commands for each agent in this phase
+            for agent in phase.agents:
+                agent_name = f"{agent.role}_{agent.domain.replace('-', '_')}"
+
+                # Simplified prompt for now - will fix artifact management later
+                full_prompt = f"""TASK: {request}
+
+🗂️ WORKSPACE STRUCTURE:
+- **Session**: {session_id or "SESSION_ID_PLACEHOLDER"}
+- **Structure**: workspace/{session_id or "SESSION_ID_PLACEHOLDER"}/
+  - `scratchpad/` - Working documents shared among all agents
+  - `deliverable/` - Final phase deliverables
+  - `artifact_registry.json` - Auto-managed artifact tracking
+
+YOUR ROLE: {agent.role} ({agent.domain})
+PRIORITY: {agent.priority:.2f}
+
+INSTRUCTIONS:
+1. First run: `uv run khive compose {agent.role} -d {agent.domain} -c "{request}"`
+2. Create working documents in scratchpad/ as needed
+3. Complete your assigned task
+4. Create final deliverable using khive new-doc
+
+Remember: This is a {phase.coordination_pattern} task - focus on direct execution."""
+
+                # Escape prompt for proper formatting
+                escaped_prompt = full_prompt.replace('"', '\\"').replace("\n", "\\n")
+
+                # Add Task command
+                phase_commands.append(f'Task("{agent_name}: {escaped_prompt}")')
+
+            phase_commands.append("")  # Empty line after each batch
+            batched_commands.extend(phase_commands)
+
+        return batched_commands
+
+    def _detect_explicit_phases(self, request: str) -> list[dict]:
+        """Detect explicit phases mentioned in the request."""
+        import re
+
+        detected_phases = []
+
+        # Pattern 1: "Phase X - Description"
+        phase_patterns = [
+            r"Phase\s+(\d+)\s*[-:]\s*([^,\n.]+)",
+            r"Step\s+(\d+)\s*[-:]\s*([^,\n.]+)",
+            r"(\d+)[\)\.]\s*([^,\n.]+)",
+        ]
+
+        for pattern in phase_patterns:
+            matches = re.findall(pattern, request, re.IGNORECASE)
+            if (
+                matches and len(matches) >= 2
+            ):  # At least 2 phases to be considered multi-phase
+                for num, description in matches:
+                    detected_phases.append(
+                        {
+                            "number": int(num),
+                            "description": description.strip(),
+                            "raw_text": f"Phase {num} - {description.strip()}",
+                        }
+                    )
+                break  # Use first successful pattern
+
+        # Sort by phase number
+        detected_phases.sort(key=lambda x: x["number"])
+
+        return detected_phases
+
+    def _create_phases_from_detection(
+        self, detected_phases: list[dict], agent_recommendations: list
+    ) -> list[TaskPhase]:
+        """Create TaskPhase objects from detected phases."""
+        phases = []
+
+        for i, phase_info in enumerate(detected_phases):
+            phase_name = f"phase_{phase_info['number']}"
+
+            # Assign agents based on phase content and order
+            phase_agents = self._assign_agents_to_phase(
+                phase_info, agent_recommendations, i, len(detected_phases)
+            )
+
+            # Set dependencies (each phase depends on previous)
+            dependencies = (
+                [f"phase_{detected_phases[i - 1]['number']}"] if i > 0 else []
+            )
+
+            phase = TaskPhase(
+                name=phase_name,
+                description=phase_info["description"],
+                agents=phase_agents,
+                dependencies=dependencies,
+                quality_gate=QualityGate.THOROUGH,
+                coordination_pattern=WorkflowPattern.PARALLEL,  # Parallel within phase, sequential between phases
+            )
+            phases.append(phase)
+
+        return phases
+
+    def _assign_agents_to_phase(
         self,
-        agent_specs: list[AgentRecommendation],
-        session_id: str,
-        timeout: float | None = None,
-    ) -> dict[str, str]:
-        """
-        Execute parallel fan-out orchestration with dependency resolution.
+        phase_info: dict,
+        agent_recommendations: list,
+        phase_index: int,
+        total_phases: int,
+    ) -> list:
+        """Distribute LLM-recommended agents across phases based on phase characteristics."""
 
-        Args:
-            agent_specs: List of agent specifications
-            session_id: Session identifier
-            timeout: Execution timeout in seconds
+        # Respect the LLM's intelligent role/domain recommendations
+        # Just distribute them appropriately across phases
 
-        Returns:
-            Execution status report
-        """
-        try:
-            # Get planner instance
-            planner = await self._get_planner()
+        total_agents = len(agent_recommendations)
 
-            # HandoffCoordinator removed - orchestrator handles execution
-            # Returning empty status for now
-            logger.info("execute_parallel_fanout deprecated - use orchestrator")
-            return {"status": "deprecated", "message": "Use orchestrator for execution"}
+        # For single phase, use all agents (up to reasonable limit)
+        if total_phases == 1:
+            return agent_recommendations[: min(8, total_agents)]
 
-        except Exception as e:
-            logger.exception(f"Parallel fan-out execution failed: {e}")
-            raise
+        # Calculate base distribution and remainder
+        base_agents_per_phase = total_agents // total_phases
+        remainder = total_agents % total_phases
+
+        # Determine agents for this specific phase
+        # Earlier phases get +1 agent if there's remainder
+        agents_for_this_phase = base_agents_per_phase + (
+            1 if phase_index < remainder else 0
+        )
+
+        # Ensure at least 1 agent per phase, max 6 agents per phase
+        agents_for_this_phase = max(1, min(6, agents_for_this_phase))
+
+        # Calculate start and end indices for this phase
+        # Account for earlier phases potentially having +1 agent
+        start_idx = 0
+        for i in range(phase_index):
+            phase_agent_count = base_agents_per_phase + (1 if i < remainder else 0)
+            start_idx += phase_agent_count
+
+        end_idx = min(start_idx + agents_for_this_phase, total_agents)
+
+        # Extract agents for this phase
+        phase_agents = agent_recommendations[start_idx:end_idx]
+
+        # Safety check - if somehow we have no agents, take at least one
+        if not phase_agents and agent_recommendations:
+            phase_agents = [agent_recommendations[phase_index % total_agents]]
+
+        return phase_agents
 
     def get_metrics(self) -> dict:
         """Get current metrics for analysis."""
