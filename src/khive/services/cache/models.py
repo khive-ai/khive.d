@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -12,12 +12,14 @@ from pydantic import BaseModel, Field
 class CacheEntry(BaseModel):
     """A cached entry with metadata."""
 
-    key: str = Field(..., description="The cache key")
+    key: str = Field(..., min_length=1, description="The cache key (must be non-empty)")
     value: Any = Field(..., description="The cached value")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: Optional[datetime] = Field(None, description="When the entry expires")
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    version: str = Field(default="1.0", description="Cache format version")
+    expires_at: datetime | None = Field(None, description="When the entry expires")
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    version: str = Field(
+        default="1.0", min_length=1, description="Cache format version"
+    )
 
     def is_expired(self) -> bool:
         """Check if the cache entry is expired."""
@@ -61,12 +63,22 @@ class CacheEntry(BaseModel):
 class CacheStats(BaseModel):
     """Cache statistics and metrics."""
 
-    total_keys: int = Field(0, description="Total number of cached keys")
-    hits: int = Field(0, description="Cache hits since last reset")
-    misses: int = Field(0, description="Cache misses since last reset")
-    evictions: int = Field(0, description="Number of evicted entries")
-    memory_usage_bytes: Optional[int] = Field(None, description="Memory usage in bytes")
-    hit_rate: float = Field(0.0, description="Cache hit rate (0.0-1.0)")
+    total_keys: int = Field(
+        0, ge=0, description="Total number of cached keys (must be non-negative)"
+    )
+    hits: int = Field(
+        0, ge=0, description="Cache hits since last reset (must be non-negative)"
+    )
+    misses: int = Field(
+        0, ge=0, description="Cache misses since last reset (must be non-negative)"
+    )
+    evictions: int = Field(
+        0, ge=0, description="Number of evicted entries (must be non-negative)"
+    )
+    memory_usage_bytes: int | None = Field(
+        None, ge=0, description="Memory usage in bytes (must be non-negative)"
+    )
+    hit_rate: float = Field(0.0, ge=0.0, le=1.0, description="Cache hit rate (0.0-1.0)")
 
     def calculate_hit_rate(self) -> float:
         """Calculate and update hit rate."""

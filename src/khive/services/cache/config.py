@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -15,7 +14,7 @@ class CacheConfig(BaseModel):
     redis_host: str = Field(default="localhost", description="Redis host")
     redis_port: int = Field(default=6379, description="Redis port")
     redis_db: int = Field(default=0, description="Redis database number")
-    redis_password: Optional[str] = Field(default=None, description="Redis password")
+    redis_password: str | None = Field(default=None, description="Redis password")
     redis_ssl: bool = Field(default=False, description="Use SSL for Redis connection")
 
     # Connection pool settings
