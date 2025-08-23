@@ -297,3 +297,7 @@ class FileSystemStorageRepository(IStorageRepository):
                 f"Failed to list documents for {session_id}/{doc_type.value}: {e}"
             )
             return []
+
+
+# Alias for backward compatibility with tests
+FilesystemStorageRepository = FileSystemStorageRepository

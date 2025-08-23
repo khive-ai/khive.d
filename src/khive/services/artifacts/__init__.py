@@ -74,6 +74,9 @@ from .service import ArtifactsService
 from .sessions import SessionManager
 from .storage import FileSystemStorageRepository, IStorageRepository
 
+# Alias for backward compatibility with tests
+FilesystemStorageRepository = FileSystemStorageRepository
+
 __all__ = [
     # Main service
     "ArtifactsService",
@@ -91,6 +94,7 @@ __all__ = [
     "ArtifactRegistryEntry",
     # Components (for advanced usage)
     "FileSystemStorageRepository",
+    "FilesystemStorageRepository",  # Alias for backward compatibility
     "IStorageRepository",
     "SessionManager",
     "LockManager",
