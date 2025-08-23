@@ -78,62 +78,6 @@ class TestRealCommandIntegration:
 class TestConfigurationWorkflows:
     """Test configuration loading and merging workflows."""
 
-    def test_project_root_detection(self):
-        """Test project root detection in various scenarios."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            project_root = Path(temp_dir)
-
-            # Create a .git directory to simulate git repo
-            git_dir = project_root / ".git"
-            git_dir.mkdir()
-
-            # Test that commands can detect project root
-            # This would be tested more thoroughly in individual command tests
-            # Here we just verify the basic structure works
-            assert git_dir.exists()
-
-    def test_config_file_discovery(self):
-        """Test configuration file discovery patterns."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            project_root = Path(temp_dir)
-            khive_dir = project_root / ".khive"
-            khive_dir.mkdir()
-
-            # Create sample config files
-            config_files = ["commit.toml", "plan.toml", "compose.toml"]
-
-            for config_file in config_files:
-                (khive_dir / config_file).write_text("# Sample config")
-
-            # Verify config files exist and can be discovered
-            for config_file in config_files:
-                assert (khive_dir / config_file).exists()
-
-    def test_config_inheritance_patterns(self):
-        """Test configuration inheritance and merging patterns."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            project_root = Path(temp_dir)
-            khive_dir = project_root / ".khive"
-            khive_dir.mkdir()
-
-            # Create a config with some settings
-            config_content = """
-            [general]
-            verbose = true
-            dry_run = false
-
-            [specific_settings]
-            timeout = 30
-            retries = 3
-            """
-
-            config_file = khive_dir / "test.toml"
-            config_file.write_text(config_content)
-
-            # Test that config can be loaded and parsed
-            # In real usage, commands would load this via their base classes
-            assert config_file.exists()
-            assert "verbose" in config_file.read_text()
 
 
 class TestJSONOutputFormatting:

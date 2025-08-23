@@ -166,19 +166,7 @@ class TestCommandArguments:
         assert result.exit_code in [0, 1, 2]  # Common CLI exit codes
 
 
-@pytest.mark.unit
-@pytest.mark.cli
-class TestCommandValidation:
-    """Test CLI command input validation."""
-
-    def test_file_path_validation(self, cli_runner):
-        """Test file path argument validation."""
-        # This would test commands that accept file paths
-        # Implementation depends on specific command structure
-
-    def test_numeric_argument_validation(self, cli_runner):
-        """Test numeric argument validation."""
-        # Test commands that accept numeric inputs (timeouts, limits, etc.)
+# Removed empty TestCommandValidation class - no implemented tests
 
 
 @pytest.mark.integration
@@ -339,15 +327,7 @@ class TestCommandSecurity:
             # Output should not contain signs of command execution
             assert "etc/passwd" not in result.output.lower()
 
-    def test_path_traversal_prevention(self, cli_runner, no_external_calls):
-        """Test CLI prevents path traversal attacks."""
-        # Test commands that accept file paths
-        path_attacks = ["../../../etc/passwd", "..\\..\\..\\windows\\system32"]
-        for path_attack in path_attacks:
-            # Would need to test with commands that accept file paths
-            result = cli_runner.invoke(main, ["--help"])
-            # Basic test - just ensure CLI doesn't crash with these inputs
-            assert result.exit_code == 0
+    # Removed test_path_traversal_prevention - was only testing --help, not actual path traversal
 
 
 @pytest.mark.slow

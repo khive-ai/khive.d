@@ -454,9 +454,7 @@ class TestEdgeCaseValidation:
         assert doc1 == doc2
 
         # Test inequality with microsecond differences
-        timestamp_diff = timestamp + timezone.utc.localize(
-            datetime.fromtimestamp(0.000001)
-        )
+        timestamp_diff = timestamp.replace(microsecond=timestamp.microsecond + 1)
 
         doc3 = Document(
             session_id="equality_test",

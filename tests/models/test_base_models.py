@@ -106,6 +106,10 @@ class TestBaseModelCore:
         # Should work with field name
         model1 = TestModel(user_name="test")
         assert model1.user_name == "test"
+        
+        # Should also work with generated alias (underscore to dash)
+        model2 = TestModel(**{"user-name": "test_alias"})
+        assert model2.user_name == "test_alias"
 
         # Should also work with alias (if defined)
         # This tests the populate_by_name=True configuration
