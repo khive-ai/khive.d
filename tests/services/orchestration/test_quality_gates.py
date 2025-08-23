@@ -1,4 +1,4 @@
-"""Comprehensive test suite for fanout_with_gated_refinement pattern and quality gate evaluation.
+"""Comprehensive test suite for gated_multi_phase_orchestration pattern and quality gate evaluation.
 
 This module provides tests for:
 - Conditional refinement trigger logic
@@ -13,6 +13,10 @@ import contextlib
 from unittest.mock import MagicMock, patch
 
 import pytest
+from lionagi.fields import Instruct
+from lionagi.protocols.types import AssistantResponse
+from pydantic import ValidationError
+
 from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
@@ -22,10 +26,6 @@ from khive.services.orchestration.parts import (
     GatedMultiPhaseOrchestrationResponse,
     OrchestrationPlan,
 )
-from lionagi.fields import Instruct
-from lionagi.protocols.types import AssistantResponse
-from pydantic import ValidationError
-
 from tests.fixtures.gated_refinement_fixtures import create_mock_orchestrator
 
 
@@ -43,8 +43,8 @@ def mock_orchestrator():
     return create_mock_orchestrator("test_gated_refinement")
 
 
-class TestFanoutGatedRefinementPattern:
-    """Test fanout with gated refinement orchestration pattern."""
+class TestGatedMultiPhaseOrchestrationPattern:
+    """Test gated multi-phase orchestration pattern."""
 
     @pytest.fixture
     def sample_orchestration_plan(self):
@@ -155,7 +155,7 @@ class TestFanoutGatedRefinementPattern:
             mock_create_branch.return_value = "qa_branch_id"
 
             # Execute fanout with gated refinement
-            result = await orchestrator.fanout_w_gated_refinement(
+            result = await orchestrator.gated_multi_phase_orchestration(
                 initial_desc="Test initial phase",
                 refinement_desc="Test refinement phase",
                 gate_instruction="Evaluate quality",
@@ -225,7 +225,7 @@ class TestFanoutGatedRefinementPattern:
             mock_create_branch.return_value = "qa_branch_id"
 
             # Execute with refinement scenario
-            result = await orchestrator.fanout_w_gated_refinement(
+            result = await orchestrator.gated_multi_phase_orchestration(
                 initial_desc="Test initial phase",
                 refinement_desc="Test refinement phase",
                 gate_instruction="Evaluate quality strictly",
@@ -283,7 +283,7 @@ class TestQualityGateEvaluation:
         """Test that refinement is correctly triggered based on gate evaluation."""
         gate_result = BaseGate(threshold_met=threshold_met)
 
-        # Simulate the logic from fanout_w_gated_refinement
+        # Simulate the logic from gated_multi_phase_orchestration
         refinement_needed = not gate_result.threshold_met
 
         assert refinement_needed == expected_refinement
@@ -434,7 +434,7 @@ class TestErrorRecoveryMechanisms:
             mock_run_flow.side_effect = FlowExecutionError("Flow execution failed")
 
             with pytest.raises(FlowExecutionError):
-                await orchestrator.fanout_w_gated_refinement(
+                await orchestrator.gated_multi_phase_orchestration(
                     initial_desc="Test",
                     refinement_desc="Test refinement",
                     gate_instruction="Test gate",
@@ -454,7 +454,7 @@ class TestErrorRecoveryMechanisms:
             )
 
             with pytest.raises(BranchCreationError):
-                await orchestrator.fanout_w_gated_refinement(
+                await orchestrator.gated_multi_phase_orchestration(
                     initial_desc="Test",
                     refinement_desc="Test refinement",
                     gate_instruction="Test gate",
@@ -665,7 +665,7 @@ class TestCoverageScenarios:
             ]
             mock_create_branch.return_value = "qa_branch_id"
 
-            result = await orchestrator.fanout_w_gated_refinement(
+            result = await orchestrator.gated_multi_phase_orchestration(
                 initial_desc="Complex test scenario",
                 refinement_desc="Address all quality issues",
                 gate_instruction="Perform thorough quality evaluation",
@@ -726,7 +726,7 @@ class TestCoverageScenarios:
             for viz_mode in visualization_modes:
                 with contextlib.suppress(Exception):
                     # Expected to fail in test environment, but should handle viz parameter
-                    await orchestrator.fanout_w_gated_refinement(
+                    await orchestrator.gated_multi_phase_orchestration(
                         initial_desc="Viz test",
                         refinement_desc="Viz refinement",
                         gate_instruction="Test gate",

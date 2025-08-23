@@ -5,6 +5,7 @@ import contextlib
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from lionagi.service.imodel import iModel
 
 
 class TestFanoutPattern:
@@ -195,7 +196,9 @@ class TestErrorRecovery:
                 "khive.services.orchestration.orchestrator.Branch"
             ) as mock_branch_cls,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
+            mock_cc.endpoint = MagicMock()
+            mock_cc.endpoint.endpoint = "anthropic/claude-3-5-sonnet-20241022"
             mock_create_cc.return_value = mock_cc
             mock_branch = MagicMock()
             mock_branch.id = "synthesis_branch_id"
@@ -224,7 +227,9 @@ class TestErrorRecovery:
                 "khive.services.orchestration.orchestrator.Branch"
             ) as mock_branch_cls,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
+            mock_cc.endpoint = MagicMock()
+            mock_cc.endpoint.endpoint = "anthropic/claude-3-5-sonnet-20241022"
             mock_create_cc.return_value = mock_cc
             mock_branch = MagicMock()
             mock_branch.id = "synthesis_branch_id"
@@ -264,7 +269,9 @@ class TestErrorRecovery:
                 "khive.services.orchestration.orchestrator.Branch"
             ) as mock_branch_cls,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
+            mock_cc.endpoint = MagicMock()
+            mock_cc.endpoint.endpoint = "anthropic/claude-3-5-sonnet-20241022"
             mock_create_cc.return_value = mock_cc
             mock_branch = MagicMock()
             mock_branch.id = "synthesis_branch_id"
@@ -323,7 +330,9 @@ class TestErrorRecovery:
                 "khive.services.orchestration.orchestrator.Branch"
             ) as mock_branch_cls,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
+            mock_cc.endpoint = MagicMock()
+            mock_cc.endpoint.endpoint = "anthropic/claude-3-5-sonnet-20241022"
             mock_create_cc.return_value = mock_cc
             mock_branch = MagicMock()
             mock_branch.id = "synthesis_branch_id"

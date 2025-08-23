@@ -5,6 +5,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from lionagi import Branch, Builder, Operation, Session
+from lionagi.fields import Instruct
+from lionagi.protocols.types import AssistantResponse, Graph
+from lionagi.service.imodel import iModel
+
 from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
@@ -13,9 +18,6 @@ from khive.services.orchestration.parts import (
     MultiPhaseOrchestrationResponse,
     OrchestrationPlan,
 )
-from lionagi import Branch, Builder, Operation, Session
-from lionagi.fields import Instruct
-from lionagi.protocols.types import AssistantResponse, Graph
 
 
 @pytest.fixture
@@ -97,9 +99,11 @@ def mock_lionagi_builder():
 @pytest.fixture
 def mock_claude_code():
     """Mock Claude Code model for testing."""
-    cc = MagicMock()
+    cc = MagicMock(spec=iModel)
     cc.model = "claude-3-5-sonnet-20241022"
     cc.provider = "anthropic"
+    cc.endpoint = MagicMock()
+    cc.endpoint.endpoint = "anthropic/claude-3-5-sonnet-20241022"
     return cc
 
 
@@ -107,7 +111,11 @@ def mock_claude_code():
 def mock_create_cc():
     """Mock the create_cc function."""
     with patch("khive.services.orchestration.orchestrator.create_cc") as mock:
-        mock_cc = MagicMock()
+        mock_cc = MagicMock(spec=iModel)
+        mock_cc.model = "claude-3-5-sonnet-20241022"
+        mock_cc.provider = "anthropic"
+        mock_cc.endpoint = MagicMock()
+        mock_cc.endpoint.endpoint = "anthropic/claude-3-5-sonnet-20241022"
         mock.return_value = mock_cc
         yield mock
 
@@ -138,6 +146,7 @@ def sample_agent_request(sample_composer_request):
         instruct=Instruct(
             instruction="Test instruction",
             context="Test context",
+            guidance="Test guidance",
         ),
         compose_request=sample_composer_request,
         analysis_type="RequirementsAnalysis",

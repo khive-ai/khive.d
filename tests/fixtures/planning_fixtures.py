@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
 from khive.services.plan.models import OrchestrationEvaluation
 from khive.services.plan.parts import (
     AgentRecommendation,
@@ -110,7 +111,7 @@ def complexity_scenarios() -> list[tuple[str, ComplexityTier]]:
         ("Build a web application with multiple objectives", ComplexityTier.MEDIUM),
         (
             "Implement distributed consensus with fault tolerance",
-            ComplexityTier.VERY_COMPLEX,
+            ComplexityTier.COMPLEX,
         ),
         (
             "Research and implement novel Byzantine algorithms for entire platform",

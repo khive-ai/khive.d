@@ -19,6 +19,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 import yaml
+
 from khive.services.composition.agent_composer import AgentComposer
 
 
@@ -328,10 +329,12 @@ class TestRoleFileOperations:
         # Create .yaml file but not .md file
         yaml_role_file = roles_dir / "yaml_only.yaml"
         yaml_role_file.write_text(
-            yaml.dump({
-                "identity": {"id": "yaml_only", "type": "test"},
-                "role": "YAML role only",
-            })
+            yaml.dump(
+                {
+                    "identity": {"id": "yaml_only", "type": "test"},
+                    "role": "YAML role only",
+                }
+            )
         )
 
         result = composer.load_agent_role("yaml_only")
@@ -354,10 +357,12 @@ Markdown version
 
         yaml_role_file2 = roles_dir / "both_formats.yaml"
         yaml_role_file2.write_text(
-            yaml.dump({
-                "identity": {"id": "both_formats", "type": "yaml"},
-                "role": "YAML version",
-            })
+            yaml.dump(
+                {
+                    "identity": {"id": "both_formats", "type": "yaml"},
+                    "role": "YAML version",
+                }
+            )
         )
 
         result = composer.load_agent_role("both_formats")
@@ -442,10 +447,12 @@ class TestDomainFileOperations:
         # Create flat structure domain
         flat_domain = domains_dir / "flat.yaml"
         flat_domain.write_text(
-            yaml.dump({
-                "domain": {"id": "flat"},
-                "knowledge_patterns": {"flat": ["pattern1"]},
-            })
+            yaml.dump(
+                {
+                    "domain": {"id": "flat"},
+                    "knowledge_patterns": {"flat": ["pattern1"]},
+                }
+            )
         )
 
         # Create hierarchical structure
@@ -454,10 +461,12 @@ class TestDomainFileOperations:
 
         hierarchical_domain = category1 / "hierarchical.yaml"
         hierarchical_domain.write_text(
-            yaml.dump({
-                "domain": {"id": "hierarchical"},
-                "knowledge_patterns": {"hierarchical": ["pattern1"]},
-            })
+            yaml.dump(
+                {
+                    "domain": {"id": "hierarchical"},
+                    "knowledge_patterns": {"hierarchical": ["pattern1"]},
+                }
+            )
         )
 
         # Create deeply nested structure
@@ -466,10 +475,12 @@ class TestDomainFileOperations:
 
         deep_domain = subcategory / "deep.yaml"
         deep_domain.write_text(
-            yaml.dump({
-                "domain": {"id": "deep"},
-                "knowledge_patterns": {"deep": ["pattern1"]},
-            })
+            yaml.dump(
+                {
+                    "domain": {"id": "deep"},
+                    "knowledge_patterns": {"deep": ["pattern1"]},
+                }
+            )
         )
 
         # Test loading from different levels
@@ -492,9 +503,11 @@ class TestDomainFileOperations:
         # Create same-named domain in flat structure
         flat_collision = domains_dir / "collision.yaml"
         flat_collision.write_text(
-            yaml.dump({
-                "domain": {"id": "collision", "source": "flat"},
-            })
+            yaml.dump(
+                {
+                    "domain": {"id": "collision", "source": "flat"},
+                }
+            )
         )
 
         # Create same-named domain in hierarchical structure
@@ -503,9 +516,11 @@ class TestDomainFileOperations:
 
         hierarchical_collision = category / "collision.yaml"
         hierarchical_collision.write_text(
-            yaml.dump({
-                "domain": {"id": "collision", "source": "hierarchical"},
-            })
+            yaml.dump(
+                {
+                    "domain": {"id": "collision", "source": "hierarchical"},
+                }
+            )
         )
 
         # Should return first found (flat structure checked first)
@@ -685,10 +700,12 @@ class TestConcurrentFileOperations:
         # Create role file
         role_file = roles_dir / "race_test.yaml"
         role_file.write_text(
-            yaml.dump({
-                "identity": {"id": "race_test", "type": "test"},
-                "role": "Test role for race conditions",
-            })
+            yaml.dump(
+                {
+                    "identity": {"id": "race_test", "type": "test"},
+                    "role": "Test role for race conditions",
+                }
+            )
         )
 
         load_results = []
@@ -730,10 +747,12 @@ class TestConcurrentFileOperations:
         domains_dir.mkdir()
         domain_file = domains_dir / "concurrent.yaml"
         domain_file.write_text(
-            yaml.dump({
-                "domain": {"id": "concurrent"},
-                "knowledge_patterns": {"test": ["pattern1"]},
-            })
+            yaml.dump(
+                {
+                    "domain": {"id": "concurrent"},
+                    "knowledge_patterns": {"test": ["pattern1"]},
+                }
+            )
         )
 
         composition_results = []

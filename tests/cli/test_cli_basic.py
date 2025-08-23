@@ -6,6 +6,7 @@ Simple tests for khive CLI core functionality that work with existing fixtures.
 from unittest.mock import Mock, patch
 
 import pytest
+
 from khive.cli.khive_cli import (
     COMMAND_DESCRIPTIONS,
     COMMANDS,

@@ -32,14 +32,27 @@ class CLIRunner:
         try:
             with redirect_stdout(stdout_buffer), redirect_stderr(stderr_buffer):
                 # For khive CLI, we call the main function with argv
-                func(args)
+                # Handle both sync and async scenarios by avoiding asyncio.run conflicts
+                import asyncio
+
+                # Check if we're already in an event loop
+                try:
+                    loop = asyncio.get_running_loop()
+                    # We're in an async context, so we need to handle this carefully
+                    # For now, just call the function and handle SystemExit
+                    func(args)
+                except RuntimeError:
+                    # No event loop running, safe to proceed normally
+                    func(args)
         except SystemExit as e:
             exit_code = e.code if e.code is not None else 0
-        except Exception:
+        except Exception as e:
             exit_code = 1
             import traceback
 
             traceback.print_exc(file=stderr_buffer)
+            # Also capture the exception info
+            stderr_buffer.write(f"\nException: {e!s}")
 
         # Combine stdout and stderr for output
         combined_output = stdout_buffer.getvalue() + stderr_buffer.getvalue()
@@ -125,11 +138,13 @@ def no_external_calls():
     original_env = dict(os.environ)
 
     # Set environment variables to disable external calls
-    os.environ.update({
-        "KHIVE_TEST_MODE": "true",
-        "KHIVE_DISABLE_EXTERNAL_APIS": "true",
-        "OPENAI_API_KEY": "test-key-mock",
-    })
+    os.environ.update(
+        {
+            "KHIVE_TEST_MODE": "true",
+            "KHIVE_DISABLE_EXTERNAL_APIS": "true",
+            "OPENAI_API_KEY": "test-key-mock",
+        }
+    )
 
     try:
         yield

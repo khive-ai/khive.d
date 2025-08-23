@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from khive.services.plan.models import OrchestrationEvaluation
 from khive.services.plan.parts import ComplexityLevel, PlannerRequest
 from khive.services.plan.planner_service import (
@@ -13,7 +14,6 @@ from khive.services.plan.planner_service import (
     PlannerService,
     Request,
 )
-
 from tests.fixtures.planning_fixtures import MockDecisionMatrix, MockOpenAIResponse
 
 
@@ -187,7 +187,7 @@ class TestErrorHandlingWithMocks:
         planner, mock_client = error_prone_planner
 
         # Simulate API error
-        mock_client.beta.chat.completions.parse = AsyncMock(
+        mock_client.beta.chat.completions.parse = MagicMock(
             side_effect=Exception("API Error")
         )
 
@@ -459,10 +459,8 @@ class TestMockedIntegrationScenarios:
                     mock_response = MockOpenAIResponse(mock_eval)
 
                     # Mock sync method (not async since it runs in thread pool)
-                    integration_mocks[
-                        "openai_client"
-                    ].beta.chat.completions.parse = MagicMock(
-                        return_value=mock_response
+                    integration_mocks["openai_client"].beta.chat.completions.parse = (
+                        MagicMock(return_value=mock_response)
                     )
 
                     # 5. Run evaluation

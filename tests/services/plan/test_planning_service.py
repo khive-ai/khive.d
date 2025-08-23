@@ -3,11 +3,12 @@
 import asyncio
 import json
 import time
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiofiles
 import pytest
+from pydantic import ValidationError
+
 from khive.services.plan.models import OrchestrationEvaluation
 from khive.services.plan.parts import (
     AgentRecommendation,
@@ -23,14 +24,9 @@ from khive.services.plan.planner_service import (
     PlannerService,
     Request,
 )
-from pydantic import ValidationError
 
 # Import test fixtures
-from tests.fixtures.planning_fixtures import (
-    AGENT_COUNT_BOUNDS,
-    MockDecisionMatrix,
-    MockOpenAIResponse,
-)
+from tests.fixtures.planning_fixtures import MockDecisionMatrix, MockOpenAIResponse
 
 
 class MockOpenAIError(Exception):
@@ -142,7 +138,6 @@ class TestComplexityAssessment:
             request = Request(request_text)
             result = mock_planner.assess(request)
             assert result == expected
-
 
     def test_tier_ranking(self, mock_planner):
         """Test complexity tier ranking logic."""
@@ -258,7 +253,6 @@ class TestRoleSelection:
             for expected_phase in expected_phases:
                 assert expected_phase in phases
 
-
     def test_role_deduplication(self, mock_planner):
         """Test that role selection doesn't create duplicates."""
         request = Request("research design implement test with complex requirements")
@@ -288,7 +282,7 @@ class TestRoleSelection:
         # It collects roles from detected phases without complexity-based limiting
         # Production uses LLM consensus which respects these limits
         assert len(roles) >= 1  # Should have at least one role
-        
+
         # Check that we get valid roles
         available_roles = mock_planner.available_roles
         assert all(role in available_roles for role in roles)
@@ -378,7 +372,6 @@ class TestDomainMatching:
         ]
 
         assert mock_planner.available_roles == expected_roles
-
 
 
 @pytest.mark.unit
@@ -737,9 +730,12 @@ class TestPlannerIntegrationScenarios:
         # Note: select_roles is now a simplified heuristic for testing
         # Production uses LLM consensus which would provide more agents
         assert len(roles) >= 1  # Should have at least one role
-        
+
         # Check that we get some role assignment
-        assert any(role in roles for role in ["implementer", "researcher", "architect", "tester"])
+        assert any(
+            role in roles
+            for role in ["implementer", "researcher", "architect", "tester"]
+        )
 
     def test_research_intensive_scenario(self, mock_planner_full):
         """Test scenario for research-intensive task."""
@@ -755,7 +751,10 @@ class TestPlannerIntegrationScenarios:
         # Production uses LLM consensus which would provide more specialized roles
         assert len(roles) >= 1  # Should have at least one role
         # Check that we get some research-related role
-        assert any(role in roles for role in ["researcher", "analyst", "theorist", "implementer"])
+        assert any(
+            role in roles
+            for role in ["researcher", "analyst", "theorist", "implementer"]
+        )
 
     @pytest.mark.asyncio
     async def test_end_to_end_planning_flow(self, mock_planner_full):
@@ -1139,7 +1138,6 @@ class TestConsistencyValidation:
             assert all(
                 result == results[0] for result in results
             ), f"Inconsistent heuristic assessment for '{request_text}': {results}"
-
 
     @pytest.mark.asyncio
     async def test_session_creation_structure_consistency(self, deterministic_planner):
