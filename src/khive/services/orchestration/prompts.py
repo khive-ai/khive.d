@@ -15,8 +15,7 @@ Planning Constraints:
 - Plan the MINIMAL change to satisfy this issue's acceptance criteria
 - Reuse existing patterns - no new abstractions unless explicitly required
 - Domains for agents must come from @libs/khive/src/khive/prompts/domains
-- Use khive plan [CONTEXT] --issue xxx for agent consensus
-- Add --json-format flag for JSON/OrchestrationPlan output (default: BatchTool format)
+- Use `khive plan [DETAILED CONTEXT] --issue xxx --json-format` for agent consensus
 
 Simplicity Rules:
 - What is the simplest approach that meets the issue requirements?
