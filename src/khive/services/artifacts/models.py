@@ -32,8 +32,12 @@ class SessionStatus(str, Enum):
 class Author(BaseModel):
     """Represents an author/contributor to a document."""
 
-    id: str
-    role: str  # e.g., "PlannerAgent", "Researcher", "Architect"
+    id: str = Field(..., min_length=1, description="Unique identifier for the author")
+    role: str = Field(
+        ...,
+        min_length=1,
+        description="Role of the author (e.g., 'PlannerAgent', 'Researcher', 'Architect')",
+    )
 
     @classmethod
     def system(cls) -> "Author":
@@ -46,7 +50,11 @@ class ContributionMetadata(BaseModel):
 
     author: Author
     timestamp: datetime
-    content_length: int
+    content_length: int = Field(
+        ...,
+        ge=0,
+        description="Length of the content contribution (must be non-negative)",
+    )
 
 
 class Document(BaseModel):
@@ -57,12 +65,16 @@ class Document(BaseModel):
     This enables rich querying and version tracking without complex storage.
     """
 
-    session_id: str
-    name: str
+    session_id: str = Field(
+        ..., min_length=1, description="ID of the session this document belongs to"
+    )
+    name: str = Field(..., min_length=1, description="Name of the document")
     type: DocumentType
-    content: str
+    content: str = Field(..., description="Content of the document")
     contributions: list[ContributionMetadata] = Field(default_factory=list)
-    version: int = 0
+    version: int = Field(
+        default=0, ge=0, description="Version number (must be non-negative)"
+    )
     last_modified: datetime
 
     @classmethod
