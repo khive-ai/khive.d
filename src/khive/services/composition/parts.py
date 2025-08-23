@@ -30,7 +30,9 @@ class ComposerRequest(BaseModel):
 class DomainExpertise(BaseModel):
     """Domain expertise information."""
 
-    domain_id: str = Field(..., description="Domain identifier")
+    domain_id: str = Field(
+        ..., min_length=1, description="Domain identifier (must be non-empty)"
+    )
     knowledge_patterns: dict = Field(
         default_factory=dict, description="Knowledge patterns for this domain"
     )
@@ -51,15 +53,25 @@ class ComposerResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     success: bool = Field(..., description="Whether composition succeeded")
-    summary: str = Field(..., description="Summary of the composed agent")
+    summary: str = Field(
+        ...,
+        min_length=1,
+        description="Summary of the composed agent (must be non-empty)",
+    )
 
-    agent_id: str = Field(..., description="Unique agent identifier")
-    role: str = Field(..., description="Agent role")
+    agent_id: str = Field(
+        ..., min_length=1, description="Unique agent identifier (must be non-empty)"
+    )
+    role: str = Field(..., min_length=1, description="Agent role (must be non-empty)")
     domains: list[str] = Field(
         default_factory=list, description="List of domain expertise"
     )
 
-    system_prompt: str = Field(..., description="Generated system prompt for the agent")
+    system_prompt: str = Field(
+        ...,
+        min_length=1,
+        description="Generated system prompt for the agent (must be non-empty)",
+    )
     capabilities: list[str] = Field(
         default_factory=list, description="Agent capabilities"
     )
@@ -70,7 +82,7 @@ class ComposerResponse(BaseModel):
     )
 
     confidence: float = Field(
-        ..., description="Confidence in the composition (0.0-1.0)"
+        ..., ge=0.0, le=1.0, description="Confidence in the composition (0.0-1.0)"
     )
     error: str | None = Field(None, description="Error message if composition failed")
 

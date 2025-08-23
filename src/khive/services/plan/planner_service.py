@@ -1100,7 +1100,7 @@ Remember: This is PHASE {phase_idx} - coordinate with phase peers!"""
                         )
 
                 output.append(
-                    f"\n  // Execute phases sequentially or in parallel based on dependencies"
+                    "\n  // Execute phases sequentially or in parallel based on dependencies"
                 )
             else:
                 # Single phase or no phases detected - use original parallel execution

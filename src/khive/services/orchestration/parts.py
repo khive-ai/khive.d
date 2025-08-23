@@ -30,7 +30,7 @@ DeliverableType = Literal[
 class AgentRequest(BaseModel):
     instruct: Instruct
     compose_request: ComposerRequest
-    analysis_type: DeliverableType
+    analysis_type: DeliverableType | None = None
     """Type of operation deliverable (e.g., 'RequirementsAnalysis', 'CodeContextAnalysis')"""
 
 
@@ -132,9 +132,7 @@ class RefinementConfig(BaseModel):
     """Optional gates for additional quality checks, can be a list or dict"""
 
 
-class MultiPhaseOrchestrationResponse(BaseModel):
-    """Response from multi-phase orchestration with dynamic planning."""
-
+class FanoutResponse(BaseModel):
     synth_node: Any | None = Field(None, exclude=True)
     """The synthesis node from the orchestration graph, if applicable"""
 
@@ -147,13 +145,8 @@ class MultiPhaseOrchestrationResponse(BaseModel):
     initial_nodes: list[Any] | None = Field(None, exclude=True)
     """The initial nodes from the orchestration graph, if applicable"""
 
-    execution_sequence: list[dict] | None = None
-    """Execution sequence showing phase order for concurrency control"""
 
-
-class GatedMultiPhaseOrchestrationResponse(MultiPhaseOrchestrationResponse):
-    """Response from quality-gated multi-phase orchestration with conditional refinement."""
-
+class FanoutWithGatedRefinementResponse(FanoutResponse):
     final_gate: Any | None = Field(None, exclude=True)
     """The final gate node from the orchestration graph, if applicable"""
 
@@ -172,7 +165,7 @@ IssueNum = int
 
 class IssueExecution(BaseModel):
     success: bool
-    result: MultiPhaseOrchestrationResponse | GatedMultiPhaseOrchestrationResponse
+    result: FanoutResponse | FanoutWithGatedRefinementResponse
     is_redo: bool = False
 
 
@@ -340,8 +333,8 @@ class Issue(Node):
 
 # Rebuild models to resolve forward references
 RefinementConfig.model_rebuild()
-MultiPhaseOrchestrationResponse.model_rebuild()
-GatedMultiPhaseOrchestrationResponse.model_rebuild()
+FanoutResponse.model_rebuild()
+FanoutWithGatedRefinementResponse.model_rebuild()
 IssuePlan.model_rebuild()
 
 
@@ -351,13 +344,13 @@ __all__ = (
     "ComplexityAssessment",
     "FanoutConfig",
     "FanoutPatterns",
+    "FanoutResponse",
+    "FanoutWithGatedRefinementResponse",
     "GateComponent",
-    "GatedMultiPhaseOrchestrationResponse",
     "IssueExecution",
     "IssueNum",
     "IssuePlan",
     "IssueResult",
-    "MultiPhaseOrchestrationResponse",
     "OrchestrationPlan",
     "RefinementConfig",
 )

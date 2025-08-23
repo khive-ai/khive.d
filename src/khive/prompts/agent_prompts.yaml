@@ -12,7 +12,7 @@ base_context_template: |
 
   COMPLEXITY→AGENTS:
   S(1-3): 1domain|read-only|no-coord
-  M(4-8): DEFAULT|2domains|std-impl  
+  M(4-8): DEFAULT|2domains|std-impl
   C(8-10): 3+domains|(distributed+impl)
   VC(10-12): RARE|distributed∧critical∧3+domains
 
@@ -42,7 +42,7 @@ base_context_template: |
 
   DOMAIN_MAP:
   web_dev→frontend-development
-  backend_*→backend-development  
+  backend_*→backend-development
   websocket→websocket-communication
   multi_modal→multi-modal-systems
   microservices→microservices-architecture
@@ -63,7 +63,7 @@ agents:
 
       TARGET[budget≤0.0025|budget>0.0025]:
       S: 1-3|1-3
-      M: 4-6|6-8  
+      M: 4-6|6-8
       C: 4-6|6-8
       VC: 6-8|8-10
       12+→STOP&PHASE
@@ -90,7 +90,7 @@ agents:
 
       QUALITY_TARGETS:
       S: 2-4(basic_val)
-      M: 5-8(DEFAULT+testing)  
+      M: 5-8(DEFAULT+testing)
       C: 8-10(distributed|critical)
       VC: 10-12_MAX(distributed∧critical)
 
@@ -116,7 +116,7 @@ agents:
 
       RISK→AGENTS:
       L: 3-5(CRUD|read-only)
-      M: 5-8(DEFAULT+validation)  
+      M: 5-8(DEFAULT+validation)
       H: 8-10(distributed|security)
       CRIT: 10-12_MAX(distributed∧security)
 
@@ -317,7 +317,7 @@ agents:
 
 user_prompt_template: |
   Request: {request}
-  
+
   Eval→concise(<50char)
   roles→ordered[r1,r2,r3]
   YOUR_perspective
