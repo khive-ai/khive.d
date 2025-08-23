@@ -596,14 +596,6 @@ class TestConfidenceScoring:
                     # For unit tests, we check the assessment logic works
                     assert isinstance(complexity, ComplexityTier)
 
-    def test_evaluator_agreement_variance(self):
-        """Test that different evaluators show reasonable variance."""
-        # This would test the consensus building mechanism
-        # where multiple evaluators provide different assessments
-
-    def test_confidence_calibration(self):
-        """Test confidence score calibration against known outcomes."""
-        # This would test confidence scores against historical accuracy
 
 
 @pytest.mark.integration
@@ -815,12 +807,6 @@ class TestPerformanceAndReliability:
                 for response in responses:
                     assert response.success is True
 
-    def test_memory_usage_limits(self, performance_test_config):
-        """Test memory usage stays within limits."""
-        memory_limit = performance_test_config["memory_limit_mb"]
-
-        # This would test memory usage during large orchestration planning
-        # Could use memory profiling tools like memory_profiler
 
     @pytest.mark.asyncio
     async def test_timeout_handling(self, performance_test_config):
@@ -895,9 +881,6 @@ class TestRegressionSafeguards:
                 assert len(roles) > 0
                 assert "implementer" in roles or "researcher" in roles
 
-    def test_circular_dependency_prevention(self):
-        """Regression test for circular dependency detection."""
-        # Test that dependency resolution doesn't create infinite loops
 
     def test_unicode_request_handling(self, mock_decision_matrix):
         """Regression test for Unicode character handling in requests."""

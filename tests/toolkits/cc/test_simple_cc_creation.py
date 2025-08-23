@@ -43,87 +43,25 @@ class TestSimpleCCToolkitCreation:
 
             yield project_dir
 
-    def test_cc_creation_parameters(self):
-        """Test CC creation parameter validation."""
-        # Test valid permission modes
-        valid_modes = ["default", "acceptEdits", "bypassPermissions"]
-
-        # This would be the validation logic in the actual create_cc function
-        for mode in valid_modes:
-            assert mode in valid_modes, f"Invalid permission mode: {mode}"
-
-        # Test parameter combinations
-        test_params = {
-            "permission_mode": "default",
-            "subdir": "test_workspace",
-            "overwrite_config": False,
-        }
-
-        # Basic parameter validation
-        assert "permission_mode" in test_params
-        assert test_params["permission_mode"] in valid_modes
-
-    @pytest.mark.asyncio
-    async def test_cc_creation_with_workspace(self, temp_project: Path):
-        """Test CC creation with custom workspace."""
-        # Test that workspace creation works
-        workspace_dir = temp_project / ".khive" / "workspaces" / "custom_workspace"
-        workspace_dir.mkdir(parents=True)
-
-        # Verify workspace directory exists
-        assert workspace_dir.exists()
-        assert workspace_dir.is_dir()
-
-    def test_mcp_config_parsing(self, temp_project: Path):
-        """Test basic MCP config parsing."""
+    # TODO: Implement actual CC creation tests once create_cc function is available
+    # Current stub tests removed to avoid false test coverage confidence
+    
+    def test_mcp_config_structure_validation(self, temp_project: Path):
+        """Test MCP config file structure validation."""
         config_file = temp_project / ".khive" / "mcps" / "config.json"
         assert config_file.exists()
 
-        # Parse config
+        # Parse and validate config structure
         config_data = json.loads(config_file.read_text())
         assert "mcpServers" in config_data
-        assert "test_server" in config_data["mcpServers"]
-
-    def test_permission_mode_validation(self):
-        """Test that permission modes are correctly validated."""
-        valid_modes = ["default", "acceptEdits", "bypassPermissions"]
-
-        for mode in valid_modes:
-            # This would be validated in the actual implementation
-            assert mode in valid_modes
-
-    @pytest.mark.asyncio
-    async def test_error_handling_invalid_config(self, temp_project: Path):
-        """Test error handling with invalid config."""
-        # Create invalid config
-        invalid_config = temp_project / ".khive" / "mcps" / "invalid_config.json"
-        invalid_config.write_text('{"invalid": json}')  # Malformed JSON
-
-        # Test that we handle malformed config gracefully
-        try:
-            json.loads(invalid_config.read_text())
-        except json.JSONDecodeError:
-            # Expected behavior - should handle gracefully
-            pass
-
-    def test_workspace_isolation(self, temp_project: Path):
-        """Test workspace isolation setup."""
-        # Create multiple workspace directories
-        workspace1 = temp_project / ".khive" / "workspaces" / "workspace1"
-        workspace2 = temp_project / ".khive" / "workspaces" / "workspace2"
-
-        workspace1.mkdir(parents=True)
-        workspace2.mkdir(parents=True)
-
-        # Create isolation markers
-        (workspace1 / ".isolated").write_text("workspace1_isolation")
-        (workspace2 / ".isolated").write_text("workspace2_isolation")
-
-        # Verify isolation
-        assert workspace1.exists() and workspace2.exists()
-        assert (workspace1 / ".isolated").read_text() != (
-            workspace2 / ".isolated"
-        ).read_text()
+        
+        # Validate server configuration structure
+        for server_name, server_config in config_data["mcpServers"].items():
+            assert isinstance(server_name, str)
+            assert isinstance(server_config, dict)
+            # Must have either command or url
+            assert "command" in server_config or "url" in server_config
+            assert "transport" in server_config
 
 
 @pytest.mark.mcp_configuration
@@ -156,33 +94,24 @@ class TestConfigurationHandling:
             # Clean up
             del os.environ[test_var]
 
-    def test_configuration_validation(self):
-        """Test basic configuration validation."""
-        # Test valid config structure
-        valid_config = {
-            "name": "test_server",
-            "command": "python",
-            "transport": "stdio",
-        }
-
-        # Basic validation checks
-        assert "name" in valid_config
-        assert "command" in valid_config or "url" in valid_config
-
-        # Test dangerous pattern detection
-        dangerous_config = {
-            "name": "dangerous_server",
-            "command": "rm -rf /",
-            "transport": "stdio",
-        }
-
-        dangerous_patterns = ["rm -rf", "del /", "format "]
-        command = dangerous_config.get("command", "")
-
-        has_dangerous_pattern = any(
-            pattern in command.lower() for pattern in dangerous_patterns
-        )
-        assert has_dangerous_pattern  # Should detect dangerous command
+    def test_dangerous_command_detection(self):
+        """Test detection of dangerous commands in MCP server configs."""
+        dangerous_patterns = ["rm -rf", "del /", "format ", "__import__", "eval(", "exec("]
+        
+        test_cases = [
+            ("rm -rf /", True),
+            ("python -m server", False),
+            ("node server.js", False),
+            ("evil_command && rm -rf /", True),
+            ("python -c 'eval(malicious_code)'", True),
+        ]
+        
+        for command, should_be_dangerous in test_cases:
+            has_dangerous_pattern = any(
+                pattern in command.lower() for pattern in dangerous_patterns
+            )
+            assert has_dangerous_pattern == should_be_dangerous, \
+                f"Command '{command}' danger detection failed"
 
     def test_transport_detection(self):
         """Test transport type detection."""

@@ -314,9 +314,15 @@ class TestCCToolkitCreation:
             copy_mcp_config_from=invalid_config_path,
         )
 
-        # Should handle error gracefully
+        # Should handle error gracefully with specific error information
         assert "status" in result
-        # May succeed or fail depending on implementation - test for graceful handling
+        if result["status"] == "error":
+            assert "error_type" in result
+            assert result["error_type"] in ["FileNotFoundError", "ConfigurationError", "PermissionError"]
+            assert "error_message" in result
+        # If success, should have proper result structure
+        elif result["status"] == "success":
+            assert "workspace_path" in result
 
     def test_security_validator_dangerous_patterns(
         self, security_validator: CCSecurityValidator
@@ -352,12 +358,12 @@ class TestCCToolkitCreation:
         )
         assert not is_valid
 
-        # Should pass in unrestricted mode
+        # Should pass in unrestricted mode (bypassPermissions)
         security_validator.security_violations.clear()
         is_valid = security_validator.validate_environment_variables(
             dangerous_env_vars, "bypassPermissions"
         )
-        # Implementation may vary - test for consistent behavior
+        assert is_valid  # Should allow dangerous patterns in bypass mode
 
     @pytest.mark.asyncio
     async def test_concurrent_cc_creation(
@@ -379,7 +385,16 @@ class TestCCToolkitCreation:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Verify results are valid (success or handled exceptions)
-        for result in results:
+        for i, result in enumerate(results):
             if isinstance(result, dict):
                 assert "status" in result
-            # Exceptions should be handled gracefully
+                if result["status"] == "success":
+                    assert "workspace_path" in result
+                    # Verify workspace isolation
+                    workspace = Path(result["workspace_path"])
+                    assert workspace.exists()
+            else:
+                # Exception case - should be handled gracefully without crashing
+                assert isinstance(result, Exception)
+                # Verify it's an expected exception type
+                assert isinstance(result, (FileNotFoundError, PermissionError, ValueError))

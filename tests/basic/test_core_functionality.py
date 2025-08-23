@@ -41,15 +41,13 @@ class TestKhiveServices:
 
     def test_service_imports(self):
         """Test that service modules can be imported."""
-        # Test that services exist and are importable
-        try:
-            from khive import _types  # noqa: F401
-            from khive import utils  # noqa: F401
-
-            # If we get here without ImportError, the basic modules exist
-            assert True
-        except ImportError as e:
-            pytest.fail(f"Service import failed: {e}")
+        # Test that services exist and are importable - let ImportError propagate naturally
+        from khive import _types  # noqa: F401
+        from khive import utils  # noqa: F401
+        
+        # Test that imported modules have expected attributes
+        assert hasattr(_types, 'BaseModel')
+        assert hasattr(utils, 'KHIVE_CONFIG_DIR')
 
     def test_basic_types_import(self):
         """Test that basic types can be imported."""
@@ -67,6 +65,4 @@ class TestConfiguration:
         # Test that our sample project has expected structure
         assert sample_project_dir.exists()
         assert (sample_project_dir / "src").exists()
-        # Basic structure is created by fixture
-        assert sample_project_dir.exists()
         assert (sample_project_dir / "pyproject.toml").exists()

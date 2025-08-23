@@ -60,13 +60,13 @@ class TestArtifactsServiceIntegration:
         assert document.content == content
 
         # Retrieve document from session
-        retrieved_doc = await artifacts_service.get_document(doc_id, session_id)
+        retrieved_doc = await integration_artifacts_service.get_document(doc_id, session_id)
         assert retrieved_doc.document_id == doc_id
         assert retrieved_doc.content == content
 
         # Update document
         updated_content = "Updated content for integration testing"
-        updated_doc = await artifacts_service.update_document(
+        updated_doc = await integration_artifacts_service.update_document(
             document_id=doc_id,
             session_id=session_id,
             content=updated_content,
@@ -77,10 +77,11 @@ class TestArtifactsServiceIntegration:
         assert updated_doc.version > document.version
 
         # List documents in session
-        documents = await artifacts_service.list_documents(session_id)
+        documents = await integration_artifacts_service.list_documents(session_id)
         assert len(documents) == 1
         assert documents[0].document_id == doc_id
 
+    @pytest.mark.asyncio
     async def test_concurrent_document_operations(
         self, artifacts_service, test_session, test_author
     ):
@@ -121,6 +122,7 @@ class TestArtifactsServiceIntegration:
         assert "Updated content" in final_doc.content
         assert final_doc.version > 1
 
+    @pytest.mark.asyncio
     async def test_file_system_integration(
         self, artifacts_service, test_session, test_author
     ):
@@ -163,6 +165,7 @@ class TestArtifactsServiceIntegration:
                 doc["document_id"] for doc in registry_data.get("documents", [])
             ]
 
+    @pytest.mark.asyncio
     async def test_cross_session_isolation(self, artifacts_service, test_author):
         """Test that documents are properly isolated between sessions."""
         session_a = "session_a"
@@ -205,6 +208,7 @@ class TestArtifactsServiceIntegration:
         with pytest.raises(DocumentNotFound):
             await artifacts_service.get_document(doc_id + "_nonexistent", session_a)
 
+    @pytest.mark.asyncio
     async def test_error_recovery_integration(
         self, artifacts_service, test_session, test_author
     ):
@@ -296,6 +300,7 @@ class TestArtifactsServiceIntegration:
         documents = await artifacts_service.list_documents(test_session)
         assert len(documents) >= num_documents * 0.9
 
+    @pytest.mark.asyncio
     async def test_workspace_cleanup_integration(self, temp_workspace, test_author):
         """Test workspace cleanup and resource management."""
         # Create service with temporary workspace
@@ -336,6 +341,7 @@ class TestArtifactsServiceIntegration:
 class TestArtifactsServiceWithExternalStorage:
     """Integration tests with different storage backends."""
 
+    @pytest.mark.asyncio
     async def test_filesystem_storage_integration(self, temp_workspace):
         """Test integration with filesystem storage backend."""
 

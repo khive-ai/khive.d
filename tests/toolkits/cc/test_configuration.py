@@ -367,7 +367,10 @@ class TestMCPConfigurationParsing:
         # Test MCPConfig loading
         mcp_config = MCPConfig(project_root=str(temp_project))
 
-        assert len(mcp_config.servers) >= 0  # May be empty or loaded
+        # Should load exactly the 2 servers we defined
+        assert len(mcp_config.servers) == 2
+        assert "file_server" in mcp_config.servers
+        assert "github_server" in mcp_config.servers
 
     def test_server_specific_configuration_mapping(self):
         """Test server-specific configuration mappings."""
@@ -394,13 +397,11 @@ class TestMCPConfigurationParsing:
         config_file.write_text(malformed_config)
 
         # Test that MCPConfig handles malformed JSON gracefully
-        try:
+        with pytest.raises((json.JSONDecodeError, ValueError, FileNotFoundError)) as exc_info:
             mcp_config = MCPConfig(project_root=str(temp_project))
-            # Should handle error gracefully - may have empty servers
-            assert hasattr(mcp_config, "servers")
-        except Exception as e:
-            # Or may raise a specific configuration error
-            assert isinstance(e, (json.JSONDecodeError, ValueError))
+        
+        # Should raise specific error types for malformed JSON
+        assert str(exc_info.value) != ""  # Error should have meaningful message
 
     def test_default_timeout_calculation(self):
         """Test default timeout calculation for different server types."""
@@ -416,9 +417,12 @@ class TestMCPConfigurationParsing:
 
             # Should have a reasonable default timeout
             assert hasattr(server_config, "timeout")
-            # Default timeout should be positive
+            # Default timeout should be in reasonable range (5-60 seconds)
             if server_config.timeout is not None:
-                assert server_config.timeout > 0
+                assert 5.0 <= server_config.timeout <= 60.0
+                # For github servers specifically, should be 15 seconds
+                if config_data.get("name") == "github_server":
+                    assert server_config.timeout == 15.0
 
     def test_configuration_copying_with_validation(
         self, temp_project: Path, config_validator: ConfigurationValidator

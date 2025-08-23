@@ -174,10 +174,6 @@ class TestFanoutWithGatedRefinement:
 class TestSessionManagement:
     """Test session management functionality."""
 
-    async def test_session_management_placeholder(self, orchestrator_with_mocks):
-        """Placeholder test for session management."""
-        orchestrator = orchestrator_with_mocks
-        assert orchestrator.session is not None
 
 
 class TestErrorRecovery:
