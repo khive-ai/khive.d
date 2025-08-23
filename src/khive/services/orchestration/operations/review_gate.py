@@ -7,10 +7,10 @@ from khive.services.orchestration.parts import (
     BaseGate,
     ComposerRequest,
     FanoutPatterns,
+    FanoutWithGatedRefinementResponse,
     Issue,
     IssuePlan,
     IssueResult,
-    MultiPhaseOrchestrationResponse,
 )
 from khive.services.orchestration.prompts import CRITIC_REVIEW_INSTRUCTION
 
@@ -43,7 +43,7 @@ async def review_gate(issue: Issue, **_kw) -> tuple[bool, Issue]:
         if issue_plan.pattern == FanoutPatterns.W_REFINEMENT and hasattr(
             res, "final_gate"
         ):
-            res: MultiPhaseOrchestrationResponse
+            res: FanoutWithGatedRefinementResponse
             _ctx += f"Final gate summary: {orc.opres_ctx(res.final_gate)}"
         _ctx += res.model_dump_json(
             exclude={"synth_node", "flow_results", "initial_nodes"}
