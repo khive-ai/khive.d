@@ -1,7 +1,5 @@
 import logging
 
-from lionagi.libs.concurrency import get_cancelled_exc_class
-
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     FanoutPatterns,
@@ -15,6 +13,7 @@ from khive.services.orchestration.prompts import (
     REDO_ORCHESTRATOR_INSTRUCTION,
     SYNTHESIS_INSTRUCTION,
 )
+from lionagi.libs.concurrency import get_cancelled_exc_class
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("KhiveOperations")
@@ -32,7 +31,7 @@ async def execute_issue(
     """
     if issue.content.git_processed is True:
         logger.info(f"🔵 Skipping already processed issue #{issue.content.issue_num}")
-        return None
+        return True, None
     issue_result: IssueResult = issue.content.issue_result
     is_redo = issue.content.needs_redo
     redo_ctx = issue.content.redo_ctx
