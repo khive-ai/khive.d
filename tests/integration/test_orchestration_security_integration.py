@@ -21,8 +21,7 @@ from unittest.mock import MagicMock, patch
 import psutil
 import pytest
 
-from khive.services.artifacts.factory import (ArtifactsConfig,
-                                              create_artifacts_service)
+from khive.services.artifacts.factory import ArtifactsConfig, create_artifacts_service
 from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.orchestration.orchestrator import LionOrchestrator
@@ -43,12 +42,14 @@ class SharedStateMonitor:
             timestamp = time.time()
 
         async with self._lock:
-            self.access_log.append({
-                "operation": operation,
-                "state": state,
-                "timestamp": timestamp,
-                "task_id": id(asyncio.current_task()),
-            })
+            self.access_log.append(
+                {
+                    "operation": operation,
+                    "state": state,
+                    "timestamp": timestamp,
+                    "task_id": id(asyncio.current_task()),
+                }
+            )
 
     async def detect_race_conditions(self) -> list[dict]:
         """Analyze access log for potential race conditions."""
@@ -63,11 +64,13 @@ class SharedStateMonitor:
                         access1["task_id"] != access2["task_id"]
                         and abs(access1["timestamp"] - access2["timestamp"]) < 0.1
                     ):
-                        race_conditions.append({
-                            "access1": access1,
-                            "access2": access2,
-                            "type": "concurrent_modification",
-                        })
+                        race_conditions.append(
+                            {
+                                "access1": access1,
+                                "access2": access2,
+                                "type": "concurrent_modification",
+                            }
+                        )
 
             self.race_conditions.extend(race_conditions)
             return race_conditions
@@ -171,10 +174,12 @@ class SensitiveDataTracker:
         async with self._lock:
             if data_id in self.sensitive_data_registry:
                 self.sensitive_data_registry[data_id]["cleaned_up"] = True
-                self.cleanup_events.append({
-                    "data_id": data_id,
-                    "cleaned_at": time.time(),
-                })
+                self.cleanup_events.append(
+                    {
+                        "data_id": data_id,
+                        "cleaned_at": time.time(),
+                    }
+                )
 
     async def verify_cleanup_completion(self) -> list[str]:
         """Verify all sensitive data was cleaned up."""
@@ -324,8 +329,7 @@ class TestRaceConditionSecurityVulnerabilities:
                         system_prompt=f"Test system prompt for {branch_name}"
                     )
 
-                    from khive.services.orchestration.parts import \
-                        ComposerRequest
+                    from khive.services.orchestration.parts import ComposerRequest
 
                     request = ComposerRequest(role="tester", domains="testing")
 
@@ -472,9 +476,9 @@ class TestResourceExhaustionSecurityAttacks:
             )
 
             # System should maintain some level of functionality
-            assert len(successful_docs) >= 1, (
-                "System completely failed during resource attacks"
-            )
+            assert (
+                len(successful_docs) >= 1
+            ), "System completely failed during resource attacks"
 
         finally:
             # Cleanup attack tasks
@@ -583,15 +587,15 @@ class TestAsyncCancellationCleanupSecurity:
         cancelled_count = sum(
             1 for result in results if isinstance(result, asyncio.CancelledError)
         )
-        assert cancelled_count == 3, (
-            f"Expected 3 cancelled operations, got {cancelled_count}"
-        )
+        assert (
+            cancelled_count == 3
+        ), f"Expected 3 cancelled operations, got {cancelled_count}"
 
         # Verify sensitive data cleanup
         uncleaned_data = await data_tracker.verify_cleanup_completion()
-        assert len(uncleaned_data) == 0, (
-            f"Sensitive data not cleaned up: {uncleaned_data}"
-        )
+        assert (
+            len(uncleaned_data) == 0
+        ), f"Sensitive data not cleaned up: {uncleaned_data}"
 
     @pytest.mark.asyncio
     async def test_nested_operation_cleanup_on_cancellation(
@@ -643,9 +647,9 @@ class TestAsyncCancellationCleanupSecurity:
 
         # Verify all levels cleaned up properly
         uncleaned_data = await data_tracker.verify_cleanup_completion()
-        assert len(uncleaned_data) == 0, (
-            f"Nested sensitive data not cleaned up: {uncleaned_data}"
-        )
+        assert (
+            len(uncleaned_data) == 0
+        ), f"Nested sensitive data not cleaned up: {uncleaned_data}"
 
 
 class TestIntegrationSecurityScenarios:
@@ -718,9 +722,9 @@ class TestIntegrationSecurityScenarios:
         successful_results = [
             r for r in results if isinstance(r, str) and r.startswith("fallback_")
         ]
-        assert len(successful_results) == 5, (
-            f"Expected 5 fallback results, got {len(successful_results)}"
-        )
+        assert (
+            len(successful_results) == 5
+        ), f"Expected 5 fallback results, got {len(successful_results)}"
 
         # Verify fallback documents were created
         scratchpad_docs = await artifacts_service.list_documents(
@@ -842,14 +846,14 @@ class TestIntegrationSecurityScenarios:
         successful_results = [
             r for r in results if isinstance(r, str) and r.startswith("success_")
         ]
-        assert len(successful_results) >= 2, (
-            f"Expected at least 2 successful operations, got {len(successful_results)}"
-        )
+        assert (
+            len(successful_results) >= 2
+        ), f"Expected at least 2 successful operations, got {len(successful_results)}"
 
         # Verify rate limiting was encountered and handled
-        assert len(rate_limit_encounters) >= 3, (
-            "Rate limiting should have been encountered"
-        )
+        assert (
+            len(rate_limit_encounters) >= 3
+        ), "Rate limiting should have been encountered"
 
         print(f"Rate limit encounters: {len(rate_limit_encounters)}")
         print(f"Successful operations: {len(successful_operations)}")

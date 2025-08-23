@@ -5,10 +5,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from khive.services.plan.models import OrchestrationEvaluation
-from khive.services.plan.planner_service import (ComplexityTier,
-                                                 OrchestrationPlanner, Request)
-from khive.services.plan.triage.complexity_triage import \
-    ComplexityTriageService
+from khive.services.plan.planner_service import (
+    ComplexityTier,
+    OrchestrationPlanner,
+    Request,
+)
+from khive.services.plan.triage.complexity_triage import ComplexityTriageService
 
 
 @pytest.mark.unit
@@ -820,10 +822,12 @@ class TestConfidenceScoringAccuracy:
         }
 
         confidence = calculate_confidence_score(base_scenario)
-        baseline_confidence = calculate_confidence_score({
-            **base_scenario,
-            "workflow_pattern": "sequential",
-        })
+        baseline_confidence = calculate_confidence_score(
+            {
+                **base_scenario,
+                "workflow_pattern": "sequential",
+            }
+        )
 
         actual_modifier = confidence - baseline_confidence
         assert abs(actual_modifier - expected_confidence_modifier) < 0.1

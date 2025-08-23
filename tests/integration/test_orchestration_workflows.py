@@ -15,13 +15,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from lionagi.fields import Instruct
 
-from khive.services.artifacts.factory import (ArtifactsConfig,
-                                              create_artifacts_service)
+from khive.services.artifacts.factory import ArtifactsConfig, create_artifacts_service
 from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.orchestration.parts import (ComposerRequest,
-                                                OrchestrationPlan)
+from khive.services.orchestration.parts import ComposerRequest, OrchestrationPlan
 from khive.services.plan.parts import ComplexityLevel, PlannerRequest
 from khive.services.plan.planner_service import PlannerService
 
@@ -275,12 +273,12 @@ class TestOrchestrationWorkflowIntegration:
 
         # Verify artifact registry tracks all documents
         registry = await artifacts_service.get_artifact_registry(session_id)
-        deliverable_count = len([
-            a for a in registry.artifacts if "deliverable" in a.file_path
-        ])
-        scratchpad_count = len([
-            a for a in registry.artifacts if "scratchpad" in a.file_path
-        ])
+        deliverable_count = len(
+            [a for a in registry.artifacts if "deliverable" in a.file_path]
+        )
+        scratchpad_count = len(
+            [a for a in registry.artifacts if "scratchpad" in a.file_path]
+        )
 
         assert deliverable_count >= len(planning_response.phases)
         assert scratchpad_count >= sum(

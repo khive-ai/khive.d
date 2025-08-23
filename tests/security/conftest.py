@@ -214,11 +214,13 @@ def performance_monitor():
             if self.start_time:
                 end_time = time.perf_counter()
                 duration = end_time - self.start_time
-                self.measurements.append({
-                    "operation": operation_name,
-                    "duration": duration,
-                    "timestamp": end_time,
-                })
+                self.measurements.append(
+                    {
+                        "operation": operation_name,
+                        "duration": duration,
+                        "timestamp": end_time,
+                    }
+                )
                 self.start_time = None
                 return duration
             return 0.0
@@ -296,7 +298,6 @@ class SecurityError(Exception):
     """Custom exception for security-related errors."""
 
 
-
 # Configure pytest markers for security tests
 def pytest_configure(config):
     """Configure pytest with custom markers."""
@@ -352,9 +353,9 @@ def assert_validation_time_limit(
     end_time = time.perf_counter()
 
     validation_time = end_time - start_time
-    assert validation_time <= time_limit, (
-        f"Validation took {validation_time:.3f}s, exceeds limit of {time_limit}s"
-    )
+    assert (
+        validation_time <= time_limit
+    ), f"Validation took {validation_time:.3f}s, exceeds limit of {time_limit}s"
 
 
 def generate_test_matrix(

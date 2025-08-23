@@ -37,9 +37,9 @@ class ScalabilityTestRunner:
             "cpu_percent": process.cpu_percent(),
             "memory_mb": process.memory_info().rss / 1024 / 1024,
             "threads": process.num_threads(),
-            "open_files": len(process.open_files())
-            if hasattr(process, "open_files")
-            else 0,
+            "open_files": (
+                len(process.open_files()) if hasattr(process, "open_files") else 0
+            ),
         }
         self.resource_snapshots.append(snapshot)
         return snapshot
@@ -155,27 +155,29 @@ class ScalabilityTestRunner:
 
         return {
             "scale_factors": scale_factors,
-            "throughput_trend": "increasing"
-            if throughputs[-1] > throughputs[0]
-            else "decreasing",
+            "throughput_trend": (
+                "increasing" if throughputs[-1] > throughputs[0] else "decreasing"
+            ),
             "max_throughput": max(throughputs) if throughputs else 0,
             "baseline_throughput": baseline_throughput,
             "scaling_efficiency": scaling_efficiency,
-            "avg_scaling_efficiency": statistics.mean(scaling_efficiency[1:])
-            if len(scaling_efficiency) > 1
-            else 1.0,
-            "success_rate_stability": statistics.stdev(success_rates)
-            if len(success_rates) > 1
-            else 0,
+            "avg_scaling_efficiency": (
+                statistics.mean(scaling_efficiency[1:])
+                if len(scaling_efficiency) > 1
+                else 1.0
+            ),
+            "success_rate_stability": (
+                statistics.stdev(success_rates) if len(success_rates) > 1 else 0
+            ),
             "performance_degradation": {
                 "throughput_drop_pct": (
-                    (throughputs[0] - throughputs[-1]) / throughputs[0] * 100
-                )
-                if throughputs[0] > 0
-                else 0,
-                "response_time_increase": avg_times[-1] / avg_times[0]
-                if avg_times[0] > 0
-                else 1,
+                    ((throughputs[0] - throughputs[-1]) / throughputs[0] * 100)
+                    if throughputs[0] > 0
+                    else 0
+                ),
+                "response_time_increase": (
+                    avg_times[-1] / avg_times[0] if avg_times[0] > 0 else 1
+                ),
             },
         }
 
@@ -230,19 +232,19 @@ class TestAgentOrchestrationScalability:
         print(f"Agent scaling analysis: {analysis}")
 
         # Verify scaling performance
-        assert analysis["avg_scaling_efficiency"] > 0.5, (
-            f"Poor scaling efficiency: {analysis['avg_scaling_efficiency']:.3f}"
-        )
+        assert (
+            analysis["avg_scaling_efficiency"] > 0.5
+        ), f"Poor scaling efficiency: {analysis['avg_scaling_efficiency']:.3f}"
 
-        assert analysis["success_rate_stability"] < 0.2, (
-            f"Unstable success rates across scales: {analysis['success_rate_stability']:.3f}"
-        )
+        assert (
+            analysis["success_rate_stability"] < 0.2
+        ), f"Unstable success rates across scales: {analysis['success_rate_stability']:.3f}"
 
         # Performance shouldn't degrade more than 50% at highest scale
         perf_degradation = analysis["performance_degradation"]["response_time_increase"]
-        assert perf_degradation < 3.0, (
-            f"Performance degradation too high: {perf_degradation:.2f}x slower"
-        )
+        assert (
+            perf_degradation < 3.0
+        ), f"Performance degradation too high: {perf_degradation:.2f}x slower"
 
     async def test_concurrent_orchestration_workflows(self, load_test_runner):
         """Test concurrent orchestration workflows under load."""
@@ -311,15 +313,15 @@ class TestAgentOrchestrationScalability:
 
         # Verify workflow scaling
         for concurrency, result in workflow_results.items():
-            assert result["success_rate"] > 0.9, (
-                f"Workflow success rate too low at concurrency {concurrency}: {result['success_rate']:.3f}"
-            )
+            assert (
+                result["success_rate"] > 0.9
+            ), f"Workflow success rate too low at concurrency {concurrency}: {result['success_rate']:.3f}"
 
             # Response time should remain reasonable even at high concurrency
             max_acceptable_time = 2.0  # 2 seconds
-            assert result["avg_response_time"] < max_acceptable_time, (
-                f"Workflow response time too high at concurrency {concurrency}: {result['avg_response_time']:.3f}s"
-            )
+            assert (
+                result["avg_response_time"] < max_acceptable_time
+            ), f"Workflow response time too high at concurrency {concurrency}: {result['avg_response_time']:.3f}s"
 
 
 @pytest.mark.performance
@@ -383,16 +385,16 @@ class TestDatabaseOperationScalability:
             size_mb = scale_factor * 0.1
 
             # Operations should complete successfully
-            assert result["success_rate"] > 0.8, (
-                f"Serialization success rate too low for {size_mb}MB: {result['success_rate']:.3f}"
-            )
+            assert (
+                result["success_rate"] > 0.8
+            ), f"Serialization success rate too low for {size_mb}MB: {result['success_rate']:.3f}"
 
             # Throughput should remain reasonable
             min_throughput = 0.5  # At least 0.5 ops/sec for larger datasets
             if scale_factor <= 25:  # For datasets up to 2.5MB
-                assert result["throughput_ops_per_sec"] >= min_throughput, (
-                    f"Serialization throughput too low for {size_mb}MB: {result['throughput_ops_per_sec']:.3f} ops/sec"
-                )
+                assert (
+                    result["throughput_ops_per_sec"] >= min_throughput
+                ), f"Serialization throughput too low for {size_mb}MB: {result['throughput_ops_per_sec']:.3f} ops/sec"
 
         print("Serialization scaling results:")
         for scale_factor, result in results.items():
@@ -474,9 +476,9 @@ class TestDatabaseOperationScalability:
             failed_operations = len(results) - len(successful_results)
 
             if successful_results:
-                avg_processing_time = statistics.mean([
-                    r["processing_time"] for r in successful_results
-                ])
+                avg_processing_time = statistics.mean(
+                    [r["processing_time"] for r in successful_results]
+                )
                 total_records = sum(r["records_processed"] for r in successful_results)
             else:
                 avg_processing_time = 0
@@ -487,9 +489,9 @@ class TestDatabaseOperationScalability:
                 "total_time": total_time,
                 "avg_processing_time": avg_processing_time,
                 "total_records_processed": total_records,
-                "throughput_records_per_sec": total_records / total_time
-                if total_time > 0
-                else 0,
+                "throughput_records_per_sec": (
+                    total_records / total_time if total_time > 0 else 0
+                ),
                 "failed_operations": failed_operations,
             }
 
@@ -508,9 +510,9 @@ class TestDatabaseOperationScalability:
 
         # Verify concurrent data operation scaling
         for concurrency, result in concurrent_results.items():
-            assert result["success_rate"] > 0.95, (
-                f"Data operation success rate too low at concurrency {concurrency}: {result['success_rate']:.3f}"
-            )
+            assert (
+                result["success_rate"] > 0.95
+            ), f"Data operation success rate too low at concurrency {concurrency}: {result['success_rate']:.3f}"
 
             # Higher concurrency should process more records per second overall
             if concurrency > 1:
@@ -525,9 +527,9 @@ class TestDatabaseOperationScalability:
 
                 # Should achieve at least 50% linear scaling efficiency
                 expected_min_scaling = concurrency * 0.5
-                assert scaling_factor >= expected_min_scaling, (
-                    f"Poor throughput scaling at concurrency {concurrency}: {scaling_factor:.2f}x vs expected {expected_min_scaling:.2f}x"
-                )
+                assert (
+                    scaling_factor >= expected_min_scaling
+                ), f"Poor throughput scaling at concurrency {concurrency}: {scaling_factor:.2f}x vs expected {expected_min_scaling:.2f}x"
 
 
 @pytest.mark.performance
@@ -589,9 +591,9 @@ class TestSystemResourceUtilization:
                 "total_time": total_time,
                 "operations_completed": len(results),
                 "cpu_utilization_delta": cpu_utilization,
-                "throughput_ops_per_sec": len(results) / total_time
-                if total_time > 0
-                else 0,
+                "throughput_ops_per_sec": (
+                    len(results) / total_time if total_time > 0 else 0
+                ),
             }
 
             print(
@@ -602,9 +604,9 @@ class TestSystemResourceUtilization:
         # Verify CPU scaling characteristics
         for scale, result in cpu_results.items():
             # All operations should complete
-            assert result["operations_completed"] == scale, (
-                f"Not all CPU operations completed at scale {scale}"
-            )
+            assert (
+                result["operations_completed"] == scale
+            ), f"Not all CPU operations completed at scale {scale}"
 
             # CPU utilization should increase with scale (but may plateau due to system limits)
             if scale > 1:
@@ -614,9 +616,9 @@ class TestSystemResourceUtilization:
                         result["cpu_utilization_delta"] / baseline_utilization
                     )
                     # Should see at least some increase in CPU usage
-                    assert utilization_ratio >= 0.8, (
-                        f"CPU utilization not scaling properly at scale {scale}: {utilization_ratio:.2f}x"
-                    )
+                    assert (
+                        utilization_ratio >= 0.8
+                    ), f"CPU utilization not scaling properly at scale {scale}: {utilization_ratio:.2f}x"
 
     async def test_memory_utilization_scaling(self, large_dataset_generator):
         """Test memory utilization with increasing data loads."""
@@ -678,9 +680,9 @@ class TestSystemResourceUtilization:
                 "memory_delta_mb": memory_delta,
                 "items_processed": result["items_processed"],
                 "dataset_size_mb": result["dataset_size_mb"],
-                "memory_efficiency": result["items_processed"] / memory_delta
-                if memory_delta > 0
-                else 0,
+                "memory_efficiency": (
+                    result["items_processed"] / memory_delta if memory_delta > 0 else 0
+                ),
             }
 
             print(
@@ -697,21 +699,21 @@ class TestSystemResourceUtilization:
         # Verify memory scaling characteristics
         for scale, result in memory_results.items():
             expected_min_memory = scale * 0.5  # Should use at least the dataset size
-            assert result["memory_delta_mb"] >= expected_min_memory * 0.5, (
-                f"Memory usage unexpectedly low at scale {scale}: {result['memory_delta_mb']:.2f}MB"
-            )
+            assert (
+                result["memory_delta_mb"] >= expected_min_memory * 0.5
+            ), f"Memory usage unexpectedly low at scale {scale}: {result['memory_delta_mb']:.2f}MB"
 
             # Memory usage shouldn't grow exponentially
             max_expected_memory = scale * 10  # Allow up to 10MB per scale unit
-            assert result["memory_delta_mb"] <= max_expected_memory, (
-                f"Memory usage too high at scale {scale}: {result['memory_delta_mb']:.2f}MB"
-            )
+            assert (
+                result["memory_delta_mb"] <= max_expected_memory
+            ), f"Memory usage too high at scale {scale}: {result['memory_delta_mb']:.2f}MB"
 
             # Should process a reasonable number of items
             min_items_expected = scale * 50  # At least 50 items per scale
-            assert result["items_processed"] >= min_items_expected, (
-                f"Too few items processed at scale {scale}: {result['items_processed']}"
-            )
+            assert (
+                result["items_processed"] >= min_items_expected
+            ), f"Too few items processed at scale {scale}: {result['items_processed']}"
 
     async def test_mixed_resource_stress_scenarios(self, stress_test_scenarios):
         """Test mixed resource utilization under stress scenarios."""
@@ -730,11 +732,13 @@ class TestSystemResourceUtilization:
             # Memory-intensive component
             large_data = []
             for i in range(500):  # Create ~50KB of data
-                large_data.append({
-                    "id": i,
-                    "data": "x" * 100,  # 100 bytes per item
-                    "computed": cpu_result + i,
-                })
+                large_data.append(
+                    {
+                        "id": i,
+                        "data": "x" * 100,  # 100 bytes per item
+                        "computed": cpu_result + i,
+                    }
+                )
 
             # IO-like simulation (async operations)
             await asyncio.sleep(0.01)  # Simulate async IO
@@ -800,9 +804,9 @@ class TestSystemResourceUtilization:
                 "failed_operations": failed_count,
                 "success_rate": len(successful_results) / stress_level,
                 "total_time": total_time,
-                "throughput_ops_per_sec": len(successful_results) / total_time
-                if total_time > 0
-                else 0,
+                "throughput_ops_per_sec": (
+                    len(successful_results) / total_time if total_time > 0 else 0
+                ),
                 "resource_usage": {
                     "cpu_delta": end_snapshot["cpu_percent"]
                     - start_snapshot["cpu_percent"],
@@ -822,14 +826,14 @@ class TestSystemResourceUtilization:
         for stress_level, result in stress_results.items():
             # Success rate should remain reasonable under stress
             min_success_rate = 0.7  # 70% minimum under stress
-            assert result["success_rate"] >= min_success_rate, (
-                f"Success rate too low under stress {stress_level}: {result['success_rate']:.3f}"
-            )
+            assert (
+                result["success_rate"] >= min_success_rate
+            ), f"Success rate too low under stress {stress_level}: {result['success_rate']:.3f}"
 
             # Resource usage should be proportional to stress level
             memory_per_op = result["resource_usage"]["memory_delta_mb"] / max(
                 result["successful_operations"], 1
             )
-            assert memory_per_op < 5.0, (
-                f"Memory usage per operation too high under stress {stress_level}: {memory_per_op:.2f}MB/op"
-            )
+            assert (
+                memory_per_op < 5.0
+            ), f"Memory usage per operation too high under stress {stress_level}: {memory_per_op:.2f}MB/op"

@@ -11,10 +11,14 @@ import pytest
 from lionagi.fields import Instruct
 
 from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.orchestration.parts import (AgentRequest, BaseGate,
-                                                ComposerRequest,
-                                                FanoutResponse, GateComponent,
-                                                OrchestrationPlan)
+from khive.services.orchestration.parts import (
+    AgentRequest,
+    BaseGate,
+    ComposerRequest,
+    FanoutResponse,
+    GateComponent,
+    OrchestrationPlan,
+)
 
 
 @pytest.fixture

@@ -7,13 +7,21 @@ from lionagi.fields import Instruct
 
 from khive.prompts import AgentRole
 from khive.services.artifacts.models import Author, Document, DocumentType
-from khive.services.composition.parts import (ComposerRequest,
-                                              ComposerResponse,
-                                              DomainExpertise)
+from khive.services.composition.parts import (
+    ComposerRequest,
+    ComposerResponse,
+    DomainExpertise,
+)
 from khive.services.orchestration.parts import AgentRequest, OrchestrationPlan
-from khive.services.plan.parts import (AgentRecommendation, ComplexityLevel,
-                                       PlannerRequest, PlannerResponse,
-                                       QualityGate, TaskPhase, WorkflowPattern)
+from khive.services.plan.parts import (
+    AgentRecommendation,
+    ComplexityLevel,
+    PlannerRequest,
+    PlannerResponse,
+    QualityGate,
+    TaskPhase,
+    WorkflowPattern,
+)
 
 
 class ModelTestData:

@@ -56,7 +56,7 @@ Issue #185.
 # Example edge case coverage
 malformed_yamls = [
     'key: "unclosed string',           # Unclosed quote
-    'anchor: &ref\n  child: *ref',     # Circular reference  
+    'anchor: &ref\n  child: *ref',     # Circular reference
     'key:\n' + '  ' * 1000 + 'value', # Extreme nesting
     'key: value\x00null\xff',         # Binary content
 ]

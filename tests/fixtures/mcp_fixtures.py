@@ -140,13 +140,13 @@ class MockMCPStdioServer:
         self.tools = {tools_json}
         self.resources = {resources_json}
         self.request_id = 0
-        
+
     async def handle_message(self, message: Dict[str, Any]) -> Dict[str, Any]:
         """Handle incoming MCP messages."""
         method = message.get("method")
         params = message.get("params", {{}})
         msg_id = message.get("id")
-        
+
         if method == "initialize":
             return {{
                 "jsonrpc": "2.0",
@@ -163,7 +163,7 @@ class MockMCPStdioServer:
                     }}
                 }}
             }}
-            
+
         elif method == "tools/list":
             return {{
                 "jsonrpc": "2.0",
@@ -172,7 +172,7 @@ class MockMCPStdioServer:
                     "tools": self.tools
                 }}
             }}
-            
+
         elif method == "tools/call":
             tool_name = params.get("name")
             arguments = params.get("arguments", {{}})
@@ -188,7 +188,7 @@ class MockMCPStdioServer:
                     ]
                 }}
             }}
-            
+
         elif method == "resources/list":
             return {{
                 "jsonrpc": "2.0",
@@ -197,7 +197,7 @@ class MockMCPStdioServer:
                     "resources": self.resources
                 }}
             }}
-            
+
         else:
             return {{
                 "jsonrpc": "2.0",
@@ -207,7 +207,7 @@ class MockMCPStdioServer:
                     "message": f"Method not found: {{method}}"
                 }}
             }}
-    
+
     async def run(self):
         """Main server loop."""
         while True:
@@ -215,12 +215,12 @@ class MockMCPStdioServer:
                 line = await asyncio.to_thread(sys.stdin.readline)
                 if not line:
                     break
-                    
+
                 message = json.loads(line.strip())
                 response = await self.handle_message(message)
-                
+
                 print(json.dumps(response), flush=True)
-                
+
             except json.JSONDecodeError:
                 continue
             except Exception as e:
@@ -249,11 +249,13 @@ class MCPProtocolValidator:
 
     def log_message(self, message: dict[str, Any], direction: str):
         """Log a protocol message for validation."""
-        self.messages.append({
-            "direction": direction,  # "sent" or "received"
-            "message": message,
-            "timestamp": asyncio.get_event_loop().time(),
-        })
+        self.messages.append(
+            {
+                "direction": direction,  # "sent" or "received"
+                "message": message,
+                "timestamp": asyncio.get_event_loop().time(),
+            }
+        )
 
     def validate_initialize_handshake(self) -> bool:
         """Validate the MCP initialize handshake sequence."""
@@ -500,15 +502,15 @@ def mcp_server_lifecycle_tracker():
         def __init__(self):
             self.events = []
 
-        def log_event(
-            self, event: str, server_name: str, details: dict | None = None
-        ):
-            self.events.append({
-                "event": event,
-                "server_name": server_name,
-                "details": details or {},
-                "timestamp": asyncio.get_event_loop().time(),
-            })
+        def log_event(self, event: str, server_name: str, details: dict | None = None):
+            self.events.append(
+                {
+                    "event": event,
+                    "server_name": server_name,
+                    "details": details or {},
+                    "timestamp": asyncio.get_event_loop().time(),
+                }
+            )
 
         def get_events_for_server(self, server_name: str) -> list[dict]:
             return [
@@ -572,15 +574,17 @@ def mcp_performance_monitor():
 
             operation_id = str(uuid.uuid4())
 
-            self.operations.append({
-                "id": operation_id,
-                "operation": operation,
-                "server_name": server_name,
-                "start_time": asyncio.get_event_loop().time(),
-                "end_time": None,
-                "duration": None,
-                "success": None,
-            })
+            self.operations.append(
+                {
+                    "id": operation_id,
+                    "operation": operation,
+                    "server_name": server_name,
+                    "start_time": asyncio.get_event_loop().time(),
+                    "end_time": None,
+                    "duration": None,
+                    "success": None,
+                }
+            )
 
             return operation_id
 
@@ -607,9 +611,9 @@ def mcp_performance_monitor():
                 "total_operations": len(self.operations),
                 "completed_operations": len(completed_ops),
                 "successful_operations": len(successful_ops),
-                "success_rate": len(successful_ops) / len(completed_ops)
-                if completed_ops
-                else 0,
+                "success_rate": (
+                    len(successful_ops) / len(completed_ops) if completed_ops else 0
+                ),
                 "average_duration": sum(durations) / len(durations) if durations else 0,
                 "min_duration": min(durations) if durations else 0,
                 "max_duration": max(durations) if durations else 0,

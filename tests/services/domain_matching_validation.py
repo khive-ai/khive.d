@@ -15,8 +15,7 @@ import yaml
 
 from khive.services.composition.agent_composer import AgentComposer
 from khive.services.plan.parts import AgentRecommendation
-from khive.services.plan.planner_service import (OrchestrationPlanner,
-                                                 PlannerService)
+from khive.services.plan.planner_service import OrchestrationPlanner, PlannerService
 
 # Test data for domain matching validation
 DOMAIN_MATCHING_TEST_CASES = [
@@ -97,7 +96,8 @@ class TestDomainCanonicalization:
         test_roles = ["researcher", "architect", "implementer", "tester", "analyst"]
         for role in test_roles:
             role_file = roles_path / f"{role}.md"
-            role_file.write_text(f"""# {role.title()}
+            role_file.write_text(
+                f"""# {role.title()}
 
 ```yaml
 id: {role}
@@ -109,7 +109,7 @@ tools: ["Read", "Write", "Bash"]
 ## Role
 Autonomous {role} agent that provides specialized analysis.
 
-## Purpose  
+## Purpose
 Execute {role} tasks with domain expertise.
 
 ## Core Capabilities
@@ -124,7 +124,8 @@ if task_complexity > threshold:
 else:
     proceed_with_analysis()
 ```
-""")
+"""
+            )
 
         # Create domains directory with test domains
         domains_path = base_path / "domains"
@@ -234,14 +235,15 @@ else:
         result = agent_composer.canonicalize_domain(input_domain)
 
         if should_match:
-            assert result == expected_canonical, (
-                f"Failed {description}: expected '{expected_canonical}', got '{result}'"
-            )
+            assert (
+                result == expected_canonical
+            ), f"Failed {description}: expected '{expected_canonical}', got '{result}'"
         else:
             # For non-matches, should return original or empty
-            assert result in [input_domain, ""], (
-                f"Failed {description}: unexpected transformation '{result}'"
-            )
+            assert result in [
+                input_domain,
+                "",
+            ], f"Failed {description}: unexpected transformation '{result}'"
 
     def test_domain_canonicalization_consistency(self, agent_composer):
         """Test that canonicalization is consistent across multiple calls."""
@@ -259,9 +261,9 @@ else:
         # Verify consistency
         for domain, canonical_list in results.items():
             unique_results = set(canonical_list)
-            assert len(unique_results) == 1, (
-                f"Inconsistent canonicalization for '{domain}': {unique_results}"
-            )
+            assert (
+                len(unique_results) == 1
+            ), f"Inconsistent canonicalization for '{domain}': {unique_results}"
 
     def test_domain_canonicalization_edge_cases(self, agent_composer):
         """Test edge cases in domain canonicalization."""
@@ -279,9 +281,9 @@ else:
 
         for input_domain, expected in edge_cases:
             result = agent_composer.canonicalize_domain(input_domain)
-            assert result == expected, (
-                f"Edge case failed: input='{input_domain}', expected='{expected}', got='{result}'"
-            )
+            assert (
+                result == expected
+            ), f"Edge case failed: input='{input_domain}', expected='{expected}', got='{result}'"
 
     def test_domain_synonym_mapping_completeness(self, agent_composer):
         """Test that all defined synonyms map correctly."""
@@ -290,9 +292,9 @@ else:
 
         for synonym, canonical in synonyms.items():
             result = agent_composer.canonicalize_domain(synonym)
-            assert result == canonical, (
-                f"Synonym mapping failed: '{synonym}' should map to '{canonical}', got '{result}'"
-            )
+            assert (
+                result == canonical
+            ), f"Synonym mapping failed: '{synonym}' should map to '{canonical}', got '{result}'"
 
     def test_canonical_domain_preservation(self, agent_composer):
         """Test that canonical domains remain unchanged."""
@@ -300,9 +302,9 @@ else:
 
         for canonical in canonical_domains:
             result = agent_composer.canonicalize_domain(canonical)
-            assert result == canonical, (
-                f"Canonical domain changed: '{canonical}' became '{result}'"
-            )
+            assert (
+                result == canonical
+            ), f"Canonical domain changed: '{canonical}' became '{result}'"
 
 
 @pytest.mark.unit
@@ -416,7 +418,8 @@ def create_test_agent_composer(tmp_path):
     ]
     for role in test_roles:
         role_file = roles_path / f"{role}.md"
-        role_file.write_text(f"""# {role.title()}
+        role_file.write_text(
+            f"""# {role.title()}
 
 ```yaml
 id: {role}
@@ -428,7 +431,7 @@ tools: ["Read", "Write", "Bash"]
 ## Role
 Autonomous {role} agent that provides specialized analysis.
 
-## Purpose  
+## Purpose
 Execute {role} tasks with domain expertise.
 
 ## Core Capabilities
@@ -443,7 +446,8 @@ if task_complexity > threshold:
 else:
     proceed_with_analysis()
 ```
-""")
+"""
+        )
 
     # Create domains directory with test domains
     domains_path = base_path / "domains"
@@ -565,9 +569,9 @@ class TestDomainMatchingConsistency:
 
             # All results should be identical
             unique_results = set(results)
-            assert len(unique_results) == 1, (
-                f"Inconsistent canonicalization for '{domain}': {unique_results}"
-            )
+            assert (
+                len(unique_results) == 1
+            ), f"Inconsistent canonicalization for '{domain}': {unique_results}"
 
     def test_composition_determinism(self, agent_composer):
         """Test that agent composition is deterministic."""
@@ -622,9 +626,9 @@ class TestDomainMatchingConsistency:
             result1 = composer1.canonicalize_domain(domain)
             result2 = composer2.canonicalize_domain(domain)
 
-            assert result1 == result2, (
-                f"Cross-instance inconsistency for '{domain}': {result1} vs {result2}"
-            )
+            assert (
+                result1 == result2
+            ), f"Cross-instance inconsistency for '{domain}': {result1} vs {result2}"
 
 
 @pytest.mark.unit
@@ -760,9 +764,9 @@ class TestDomainMatchingErrorHandling:
 
         # Should have no errors and consistent results
         assert len(errors) == 0, f"Concurrent access errors: {errors}"
-        assert len(set(results)) == 1, (
-            f"Inconsistent concurrent results: {set(results)}"
-        )
+        assert (
+            len(set(results)) == 1
+        ), f"Inconsistent concurrent results: {set(results)}"
 
 
 @pytest.mark.performance
@@ -794,9 +798,9 @@ class TestDomainMatchingPerformance:
 
         print(f"Canonicalization performance: {avg_time_ms:.4f}ms per operation")
 
-        assert avg_time_ms < max_time_ms, (
-            f"Canonicalization too slow: {avg_time_ms:.4f}ms > {max_time_ms}ms"
-        )
+        assert (
+            avg_time_ms < max_time_ms
+        ), f"Canonicalization too slow: {avg_time_ms:.4f}ms > {max_time_ms}ms"
 
     @pytest.mark.benchmark
     def test_agent_composition_performance(self, agent_composer):
@@ -816,9 +820,9 @@ class TestDomainMatchingPerformance:
 
         print(f"Agent composition performance: {avg_time_ms:.4f}ms per operation")
 
-        assert avg_time_ms < max_time_ms, (
-            f"Agent composition too slow: {avg_time_ms:.4f}ms > {max_time_ms}ms"
-        )
+        assert (
+            avg_time_ms < max_time_ms
+        ), f"Agent composition too slow: {avg_time_ms:.4f}ms > {max_time_ms}ms"
 
     @pytest.mark.benchmark
     def test_domain_loading_performance(self, agent_composer):
@@ -844,9 +848,9 @@ class TestDomainMatchingPerformance:
 
         print(f"Domain loading performance: {avg_time_ms:.4f}ms per operation")
 
-        assert avg_time_ms < max_time_ms, (
-            f"Domain loading too slow: {avg_time_ms:.4f}ms > {max_time_ms}ms"
-        )
+        assert (
+            avg_time_ms < max_time_ms
+        ), f"Domain loading too slow: {avg_time_ms:.4f}ms > {max_time_ms}ms"
 
     @pytest.mark.benchmark
     def test_memory_efficiency(self, agent_composer):
@@ -960,12 +964,14 @@ class TestDomainMatchingIntegration:
             # Step 3: Generate unique ID
             unique_id = composer.get_unique_agent_id(role, canonical_domain)
 
-            results.append({
-                "raw_input": raw_domain,
-                "canonical_domain": canonical_domain,
-                "agent_id": unique_id,
-                "has_domain_expertise": bool(agent_spec.get("domains")),
-            })
+            results.append(
+                {
+                    "raw_input": raw_domain,
+                    "canonical_domain": canonical_domain,
+                    "agent_id": unique_id,
+                    "has_domain_expertise": bool(agent_spec.get("domains")),
+                }
+            )
 
         # Validate end-to-end workflow
         expected_results = [

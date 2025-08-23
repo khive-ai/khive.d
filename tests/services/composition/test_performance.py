@@ -145,9 +145,9 @@ class TestPerformanceBenchmarks:
         single_avg = sum(single_times) / len(single_times)
         multi_avg = sum(multi_times) / len(multi_times)
 
-        assert single_avg < 0.020, (
-            f"Single domain composition too slow: {single_avg:.6f}s"
-        )
+        assert (
+            single_avg < 0.020
+        ), f"Single domain composition too slow: {single_avg:.6f}s"
         assert multi_avg < 0.050, f"Multi domain composition too slow: {multi_avg:.6f}s"
 
         print(f"Composition - Single: {single_avg:.6f}s, Multi: {multi_avg:.6f}s")
@@ -242,9 +242,9 @@ class TestScalabilityPerformance:
             min_expected_scaling = min(
                 thread_count * 0.4, 3.0
             )  # At least 40% efficiency up to 3x (realistic for threading overhead)
-            assert scaling_factor >= min_expected_scaling, (
-                f"Poor scaling at {thread_count} threads: {scaling_factor:.2f}x vs expected {min_expected_scaling:.2f}x"
-            )
+            assert (
+                scaling_factor >= min_expected_scaling
+            ), f"Poor scaling at {thread_count} threads: {scaling_factor:.2f}x vs expected {min_expected_scaling:.2f}x"
 
     def test_large_dataset_performance(self, temp_dir):
         """Test performance with large datasets."""
@@ -298,15 +298,15 @@ class TestScalabilityPerformance:
         # 100KB file (100x size) shouldn't take more than 15x longer than 1KB file
         # This allows for some non-linear overhead in parsing/processing
         scaling_ratio = time_100kb / time_1kb
-        assert scaling_ratio < 15.0, (
-            f"Performance doesn't scale well with file size: {scaling_ratio:.2f}x"
-        )
+        assert (
+            scaling_ratio < 15.0
+        ), f"Performance doesn't scale well with file size: {scaling_ratio:.2f}x"
 
         # All files should load within reasonable time
         for size_kb, avg_time in load_times.items():
-            assert avg_time < 0.100, (
-                f"Large file ({size_kb}KB) loads too slowly: {avg_time:.6f}s"
-            )
+            assert (
+                avg_time < 0.100
+            ), f"Large file ({size_kb}KB) loads too slowly: {avg_time:.6f}s"
 
     def test_composition_complexity_scaling(self, temp_dir):
         """Test performance scaling with composition complexity."""
@@ -374,18 +374,18 @@ class TestScalabilityPerformance:
 
         # 15 domains shouldn't take more than 15x longer than 1 domain
         scaling_ratio = time_15_domains / time_1_domain
-        assert scaling_ratio < 15.0, (
-            f"Composition complexity scaling poor: {scaling_ratio:.2f}x"
-        )
+        assert (
+            scaling_ratio < 15.0
+        ), f"Composition complexity scaling poor: {scaling_ratio:.2f}x"
 
         # All compositions should complete within reasonable time
         for complexity, avg_time in composition_times.items():
             max_acceptable_time = 0.010 + (
                 complexity * 0.005
             )  # Base time + linear scaling
-            assert avg_time < max_acceptable_time, (
-                f"Complex composition ({complexity} domains) too slow: {avg_time:.6f}s"
-            )
+            assert (
+                avg_time < max_acceptable_time
+            ), f"Complex composition ({complexity} domains) too slow: {avg_time:.6f}s"
 
     def _setup_scaling_test_data(self, temp_dir):
         """Setup test data for scaling tests."""
@@ -462,17 +462,17 @@ class TestMemoryPerformance:
         # Memory usage should scale reasonably (not more than 20x for 20x complexity)
         if mem_1 > 0:  # Avoid division by zero
             scaling_ratio = mem_20 / mem_1
-            assert scaling_ratio < 25.0, (
-                f"Memory usage scaling poor: {scaling_ratio:.2f}x"
-            )
+            assert (
+                scaling_ratio < 25.0
+            ), f"Memory usage scaling poor: {scaling_ratio:.2f}x"
 
         # No composition should use excessive memory
         for size, usage in memory_usage.items():
             per_comp_kb = usage["per_composition_kb"]
             max_acceptable_kb = 100 + (size * 10)  # Base + linear scaling
-            assert per_comp_kb < max_acceptable_kb, (
-                f"Composition (size {size}) uses too much memory: {per_comp_kb:.2f}KB"
-            )
+            assert (
+                per_comp_kb < max_acceptable_kb
+            ), f"Composition (size {size}) uses too much memory: {per_comp_kb:.2f}KB"
 
     def test_memory_leak_detection(self, temp_dir):
         """Test for memory leaks in repeated operations."""
@@ -579,12 +579,15 @@ class TestThroughputPerformance:
             op_end = time.perf_counter()
             op_time = op_end - op_start
 
-            operations_completed.append({
-                "operation_id": operation_count,
-                "duration": op_time,
-                "timestamp": op_end - start_time,
-                "success": result["identity"]["id"] == f"throughput_role_{role_idx}",
-            })
+            operations_completed.append(
+                {
+                    "operation_id": operation_count,
+                    "duration": op_time,
+                    "timestamp": op_end - start_time,
+                    "success": result["identity"]["id"]
+                    == f"throughput_role_{role_idx}",
+                }
+            )
 
             operation_count += 1
 
@@ -599,9 +602,9 @@ class TestThroughputPerformance:
 
         # Verify throughput meets minimum requirements
         min_acceptable_throughput = target_ops_per_second * 0.8  # 80% of target
-        assert throughput >= min_acceptable_throughput, (
-            f"Throughput too low: {throughput:.2f} ops/sec (target: {target_ops_per_second})"
-        )
+        assert (
+            throughput >= min_acceptable_throughput
+        ), f"Throughput too low: {throughput:.2f} ops/sec (target: {target_ops_per_second})"
 
         # Verify operation success rate
         success_rate = successful_ops / len(operations_completed)
@@ -645,11 +648,13 @@ class TestThroughputPerformance:
                     result = composer.load_agent_role(f"throughput_role_{role_idx}")
                     end_time = time.perf_counter()
 
-                    worker_results.append({
-                        "duration": end_time - start_time,
-                        "success": result["identity"]["id"]
-                        == f"throughput_role_{role_idx}",
-                    })
+                    worker_results.append(
+                        {
+                            "duration": end_time - start_time,
+                            "success": result["identity"]["id"]
+                            == f"throughput_role_{role_idx}",
+                        }
+                    )
                 return worker_results
 
             # Execute burst
@@ -681,15 +686,15 @@ class TestThroughputPerformance:
 
         # Verify burst performance meets requirements
         for name, results in burst_results.items():
-            assert results["success_rate"] > 0.95, (
-                f"{name} success rate too low: {results['success_rate']:.4f}"
-            )
-            assert results["throughput"] > 20.0, (
-                f"{name} throughput too low: {results['throughput']:.2f} ops/sec"
-            )
-            assert results["avg_op_time"] < 0.050, (
-                f"{name} average op time too slow: {results['avg_op_time']:.6f}s"
-            )
+            assert (
+                results["success_rate"] > 0.95
+            ), f"{name} success rate too low: {results['success_rate']:.4f}"
+            assert (
+                results["throughput"] > 20.0
+            ), f"{name} throughput too low: {results['throughput']:.2f} ops/sec"
+            assert (
+                results["avg_op_time"] < 0.050
+            ), f"{name} average op time too slow: {results['avg_op_time']:.6f}s"
 
     def _setup_throughput_test_data(self, temp_dir):
         """Setup test data for throughput tests."""

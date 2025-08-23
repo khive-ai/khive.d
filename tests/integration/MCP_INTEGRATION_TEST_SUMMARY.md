@@ -2,7 +2,11 @@
 
 ## Overview
 
-This document summarizes the comprehensive MCP (Model Context Protocol) integration testing implementation created for issue #188. The testing framework validates actual MCP protocol implementations, server communication, protocol compliance, edge cases, timeout handling, connection recovery, and multiple server implementations.
+This document summarizes the comprehensive MCP (Model Context Protocol)
+integration testing implementation created for issue #188. The testing framework
+validates actual MCP protocol implementations, server communication, protocol
+compliance, edge cases, timeout handling, connection recovery, and multiple
+server implementations.
 
 ## Test Architecture
 
@@ -14,7 +18,8 @@ This document summarizes the comprehensive MCP (Model Context Protocol) integrat
    - `MCPTestScenarios`: Common test scenarios factory
    - Performance and error injection utilities
 
-2. **Protocol Integration Tests** (`tests/integration/test_mcp_protocol_integration.py`)
+2. **Protocol Integration Tests**
+   (`tests/integration/test_mcp_protocol_integration.py`)
    - Protocol compliance and message format validation
    - Transport reliability (stdio, SSE, HTTP, WebSocket)
    - Server lifecycle management and monitoring
@@ -23,8 +28,10 @@ This document summarizes the comprehensive MCP (Model Context Protocol) integrat
    - Performance characteristics and stress testing
    - Edge cases and compatibility scenarios
 
-3. **CC Toolkit Integration Tests** (`tests/integration/test_mcp_cc_toolkit_integration.py`)
-   - CC toolkit creation with various permission modes (read-only, read-write, restricted)
+3. **CC Toolkit Integration Tests**
+   (`tests/integration/test_mcp_cc_toolkit_integration.py`)
+   - CC toolkit creation with various permission modes (read-only, read-write,
+     restricted)
    - MCP server lifecycle management during toolkit operations
    - Workspace isolation and cleanup procedures
    - Integration with real MCP protocol implementations
@@ -37,6 +44,7 @@ This document summarizes the comprehensive MCP (Model Context Protocol) integrat
 ## Test Categories and Coverage
 
 ### 1. Protocol Compliance Tests (`@pytest.mark.mcp_protocol`)
+
 - **MCP protocol handshake sequence validation**
   - Initialize message format and protocol version negotiation
   - Capability discovery and server information exchange
@@ -54,6 +62,7 @@ This document summarizes the comprehensive MCP (Model Context Protocol) integrat
   - Malformed response handling
 
 ### 2. Transport Reliability Tests (`@pytest.mark.mcp_transport`)
+
 - **stdio transport testing**
   - Process management and buffering
   - Environment variable handling
@@ -71,6 +80,7 @@ This document summarizes the comprehensive MCP (Model Context Protocol) integrat
   - Fallback mechanisms
 
 ### 3. Server Lifecycle Tests (`@pytest.mark.mcp_lifecycle`)
+
 - **Server startup and initialization**
   - Process spawning and management
   - Initialization timeout handling
@@ -87,6 +97,7 @@ This document summarizes the comprehensive MCP (Model Context Protocol) integrat
   - Lifecycle event tracking
 
 ### 4. Error Handling Tests (`@pytest.mark.mcp_error_handling`)
+
 - **Connection timeout scenarios**
   - Short timeout configuration testing
   - Timeout recovery mechanisms
@@ -103,6 +114,7 @@ This document summarizes the comprehensive MCP (Model Context Protocol) integrat
   - Protocol version mismatch scenarios
 
 ### 5. Configuration Management Tests (`@pytest.mark.mcp_configuration`)
+
 - **Configuration file processing**
   - JSON parsing and validation
   - Server configuration structure
@@ -119,6 +131,7 @@ This document summarizes the comprehensive MCP (Model Context Protocol) integrat
   - Default timeout calculation
 
 ### 6. CC Toolkit Integration Tests (`@pytest.mark.mcp_cc_toolkit`)
+
 - **Permission mode testing**
   - Read-only mode: Minimal environment variables, restricted operations
   - Read-write mode: Elevated security context, full environment access
@@ -130,6 +143,7 @@ This document summarizes the comprehensive MCP (Model Context Protocol) integrat
   - Workspace-specific configuration isolation
 
 ### 7. Workspace Isolation Tests (`@pytest.mark.mcp_workspace`)
+
 - **Isolation boundary validation**
   - Cross-workspace contamination prevention
   - File system access restrictions
@@ -146,6 +160,7 @@ This document summarizes the comprehensive MCP (Model Context Protocol) integrat
   - Performance impact assessment
 
 ### 8. Performance Tests (`@pytest.mark.mcp_performance`)
+
 - **Concurrent server connections**
   - Multiple server status checks
   - Performance monitoring and metrics
@@ -162,6 +177,7 @@ This document summarizes the comprehensive MCP (Model Context Protocol) integrat
   - Garbage collection effectiveness
 
 ### 9. Real Server Integration (`@pytest.mark.mcp_real_servers` `@pytest.mark.external`)
+
 - **GitHub MCP server integration**
   - Tool discovery (create_repository, list_issues, etc.)
   - Authentication token handling
@@ -175,6 +191,7 @@ This document summarizes the comprehensive MCP (Model Context Protocol) integrat
 ## Test Execution
 
 ### Quick Test Execution
+
 ```bash
 # Run fast subset of tests
 python tests/integration/test_mcp_runner.py fast
@@ -185,6 +202,7 @@ python tests/integration/test_mcp_runner.py cc-toolkit
 ```
 
 ### Comprehensive Test Execution
+
 ```bash
 # Run all MCP integration tests
 python tests/integration/test_mcp_runner.py comprehensive
@@ -194,6 +212,7 @@ python tests/integration/test_mcp_runner.py real-servers
 ```
 
 ### Individual Category Execution
+
 ```bash
 # Protocol compliance
 pytest -m mcp_protocol -v
@@ -208,6 +227,7 @@ pytest -m mcp_cc_toolkit -v
 ## Test Configuration
 
 ### Pytest Markers
+
 - `mcp_protocol`: Protocol compliance tests
 - `mcp_transport`: Transport reliability tests
 - `mcp_lifecycle`: Server lifecycle tests
@@ -219,6 +239,7 @@ pytest -m mcp_cc_toolkit -v
 - `mcp_real_servers`: Real server integration tests
 
 ### Environment Variables
+
 - `KHIVE_TEST_MODE=true`: Enable test mode
 - `KHIVE_INTEGRATION_TEST=true`: Enable integration testing
 - `KHIVE_MCP_TEST=true`: Enable MCP-specific testing
@@ -227,11 +248,13 @@ pytest -m mcp_cc_toolkit -v
 ## Coverage and Quality Requirements
 
 ### Coverage Targets
+
 - **Overall coverage**: >90% (enforced by pyproject.toml)
 - **MCP module coverage**: >95% target for critical functionality
 - **Integration test coverage**: All major workflow paths
 
 ### Quality Gates
+
 - All tests must pass in CI/CD
 - Integration tests complete within 5 minutes
 - No test pollution or resource leaks
@@ -249,6 +272,7 @@ await server.start()
 ```
 
 Features:
+
 - Protocol-compliant message handling
 - Tool and resource management
 - Transport-specific implementations (stdio, SSE)
@@ -258,18 +282,21 @@ Features:
 ## Real-World Scenario Testing
 
 ### GitHub Integration Scenario
+
 - Token authentication validation
 - Repository operations testing
 - API rate limiting simulation
 - Error response handling
 
-### File System Integration Scenario  
+### File System Integration Scenario
+
 - File operations with security validation
 - Path traversal prevention
 - Permission boundary testing
 - Large file handling
 
 ### Multi-Server Configuration Scenario
+
 - Server priority and selection
 - Configuration conflict resolution
 - Resource sharing and isolation
@@ -278,6 +305,7 @@ Features:
 ## Performance Benchmarks
 
 ### Target Performance Metrics
+
 - **Connection establishment**: <2 seconds
 - **Tool discovery**: <5 seconds for 100+ tools
 - **Sequential operations**: >10 ops/second
@@ -285,6 +313,7 @@ Features:
 - **Success rate**: >95% under normal conditions
 
 ### Stress Test Scenarios
+
 - 50 sequential operations per server
 - 10 concurrent servers
 - 500 tools per server discovery
@@ -293,11 +322,13 @@ Features:
 ## Security Validation
 
 ### Permission Mode Validation
+
 - **Read-only**: No sensitive environment variables exposed
 - **Read-write**: Controlled environment variable access
 - **Restricted**: Sandboxed execution with operation allowlisting
 
 ### Environment Variable Security
+
 - Priority-based merging (config > .env > system)
 - Server-specific token mapping
 - Credential sanitization in logs
@@ -306,18 +337,21 @@ Features:
 ## Error Scenarios and Recovery
 
 ### Connection Failures
+
 - Network connectivity issues
 - Process crash recovery
 - Timeout handling with exponential backoff
 - Circuit breaker implementation
 
 ### Protocol Errors
+
 - Malformed message recovery
 - Version compatibility handling
 - Missing required fields
 - Invalid JSON parsing
 
 ### Resource Management
+
 - Memory leak prevention
 - File handle cleanup
 - Process zombie prevention
@@ -326,12 +360,14 @@ Features:
 ## Integration with Existing Infrastructure
 
 ### Test Framework Integration
+
 - Pytest async support (`pytest-asyncio`)
 - Coverage reporting integration
 - CI/CD pipeline compatibility
 - Fixture reusability across test suites
 
 ### Development Workflow
+
 - Pre-commit hook integration
 - Fast feedback loop for developers
 - Selective test execution by markers
@@ -340,6 +376,7 @@ Features:
 ## Future Enhancements
 
 ### Planned Improvements
+
 1. **Real-time monitoring**: Live server health dashboards
 2. **Chaos engineering**: Random failure injection
 3. **Protocol fuzzing**: Automated edge case discovery
@@ -347,6 +384,7 @@ Features:
 5. **Multi-platform testing**: Windows/Linux compatibility validation
 
 ### Extensibility
+
 - Pluggable server implementations
 - Custom transport protocols
 - Domain-specific test scenarios
@@ -356,12 +394,11 @@ Features:
 
 This comprehensive MCP integration testing framework provides:
 
-✅ **Complete protocol compliance validation**  
-✅ **Real-world scenario testing**  
-✅ **Performance and reliability verification**  
-✅ **Security boundary validation**  
-✅ **Error recovery and resilience testing**  
-✅ **CC toolkit integration validation**  
-✅ **Workspace isolation verification**  
+✅ **Complete protocol compliance validation** ✅ **Real-world scenario
+testing** ✅ **Performance and reliability verification** ✅ **Security boundary
+validation** ✅ **Error recovery and resilience testing** ✅ **CC toolkit
+integration validation** ✅ **Workspace isolation verification**
 
-The implementation ensures Claude Code's MCP integration is robust, secure, and performant across various deployment scenarios while maintaining >90% code coverage and comprehensive error handling.
+The implementation ensures Claude Code's MCP integration is robust, secure, and
+performant across various deployment scenarios while maintaining >90% code
+coverage and comprehensive error handling.

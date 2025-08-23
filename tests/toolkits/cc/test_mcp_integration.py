@@ -536,6 +536,6 @@ class TestMCPPerformance:
         memory_increase = final_memory - initial_memory
 
         # Memory increase should be reasonable (less than 50MB)
-        assert memory_increase < 50 * 1024 * 1024, (
-            f"Excessive memory usage: {memory_increase} bytes"
-        )
+        assert (
+            memory_increase < 50 * 1024 * 1024
+        ), f"Excessive memory usage: {memory_increase} bytes"

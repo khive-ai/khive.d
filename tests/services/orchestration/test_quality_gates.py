@@ -20,8 +20,12 @@ from pydantic import ValidationError
 from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
-    AgentRequest, BaseGate, FanoutWithGatedRefinementResponse, GateComponent,
-    OrchestrationPlan)
+    AgentRequest,
+    BaseGate,
+    FanoutWithGatedRefinementResponse,
+    GateComponent,
+    OrchestrationPlan,
+)
 from tests.fixtures.gated_refinement_fixtures import create_mock_orchestrator
 
 

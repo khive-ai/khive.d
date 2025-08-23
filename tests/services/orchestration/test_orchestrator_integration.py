@@ -175,7 +175,6 @@ class TestSessionManagement:
     """Test session management functionality."""
 
 
-
 class TestErrorRecovery:
     """Test error recovery and resilience."""
 

@@ -44,17 +44,21 @@ class BenchmarkMetrics:
             "count": len(self.measurements),
             "mean": statistics.mean(self.measurements),
             "median": statistics.median(self.measurements),
-            "stdev": statistics.stdev(self.measurements)
-            if len(self.measurements) > 1
-            else 0,
+            "stdev": (
+                statistics.stdev(self.measurements) if len(self.measurements) > 1 else 0
+            ),
             "min": min(self.measurements),
             "max": max(self.measurements),
-            "p95": statistics.quantiles(self.measurements, n=20)[18]
-            if len(self.measurements) >= 20
-            else max(self.measurements),
-            "p99": statistics.quantiles(self.measurements, n=100)[98]
-            if len(self.measurements) >= 100
-            else max(self.measurements),
+            "p95": (
+                statistics.quantiles(self.measurements, n=20)[18]
+                if len(self.measurements) >= 20
+                else max(self.measurements)
+            ),
+            "p99": (
+                statistics.quantiles(self.measurements, n=100)[98]
+                if len(self.measurements) >= 100
+                else max(self.measurements)
+            ),
         }
 
     def assert_performance_criteria(self, criteria: dict):
@@ -62,20 +66,20 @@ class BenchmarkMetrics:
         stats = self.get_statistics()
 
         if "max_mean_ms" in criteria:
-            assert stats["mean"] * 1000 <= criteria["max_mean_ms"], (
-                f"Mean time {stats['mean'] * 1000:.2f}ms exceeds limit {criteria['max_mean_ms']}ms"
-            )
+            assert (
+                stats["mean"] * 1000 <= criteria["max_mean_ms"]
+            ), f"Mean time {stats['mean'] * 1000:.2f}ms exceeds limit {criteria['max_mean_ms']}ms"
 
         if "max_p95_ms" in criteria:
-            assert stats["p95"] * 1000 <= criteria["max_p95_ms"], (
-                f"P95 time {stats['p95'] * 1000:.2f}ms exceeds limit {criteria['max_p95_ms']}ms"
-            )
+            assert (
+                stats["p95"] * 1000 <= criteria["max_p95_ms"]
+            ), f"P95 time {stats['p95'] * 1000:.2f}ms exceeds limit {criteria['max_p95_ms']}ms"
 
         if "min_throughput_ops_sec" in criteria and "total_time" in self.metadata:
             throughput = len(self.measurements) / self.metadata["total_time"]
-            assert throughput >= criteria["min_throughput_ops_sec"], (
-                f"Throughput {throughput:.2f} ops/sec below limit {criteria['min_throughput_ops_sec']}"
-            )
+            assert (
+                throughput >= criteria["min_throughput_ops_sec"]
+            ), f"Throughput {throughput:.2f} ops/sec below limit {criteria['min_throughput_ops_sec']}"
 
 
 class MemoryProfiler:
@@ -93,11 +97,13 @@ class MemoryProfiler:
     def take_snapshot(self, label: str = None):
         """Take a memory snapshot."""
         snapshot = tracemalloc.take_snapshot()
-        self.snapshots.append({
-            "snapshot": snapshot,
-            "timestamp": time.perf_counter(),
-            "label": label or f"snapshot_{len(self.snapshots)}",
-        })
+        self.snapshots.append(
+            {
+                "snapshot": snapshot,
+                "timestamp": time.perf_counter(),
+                "label": label or f"snapshot_{len(self.snapshots)}",
+            }
+        )
         return snapshot
 
     def stop_tracing(self):
@@ -118,13 +124,17 @@ class MemoryProfiler:
         # Find largest memory consumers
         top_consumers = []
         for stat in top_stats[:10]:
-            top_consumers.append({
-                "file": stat.traceback.format()[0]
-                if stat.traceback.format()
-                else "unknown",
-                "size_mb": stat.size / 1024 / 1024,
-                "count": stat.count,
-            })
+            top_consumers.append(
+                {
+                    "file": (
+                        stat.traceback.format()[0]
+                        if stat.traceback.format()
+                        else "unknown"
+                    ),
+                    "size_mb": stat.size / 1024 / 1024,
+                    "count": stat.count,
+                }
+            )
 
         return {
             "current_memory_mb": current_memory / 1024 / 1024,
@@ -240,9 +250,9 @@ class TestAgentCompositionBenchmarks:
         # Assert scaling performance
         stats = metrics.get_statistics()
         assert stats["max"] < 2.0, f"Max composition time too high: {stats['max']:.3f}s"
-        assert stats["mean"] < 0.5, (
-            f"Mean composition time too high: {stats['mean']:.3f}s"
-        )
+        assert (
+            stats["mean"] < 0.5
+        ), f"Mean composition time too high: {stats['mean']:.3f}s"
 
 
 @pytest.mark.performance
@@ -300,9 +310,9 @@ class TestMemoryProfilingBenchmarks:
         memory_analysis = memory_profiler.analyze_memory_usage()
 
         # Assert memory usage within acceptable limits
-        assert memory_analysis["peak_memory_mb"] < 100, (
-            f"Peak memory usage too high: {memory_analysis['peak_memory_mb']:.2f}MB"
-        )
+        assert (
+            memory_analysis["peak_memory_mb"] < 100
+        ), f"Peak memory usage too high: {memory_analysis['peak_memory_mb']:.2f}MB"
 
         print(f"Memory analysis: {memory_analysis}")
 
@@ -374,12 +384,12 @@ class TestMemoryProfilingBenchmarks:
             )
 
             # Assert no significant memory leaks
-            assert memory_growth_trend < 10.0, (
-                f"Potential memory leak detected: {memory_growth_trend:.2f}MB growth"
-            )
-            assert max(baseline_measurements) < 50.0, (
-                f"Peak memory growth too high: {max(baseline_measurements):.2f}MB"
-            )
+            assert (
+                memory_growth_trend < 10.0
+            ), f"Potential memory leak detected: {memory_growth_trend:.2f}MB growth"
+            assert (
+                max(baseline_measurements) < 50.0
+            ), f"Peak memory growth too high: {max(baseline_measurements):.2f}MB"
 
 
 @pytest.mark.performance
@@ -433,16 +443,16 @@ class TestScalabilityBenchmarks:
         min_throughput = performance_thresholds["planning"]["throughput_ops_per_sec"]
 
         for concurrency, result in scalability_results.items():
-            assert result["success_rate"] > 0.95, (
-                f"Success rate too low at concurrency {concurrency}: {result['success_rate']:.4f}"
-            )
+            assert (
+                result["success_rate"] > 0.95
+            ), f"Success rate too low at concurrency {concurrency}: {result['success_rate']:.4f}"
 
             if (
                 concurrency <= 10
             ):  # Should maintain good performance at moderate concurrency
-                assert result["throughput"] >= min_throughput, (
-                    f"Throughput too low at concurrency {concurrency}: {result['throughput']:.2f} ops/sec"
-                )
+                assert (
+                    result["throughput"] >= min_throughput
+                ), f"Throughput too low at concurrency {concurrency}: {result['throughput']:.2f} ops/sec"
 
     async def test_database_operation_scaling(
         self, performance_profiler, large_dataset_generator
@@ -490,9 +500,9 @@ class TestScalabilityBenchmarks:
 
         # Verify database operation scaling
         stats = operation_metrics.get_statistics()
-        assert stats["max"] < 5.0, (
-            f"Max DB operation time too high: {stats['max']:.3f}s"
-        )
+        assert (
+            stats["max"] < 5.0
+        ), f"Max DB operation time too high: {stats['max']:.3f}s"
 
         # Performance should scale roughly linearly with data size
         # (allowing some overhead for larger datasets)
@@ -500,9 +510,9 @@ class TestScalabilityBenchmarks:
         if len(measurements) >= 3:
             # Verify that 10MB operation isn't more than 100x slower than 0.1MB
             scaling_ratio = measurements[-1] / measurements[0]
-            assert scaling_ratio < 100, (
-                f"Database operation scaling poor: {scaling_ratio:.1f}x"
-            )
+            assert (
+                scaling_ratio < 100
+            ), f"Database operation scaling poor: {scaling_ratio:.1f}x"
 
 
 @pytest.mark.performance

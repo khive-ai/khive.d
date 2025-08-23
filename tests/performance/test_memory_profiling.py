@@ -65,21 +65,25 @@ class MemoryLeakDetector:
 
     def add_object_tracking(self, obj, name: str):
         """Add object for weak reference tracking."""
-        self.objects_tracked.append({
-            "name": name,
-            "ref": weakref.ref(obj),
-            "created_at": time.perf_counter(),
-        })
+        self.objects_tracked.append(
+            {
+                "name": name,
+                "ref": weakref.ref(obj),
+                "created_at": time.perf_counter(),
+            }
+        )
 
     def check_object_leaks(self) -> list:
         """Check for objects that should have been garbage collected."""
         leaks = []
         for tracked in self.objects_tracked:
             if tracked["ref"]() is not None:
-                leaks.append({
-                    "name": tracked["name"],
-                    "age_seconds": time.perf_counter() - tracked["created_at"],
-                })
+                leaks.append(
+                    {
+                        "name": tracked["name"],
+                        "age_seconds": time.perf_counter() - tracked["created_at"],
+                    }
+                )
         return leaks
 
     def analyze_memory_trend(self, window_size: int = 10) -> dict:
@@ -90,9 +94,9 @@ class MemoryLeakDetector:
         recent_measurements = self.measurements[-window_size:]
         early_measurements = self.measurements[:window_size]
 
-        recent_avg = statistics.mean([
-            m["memory_delta_mb"] for m in recent_measurements
-        ])
+        recent_avg = statistics.mean(
+            [m["memory_delta_mb"] for m in recent_measurements]
+        )
         early_avg = statistics.mean([m["memory_delta_mb"] for m in early_measurements])
 
         trend_slope = recent_avg - early_avg
@@ -102,11 +106,11 @@ class MemoryLeakDetector:
         trend_stability = statistics.stdev(all_deltas) if len(all_deltas) > 1 else 0
 
         return {
-            "trend": "increasing"
-            if trend_slope > 2.0
-            else "stable"
-            if abs(trend_slope) <= 2.0
-            else "decreasing",
+            "trend": (
+                "increasing"
+                if trend_slope > 2.0
+                else "stable" if abs(trend_slope) <= 2.0 else "decreasing"
+            ),
             "trend_slope_mb": trend_slope,
             "trend_stability": trend_stability,
             "recent_avg_mb": recent_avg,
@@ -190,17 +194,17 @@ class TestMemoryLeakDetection:
             print(f"Memory trend analysis: {trend_analysis}")
 
             # Assert no significant memory leaks
-            assert final_measurement["memory_delta_mb"] < 50, (
-                f"Excessive memory growth: {final_measurement['memory_delta_mb']:.2f}MB"
-            )
+            assert (
+                final_measurement["memory_delta_mb"] < 50
+            ), f"Excessive memory growth: {final_measurement['memory_delta_mb']:.2f}MB"
 
-            assert trend_analysis["trend"] != "increasing", (
-                f"Memory leak trend detected: {trend_analysis['trend_slope_mb']:.2f}MB growth"
-            )
+            assert (
+                trend_analysis["trend"] != "increasing"
+            ), f"Memory leak trend detected: {trend_analysis['trend_slope_mb']:.2f}MB growth"
 
-            assert len(object_leaks) == 0, (
-                f"Object leaks detected: {len(object_leaks)} objects not cleaned up"
-            )
+            assert (
+                len(object_leaks) == 0
+            ), f"Object leaks detected: {len(object_leaks)} objects not cleaned up"
 
         finally:
             leak_detector.stop_monitoring()
@@ -257,13 +261,13 @@ class TestMemoryLeakDetection:
             print(f"Composition memory trend: {trend_analysis}")
 
             # Assert memory stability
-            assert final_measurement["memory_delta_mb"] < 30, (
-                f"Composition service memory growth too high: {final_measurement['memory_delta_mb']:.2f}MB"
-            )
+            assert (
+                final_measurement["memory_delta_mb"] < 30
+            ), f"Composition service memory growth too high: {final_measurement['memory_delta_mb']:.2f}MB"
 
-            assert trend_analysis["max_delta_mb"] < 40, (
-                f"Peak memory usage too high: {trend_analysis['max_delta_mb']:.2f}MB"
-            )
+            assert (
+                trend_analysis["max_delta_mb"] < 40
+            ), f"Peak memory usage too high: {trend_analysis['max_delta_mb']:.2f}MB"
 
         finally:
             leak_detector.stop_monitoring()
@@ -330,13 +334,13 @@ class TestMemoryLeakDetection:
             print(f"Planning service memory analysis: {trend_analysis}")
 
             # Validate memory stability
-            assert final_measurement["memory_delta_mb"] < 25, (
-                f"Planning service memory growth: {final_measurement['memory_delta_mb']:.2f}MB"
-            )
+            assert (
+                final_measurement["memory_delta_mb"] < 25
+            ), f"Planning service memory growth: {final_measurement['memory_delta_mb']:.2f}MB"
 
-            assert trend_analysis["trend_stability"] < 15, (
-                f"Planning service memory usage too unstable: {trend_analysis['trend_stability']:.2f}"
-            )
+            assert (
+                trend_analysis["trend_stability"] < 15
+            ), f"Planning service memory usage too unstable: {trend_analysis['trend_stability']:.2f}"
 
         finally:
             leak_detector.stop_monitoring()
@@ -406,9 +410,9 @@ class TestMemoryUsagePatterns:
 
                 # Verify memory usage scales reasonably with concurrency
                 expected_max_memory = concurrency * 5  # 5MB per concurrent operation
-                assert measurement["memory_delta_mb"] < expected_max_memory, (
-                    f"Memory usage too high for concurrency {concurrency}: {measurement['memory_delta_mb']:.2f}MB"
-                )
+                assert (
+                    measurement["memory_delta_mb"] < expected_max_memory
+                ), f"Memory usage too high for concurrency {concurrency}: {measurement['memory_delta_mb']:.2f}MB"
 
             # Final cleanup measurement
             gc.collect()
@@ -416,9 +420,9 @@ class TestMemoryUsagePatterns:
             final_measurement = leak_detector.record_measurement("concurrent_final")
 
             # Memory should return close to baseline after operations
-            assert final_measurement["memory_delta_mb"] < 20, (
-                f"Memory not properly cleaned up: {final_measurement['memory_delta_mb']:.2f}MB remaining"
-            )
+            assert (
+                final_measurement["memory_delta_mb"] < 20
+            ), f"Memory not properly cleaned up: {final_measurement['memory_delta_mb']:.2f}MB remaining"
 
         finally:
             leak_detector.stop_monitoring()
@@ -476,9 +480,9 @@ class TestMemoryUsagePatterns:
 
                 # Memory should scale reasonably with dataset size
                 max_expected_memory = size_mb * 3  # Allow 3x overhead for processing
-                assert measurement["memory_delta_mb"] < max_expected_memory, (
-                    f"Memory usage too high for {size_mb}MB dataset: {measurement['memory_delta_mb']:.2f}MB"
-                )
+                assert (
+                    measurement["memory_delta_mb"] < max_expected_memory
+                ), f"Memory usage too high for {size_mb}MB dataset: {measurement['memory_delta_mb']:.2f}MB"
 
                 # Memory should be mostly cleaned up after processing
                 cleanup_threshold = (
@@ -494,9 +498,9 @@ class TestMemoryUsagePatterns:
             print(f"Dataset processing memory analysis: {trend_analysis}")
 
             # Verify stable memory behavior
-            assert trend_analysis["trend_stability"] < 20, (
-                f"Dataset processing memory too unstable: {trend_analysis['trend_stability']:.2f}"
-            )
+            assert (
+                trend_analysis["trend_stability"] < 20
+            ), f"Dataset processing memory too unstable: {trend_analysis['trend_stability']:.2f}"
 
         finally:
             leak_detector.stop_monitoring()
@@ -570,15 +574,15 @@ class TestResourceCleanupValidation:
                 memory_growth = final["memory_delta_mb"] - baseline["memory_delta_mb"]
                 print(f"{service_name} service memory growth: {memory_growth:.2f}MB")
 
-                assert memory_growth < 10, (
-                    f"{service_name} service poor cleanup: {memory_growth:.2f}MB growth"
-                )
+                assert (
+                    memory_growth < 10
+                ), f"{service_name} service poor cleanup: {memory_growth:.2f}MB growth"
 
             # Check for overall object leaks
             object_leaks = leak_detector.check_object_leaks()
-            assert len(object_leaks) < 5, (
-                f"Too many object leaks: {len(object_leaks)} objects not cleaned up"
-            )
+            assert (
+                len(object_leaks) < 5
+            ), f"Too many object leaks: {len(object_leaks)} objects not cleaned up"
 
         finally:
             leak_detector.stop_monitoring()
@@ -640,18 +644,18 @@ class TestResourceCleanupValidation:
 
             # Verify async resource cleanup
             total_growth = final["memory_delta_mb"] - baseline["memory_delta_mb"]
-            assert total_growth < 15, (
-                f"Async resources not properly cleaned up: {total_growth:.2f}MB growth"
-            )
+            assert (
+                total_growth < 15
+            ), f"Async resources not properly cleaned up: {total_growth:.2f}MB growth"
 
             # Check for leaked async objects
             object_leaks = leak_detector.check_object_leaks()
             leaked_async_objects = [
                 leak for leak in object_leaks if "async" in leak["name"].lower()
             ]
-            assert len(leaked_async_objects) == 0, (
-                f"Async object leaks detected: {len(leaked_async_objects)} objects"
-            )
+            assert (
+                len(leaked_async_objects) == 0
+            ), f"Async object leaks detected: {len(leaked_async_objects)} objects"
 
         finally:
             leak_detector.stop_monitoring()

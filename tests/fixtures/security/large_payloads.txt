@@ -3,7 +3,7 @@
 # Small payload (1KB)
 SMALL_PAYLOAD="A" * 1024
 
-# Medium payload (10KB) 
+# Medium payload (10KB)
 MEDIUM_PAYLOAD="B" * 10240
 
 # Large payload (100KB)

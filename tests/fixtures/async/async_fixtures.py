@@ -34,12 +34,14 @@ class AsyncTestHarness:
     def log_operation(self, operation_type: str, details: dict[str, Any]):
         """Log an async operation for analysis."""
         self._operation_counter += 1
-        self.operations_log.append({
-            "id": self._operation_counter,
-            "type": operation_type,
-            "timestamp": time.time(),
-            "details": details,
-        })
+        self.operations_log.append(
+            {
+                "id": self._operation_counter,
+                "type": operation_type,
+                "timestamp": time.time(),
+                "details": details,
+            }
+        )
 
     def log_timing(self, operation_name: str, duration: float):
         """Log operation timing data."""
@@ -49,12 +51,14 @@ class AsyncTestHarness:
 
     def log_error(self, operation_id: str, error: Exception):
         """Log an error that occurred during testing."""
-        self.error_log.append({
-            "operation_id": operation_id,
-            "error_type": type(error).__name__,
-            "error_message": str(error),
-            "timestamp": time.time(),
-        })
+        self.error_log.append(
+            {
+                "operation_id": operation_id,
+                "error_type": type(error).__name__,
+                "error_message": str(error),
+                "timestamp": time.time(),
+            }
+        )
 
     def get_performance_summary(self) -> dict[str, Any]:
         """Get performance summary of logged operations."""
@@ -380,9 +384,9 @@ def analyze_async_performance(timing_data: dict[str, list[float]]) -> dict[str, 
             "max": max(durations),
             "p95": sorted(durations)[int(len(durations) * 0.95)] if durations else 0,
             "total": sum(durations),
-            "ops_per_second": len(durations) / sum(durations)
-            if sum(durations) > 0
-            else 0,
+            "ops_per_second": (
+                len(durations) / sum(durations) if sum(durations) > 0 else 0
+            ),
         }
 
     return analysis

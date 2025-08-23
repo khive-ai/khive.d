@@ -13,8 +13,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from khive.services.artifacts.factory import (ArtifactsConfig,
-                                              create_artifacts_service)
+from khive.services.artifacts.factory import ArtifactsConfig, create_artifacts_service
 from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.plan.planner_service import PlannerService
@@ -247,16 +246,16 @@ class TestAsyncErrorCoordination:
         )
 
         # Assertions for test validation
-        assert len(timeout_recovered_ops) > 0, (
-            "Expected some operations to timeout and recover"
-        )
-        assert len(successful_ops) > len(timeout_recovered_ops), (
-            "Majority of operations should succeed"
-        )
+        assert (
+            len(timeout_recovered_ops) > 0
+        ), "Expected some operations to timeout and recover"
+        assert len(successful_ops) > len(
+            timeout_recovered_ops
+        ), "Majority of operations should succeed"
         assert len(exception_ops) == 0, "No exceptions should propagate unhandled"
-        assert total_duration < 3.0, (
-            "Timeout handling should not significantly impact performance"
-        )
+        assert (
+            total_duration < 3.0
+        ), "Timeout handling should not significantly impact performance"
 
     @pytest.mark.asyncio
     async def test_async_coordination_failure_scenarios(
@@ -293,7 +292,7 @@ class TestAsyncErrorCoordination:
                     doc_name=f"agent_{agent_id}_deliverable",
                     doc_type=DocumentType.SCRATCHPAD,
                     content=f"""# Agent {agent_id} Deliverable
-                    
+
 ## Dependencies: {", ".join(dependencies) if dependencies else "None"}
 ## Status: ✅ Operation Successful
 ## Execution Time: {time.time() - start_time:.3f}s
@@ -319,7 +318,7 @@ Agent {agent_id} completed successfully with coordination protocol.
                     doc_name=f"agent_{agent_id}_failure_report",
                     doc_type=DocumentType.SCRATCHPAD,
                     content=f"""# Agent {agent_id} Failure Report
-                    
+
 ## Error Type: {type(e).__name__}
 ## Error Message: {e!s}
 ## Dependencies: {", ".join(dependencies) if dependencies else "None"}
@@ -441,13 +440,13 @@ Coordination protocol should handle this failure gracefully.
             len(successful_agents) + len(failed_agents) + 1
         )  # +1 for analysis report
 
-        assert len(successful_agents) > 5, (
-            "Expected significant number of successful agents"
-        )
+        assert (
+            len(successful_agents) > 5
+        ), "Expected significant number of successful agents"
         assert len(failed_agents) > 0, "Expected some agents to fail for testing"
-        assert total_docs >= expected_docs, (
-            f"Expected ≥{expected_docs} documents, got {total_docs}"
-        )
+        assert (
+            total_docs >= expected_docs
+        ), f"Expected ≥{expected_docs} documents, got {total_docs}"
 
     @pytest.mark.asyncio
     async def test_resource_exhaustion_and_backpressure(
@@ -580,13 +579,13 @@ Coordination protocol should handle this failure gracefully.
         )
 
         # Validate test results
-        assert len(successful_ops) == len(high_load_tasks), (
-            "All operations should succeed with backpressure"
-        )
+        assert len(successful_ops) == len(
+            high_load_tasks
+        ), "All operations should succeed with backpressure"
         assert executor.max_active <= 3, "Resource limit should be enforced"
-        assert len(resource_constrained_ops) > 15, (
-            "Most operations should experience backpressure"
-        )
-        assert total_test_duration > 1.0, (
-            "High load should take significant time due to backpressure"
-        )
+        assert (
+            len(resource_constrained_ops) > 15
+        ), "Most operations should experience backpressure"
+        assert (
+            total_test_duration > 1.0
+        ), "High load should take significant time due to backpressure"

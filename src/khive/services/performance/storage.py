@@ -26,7 +26,8 @@ class PerformanceDatabase:
         """Initialize database schema."""
         with self._lock:
             with sqlite3.connect(self.db_path) as conn:
-                conn.execute("""
+                conn.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS benchmark_results (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         benchmark_name TEXT NOT NULL,
@@ -55,9 +56,11 @@ class PerformanceDatabase:
                         full_data TEXT,  -- JSON serialized full result
                         created_at TEXT DEFAULT CURRENT_TIMESTAMP
                     )
-                """)
+                """
+                )
 
-                conn.execute("""
+                conn.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS benchmark_metadata (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         benchmark_result_id INTEGER,
@@ -65,18 +68,22 @@ class PerformanceDatabase:
                         value TEXT,
                         FOREIGN KEY (benchmark_result_id) REFERENCES benchmark_results (id)
                     )
-                """)
+                """
+                )
 
-                conn.execute("""
+                conn.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS benchmark_tags (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         benchmark_result_id INTEGER,
                         tag TEXT NOT NULL,
                         FOREIGN KEY (benchmark_result_id) REFERENCES benchmark_results (id)
                     )
-                """)
+                """
+                )
 
-                conn.execute("""
+                conn.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS environment_info (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         benchmark_result_id INTEGER,
@@ -84,28 +91,37 @@ class PerformanceDatabase:
                         value TEXT,
                         FOREIGN KEY (benchmark_result_id) REFERENCES benchmark_results (id)
                     )
-                """)
+                """
+                )
 
                 # Create indexes for better query performance
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_benchmark_name 
+                conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_benchmark_name
                     ON benchmark_results (benchmark_name)
-                """)
+                """
+                )
 
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_operation_type 
+                conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_operation_type
                     ON benchmark_results (operation_type)
-                """)
+                """
+                )
 
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_timestamp 
+                conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_timestamp
                     ON benchmark_results (timestamp)
-                """)
+                """
+                )
 
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_benchmark_operation 
+                conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_benchmark_operation
                     ON benchmark_results (benchmark_name, operation_type)
-                """)
+                """
+                )
 
     def store_result(self, result: BenchmarkResult) -> int:
         """Store a benchmark result and return the ID."""
@@ -198,7 +214,7 @@ class PerformanceDatabase:
         """Retrieve benchmark results with filtering."""
 
         query = """
-            SELECT DISTINCT br.full_data 
+            SELECT DISTINCT br.full_data
             FROM benchmark_results br
         """
 
@@ -270,7 +286,7 @@ class PerformanceDatabase:
         """Get performance summary statistics."""
 
         query = """
-            SELECT 
+            SELECT
                 benchmark_name,
                 operation_type,
                 COUNT(*) as result_count,
@@ -339,7 +355,7 @@ class PerformanceDatabase:
                     # Delete related records
                     conn.execute(
                         f"""
-                        DELETE FROM benchmark_metadata 
+                        DELETE FROM benchmark_metadata
                         WHERE benchmark_result_id IN ({id_placeholders})
                     """,
                         old_ids,
@@ -347,7 +363,7 @@ class PerformanceDatabase:
 
                     conn.execute(
                         f"""
-                        DELETE FROM benchmark_tags 
+                        DELETE FROM benchmark_tags
                         WHERE benchmark_result_id IN ({id_placeholders})
                     """,
                         old_ids,
@@ -355,7 +371,7 @@ class PerformanceDatabase:
 
                     conn.execute(
                         f"""
-                        DELETE FROM environment_info 
+                        DELETE FROM environment_info
                         WHERE benchmark_result_id IN ({id_placeholders})
                     """,
                         old_ids,
@@ -364,7 +380,7 @@ class PerformanceDatabase:
                     # Delete main records
                     conn.execute(
                         f"""
-                        DELETE FROM benchmark_results 
+                        DELETE FROM benchmark_results
                         WHERE id IN ({id_placeholders})
                     """,
                         old_ids,

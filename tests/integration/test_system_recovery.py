@@ -18,8 +18,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from khive.services.artifacts.factory import (ArtifactsConfig,
-                                              create_artifacts_service)
+from khive.services.artifacts.factory import ArtifactsConfig, create_artifacts_service
 from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.orchestration.orchestrator import LionOrchestrator
@@ -319,7 +318,7 @@ class TestSystemResilience:
 
 ## Recovery Capabilities:
 - Automatic retry on transient failures
-- Circuit breaker protection for persistent failures  
+- Circuit breaker protection for persistent failures
 - Graceful fallback behavior implemented
 - Service health monitoring functional
 
@@ -373,9 +372,9 @@ class TestSystemResilience:
                     }
 
             # Calculate overall operation success
-            successful_components = len([
-                r for r in results.values() if r["status"] == "success"
-            ])
+            successful_components = len(
+                [r for r in results.values() if r["status"] == "success"]
+            )
             total_components = len(components)
             success_rate = successful_components / total_components
 
@@ -541,7 +540,7 @@ class TestSystemResilience:
 ## Isolation Test Results:
 - Total services tested: {len(services)}
 - Successful operations: {len(successful_services)}
-- Isolated failures: {len(isolated_failures)}  
+- Isolated failures: {len(isolated_failures)}
 - Boundary activations: {len(boundary_activations)}
 - Isolation success rate: {
                 len(boundary_activations) / len(isolated_failures) * 100:.1f}%
@@ -561,7 +560,7 @@ class TestSystemResilience:
 
 ## Error Boundary Effectiveness:
 ✅ Failed services properly isolated
-✅ Successful services unaffected by failures  
+✅ Successful services unaffected by failures
 ✅ No cascade failures observed
 ✅ Error boundaries activated appropriately
 ✅ System stability maintained
@@ -717,7 +716,7 @@ class TestSystemResilience:
 
 ## Recovery Protocol Validation:
 - Failure detection: ✅ Multiple failure points identified
-- Damage assessment: ✅ System impact quantified  
+- Damage assessment: ✅ System impact quantified
 - Isolation activation: ✅ Error boundaries engaged
 - Recovery initiation: ✅ Systematic restoration begun
 - Service restoration: ✅ Priority-based recovery executed
@@ -813,16 +812,18 @@ class TestSystemResilience:
                 else 0
             )
 
-            degradation_results.append({
-                "load_level": load_config["name"],
-                "concurrent_operations": load_config["concurrent_ops"],
-                "successful_operations": len(successful_ops),
-                "failed_operations": len(failed_ops),
-                "success_rate": len(successful_ops) / len(load_results),
-                "total_duration": load_duration,
-                "average_processing_time": avg_processing_time,
-                "throughput": len(successful_ops) / load_duration,
-            })
+            degradation_results.append(
+                {
+                    "load_level": load_config["name"],
+                    "concurrent_operations": load_config["concurrent_ops"],
+                    "successful_operations": len(successful_ops),
+                    "failed_operations": len(failed_ops),
+                    "success_rate": len(successful_ops) / len(load_results),
+                    "total_duration": load_duration,
+                    "average_processing_time": avg_processing_time,
+                    "throughput": len(successful_ops) / load_duration,
+                }
+            )
 
         # Create graceful degradation analysis
         degradation_analyst = Author(id="degradation_analyst", role="analyst")
@@ -847,7 +848,7 @@ class TestSystemResilience:
 
 ## Degradation Analysis:
 - Normal load success rate: {degradation_results[0]["success_rate"] * 100:.1f}%
-- High load success rate: {degradation_results[1]["success_rate"] * 100:.1f}%  
+- High load success rate: {degradation_results[1]["success_rate"] * 100:.1f}%
 - Extreme load success rate: {degradation_results[2]["success_rate"] * 100:.1f}%
 
 ## System Behavior Under Stress:

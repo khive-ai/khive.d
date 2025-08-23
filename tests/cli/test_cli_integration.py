@@ -9,8 +9,6 @@ Tests for end-to-end khive CLI workflows including:
 """
 
 import json
-import tempfile
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -77,7 +75,6 @@ class TestRealCommandIntegration:
 
 class TestConfigurationWorkflows:
     """Test configuration loading and merging workflows."""
-
 
 
 class TestJSONOutputFormatting:
@@ -570,18 +567,22 @@ class TestCrossCommandIntegration:
                 for stage_name, stage_func in self.pipeline_stages:
                     try:
                         stage_result = stage_func(current_data)
-                        results.append({
-                            "stage": stage_name,
-                            "status": "success",
-                            "result": stage_result,
-                        })
+                        results.append(
+                            {
+                                "stage": stage_name,
+                                "status": "success",
+                                "result": stage_result,
+                            }
+                        )
                         current_data = stage_result  # Output becomes next input
                     except Exception as e:
-                        results.append({
-                            "stage": stage_name,
-                            "status": "error",
-                            "error": str(e),
-                        })
+                        results.append(
+                            {
+                                "stage": stage_name,
+                                "status": "error",
+                                "error": str(e),
+                            }
+                        )
                         break
 
                 return {"pipeline_results": results, "final_data": current_data}

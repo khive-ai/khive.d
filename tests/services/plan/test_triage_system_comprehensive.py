@@ -9,7 +9,10 @@ from pydantic import ValidationError
 from khive.services.plan.models import OrchestrationEvaluation
 from khive.services.plan.planner_service import PlannerService
 from khive.services.plan.triage.complexity_triage import (
-    ComplexityTriageService, TriageConsensus, TriageRecord)
+    ComplexityTriageService,
+    TriageConsensus,
+    TriageRecord,
+)
 
 
 @pytest.mark.unit
@@ -125,25 +128,29 @@ class TestComplexityTriageService:
         """Test that different perspectives give expected results."""
         mock_response_proceed = MagicMock()
         mock_response_proceed.choices = [MagicMock()]
-        mock_response_proceed.choices[0].message.content = json.dumps({
-            "decision": "proceed",
-            "confidence": 0.9,
-            "reasoning": "Simple implementation task",
-            "recommended_agents": 2,
-            "suggested_roles": ["implementer", "tester"],
-            "suggested_domains": ["api-design"],
-        })
+        mock_response_proceed.choices[0].message.content = json.dumps(
+            {
+                "decision": "proceed",
+                "confidence": 0.9,
+                "reasoning": "Simple implementation task",
+                "recommended_agents": 2,
+                "suggested_roles": ["implementer", "tester"],
+                "suggested_domains": ["api-design"],
+            }
+        )
 
         mock_response_escalate = MagicMock()
         mock_response_escalate.choices = [MagicMock()]
-        mock_response_escalate.choices[0].message.content = json.dumps({
-            "decision": "escalate",
-            "confidence": 0.8,
-            "reasoning": "Requires research and analysis",
-            "recommended_agents": 0,
-            "suggested_roles": [],
-            "suggested_domains": [],
-        })
+        mock_response_escalate.choices[0].message.content = json.dumps(
+            {
+                "decision": "escalate",
+                "confidence": 0.8,
+                "reasoning": "Requires research and analysis",
+                "recommended_agents": 0,
+                "suggested_roles": [],
+                "suggested_domains": [],
+            }
+        )
 
         # Test efficiency perspective (tends to proceed on simple tasks)
         mock_triage_service.client.chat.completions.create = AsyncMock(
@@ -386,10 +393,12 @@ class TestComplexityTriageService:
 
         # Invalid decision
         with pytest.raises(ValidationError):
-            mock_triage_service.TriageVote(**{
-                **valid_vote_data,
-                "decision": "invalid_decision",
-            })
+            mock_triage_service.TriageVote(
+                **{
+                    **valid_vote_data,
+                    "decision": "invalid_decision",
+                }
+            )
 
         # Invalid confidence range
         with pytest.raises(ValidationError):
@@ -397,10 +406,12 @@ class TestComplexityTriageService:
 
         # Invalid agent count
         with pytest.raises(ValidationError):
-            mock_triage_service.TriageVote(**{
-                **valid_vote_data,
-                "recommended_agents": 15,
-            })
+            mock_triage_service.TriageVote(
+                **{
+                    **valid_vote_data,
+                    "recommended_agents": 15,
+                }
+            )
 
 
 @pytest.mark.unit
@@ -633,14 +644,16 @@ class TestTriageSystemEnd2End:
             # Mock the OpenAI API calls to return proceed decisions
             mock_response = MagicMock()
             mock_response.choices = [MagicMock()]
-            mock_response.choices[0].message.content = json.dumps({
-                "decision": "proceed",
-                "confidence": 0.9,
-                "reasoning": "Simple CRUD task",
-                "recommended_agents": 2,
-                "suggested_roles": ["implementer"],
-                "suggested_domains": ["api-design"],
-            })
+            mock_response.choices[0].message.content = json.dumps(
+                {
+                    "decision": "proceed",
+                    "confidence": 0.9,
+                    "reasoning": "Simple CRUD task",
+                    "recommended_agents": 2,
+                    "suggested_roles": ["implementer"],
+                    "suggested_domains": ["api-design"],
+                }
+            )
 
             triage_service.client.chat.completions.create = AsyncMock(
                 return_value=mock_response
@@ -670,14 +683,16 @@ class TestTriageSystemEnd2End:
             # Mock the OpenAI API calls to return escalate decisions
             mock_response = MagicMock()
             mock_response.choices = [MagicMock()]
-            mock_response.choices[0].message.content = json.dumps({
-                "decision": "escalate",
-                "confidence": 0.8,
-                "reasoning": "Research and novel algorithms required",
-                "recommended_agents": 0,
-                "suggested_roles": [],
-                "suggested_domains": [],
-            })
+            mock_response.choices[0].message.content = json.dumps(
+                {
+                    "decision": "escalate",
+                    "confidence": 0.8,
+                    "reasoning": "Research and novel algorithms required",
+                    "recommended_agents": 0,
+                    "suggested_roles": [],
+                    "suggested_domains": [],
+                }
+            )
 
             triage_service.client.chat.completions.create = AsyncMock(
                 return_value=mock_response
@@ -705,30 +720,36 @@ class TestTriageSystemEnd2End:
 
             # Test 2 escalate, 1 proceed -> should escalate
             votes = [
-                json.dumps({
-                    "decision": "escalate",
-                    "confidence": 0.8,
-                    "reasoning": "Complex scope",
-                    "recommended_agents": 0,
-                    "suggested_roles": [],
-                    "suggested_domains": [],
-                }),
-                json.dumps({
-                    "decision": "escalate",
-                    "confidence": 0.7,
-                    "reasoning": "Multiple unknowns",
-                    "recommended_agents": 0,
-                    "suggested_roles": [],
-                    "suggested_domains": [],
-                }),
-                json.dumps({
-                    "decision": "proceed",
-                    "confidence": 0.9,
-                    "reasoning": "Might be simple",
-                    "recommended_agents": 3,
-                    "suggested_roles": ["implementer"],
-                    "suggested_domains": ["api-design"],
-                }),
+                json.dumps(
+                    {
+                        "decision": "escalate",
+                        "confidence": 0.8,
+                        "reasoning": "Complex scope",
+                        "recommended_agents": 0,
+                        "suggested_roles": [],
+                        "suggested_domains": [],
+                    }
+                ),
+                json.dumps(
+                    {
+                        "decision": "escalate",
+                        "confidence": 0.7,
+                        "reasoning": "Multiple unknowns",
+                        "recommended_agents": 0,
+                        "suggested_roles": [],
+                        "suggested_domains": [],
+                    }
+                ),
+                json.dumps(
+                    {
+                        "decision": "proceed",
+                        "confidence": 0.9,
+                        "reasoning": "Might be simple",
+                        "recommended_agents": 3,
+                        "suggested_roles": ["implementer"],
+                        "suggested_domains": ["api-design"],
+                    }
+                ),
             ]
 
             responses = []

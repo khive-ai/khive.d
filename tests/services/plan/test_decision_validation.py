@@ -15,10 +15,15 @@ import pytest
 
 from khive.services.plan.models import OrchestrationEvaluation
 from khive.services.plan.parts import ComplexityLevel
-from khive.services.plan.planner_service import (ComplexityTier,
-                                                 OrchestrationPlanner, Request)
+from khive.services.plan.planner_service import (
+    ComplexityTier,
+    OrchestrationPlanner,
+    Request,
+)
 from khive.services.plan.triage.complexity_triage import (
-    ComplexityTriageService, TriageConsensus)
+    ComplexityTriageService,
+    TriageConsensus,
+)
 
 
 @dataclass
@@ -80,27 +85,31 @@ class DecisionValidationFramework:
 
                 confidence_scores.append(confidence)
 
-                self.decision_log.append({
-                    "scenario": test_case.scenario,
-                    "correct": is_correct,
-                    "decision": decision,
-                    "expected": test_case.expected_decision,
-                    "confidence": confidence,
-                    "rationale": test_case.decision_rationale,
-                })
+                self.decision_log.append(
+                    {
+                        "scenario": test_case.scenario,
+                        "correct": is_correct,
+                        "decision": decision,
+                        "expected": test_case.expected_decision,
+                        "confidence": confidence,
+                        "rationale": test_case.decision_rationale,
+                    }
+                )
 
             except Exception as e:
-                self.decision_log.append({
-                    "scenario": test_case.scenario,
-                    "correct": False,
-                    "error": str(e),
-                })
+                self.decision_log.append(
+                    {
+                        "scenario": test_case.scenario,
+                        "correct": False,
+                        "error": str(e),
+                    }
+                )
 
         return {
             "accuracy": correct_decisions / len(test_cases) if test_cases else 0,
-            "avg_confidence": statistics.mean(confidence_scores)
-            if confidence_scores
-            else 0,
+            "avg_confidence": (
+                statistics.mean(confidence_scores) if confidence_scores else 0
+            ),
             "total_cases": len(test_cases),
             "correct_decisions": correct_decisions,
         }
@@ -134,26 +143,30 @@ class DecisionValidationFramework:
                 deviation = abs(score - center) / (max_score - min_score)
                 score_deviations.append(deviation)
 
-                self.scoring_log.append({
-                    "test_name": test_case.name,
-                    "score": score,
-                    "expected_range": test_case.expected_score_range,
-                    "valid": is_valid,
-                    "deviation": deviation,
-                })
+                self.scoring_log.append(
+                    {
+                        "test_name": test_case.name,
+                        "score": score,
+                        "expected_range": test_case.expected_score_range,
+                        "valid": is_valid,
+                        "deviation": deviation,
+                    }
+                )
 
             except Exception as e:
-                self.scoring_log.append({
-                    "test_name": test_case.name,
-                    "error": str(e),
-                    "valid": False,
-                })
+                self.scoring_log.append(
+                    {
+                        "test_name": test_case.name,
+                        "error": str(e),
+                        "valid": False,
+                    }
+                )
 
         return {
             "accuracy": valid_scores / len(test_cases) if test_cases else 0,
-            "avg_deviation": statistics.mean(score_deviations)
-            if score_deviations
-            else 1.0,
+            "avg_deviation": (
+                statistics.mean(score_deviations) if score_deviations else 1.0
+            ),
             "total_cases": len(test_cases),
             "valid_scores": valid_scores,
         }
@@ -480,12 +493,12 @@ class TestComplexityDecisionValidation:
         )
 
         # Validate decision accuracy
-        assert results["accuracy"] >= 0.8, (
-            f"Complexity decision accuracy too low: {results['accuracy']}"
-        )
-        assert results["avg_confidence"] >= 0.7, (
-            f"Low confidence in complexity decisions: {results['avg_confidence']}"
-        )
+        assert (
+            results["accuracy"] >= 0.8
+        ), f"Complexity decision accuracy too low: {results['accuracy']}"
+        assert (
+            results["avg_confidence"] >= 0.7
+        ), f"Low confidence in complexity decisions: {results['avg_confidence']}"
 
         # Check specific boundary cases handled correctly
         boundary_cases = [
@@ -498,9 +511,9 @@ class TestComplexityDecisionValidation:
         boundary_accuracy = sum(1 for case in boundary_cases if case["correct"]) / len(
             boundary_cases
         )
-        assert boundary_accuracy >= 0.6, (
-            f"Boundary case accuracy too low: {boundary_accuracy}"
-        )
+        assert (
+            boundary_accuracy >= 0.6
+        ), f"Boundary case accuracy too low: {boundary_accuracy}"
 
     def test_complexity_indicator_weight_validation(self, mock_decision_planner):
         """Test that complexity indicators have appropriate weights."""
@@ -518,17 +531,17 @@ class TestComplexityDecisionValidation:
             request = Request(request_text)
             actual_tier = mock_decision_planner.assess(request)
 
-            assert actual_tier == expected_tier, (
-                f"Indicator weight hierarchy broken: '{request_text}' -> {actual_tier}, expected {expected_tier}"
-            )
+            assert (
+                actual_tier == expected_tier
+            ), f"Indicator weight hierarchy broken: '{request_text}' -> {actual_tier}, expected {expected_tier}"
 
             # Ensure complexity doesn't decrease in hierarchy
             if previous_complexity is not None:
                 assert mock_decision_planner._tier_rank(
                     actual_tier.value
-                ) >= mock_decision_planner._tier_rank(previous_complexity.value), (
-                    "Complexity hierarchy violated"
-                )
+                ) >= mock_decision_planner._tier_rank(
+                    previous_complexity.value
+                ), "Complexity hierarchy violated"
 
             previous_complexity = actual_tier
 
@@ -559,17 +572,17 @@ class TestAgentCountDecisionValidation:
         )
 
         # Validate agent count decisions
-        assert results["accuracy"] >= 0.7, (
-            f"Agent count decision accuracy too low: {results['accuracy']}"
-        )
+        assert (
+            results["accuracy"] >= 0.7
+        ), f"Agent count decision accuracy too low: {results['accuracy']}"
 
         # Verify efficiency cliff is respected
         for log_entry in decision_framework.decision_log:
             if isinstance(log_entry.get("decision"), int):
                 agent_count = log_entry["decision"]
-                assert agent_count <= 12, (
-                    f"Agent count {agent_count} exceeds efficiency cliff"
-                )
+                assert (
+                    agent_count <= 12
+                ), f"Agent count {agent_count} exceeds efficiency cliff"
 
     def test_agent_count_scaling_logic(self, mock_decision_planner):
         """Test agent count scaling with complexity."""
@@ -588,9 +601,9 @@ class TestAgentCountDecisionValidation:
             actual_count = len(roles)
 
             # Validate range
-            assert min_count <= actual_count <= max_count, (
-                f"Agent count {actual_count} outside range [{min_count}, {max_count}] for {complexity}"
-            )
+            assert (
+                min_count <= actual_count <= max_count
+            ), f"Agent count {actual_count} outside range [{min_count}, {max_count}] for {complexity}"
 
             # Ensure scaling increases (or stays same)
             assert (
@@ -626,12 +639,12 @@ class TestScoringMechanismValidation:
             complexity_scoring_func, complexity_cases
         )
 
-        assert results["accuracy"] >= 0.8, (
-            f"Complexity scoring accuracy too low: {results['accuracy']}"
-        )
-        assert results["avg_deviation"] <= 0.3, (
-            f"High scoring deviation: {results['avg_deviation']}"
-        )
+        assert (
+            results["accuracy"] >= 0.8
+        ), f"Complexity scoring accuracy too low: {results['accuracy']}"
+        assert (
+            results["avg_deviation"] <= 0.3
+        ), f"High scoring deviation: {results['avg_deviation']}"
 
     def test_consensus_scoring_algorithm(
         self, decision_framework, scoring_mechanism_cases
@@ -659,9 +672,9 @@ class TestScoringMechanismValidation:
             consensus_scoring_func, consensus_cases
         )
 
-        assert results["accuracy"] >= 0.7, (
-            f"Consensus scoring accuracy too low: {results['accuracy']}"
-        )
+        assert (
+            results["accuracy"] >= 0.7
+        ), f"Consensus scoring accuracy too low: {results['accuracy']}"
 
     def test_role_priority_scoring_algorithm(self, mock_decision_planner):
         """Test role priority scoring logic."""
@@ -731,9 +744,9 @@ class TestScoringMechanismValidation:
 
         # implementer should score higher than researcher (appears in more evaluations)
         if implementer_score is not None and researcher_score is not None:
-            assert implementer_score >= researcher_score, (
-                f"Role scoring logic error: implementer ({implementer_score}) < researcher ({researcher_score})"
-            )
+            assert (
+                implementer_score >= researcher_score
+            ), f"Role scoring logic error: implementer ({implementer_score}) < researcher ({researcher_score})"
 
 
 @pytest.mark.unit
@@ -780,26 +793,28 @@ class TestConsensusDecisionValidation:
             # Create mock evaluations
             mock_evaluations = []
             for i, (complexity, reason) in enumerate(scenario["evaluations"]):
-                mock_evaluations.append({
-                    "config": {"name": f"agent_{i}"},
-                    "evaluation": OrchestrationEvaluation(
-                        complexity=complexity,
-                        complexity_reason=reason,
-                        total_agents=4,
-                        agent_reason="Standard team",
-                        rounds_needed=2,
-                        role_priorities=["researcher", "implementer"],
-                        primary_domains=["software-architecture"],
-                        domain_reason="Architecture focus",
-                        workflow_pattern="parallel",
-                        workflow_reason="Independent work",
-                        quality_level="thorough",
-                        quality_reason="Standard validation",
-                        rules_applied=["rule1"],
-                        confidence=0.8,
-                        summary=f"Test evaluation {i}",
-                    ),
-                })
+                mock_evaluations.append(
+                    {
+                        "config": {"name": f"agent_{i}"},
+                        "evaluation": OrchestrationEvaluation(
+                            complexity=complexity,
+                            complexity_reason=reason,
+                            total_agents=4,
+                            agent_reason="Standard team",
+                            rounds_needed=2,
+                            role_priorities=["researcher", "implementer"],
+                            primary_domains=["software-architecture"],
+                            domain_reason="Architecture focus",
+                            workflow_pattern="parallel",
+                            workflow_reason="Independent work",
+                            quality_level="thorough",
+                            quality_reason="Standard validation",
+                            rules_applied=["rule1"],
+                            confidence=0.8,
+                            summary=f"Test evaluation {i}",
+                        ),
+                    }
+                )
 
             # Build consensus
             consensus_output, consensus_data = mock_decision_planner.build_consensus(
@@ -809,9 +824,9 @@ class TestConsensusDecisionValidation:
             actual_consensus = consensus_data.get("complexity")
             expected_consensus = scenario["expected_consensus"]
 
-            assert actual_consensus == expected_consensus, (
-                f"Consensus error in {scenario['name']}: got {actual_consensus}, expected {expected_consensus}"
-            )
+            assert (
+                actual_consensus == expected_consensus
+            ), f"Consensus error in {scenario['name']}: got {actual_consensus}, expected {expected_consensus}"
 
     def test_consensus_confidence_weighting(self, mock_decision_planner):
         """Test confidence weighting in consensus decisions."""
@@ -869,15 +884,16 @@ class TestConsensusDecisionValidation:
         actual_complexity = consensus_data.get("complexity")
 
         # Should lean toward the high-confidence agent's assessment
-        assert actual_complexity in ["complex", "medium"], (
-            "Consensus outside expected range"
-        )
+        assert actual_complexity in [
+            "complex",
+            "medium",
+        ], "Consensus outside expected range"
 
         # Check that confidence is properly weighted
         final_confidence = consensus_data.get("confidence", 0)
-        assert 0.4 < final_confidence < 0.95, (
-            f"Confidence weighting error: {final_confidence}"
-        )
+        assert (
+            0.4 < final_confidence < 0.95
+        ), f"Confidence weighting error: {final_confidence}"
 
 
 @pytest.mark.integration
@@ -965,13 +981,13 @@ class TestDecisionIntegration:
 
                 # Validate integrated decisions
                 assert response.success == True, "Integration decision flow failed"
-                assert response.complexity == ComplexityLevel.COMPLEX, (
-                    "Complexity decision not propagated"
-                )
+                assert (
+                    response.complexity == ComplexityLevel.COMPLEX
+                ), "Complexity decision not propagated"
                 assert response.confidence >= 0.7, "Confidence not properly integrated"
-                assert response.recommended_agents >= 6, (
-                    "Agent count decision not integrated"
-                )
+                assert (
+                    response.recommended_agents >= 6
+                ), "Agent count decision not integrated"
 
 
 if __name__ == "__main__":

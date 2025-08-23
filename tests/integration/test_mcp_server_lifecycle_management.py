@@ -225,18 +225,24 @@ class MCPServerLifecycleManager:
                 cpu_percent = (time.time() % 5) * 20  # 0-100%
                 file_handles = 10 + int(time.time() % 5)  # 10-15 handles
 
-                monitor_data["memory_usage"].append({
-                    "timestamp": time.time(),
-                    "memory_mb": memory_mb,
-                })
-                monitor_data["cpu_usage"].append({
-                    "timestamp": time.time(),
-                    "cpu_percent": cpu_percent,
-                })
-                monitor_data["file_handles"].append({
-                    "timestamp": time.time(),
-                    "handles": file_handles,
-                })
+                monitor_data["memory_usage"].append(
+                    {
+                        "timestamp": time.time(),
+                        "memory_mb": memory_mb,
+                    }
+                )
+                monitor_data["cpu_usage"].append(
+                    {
+                        "timestamp": time.time(),
+                        "cpu_percent": cpu_percent,
+                    }
+                )
+                monitor_data["file_handles"].append(
+                    {
+                        "timestamp": time.time(),
+                        "handles": file_handles,
+                    }
+                )
 
                 time.sleep(1)  # Sample every second
 

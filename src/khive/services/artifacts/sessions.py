@@ -9,8 +9,12 @@ import logging
 import re
 from pathlib import Path
 
-from .exceptions import (SessionAlreadyExists, SessionNotFound, StorageError,
-                         ValidationError)
+from .exceptions import (
+    SessionAlreadyExists,
+    SessionNotFound,
+    StorageError,
+    ValidationError,
+)
 from .models import DocumentType, Session, SessionStatus
 
 logger = logging.getLogger(__name__)

@@ -20,8 +20,11 @@ import pytest
 from lionagi.fields import Instruct
 
 from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.orchestration.parts import (AgentRequest, ComposerRequest,
-                                                OrchestrationPlan)
+from khive.services.orchestration.parts import (
+    AgentRequest,
+    ComposerRequest,
+    OrchestrationPlan,
+)
 
 
 class SecurityTestMonitor:
@@ -37,29 +40,35 @@ class SecurityTestMonitor:
         self.cleanup_failures = []
 
     def record_race_condition(self, condition_type, details):
-        self.race_conditions_detected.append({
-            "type": condition_type,
-            "details": details,
-            "timestamp": time.time(),
-        })
+        self.race_conditions_detected.append(
+            {
+                "type": condition_type,
+                "details": details,
+                "timestamp": time.time(),
+            }
+        )
 
     def record_resource_peak(self, resource_type, value):
         if value > self.resource_usage_peaks[resource_type]:
             self.resource_usage_peaks[resource_type] = value
 
     def record_security_violation(self, violation_type, details):
-        self.security_violations.append({
-            "type": violation_type,
-            "details": details,
-            "timestamp": time.time(),
-        })
+        self.security_violations.append(
+            {
+                "type": violation_type,
+                "details": details,
+                "timestamp": time.time(),
+            }
+        )
 
     def record_cleanup_failure(self, failure_type, details):
-        self.cleanup_failures.append({
-            "type": failure_type,
-            "details": details,
-            "timestamp": time.time(),
-        })
+        self.cleanup_failures.append(
+            {
+                "type": failure_type,
+                "details": details,
+                "timestamp": time.time(),
+            }
+        )
 
 
 @pytest.fixture
@@ -154,12 +163,14 @@ class SensitiveDataTracker:
 
     def create_sensitive_data(self, data_id, data_type="secret"):
         """Track creation of sensitive data."""
-        self.sensitive_data_created.append({
-            "id": data_id,
-            "type": data_type,
-            "created_at": time.time(),
-            "cleaned_up": False,
-        })
+        self.sensitive_data_created.append(
+            {
+                "id": data_id,
+                "type": data_type,
+                "created_at": time.time(),
+                "cleaned_up": False,
+            }
+        )
         return data_id
 
     def verify_cleanup(self, data_id):
@@ -172,11 +183,13 @@ class SensitiveDataTracker:
 
     def detect_data_leak(self, data_id, leak_context):
         """Record detection of data leak."""
-        self.data_leaks_detected.append({
-            "data_id": data_id,
-            "context": leak_context,
-            "detected_at": time.time(),
-        })
+        self.data_leaks_detected.append(
+            {
+                "data_id": data_id,
+                "context": leak_context,
+                "detected_at": time.time(),
+            }
+        )
 
     def get_unprotected_data(self):
         """Get list of data that wasn't properly cleaned up."""

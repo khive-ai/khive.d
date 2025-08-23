@@ -16,8 +16,11 @@ from lionagi.service.imodel import iModel
 
 from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.orchestration.parts import (AgentRequest, FanoutResponse,
-                                                OrchestrationPlan)
+from khive.services.orchestration.parts import (
+    AgentRequest,
+    FanoutResponse,
+    OrchestrationPlan,
+)
 
 
 @pytest.fixture

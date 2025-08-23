@@ -290,9 +290,9 @@ class TestErrorHandlingSecurityValidation:
         # The error message should not contain the malicious content
         dangerous_content = ["../../../", "<script>", "secret/file"]
         for content in dangerous_content:
-            assert content not in error_str, (
-                f"Error message contains malicious content: {content}"
-            )
+            assert (
+                content not in error_str
+            ), f"Error message contains malicious content: {content}"
 
 
 # Performance and Load Testing
@@ -339,6 +339,6 @@ class TestSecurityPerformance:
         performance_ratio = (
             attack_time / normal_time if normal_time > 0 else float("inf")
         )
-        assert performance_ratio < 3.0, (
-            f"Security validation too slow: {performance_ratio:.2f}x"
-        )
+        assert (
+            performance_ratio < 3.0
+        ), f"Security validation too slow: {performance_ratio:.2f}x"

@@ -18,8 +18,13 @@ except ImportError:
     px = None
     make_subplots = None
 
-from .analysis import (BottleneckIdentifier, PerformanceAnalyzer,
-                       RegressionDetector, TrendAnalyzer, TrendDirection)
+from .analysis import (
+    BottleneckIdentifier,
+    PerformanceAnalyzer,
+    RegressionDetector,
+    TrendAnalyzer,
+    TrendDirection,
+)
 from .benchmark_framework import BenchmarkResult
 from .storage import BenchmarkStorage
 
@@ -611,20 +616,24 @@ class DashboardGenerator:
                 title=f"{benchmark_name} - {op_type} Timeline",
             )
             if timeline_chart:
-                charts.append({
-                    "title": f"{op_type} Performance Timeline",
-                    "content": timeline_chart,
-                })
+                charts.append(
+                    {
+                        "title": f"{op_type} Performance Timeline",
+                        "content": timeline_chart,
+                    }
+                )
 
         # Resource utilization dashboard
         resource_dashboard = self.visualizer.create_resource_utilization_dashboard(
             benchmark_name=benchmark_name, days_back=days_back
         )
         if resource_dashboard:
-            charts.append({
-                "title": "Resource Utilization",
-                "content": resource_dashboard,
-            })
+            charts.append(
+                {
+                    "title": "Resource Utilization",
+                    "content": resource_dashboard,
+                }
+            )
 
         # Bottleneck analysis
         bottleneck_chart = self.visualizer.create_bottleneck_analysis_chart(
@@ -642,10 +651,12 @@ class DashboardGenerator:
                 days_back=days_back,
             )
             if regression_chart:
-                charts.append({
-                    "title": f"{op_type} Regression Analysis",
-                    "content": regression_chart,
-                })
+                charts.append(
+                    {
+                        "title": f"{op_type} Regression Analysis",
+                        "content": regression_chart,
+                    }
+                )
 
         # Generate summary statistics
         summary = self._generate_summary_stats(benchmark_name, days_back)
@@ -692,10 +703,12 @@ class DashboardGenerator:
             chart_type="box",
         )
         if comparison_chart:
-            charts.append({
-                "title": "Performance Comparison Across Benchmarks",
-                "content": comparison_chart,
-            })
+            charts.append(
+                {
+                    "title": "Performance Comparison Across Benchmarks",
+                    "content": comparison_chart,
+                }
+            )
 
         # System-wide bottleneck analysis
         all_bottlenecks = []
@@ -712,10 +725,12 @@ class DashboardGenerator:
                 all_bottlenecks
             )
             if bottleneck_summary_chart:
-                charts.append({
-                    "title": "System-wide Bottleneck Summary",
-                    "content": bottleneck_summary_chart,
-                })
+                charts.append(
+                    {
+                        "title": "System-wide Bottleneck Summary",
+                        "content": bottleneck_summary_chart,
+                    }
+                )
 
         # Generate system summary
         system_summary = self._generate_system_summary(all_results, all_bottlenecks)
@@ -791,15 +806,15 @@ class DashboardGenerator:
                 <h1>{title}</h1>
                 <p>Generated on {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
             </div>
-            
+
             <div class="summary" id="summary-section">
                 <!-- Summary will be inserted here -->
             </div>
-            
+
             <div id="charts-section">
                 <!-- Charts will be inserted here -->
             </div>
-            
+
             <div class="footer">
                 <p>Khive Performance Monitoring Dashboard</p>
             </div>
@@ -895,21 +910,23 @@ class DashboardGenerator:
             "total_benchmarks": len(benchmark_names),
             "total_operation_types": len(operation_types),
             "total_test_runs": len(all_results),
-            "avg_system_duration_ms": statistics.mean(all_durations) * 1000
-            if all_durations
-            else 0,
-            "system_success_rate": statistics.mean(all_success_rates) * 100
-            if all_success_rates
-            else 0,
+            "avg_system_duration_ms": (
+                statistics.mean(all_durations) * 1000 if all_durations else 0
+            ),
+            "system_success_rate": (
+                statistics.mean(all_success_rates) * 100 if all_success_rates else 0
+            ),
             "avg_system_memory_mb": statistics.mean(all_memory) if all_memory else 0,
             "avg_system_cpu_percent": statistics.mean(all_cpu) if all_cpu else 0,
             "bottleneck_summary": bottleneck_counts,
             "date_range": (
-                min(r.timestamp for r in all_results),
-                max(r.timestamp for r in all_results),
-            )
-            if all_results
-            else None,
+                (
+                    min(r.timestamp for r in all_results),
+                    max(r.timestamp for r in all_results),
+                )
+                if all_results
+                else None
+            ),
         }
 
     def _create_system_bottleneck_chart(self, all_bottlenecks: list) -> str | None:

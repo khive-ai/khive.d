@@ -5,9 +5,14 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from khive.services.plan.models import OrchestrationEvaluation
-from khive.services.plan.parts import (AgentRecommendation, ComplexityLevel,
-                                       PlannerRequest, QualityGate, TaskPhase,
-                                       WorkflowPattern)
+from khive.services.plan.parts import (
+    AgentRecommendation,
+    ComplexityLevel,
+    PlannerRequest,
+    QualityGate,
+    TaskPhase,
+    WorkflowPattern,
+)
 from khive.services.plan.planner_service import ComplexityTier, Request
 
 

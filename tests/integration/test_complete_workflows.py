@@ -15,8 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from khive.services.artifacts.factory import (ArtifactsConfig,
-                                              create_artifacts_service)
+from khive.services.artifacts.factory import ArtifactsConfig, create_artifacts_service
 from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.orchestration.orchestrator import LionOrchestrator
@@ -153,7 +152,7 @@ Added asyncio.wait_for() timeout handling to file upload service.
 async def upload_file(file_data, timeout=30):
     try:
         return await asyncio.wait_for(
-            upload_operation(file_data), 
+            upload_operation(file_data),
             timeout=timeout
         )
     except asyncio.TimeoutError:
@@ -309,7 +308,7 @@ Basic async implementation without error handling or timeouts.
 
 ## Issues Identified:
 1. ❌ No timeout handling for external service calls
-2. ❌ Missing error boundary handling  
+2. ❌ Missing error boundary handling
 3. ❌ No retry logic for transient failures
 4. ❌ Resource cleanup not guaranteed
 
@@ -339,7 +338,7 @@ class AsyncDataProcessor:
     def __init__(self, timeout=30, max_retries=3):
         self.timeout = timeout
         self.max_retries = max_retries
-    
+
     @asynccontextmanager
     async def _connection_manager(self):
         connection = None
@@ -349,13 +348,13 @@ class AsyncDataProcessor:
         finally:
             if connection:
                 await connection.close()
-    
+
     async def process_data(self, data):
         for attempt in range(self.max_retries):
             try:
                 async with self._connection_manager() as conn:
                     return await asyncio.wait_for(
-                        conn.process(data), 
+                        conn.process(data),
                         timeout=self.timeout
                     )
             except (asyncio.TimeoutError, ConnectionError) as e:
@@ -436,7 +435,7 @@ Current endpoints are blocking and causing timeout issues under load.
 
 ## Expected Outcome:
 - Non-blocking async endpoints
-- Proper concurrent request handling  
+- Proper concurrent request handling
 - Performance improvement under load
 - Maintained data consistency
 """,
@@ -458,17 +457,19 @@ Current endpoints are blocking and causing timeout issues under load.
                 author=Author(id="system", role="system"),
             )
 
-        processing_tasks.extend([
-            create_processing_artifact(
-                "analysis_progress", "🔄 Analyzing current API architecture..."
-            ),
-            create_processing_artifact(
-                "planning_progress", "🔄 Planning async conversion strategy..."
-            ),
-            create_processing_artifact(
-                "implementation_progress", "🔄 Implementing async endpoints..."
-            ),
-        ])
+        processing_tasks.extend(
+            [
+                create_processing_artifact(
+                    "analysis_progress", "🔄 Analyzing current API architecture..."
+                ),
+                create_processing_artifact(
+                    "planning_progress", "🔄 Planning async conversion strategy..."
+                ),
+                create_processing_artifact(
+                    "implementation_progress", "🔄 Implementing async endpoints..."
+                ),
+            ]
+        )
 
         # Execute processing tasks concurrently for better UX
         await asyncio.gather(*processing_tasks)
@@ -482,7 +483,7 @@ Current endpoints are blocking and causing timeout issues under load.
 
 ## Status: 🟡 In Progress
 - ✅ Request analysis complete
-- ✅ Strategy planning complete  
+- ✅ Strategy planning complete
 - 🔄 Implementation in progress
 - ⏳ Testing pending
 
@@ -523,7 +524,7 @@ async def get_user_data(user_id):
     async with async_database.connection() as db:
         user_task = db.get_user(user_id)
         profile_task = external_api.async_get_profile(user_id)
-        
+
         user, profile = await asyncio.gather(user_task, profile_task)
         return {"user": user, "profile": profile}
 ```

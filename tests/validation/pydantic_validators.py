@@ -14,8 +14,12 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from khive.services.plan.models import OrchestrationEvaluation
-from khive.services.plan.parts import (AgentRecommendation, PlannerRequest,
-                                       PlannerResponse, TaskPhase)
+from khive.services.plan.parts import (
+    AgentRecommendation,
+    PlannerRequest,
+    PlannerResponse,
+    TaskPhase,
+)
 
 # ============================================================================
 # Base Validation Patterns

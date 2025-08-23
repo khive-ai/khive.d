@@ -4,8 +4,14 @@ from lionagi.fields import Instruct
 
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
-    BaseGate, ComposerRequest, FanoutPatterns,
-    FanoutWithGatedRefinementResponse, Issue, IssuePlan, IssueResult)
+    BaseGate,
+    ComposerRequest,
+    FanoutPatterns,
+    FanoutWithGatedRefinementResponse,
+    Issue,
+    IssuePlan,
+    IssueResult,
+)
 from khive.services.orchestration.prompts import CRITIC_REVIEW_INSTRUCTION
 
 logging.basicConfig(level=logging.INFO)

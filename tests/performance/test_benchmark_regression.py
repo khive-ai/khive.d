@@ -262,9 +262,7 @@ class RegressionDetector:
         severity = (
             "critical"
             if relative_change > 2.0
-            else "moderate"
-            if relative_change > 1.5
-            else "minor"
+            else "moderate" if relative_change > 1.5 else "minor"
         )
 
         recommendations = {
@@ -320,11 +318,13 @@ class BenchmarkReporter:
                 )
 
                 if regression_result["regression_detected"]:
-                    report["regressions"].append({
-                        "test_name": test_name,
-                        "operation_type": operation_type,
-                        "regression_details": regression_result,
-                    })
+                    report["regressions"].append(
+                        {
+                            "test_name": test_name,
+                            "operation_type": operation_type,
+                            "regression_details": regression_result,
+                        }
+                    )
 
                 # Store trend analysis
                 report["trends"][f"{test_name}_{operation_type}"] = (
@@ -335,9 +335,9 @@ class BenchmarkReporter:
             report["test_summary"][test_name] = {
                 "operations_tested": len(test_metrics),
                 "historical_samples": len(historical_benchmarks),
-                "regressions_detected": len([
-                    r for r in report["regressions"] if r["test_name"] == test_name
-                ]),
+                "regressions_detected": len(
+                    [r for r in report["regressions"] if r["test_name"] == test_name]
+                ),
             }
 
         # Generate recommendations
@@ -486,12 +486,12 @@ class TestBenchmarkRegression:
             current_metrics=current_metrics, historical_benchmarks=historical_benchmarks
         )
 
-        assert not result["regression_detected"], (
-            "Should not detect regression for stable performance"
-        )
-        assert result["relative_change"] < 1.3, (
-            "Relative change should be within threshold"
-        )
+        assert not result[
+            "regression_detected"
+        ], "Should not detect regression for stable performance"
+        assert (
+            result["relative_change"] < 1.3
+        ), "Relative change should be within threshold"
         print(
             f"No regression test: {result['current_value']:.6f}s (change: {result['relative_change']:.2f}x)"
         )
@@ -531,9 +531,9 @@ class TestBenchmarkRegression:
             current_metrics=current_metrics, historical_benchmarks=historical_benchmarks
         )
 
-        assert not result["regression_detected"], (
-            "Should not detect regression for improvement"
-        )
+        assert not result[
+            "regression_detected"
+        ], "Should not detect regression for improvement"
         assert result["relative_change"] < 1.0, "Should show improvement"
         print(
             f"Performance improvement test: {result['current_value']:.6f}s (change: {result['relative_change']:.2f}x)"
@@ -566,9 +566,9 @@ class TestBenchmarkRegression:
         )
 
         assert result["trend"]["trend"] == "degrading", "Should detect degrading trend"
-        assert result["trend"]["correlation"] > 0, (
-            "Should show positive correlation (degrading)"
-        )
+        assert (
+            result["trend"]["correlation"] > 0
+        ), "Should show positive correlation (degrading)"
         print(
             f"Trend analysis: {result['trend']['trend']} (correlation: {result['trend']['correlation']:.3f})"
         )
@@ -597,9 +597,9 @@ class TestBenchmarkRegression:
         )
 
         assert result["trend"]["trend"] == "improving", "Should detect improving trend"
-        assert result["trend"]["correlation"] < 0, (
-            "Should show negative correlation (improving)"
-        )
+        assert (
+            result["trend"]["correlation"] < 0
+        ), "Should show negative correlation (improving)"
         print(
             f"Improving trend analysis: {result['trend']['trend']} (correlation: {result['trend']['correlation']:.3f})"
         )
@@ -678,4 +678,3 @@ class TestBenchmarkRegression:
         )
         print(f"Detected {len(report['regressions'])} performance regressions")
         print(f"Generated {len(report['recommendations'])} recommendations")
-

@@ -50,16 +50,20 @@ class PerformanceProfiler:
             memory_info = self.process.memory_info()
             cpu_percent = self.process.cpu_percent()
 
-            self.memory_snapshots.append({
-                "timestamp": time.perf_counter(),
-                "rss_mb": memory_info.rss / (1024 * 1024),
-                "vms_mb": memory_info.vms / (1024 * 1024),
-            })
+            self.memory_snapshots.append(
+                {
+                    "timestamp": time.perf_counter(),
+                    "rss_mb": memory_info.rss / (1024 * 1024),
+                    "vms_mb": memory_info.vms / (1024 * 1024),
+                }
+            )
 
-            self.cpu_snapshots.append({
-                "timestamp": time.perf_counter(),
-                "cpu_percent": cpu_percent,
-            })
+            self.cpu_snapshots.append(
+                {
+                    "timestamp": time.perf_counter(),
+                    "cpu_percent": cpu_percent,
+                }
+            )
         except Exception:
             # Handle cases where process monitoring fails
             pass
@@ -72,13 +76,15 @@ class PerformanceProfiler:
         metadata: dict | None = None,
     ):
         """Record an individual operation with metadata."""
-        self.operation_times.append({
-            "duration": duration,
-            "success": success,
-            "operation_type": operation_type,
-            "timestamp": time.perf_counter(),
-            "metadata": metadata or {},
-        })
+        self.operation_times.append(
+            {
+                "duration": duration,
+                "success": success,
+                "operation_type": operation_type,
+                "timestamp": time.perf_counter(),
+                "metadata": metadata or {},
+            }
+        )
 
         if success:
             self.success_count += 1
@@ -89,10 +95,12 @@ class PerformanceProfiler:
         """Add a custom performance metric."""
         if name not in self.custom_metrics:
             self.custom_metrics[name] = []
-        self.custom_metrics[name].append({
-            "value": value,
-            "timestamp": time.perf_counter(),
-        })
+        self.custom_metrics[name].append(
+            {
+                "value": value,
+                "timestamp": time.perf_counter(),
+            }
+        )
 
     def get_comprehensive_metrics(self) -> dict[str, Any]:
         """Get comprehensive performance metrics."""
@@ -115,15 +123,17 @@ class PerformanceProfiler:
         # Operation timing metrics
         if self.operation_times:
             durations = [op["duration"] for op in self.operation_times]
-            metrics.update({
-                "avg_operation_time": sum(durations) / len(durations),
-                "min_operation_time": min(durations),
-                "max_operation_time": max(durations),
-                "operation_count": len(durations),
-                "p50_operation_time": sorted(durations)[len(durations) // 2],
-                "p95_operation_time": sorted(durations)[int(len(durations) * 0.95)],
-                "p99_operation_time": sorted(durations)[int(len(durations) * 0.99)],
-            })
+            metrics.update(
+                {
+                    "avg_operation_time": sum(durations) / len(durations),
+                    "min_operation_time": min(durations),
+                    "max_operation_time": max(durations),
+                    "operation_count": len(durations),
+                    "p50_operation_time": sorted(durations)[len(durations) // 2],
+                    "p95_operation_time": sorted(durations)[int(len(durations) * 0.95)],
+                    "p99_operation_time": sorted(durations)[int(len(durations) * 0.99)],
+                }
+            )
 
             # Operation type breakdown
             op_types = {}
@@ -149,13 +159,15 @@ class PerformanceProfiler:
             peak_memory = max(snap["rss_mb"] for snap in self.memory_snapshots)
             final_memory = self.memory_snapshots[-1]["rss_mb"]
 
-            metrics.update({
-                "initial_memory_mb": initial_memory,
-                "peak_memory_mb": peak_memory,
-                "final_memory_mb": final_memory,
-                "memory_growth_mb": final_memory - initial_memory,
-                "peak_memory_delta_mb": peak_memory - initial_memory,
-            })
+            metrics.update(
+                {
+                    "initial_memory_mb": initial_memory,
+                    "peak_memory_mb": peak_memory,
+                    "final_memory_mb": final_memory,
+                    "memory_growth_mb": final_memory - initial_memory,
+                    "peak_memory_delta_mb": peak_memory - initial_memory,
+                }
+            )
 
         # CPU metrics
         if self.cpu_snapshots:
@@ -165,11 +177,13 @@ class PerformanceProfiler:
                 if snap["cpu_percent"] > 0
             ]
             if cpu_values:
-                metrics.update({
-                    "avg_cpu_percent": sum(cpu_values) / len(cpu_values),
-                    "max_cpu_percent": max(cpu_values),
-                    "min_cpu_percent": min(cpu_values),
-                })
+                metrics.update(
+                    {
+                        "avg_cpu_percent": sum(cpu_values) / len(cpu_values),
+                        "max_cpu_percent": max(cpu_values),
+                        "min_cpu_percent": min(cpu_values),
+                    }
+                )
 
         # Custom metrics
         if self.custom_metrics:
@@ -268,16 +282,21 @@ class LoadTestRunner:
         total_errors = sum(t["errors"] for t in results["tasks"])
         all_times = [t for task in results["tasks"] for t in task["times"]]
 
-        results.update({
-            "total_operations": total_operations,
-            "total_errors": total_errors,
-            "success_rate": total_operations / max(total_operations + total_errors, 1),
-            "total_time": results["end_time"] - results["start_time"],
-            "throughput": total_operations
-            / (results["end_time"] - results["start_time"]),
-            "avg_response_time": (sum(all_times) / len(all_times) if all_times else 0),
-            "performance_metrics": self.profiler.get_comprehensive_metrics(),
-        })
+        results.update(
+            {
+                "total_operations": total_operations,
+                "total_errors": total_errors,
+                "success_rate": total_operations
+                / max(total_operations + total_errors, 1),
+                "total_time": results["end_time"] - results["start_time"],
+                "throughput": total_operations
+                / (results["end_time"] - results["start_time"]),
+                "avg_response_time": (
+                    sum(all_times) / len(all_times) if all_times else 0
+                ),
+                "performance_metrics": self.profiler.get_comprehensive_metrics(),
+            }
+        )
 
         return results
 

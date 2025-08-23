@@ -110,9 +110,9 @@ class PerformanceMetrics:
         custom_metrics = data.pop("custom_metrics", {})
 
         # Create instance with standard fields
-        metrics = cls(**{
-            k: v for k, v in data.items() if k in cls.__dataclass_fields__
-        })
+        metrics = cls(
+            **{k: v for k, v in data.items() if k in cls.__dataclass_fields__}
+        )
         metrics.custom_metrics = custom_metrics
         return metrics
 
@@ -214,21 +214,27 @@ class PerformanceMonitor:
 
                 # I/O monitoring
                 io_counters = self.process.io_counters()
-                self.io_samples.append({
-                    "read_bytes": io_counters.read_bytes - self.start_io.read_bytes,
-                    "write_bytes": io_counters.write_bytes - self.start_io.write_bytes,
-                    "read_count": io_counters.read_count - self.start_io.read_count,
-                    "write_count": io_counters.write_count - self.start_io.write_count,
-                })
+                self.io_samples.append(
+                    {
+                        "read_bytes": io_counters.read_bytes - self.start_io.read_bytes,
+                        "write_bytes": io_counters.write_bytes
+                        - self.start_io.write_bytes,
+                        "read_count": io_counters.read_count - self.start_io.read_count,
+                        "write_count": io_counters.write_count
+                        - self.start_io.write_count,
+                    }
+                )
 
                 # Network monitoring
                 net_counters = psutil.net_io_counters()
-                self.network_samples.append({
-                    "sent_bytes": net_counters.bytes_sent
-                    - self.start_network.bytes_sent,
-                    "recv_bytes": net_counters.bytes_recv
-                    - self.start_network.bytes_recv,
-                })
+                self.network_samples.append(
+                    {
+                        "sent_bytes": net_counters.bytes_sent
+                        - self.start_network.bytes_sent,
+                        "recv_bytes": net_counters.bytes_recv
+                        - self.start_network.bytes_recv,
+                    }
+                )
 
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 # Process might have ended or access denied
@@ -527,15 +533,17 @@ class BenchmarkSuite:
         kwargs: dict[str, Any] | None = None,
     ):
         """Add a benchmark function to the suite."""
-        self.benchmarks.append({
-            "func": func,
-            "name": name,
-            "operation_type": operation_type,
-            "tags": tags or [],
-            "metadata": metadata or {},
-            "args": args,
-            "kwargs": kwargs or {},
-        })
+        self.benchmarks.append(
+            {
+                "func": func,
+                "name": name,
+                "operation_type": operation_type,
+                "tags": tags or [],
+                "metadata": metadata or {},
+                "args": args,
+                "kwargs": kwargs or {},
+            }
+        )
 
     async def run_all(self) -> list[BenchmarkResult]:
         """Run all benchmarks in the suite."""

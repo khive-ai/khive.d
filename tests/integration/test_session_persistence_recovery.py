@@ -15,8 +15,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from redis.exceptions import ConnectionError as RedisConnectionError
 
-from khive.services.artifacts.factory import (ArtifactsConfig,
-                                              create_artifacts_service)
+from khive.services.artifacts.factory import ArtifactsConfig, create_artifacts_service
 from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.artifacts.sessions import SessionManager
@@ -114,7 +113,7 @@ class TestSessionPersistenceRecovery:
             doc_name="recovery_validation",
             doc_type=DocumentType.DELIVERABLE,
             content="""# Recovery Validation
-            
+
 ## Session Recovery Test Results:
 ✅ All initial documents preserved across interruption
 ✅ Document content integrity maintained
@@ -247,7 +246,7 @@ class TestSessionPersistenceRecovery:
 
 ## Error Isolation Validation:
 ✅ Errors isolated to individual operations
-✅ Failures did not cascade to other operations  
+✅ Failures did not cascade to other operations
 ✅ Retry mechanisms functioned correctly
 ✅ System remained responsive during errors
 
@@ -297,7 +296,7 @@ class TestSessionPersistenceRecovery:
                     doc_name=f"concurrent_doc_{doc_index}",
                     doc_type=DocumentType.SCRATCHPAD,
                     content=f"""# Concurrent Document {doc_index}
-                    
+
 ## Timestamp: {start_time}
 ## Content: Testing concurrent persistence operations
 
@@ -359,19 +358,23 @@ persistence layer reliability and conflict resolution.
                     1 for phrase in expected_phrases if phrase in doc.content.lower()
                 ) / len(expected_phrases)
 
-                content_integrity_results.append({
-                    "doc_name": doc.name,
-                    "integrity_score": integrity_score,
-                    "content_valid": integrity_score >= 0.8,
-                })
+                content_integrity_results.append(
+                    {
+                        "doc_name": doc.name,
+                        "integrity_score": integrity_score,
+                        "content_valid": integrity_score >= 0.8,
+                    }
+                )
 
             except Exception as e:
-                content_integrity_results.append({
-                    "doc_name": result["doc_name"],
-                    "integrity_score": 0.0,
-                    "content_valid": False,
-                    "error": str(e),
-                })
+                content_integrity_results.append(
+                    {
+                        "doc_name": result["doc_name"],
+                        "integrity_score": 0.0,
+                        "content_valid": False,
+                        "error": str(e),
+                    }
+                )
 
         # Create comprehensive reliability report
         reliability_report = await artifacts_service.create_document(
@@ -401,7 +404,7 @@ persistence layer reliability and conflict resolution.
 
 ## Reliability Metrics:
 ✅ Concurrent operations handled safely
-✅ Session state maintains consistency  
+✅ Session state maintains consistency
 ✅ Content integrity preserved across operations
 ✅ Recovery mechanisms function correctly
 ✅ No data corruption detected
@@ -421,24 +424,24 @@ persistence layer reliability and conflict resolution.
         final_registry = await artifacts_service.get_artifact_registry(session_id)
 
         # Assertions for test validation
-        assert len(successful_writes) >= 8, (
-            f"Expected ≥8 successful writes, got {len(successful_writes)}"
-        )
-        assert recovered_session.id == session_id, (
-            "Session ID not preserved after recovery"
-        )
-        assert len(content_integrity_results) == len(successful_writes), (
-            "Content validation mismatch"
-        )
-        assert all(r["content_valid"] for r in content_integrity_results), (
-            "Content integrity compromised"
-        )
-        assert reliability_report.session_id == session_id, (
-            "Report not properly associated with session"
-        )
-        assert len(final_registry.artifacts) >= len(successful_writes) + 1, (
-            "Registry state inconsistent"
-        )
+        assert (
+            len(successful_writes) >= 8
+        ), f"Expected ≥8 successful writes, got {len(successful_writes)}"
+        assert (
+            recovered_session.id == session_id
+        ), "Session ID not preserved after recovery"
+        assert len(content_integrity_results) == len(
+            successful_writes
+        ), "Content validation mismatch"
+        assert all(
+            r["content_valid"] for r in content_integrity_results
+        ), "Content integrity compromised"
+        assert (
+            reliability_report.session_id == session_id
+        ), "Report not properly associated with session"
+        assert (
+            len(final_registry.artifacts) >= len(successful_writes) + 1
+        ), "Registry state inconsistent"
 
     @pytest.mark.asyncio
     async def test_redis_cache_failure_recovery(
@@ -580,7 +583,7 @@ and fallback mechanisms for cache-dependent operations.
 
 ## Recommendations:
 1. ✅ Current fallback mechanisms are robust
-2. ✅ Error boundaries effectively isolate cache failures  
+2. ✅ Error boundaries effectively isolate cache failures
 3. ✅ Performance impact of cache bypass is acceptable
 4. ✅ Recovery behavior meets reliability requirements
 
@@ -593,15 +596,15 @@ and fallback mechanisms for cache-dependent operations.
             # Verify system continued operating despite cache failures
             registry = await artifacts_service.get_artifact_registry(session_id)
 
-            assert len(successful_ops) >= 3, (
-                "System should maintain functionality during cache failures"
-            )
-            assert recovery_report.session_id == session_id, (
-                "Report not properly created"
-            )
-            assert len(registry.artifacts) >= len(successful_ops) + 1, (
-                "Registry inconsistent after cache failures"
-            )
+            assert (
+                len(successful_ops) >= 3
+            ), "System should maintain functionality during cache failures"
+            assert (
+                recovery_report.session_id == session_id
+            ), "Report not properly created"
+            assert (
+                len(registry.artifacts) >= len(successful_ops) + 1
+            ), "Registry inconsistent after cache failures"
             assert (
                 "redis failure recovery validated" in recovery_report.content.lower()
             ), "Recovery not properly validated"
@@ -622,7 +625,8 @@ and fallback mechanisms for cache-dependent operations.
 
         # Create sample summary files
         sample_summary = summaries_dir / "summary_20240823_143000.md"
-        sample_summary.write_text("""# Session Summary
+        sample_summary.write_text(
+            """# Session Summary
 
 ## Main Topic
 Session persistence and recovery testing implementation
@@ -644,16 +648,18 @@ Session persistence and recovery testing implementation
 - Complete integration test suite
 - Document recovery procedures
 - Validate performance under load
-""")
+"""
+        )
 
         # Create sample diary
         sample_diary = diaries_dir / "diary_20240823.md"
-        sample_diary.write_text("""# Daily Work Diary - 2024-08-23
+        sample_diary.write_text(
+            """# Daily Work Diary - 2024-08-23
 
 ## Key Accomplishments
 **Today's Focus**: Session persistence and recovery testing
 
-**Impact**: Implemented comprehensive test suite for validating system resilience 
+**Impact**: Implemented comprehensive test suite for validating system resilience
 under failure conditions. Tests confirm robust error handling and recovery mechanisms.
 
 ## Critical Insights
@@ -665,7 +671,8 @@ under failure conditions. Tests confirm robust error handling and recovery mecha
 1. Complete remaining integration test scenarios
 2. Validate performance characteristics under load
 3. Document recovery procedures for operations team
-""")
+"""
+        )
 
         # Change to workspace directory for session initialization
         import os

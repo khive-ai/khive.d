@@ -27,8 +27,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from khive.services.artifacts.factory import (ArtifactsConfig,
-                                              create_artifacts_service)
+from khive.services.artifacts.factory import ArtifactsConfig, create_artifacts_service
 from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.orchestration.orchestrator import LionOrchestrator
@@ -799,7 +798,7 @@ class TestAdvancedCoordinationPatterns:
 
 ## Agent States:
 - Active: {len(active_agents)}
-- Completed: {len(completed_agents)}  
+- Completed: {len(completed_agents)}
 - Failed: {len(failed_agents)}
 
 ## Coordination State:
@@ -1064,25 +1063,31 @@ class TestAdvancedCoordinationPatterns:
                 if hasattr(r, "state") and r.state == AgentState.FAILED
             ]
 
-            load_results.append({
-                "phase": phase["name"],
-                "target_agents": phase["agents"],
-                "successful_agents": len(successful_agents),
-                "failed_agents": len(failed_agents),
-                "phase_duration": phase_duration,
-                "success_rate": len(successful_agents) / phase["agents"]
-                if phase["agents"] > 0
-                else 0,
-                "throughput": len(successful_agents) / phase_duration
-                if phase_duration > 0
-                else 0,
-                "average_execution_time": sum(
-                    r.execution_time for r in successful_agents
-                )
-                / len(successful_agents)
-                if successful_agents
-                else 0,
-            })
+            load_results.append(
+                {
+                    "phase": phase["name"],
+                    "target_agents": phase["agents"],
+                    "successful_agents": len(successful_agents),
+                    "failed_agents": len(failed_agents),
+                    "phase_duration": phase_duration,
+                    "success_rate": (
+                        len(successful_agents) / phase["agents"]
+                        if phase["agents"] > 0
+                        else 0
+                    ),
+                    "throughput": (
+                        len(successful_agents) / phase_duration
+                        if phase_duration > 0
+                        else 0
+                    ),
+                    "average_execution_time": (
+                        sum(r.execution_time for r in successful_agents)
+                        / len(successful_agents)
+                        if successful_agents
+                        else 0
+                    ),
+                }
+            )
 
             # Brief cooldown between phases
             await asyncio.sleep(0.05)
@@ -1153,7 +1158,7 @@ class TestAdvancedCoordinationPatterns:
 - Recovery capability: ✅ System handles partial failures gracefully
 
 ## Quality Assessment:
-- Performance predictability: ✅ Consistent across load phases  
+- Performance predictability: ✅ Consistent across load phases
 - Scalability validation: ✅ System scales to tested limits
 - Stability verification: ✅ No system instability under peak load
 - Resource efficiency: ✅ Optimal utilization without oversubscription
@@ -1292,7 +1297,7 @@ class TestAdvancedCoordinationPatterns:
 ## Hierarchy Execution Summary:
 - Total agents: {len(hierarchy_results)}
 - Supervisors: {len(successful_supervisors)}/1
-- Managers: {len(successful_managers)}/2  
+- Managers: {len(successful_managers)}/2
 - Workers: {len(successful_workers)}/{len(hierarchy_results) - 3}
 - Overall success rate: {len([r for r in hierarchy_results if r.state == AgentState.COMPLETED]) / len(hierarchy_results) * 100:.1f}%
 
@@ -1310,13 +1315,13 @@ class TestAdvancedCoordinationPatterns:
 ## Hierarchical Coordination Validation:
 ✅ Level-by-level execution successful
 ✅ Parent-child relationships maintained
-✅ Supervision patterns functional  
+✅ Supervision patterns functional
 ✅ Work distribution effective across hierarchy
 ✅ Coordination scalable across multiple levels
 
 ## Performance Metrics:
 - Supervisor execution: {sum(r.execution_time for r in successful_supervisors) / len(successful_supervisors):.3f}s avg
-- Manager execution: {sum(r.execution_time for r in successful_managers) / len(successful_managers):.3f}s avg  
+- Manager execution: {sum(r.execution_time for r in successful_managers) / len(successful_managers):.3f}s avg
 - Worker execution: {sum(r.execution_time for r in successful_workers) / len(successful_workers):.3f}s avg
 - Total coordination time: {max(r.execution_time for r in hierarchy_results):.3f}s
 
@@ -1339,9 +1344,9 @@ class TestAdvancedCoordinationPatterns:
         )
 
         # Validate hierarchical coordination
-        total_successful = len([
-            r for r in hierarchy_results if r.state == AgentState.COMPLETED
-        ])
+        total_successful = len(
+            [r for r in hierarchy_results if r.state == AgentState.COMPLETED]
+        )
         assert total_successful >= len(hierarchy_results) * 0.8  # At least 80% success
         assert len(successful_supervisors) >= 1  # Should have root supervisor
         assert len(successful_managers) >= 1  # Should have at least one manager

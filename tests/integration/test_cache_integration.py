@@ -198,9 +198,9 @@ class TestRedisCacheIntegration:
 
         # Performance assertions
         assert storage_duration < 10.0, f"Storage took too long: {storage_duration}s"
-        assert retrieval_duration < 10.0, (
-            f"Retrieval took too long: {retrieval_duration}s"
-        )
+        assert (
+            retrieval_duration < 10.0
+        ), f"Retrieval took too long: {retrieval_duration}s"
 
     async def test_cache_stats_tracking(self, mock_redis_cache):
         """Test cache statistics tracking functionality."""
@@ -411,9 +411,9 @@ class TestCachePerformance:
         operations_per_second = total_operations / duration if duration > 0 else 0
 
         # Performance assertions
-        assert operations_per_second > 100, (
-            f"Throughput too low: {operations_per_second} ops/sec"
-        )
+        assert (
+            operations_per_second > 100
+        ), f"Throughput too low: {operations_per_second} ops/sec"
         assert duration < 30.0, f"Batch operations took too long: {duration}s"
 
     async def test_cache_latency_distribution(self, mock_redis_cache):

@@ -41,7 +41,7 @@ python_code: |
   os.system('rm -rf /')
 
 # Command injection in YAML
-command_injection: '; rm -rf /'
+command_injection: "; rm -rf /"
 
 # Path traversal in YAML
 path_traversal: "../../../etc/passwd"
@@ -49,7 +49,7 @@ path_traversal: "../../../etc/passwd"
 # XSS in YAML
 xss_payload: "<script>alert('XSS')</script>"
 
-# SQL injection in YAML  
+# SQL injection in YAML
 sql_injection: "'; DROP TABLE users; --"
 
 # Template injection
@@ -71,5 +71,5 @@ binary_data: "\x00\x01\x02\x03\xff\xfe\xfd\xfc"
 control_chars: "\x08\x0c\x0a\x0d\x09"
 
 # Unicode attacks
-unicode_attack: "аdmin"  # Cyrillic 'а' instead of ASCII 'a'
+unicode_attack: "аdmin" # Cyrillic 'а' instead of ASCII 'a'
 unicode_normalization: "\u002e\u002e\u002f\u002e\u002e\u002f\u002e\u002e\u002fetc\u002fpasswd"

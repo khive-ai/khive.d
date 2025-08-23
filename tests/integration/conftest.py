@@ -16,8 +16,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import pytest_asyncio
 
-from khive.services.artifacts.factory import (ArtifactsConfig,
-                                              create_artifacts_service)
+from khive.services.artifacts.factory import ArtifactsConfig, create_artifacts_service
 from khive.services.artifacts.models import Author
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.cache.config import CacheConfig
@@ -128,13 +127,15 @@ def mock_openai_client():
     mock_response.choices = [
         MagicMock(
             message=MagicMock(
-                content=json.dumps({
-                    "complexity": "medium",
-                    "confidence": 0.85,
-                    "reasoning": "Integration testing scenario with moderate complexity",
-                    "recommended_agents": 3,
-                    "roles": ["researcher", "implementer", "tester"],
-                })
+                content=json.dumps(
+                    {
+                        "complexity": "medium",
+                        "confidence": 0.85,
+                        "reasoning": "Integration testing scenario with moderate complexity",
+                        "recommended_agents": 3,
+                        "roles": ["researcher", "implementer", "tester"],
+                    }
+                )
             )
         )
     ]

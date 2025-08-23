@@ -14,14 +14,25 @@ from openai import OpenAI
 from khive.core import TimePolicy
 from khive.prompts.complexity_heuristics import assess_by_heuristics
 from khive.prompts.phase_determination import determine_required_phases
-from khive.services.artifacts.handlers import (HandoffAgentSpec, TimeoutConfig,
-                                               TimeoutManager, TimeoutType)
+from khive.services.artifacts.handlers import (
+    HandoffAgentSpec,
+    TimeoutConfig,
+    TimeoutManager,
+    TimeoutType,
+)
 from khive.utils import get_logger
 
 from .cost_tracker import CostTracker
 from .models import OrchestrationEvaluation
-from .parts import (AgentRecommendation, ComplexityLevel, PlannerRequest,
-                    PlannerResponse, QualityGate, TaskPhase, WorkflowPattern)
+from .parts import (
+    AgentRecommendation,
+    ComplexityLevel,
+    PlannerRequest,
+    PlannerResponse,
+    QualityGate,
+    TaskPhase,
+    WorkflowPattern,
+)
 from .triage.complexity_triage import ComplexityTriageService, TriageConsensus
 
 logger = get_logger("khive.services.plan")
@@ -421,14 +432,16 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 agent_id = agent_tasks[i][0]
-                processed_results.append({
-                    "agent_id": agent_id,
-                    "status": "error",
-                    "duration": None,
-                    "retry_count": 0,
-                    "error": str(result),
-                    "execution_time": None,
-                })
+                processed_results.append(
+                    {
+                        "agent_id": agent_id,
+                        "status": "error",
+                        "duration": None,
+                        "retry_count": 0,
+                        "error": str(result),
+                        "execution_time": None,
+                    }
+                )
             else:
                 processed_results.append(result)
 
@@ -574,12 +587,14 @@ Be different - show YOUR unique perspective on which roles matter most."""
                 gate="thorough",  # Default gate for template
             )
 
-            configs.append({
-                "name": agent_config.get("name", agent_name),
-                "system_prompt": system_prompt,
-                # "temperature": agent_config.get("temperature", 0.3),
-                "description": agent_config.get("description", ""),
-            })
+            configs.append(
+                {
+                    "name": agent_config.get("name", agent_name),
+                    "system_prompt": system_prompt,
+                    # "temperature": agent_config.get("temperature", 0.3),
+                    "description": agent_config.get("description", ""),
+                }
+            )
 
         # Fallback to hardcoded if YAML not available
         if not configs:
@@ -1013,7 +1028,9 @@ Be different - show YOUR unique perspective on which roles matter most."""
         else:  # claude format (BatchTool)
             # Detect phases for the task
             from khive.prompts.phase_determination import (
-                determine_required_phases, get_phase_description)
+                determine_required_phases,
+                get_phase_description,
+            )
 
             detected_phases = determine_required_phases(request)
 
@@ -1337,8 +1354,10 @@ Your final deliverable MUST include:
 
         # Determine phases using our phase determination module
         from khive.prompts.phase_determination import (
-            determine_required_phases, estimate_phase_complexity,
-            get_phase_description)
+            determine_required_phases,
+            estimate_phase_complexity,
+            get_phase_description,
+        )
 
         detected_phases = determine_required_phases(request)
 
@@ -1900,59 +1919,61 @@ class PlannerService:
                 )
             else:
                 # Multi-phase execution
-                phases.extend([
-                    TaskPhase(
-                        name="discovery_phase",
-                        description="Research and analyze requirements",
-                        agents=[
-                            a
-                            for a in agent_recommendations
-                            if a.role in ["researcher", "analyst"]
-                        ][:3],
-                        quality_gate=QualityGate.THOROUGH,
-                        coordination_pattern=WorkflowPattern.PARALLEL,
-                    ),
-                    TaskPhase(
-                        name="design_phase",
-                        description="Design architecture and approach",
-                        agents=[
-                            a
-                            for a in agent_recommendations
-                            if a.role in ["architect", "strategist"]
-                        ][:2],
-                        dependencies=["discovery_phase"],
-                        quality_gate=QualityGate.THOROUGH,
-                        coordination_pattern=WorkflowPattern.SEQUENTIAL,
-                    ),
-                    TaskPhase(
-                        name="implementation_phase",
-                        description="Implement the solution",
-                        agents=[
-                            a
-                            for a in agent_recommendations
-                            if a.role in ["implementer", "innovator"]
-                        ][:3],
-                        dependencies=["design_phase"],
-                        quality_gate=QualityGate.THOROUGH,
-                        coordination_pattern=WorkflowPattern.PARALLEL,
-                    ),
-                    TaskPhase(
-                        name="validation_phase",
-                        description="Validate and test the solution",
-                        agents=[
-                            a
-                            for a in agent_recommendations
-                            if a.role in ["tester", "critic", "auditor"]
-                        ][:2],
-                        dependencies=["implementation_phase"],
-                        quality_gate=(
-                            QualityGate.CRITICAL
-                            if complexity_level == ComplexityLevel.VERY_COMPLEX
-                            else QualityGate.THOROUGH
+                phases.extend(
+                    [
+                        TaskPhase(
+                            name="discovery_phase",
+                            description="Research and analyze requirements",
+                            agents=[
+                                a
+                                for a in agent_recommendations
+                                if a.role in ["researcher", "analyst"]
+                            ][:3],
+                            quality_gate=QualityGate.THOROUGH,
+                            coordination_pattern=WorkflowPattern.PARALLEL,
                         ),
-                        coordination_pattern=WorkflowPattern.PARALLEL,
-                    ),
-                ])
+                        TaskPhase(
+                            name="design_phase",
+                            description="Design architecture and approach",
+                            agents=[
+                                a
+                                for a in agent_recommendations
+                                if a.role in ["architect", "strategist"]
+                            ][:2],
+                            dependencies=["discovery_phase"],
+                            quality_gate=QualityGate.THOROUGH,
+                            coordination_pattern=WorkflowPattern.SEQUENTIAL,
+                        ),
+                        TaskPhase(
+                            name="implementation_phase",
+                            description="Implement the solution",
+                            agents=[
+                                a
+                                for a in agent_recommendations
+                                if a.role in ["implementer", "innovator"]
+                            ][:3],
+                            dependencies=["design_phase"],
+                            quality_gate=QualityGate.THOROUGH,
+                            coordination_pattern=WorkflowPattern.PARALLEL,
+                        ),
+                        TaskPhase(
+                            name="validation_phase",
+                            description="Validate and test the solution",
+                            agents=[
+                                a
+                                for a in agent_recommendations
+                                if a.role in ["tester", "critic", "auditor"]
+                            ][:2],
+                            dependencies=["implementation_phase"],
+                            quality_gate=(
+                                QualityGate.CRITICAL
+                                if complexity_level == ComplexityLevel.VERY_COMPLEX
+                                else QualityGate.THOROUGH
+                            ),
+                            coordination_pattern=WorkflowPattern.PARALLEL,
+                        ),
+                    ]
+                )
 
             # Extract spawn commands from consensus output
             # Generate proper BatchTool commands grouped by phase
@@ -2106,11 +2127,13 @@ Remember: This is a {phase.coordination_pattern} task - focus on direct executio
                 matches and len(matches) >= 2
             ):  # At least 2 phases to be considered multi-phase
                 for num, description in matches:
-                    detected_phases.append({
-                        "number": int(num),
-                        "description": description.strip(),
-                        "raw_text": f"Phase {num} - {description.strip()}",
-                    })
+                    detected_phases.append(
+                        {
+                            "number": int(num),
+                            "description": description.strip(),
+                            "raw_text": f"Phase {num} - {description.strip()}",
+                        }
+                    )
                 break  # Use first successful pattern
 
         # Sort by phase number

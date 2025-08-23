@@ -10,9 +10,12 @@ from typing import Any
 
 import anyio
 
-from khive.services.claude.hooks.hook_event import (HookEvent,
-                                                    HookEventContent,
-                                                    hook_event_logger, shield)
+from khive.services.claude.hooks.hook_event import (
+    HookEvent,
+    HookEventContent,
+    hook_event_logger,
+    shield,
+)
 
 
 def handle_pre_command(command: str, session_id: str | None = None) -> dict[str, Any]:

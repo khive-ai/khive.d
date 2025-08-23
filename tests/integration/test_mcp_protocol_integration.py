@@ -24,8 +24,11 @@ import pytest
 import pytest_asyncio
 
 from khive.cli.khive_mcp import MCPCommand, MCPConfig, MCPServerConfig
-from tests.fixtures.mcp_fixtures import (MCPProtocolValidator,
-                                         MCPTestScenarios, MockMCPServer)
+from tests.fixtures.mcp_fixtures import (
+    MCPProtocolValidator,
+    MCPTestScenarios,
+    MockMCPServer,
+)
 
 
 @pytest.mark.mcp_protocol
@@ -425,9 +428,9 @@ class TestMCPErrorHandlingAndRecovery:
         for response in malformed_responses:
             if isinstance(response, dict):
                 is_valid = mcp_protocol_validator.validate_message_format(response)
-                assert not is_valid, (
-                    f"Should have rejected malformed response: {response}"
-                )
+                assert (
+                    not is_valid
+                ), f"Should have rejected malformed response: {response}"
 
         # Verify errors were recorded
         assert len(mcp_protocol_validator.errors) > 0
@@ -690,9 +693,9 @@ class TestMCPPerformanceAndStress:
 
             # Memory usage should not grow excessively
             object_growth = final_objects - initial_objects
-            assert object_growth < 1000, (
-                f"Excessive memory growth: {object_growth} objects"
-            )
+            assert (
+                object_growth < 1000
+            ), f"Excessive memory growth: {object_growth} objects"
 
 
 @pytest.mark.mcp_protocol

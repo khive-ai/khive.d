@@ -12,7 +12,6 @@ Focus areas:
 6. Long path attack prevention
 """
 
-
 import pytest
 from pydantic import ValidationError
 
@@ -495,9 +494,9 @@ class TestPathSanitizationEffectiveness:
                 )
 
                 # Legitimate paths should be preserved
-                assert legit_path in request.context, (
-                    f"Legitimate path was over-sanitized: {legit_path}"
-                )
+                assert (
+                    legit_path in request.context
+                ), f"Legitimate path was over-sanitized: {legit_path}"
 
             except ValidationError as e:
                 pytest.fail(f"Legitimate path incorrectly rejected: {legit_path} - {e}")

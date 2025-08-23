@@ -233,12 +233,14 @@ class MCPLifecycleTracker:
 
     def log_event(self, event: str, server_name: str, data: dict | None = None):
         """Log a lifecycle event."""
-        self.events.append({
-            "event": event,
-            "server_name": server_name,
-            "data": data or {},
-            "timestamp": asyncio.get_event_loop().time(),
-        })
+        self.events.append(
+            {
+                "event": event,
+                "server_name": server_name,
+                "data": data or {},
+                "timestamp": asyncio.get_event_loop().time(),
+            }
+        )
 
     def get_events_for_server(self, server_name: str) -> list[dict]:
         """Get all events for a specific server."""

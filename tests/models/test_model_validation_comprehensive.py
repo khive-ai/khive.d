@@ -6,15 +6,20 @@ import pytest
 from pydantic import ValidationError
 
 from khive.prompts import AgentRole
-from khive.services.artifacts.models import (Author, ContributionMetadata,
-                                             Document, DocumentType)
-from khive.services.composition.parts import (AgentCompositionRequest,
-                                              ComposerRequest,
-                                              ComposerResponse,
-                                              DomainExpertise)
+from khive.services.artifacts.models import (
+    Author,
+    ContributionMetadata,
+    Document,
+    DocumentType,
+)
+from khive.services.composition.parts import (
+    AgentCompositionRequest,
+    ComposerRequest,
+    ComposerResponse,
+    DomainExpertise,
+)
 from khive.services.orchestration.parts import OrchestrationPlan
-from khive.services.plan.parts import (ComplexityLevel, PlannerRequest,
-                                       PlannerResponse)
+from khive.services.plan.parts import ComplexityLevel, PlannerRequest, PlannerResponse
 
 
 class TestFieldConstraintValidation:

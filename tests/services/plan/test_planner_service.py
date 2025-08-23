@@ -19,12 +19,20 @@ from uuid import uuid4
 import pytest
 
 from khive.services.plan.models import OrchestrationEvaluation
-from khive.services.plan.parts import (AgentRecommendation, ComplexityLevel,
-                                       PlannerRequest, PlannerResponse,
-                                       QualityGate, WorkflowPattern)
-from khive.services.plan.planner_service import (ComplexityTier,
-                                                 OrchestrationPlanner,
-                                                 PlannerService, Request)
+from khive.services.plan.parts import (
+    AgentRecommendation,
+    ComplexityLevel,
+    PlannerRequest,
+    PlannerResponse,
+    QualityGate,
+    WorkflowPattern,
+)
+from khive.services.plan.planner_service import (
+    ComplexityTier,
+    OrchestrationPlanner,
+    PlannerService,
+    Request,
+)
 from khive.services.plan.triage.complexity_triage import TriageConsensus
 
 
@@ -229,9 +237,9 @@ class TestComplexityAssessmentAlgorithms:
 
             # Assert at least 80% accuracy
             accuracy = correct_predictions / total_cases
-            assert accuracy >= 0.8, (
-                f"Complexity assessment accuracy {accuracy:.2%} below 80% threshold"
-            )
+            assert (
+                accuracy >= 0.8
+            ), f"Complexity assessment accuracy {accuracy:.2%} below 80% threshold"
 
 
 @pytest.mark.unit
@@ -295,14 +303,14 @@ class TestAgentCountOptimization:
                 result = await planner.evaluate_request(request)
 
                 # Verify agent count is within bounds
-                assert min_agents <= result.agent_count <= max_agents, (
-                    f"Agent count {result.agent_count} outside bounds [{min_agents}, {max_agents}] for {tier.value}"
-                )
+                assert (
+                    min_agents <= result.agent_count <= max_agents
+                ), f"Agent count {result.agent_count} outside bounds [{min_agents}, {max_agents}] for {tier.value}"
 
                 # Verify efficiency cliff (max 12 agents)
-                assert result.agent_count <= 12, (
-                    f"Agent count {result.agent_count} exceeds efficiency cliff of 12"
-                )
+                assert (
+                    result.agent_count <= 12
+                ), f"Agent count {result.agent_count} exceeds efficiency cliff of 12"
 
 
 @pytest.mark.integration
@@ -406,8 +414,8 @@ class TestPlannerPerformance:
             execution_time = time.time() - start_time
 
             # Assert performance requirements
-            assert execution_time < 2.0, (
-                f"Planning took {execution_time:.2f}s, expected <2.0s"
-            )
+            assert (
+                execution_time < 2.0
+            ), f"Planning took {execution_time:.2f}s, expected <2.0s"
             assert isinstance(result, PlannerResponse)
             assert result.confidence_score >= 0.8

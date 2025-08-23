@@ -309,10 +309,12 @@ class TestComposerRequestValidationGaps:
             # Code injection
             "Python code: eval('import os; os.system(\"whoami\")')",
             # Serialization attack
-            json.dumps({
-                "__proto__": {"admin": True, "role": "superuser"},
-                "constructor": {"prototype": {"isAdmin": True}},
-            }),
+            json.dumps(
+                {
+                    "__proto__": {"admin": True, "role": "superuser"},
+                    "constructor": {"prototype": {"isAdmin": True}},
+                }
+            ),
             # Template injection
             "Template: {{ ''.__class__.__mro__[1].__subclasses__()[104].__init__.__globals__['sys'].exit() }}",
             # LDAP injection
@@ -428,8 +430,7 @@ class TestValidationInconsistencies:
 
             # Test AgentCompositionRequest (has some validation)
             try:
-                from khive.services.composition.parts import \
-                    AgentCompositionRequest
+                from khive.services.composition.parts import AgentCompositionRequest
 
                 result1 = AgentCompositionRequest.model_validate(test_input)
                 print(
