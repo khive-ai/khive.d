@@ -4,10 +4,8 @@ This module provides nuanced semantic understanding for complexity assessment,
 balancing keyword matching with intent recognition.
 """
 
-from typing import List
 
-
-def assess_by_heuristics(text: str) -> List[str]:
+def assess_by_heuristics(text: str) -> list[str]:
     """Assess complexity using heuristic patterns with nuanced semantic understanding.
 
     Args:
@@ -97,10 +95,11 @@ def assess_by_heuristics(text: str) -> List[str]:
         # Many complex indicators or several high-intensity ones
         hits.append("very_complex")
     # Mixed very_complex with other patterns - escalate to highest
-    elif very_complex_count > 0 and (complex_count > 0 or simple_count > 0):
-        hits.append("very_complex")
-    # Pattern density thresholds
-    elif very_complex_count >= 2:
+    elif (
+        very_complex_count > 0
+        and (complex_count > 0 or simple_count > 0)
+        or very_complex_count >= 2
+    ):
         hits.append("very_complex")
     elif complex_count >= 2:
         hits.append("complex")

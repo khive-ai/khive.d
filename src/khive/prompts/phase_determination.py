@@ -4,10 +4,8 @@ This module provides phase detection based on task keywords and patterns,
 helping to structure complex tasks into appropriate execution phases.
 """
 
-from typing import List
 
-
-def determine_required_phases(request_text: str) -> List[str]:
+def determine_required_phases(request_text: str) -> list[str]:
     """Determine which phases are needed based on request keywords.
 
     Args:
