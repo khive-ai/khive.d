@@ -3,6 +3,8 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from lionagi.fields import Instruct
+
 from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
@@ -12,7 +14,6 @@ from khive.services.orchestration.parts import (
     GatedMultiPhaseOrchestrationResponse,
     OrchestrationPlan,
 )
-from lionagi.fields import Instruct
 
 
 def create_mock_orchestrator(flow_name: str = "test_flow") -> LionOrchestrator:

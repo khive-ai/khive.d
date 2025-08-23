@@ -409,15 +409,17 @@ def run_concurrent_operations(
     total_errors = sum(t["errors"] for t in results["threads"])
     all_times = [t for thread in results["threads"] for t in thread["times"]]
 
-    results.update({
-        "total_operations": total_operations,
-        "total_errors": total_errors,
-        "success_rate": total_operations / max(total_operations + total_errors, 1),
-        "avg_time_per_operation": sum(all_times) / max(len(all_times), 1),
-        "min_time": min(all_times) if all_times else 0,
-        "max_time": max(all_times) if all_times else 0,
-        "performance_metrics": monitor.get_metrics() if monitor else {},
-    })
+    results.update(
+        {
+            "total_operations": total_operations,
+            "total_errors": total_errors,
+            "success_rate": total_operations / max(total_operations + total_errors, 1),
+            "avg_time_per_operation": sum(all_times) / max(len(all_times), 1),
+            "min_time": min(all_times) if all_times else 0,
+            "max_time": max(all_times) if all_times else 0,
+            "performance_metrics": monitor.get_metrics() if monitor else {},
+        }
+    )
 
     return results
 

@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
-import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import redis.asyncio as redis
 from redis.asyncio import ConnectionPool
@@ -31,8 +29,8 @@ class RedisCache(CacheBackend):
             config: Cache configuration
         """
         self.config = config
-        self._pool: Optional[ConnectionPool] = None
-        self._redis: Optional[redis.Redis] = None
+        self._pool: ConnectionPool | None = None
+        self._redis: redis.Redis | None = None
         self._stats = CacheStats()
 
     async def _get_redis(self) -> redis.Redis:
@@ -45,17 +43,22 @@ class RedisCache(CacheBackend):
         """Establish Redis connection with pool."""
         try:
             # Create connection pool
-            self._pool = ConnectionPool(
-                host=self.config.redis_host,
-                port=self.config.redis_port,
-                db=self.config.redis_db,
-                password=self.config.redis_password,
-                ssl=self.config.redis_ssl,
-                max_connections=self.config.max_connections,
-                retry_on_timeout=self.config.retry_on_timeout,
-                socket_timeout=self.config.socket_timeout,
-                decode_responses=True,
-            )
+            pool_kwargs = {
+                "host": self.config.redis_host,
+                "port": self.config.redis_port,
+                "db": self.config.redis_db,
+                "password": self.config.redis_password,
+                "max_connections": self.config.max_connections,
+                "retry_on_timeout": self.config.retry_on_timeout,
+                "socket_timeout": self.config.socket_timeout,
+                "decode_responses": True,
+            }
+
+            # Only add SSL if it's enabled and supported
+            if self.config.redis_ssl:
+                pool_kwargs["ssl"] = True
+
+            self._pool = ConnectionPool(**pool_kwargs)
 
             # Create Redis client
             self._redis = redis.Redis(connection_pool=self._pool)
@@ -73,7 +76,7 @@ class RedisCache(CacheBackend):
             logger.error(f"Unexpected error connecting to Redis: {e}")
             raise
 
-    async def get(self, key: str) -> Optional[CacheEntry]:
+    async def get(self, key: str) -> CacheEntry | None:
         """Get a cache entry by key."""
         if not self.config.enabled:
             return None
@@ -127,8 +130,8 @@ class RedisCache(CacheBackend):
         self,
         key: str,
         value: Any,
-        ttl_seconds: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        ttl_seconds: int | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """Set a cache entry."""
         if not self.config.enabled:
@@ -143,12 +146,11 @@ class RedisCache(CacheBackend):
             # Create cache entry
             expires_at = None
             if ttl_seconds:
-                expires_at = (
-                    datetime.now(timezone.utc).replace(microsecond=0)
-                    + timezone.utc.localize(
-                        datetime.fromtimestamp(ttl_seconds)
-                    ).utctimetuple()
-                )
+                from datetime import timedelta
+
+                expires_at = datetime.now(timezone.utc).replace(
+                    microsecond=0
+                ) + timedelta(seconds=ttl_seconds)
 
             entry = CacheEntry(
                 key=key,
@@ -323,3 +325,25 @@ class RedisCache(CacheBackend):
         finally:
             self._redis = None
             self._pool = None
+
+    # Convenience methods for easier testing and simpler usage
+    async def get_value(self, key: str) -> Any | None:
+        """Get raw value from cache (convenience method)."""
+        entry = await self.get(key)
+        return entry.value if entry else None
+
+    async def set_value(
+        self, key: str, value: Any, ttl_seconds: int | None = None
+    ) -> bool:
+        """Set raw value in cache (convenience method)."""
+        return await self.set(key, value, ttl_seconds)
+
+    async def get_json(self, key: str) -> Any | None:
+        """Get JSON-decoded value from cache."""
+        return await self.get_value(key)
+
+    async def set_json(
+        self, key: str, value: Any, ttl_seconds: int | None = None
+    ) -> bool:
+        """Set JSON-encoded value in cache."""
+        return await self.set_value(key, value, ttl_seconds)

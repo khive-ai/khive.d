@@ -6,6 +6,8 @@ import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from lionagi.service.imodel import iModel
+
 from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
 
@@ -274,7 +276,9 @@ class TestTimeoutHandling:
                 "khive.services.orchestration.orchestrator.Branch"
             ) as mock_branch_cls,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
+            mock_cc.endpoint = MagicMock()
+            mock_cc.endpoint.endpoint = "anthropic/claude-3-5-sonnet-20241022"
             mock_create_cc.return_value = mock_cc
             mock_branch = MagicMock()
             mock_branch.id = "synthesis_branch_id"
@@ -332,7 +336,9 @@ class TestAsyncResourceManagement:
                 "khive.services.orchestration.orchestrator.composer_service"
             ) as mock_composer,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
+            mock_cc.endpoint = MagicMock()
+            mock_cc.endpoint.endpoint = "anthropic/claude-3-5-sonnet-20241022"
             mock_create_cc.return_value = mock_cc
 
             # Composer fails after CC is created
@@ -524,7 +530,9 @@ class TestAsyncDeadlockPrevention:
                 "khive.services.orchestration.orchestrator.Branch"
             ) as mock_branch_cls,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
+            mock_cc.endpoint = MagicMock()
+            mock_cc.endpoint.endpoint = "anthropic/claude-3-5-sonnet-20241022"
             mock_create_cc.return_value = mock_cc
 
             mock_branch = MagicMock()

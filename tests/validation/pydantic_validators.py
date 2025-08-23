@@ -11,6 +11,8 @@ This module provides:
 from typing import Any
 
 import pytest
+from pydantic import BaseModel, ValidationError
+
 from khive.services.plan.models import OrchestrationEvaluation
 from khive.services.plan.parts import (
     AgentRecommendation,
@@ -18,7 +20,6 @@ from khive.services.plan.parts import (
     PlannerResponse,
     TaskPhase,
 )
-from pydantic import BaseModel, ValidationError
 
 # ============================================================================
 # Base Validation Patterns

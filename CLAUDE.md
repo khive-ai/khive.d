@@ -16,6 +16,8 @@ Seq: Sequential
 Kp(*args): khive plan
 	-para: parallel orchestration within the given khive plan scope, (one message, many tasks)
 	- seq: sequential orchestration within the given khive plan scope, (every task requires a new message)
+
+ one phase equals to one message. multiple agents in a phase means that specific phase is a single message, then next phase is another...etc
 ```
 
 ## Audience: Meta-orchestrator (lion), task-orchestrator, agents with write authority (tester/reviewer/architect/implementer)

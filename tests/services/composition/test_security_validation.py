@@ -20,6 +20,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 import yaml
+
 from khive.services.composition.agent_composer import AgentComposer
 
 
@@ -593,11 +594,13 @@ class TestAuthorizationBypassPrevention:
         # Create a normal domain
         normal_domain = domains_dir / "normal.yaml"
         normal_domain.write_text(
-            yaml.dump({
-                "domain": {"id": "normal"},
-                "knowledge_patterns": {"safe": ["pattern1"]},
-                "decision_rules": {"safe_rule": "value"},
-            })
+            yaml.dump(
+                {
+                    "domain": {"id": "normal"},
+                    "knowledge_patterns": {"safe": ["pattern1"]},
+                    "decision_rules": {"safe_rule": "value"},
+                }
+            )
         )
 
         # Test escalation attempts

@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
+
 from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
 
@@ -214,11 +215,13 @@ class TestAsyncExecutionPatterns:
             phase = getattr(realistic_fanout_flow, "phase_counter", 0)
             realistic_fanout_flow.phase_counter = phase + 1
 
-            execution_log.append({
-                "phase": phase + 1,
-                "start_time": time.time(),
-                "graph_nodes": len(getattr(graph, "internal_nodes", {})),
-            })
+            execution_log.append(
+                {
+                    "phase": phase + 1,
+                    "start_time": time.time(),
+                    "graph_nodes": len(getattr(graph, "internal_nodes", {})),
+                }
+            )
 
             # Simulate different phase timings
             if phase == 0:  # Planning phase
@@ -792,12 +795,14 @@ class TestClaudeCodeIntegrationScenarios:
             model_id = str(uuid4())
             creation_time = time.time()
 
-            model_creation_calls.append({
-                "model_id": model_id,
-                "args": args,
-                "kwargs": kwargs,
-                "creation_time": creation_time,
-            })
+            model_creation_calls.append(
+                {
+                    "model_id": model_id,
+                    "args": args,
+                    "kwargs": kwargs,
+                    "creation_time": creation_time,
+                }
+            )
 
             # Simulate Claude Code model
             from lionagi.service.imodel import iModel
@@ -890,12 +895,14 @@ class TestClaudeCodeIntegrationScenarios:
         fs_operations = []
 
         def track_file_operation(operation, path):
-            fs_operations.append({
-                "operation": operation,
-                "path": str(path),
-                "timestamp": time.time(),
-                "thread": threading.current_thread().name,
-            })
+            fs_operations.append(
+                {
+                    "operation": operation,
+                    "path": str(path),
+                    "timestamp": time.time(),
+                    "thread": threading.current_thread().name,
+                }
+            )
 
         # Mock file system operations with tracking
         original_copytree = None
@@ -1026,11 +1033,13 @@ class TestClaudeCodeIntegrationScenarios:
             # Simulate transient failures that eventually succeed
             if call_count <= len(error_scenarios):
                 error_type, error = error_scenarios[call_count - 1]
-                recovery_attempts.append({
-                    "attempt": call_count,
-                    "error_type": error_type,
-                    "timestamp": time.time(),
-                })
+                recovery_attempts.append(
+                    {
+                        "attempt": call_count,
+                        "error_type": error_type,
+                        "timestamp": time.time(),
+                    }
+                )
                 raise error
 
             # Eventually succeed

@@ -3,13 +3,13 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from khive.services.plan.planner_service import (
     ComplexityTier,
     OrchestrationPlanner,
     Request,
 )
-
-from tests.fixtures.planning_fixtures import AGENT_COUNT_BOUNDS, MockDecisionMatrix
+from tests.fixtures.planning_fixtures import MockDecisionMatrix
 
 
 @pytest.mark.unit
@@ -90,7 +90,6 @@ class TestComplexityAlgorithmDetails:
 
         result = algorithm_planner.assess(request)
         assert result.value == expected_tier
-
 
     def test_tier_precedence_algorithm(self, algorithm_planner):
         """Test tier precedence when multiple patterns match."""
@@ -184,8 +183,6 @@ class TestRoleSelectionAlgorithms:
                     expected_phase in phases
                 ), f"Failed to detect {expected_phase} for keyword: {keyword}"
 
-
-
     def test_role_deduplication_algorithm(self, role_planner):
         """Test role deduplication in complex scenarios."""
         # Create scenario that could lead to duplicate role assignments
@@ -248,7 +245,6 @@ class TestAgentCountOptimization:
                 planner.available_roles = roles
                 return planner
 
-
     def test_efficiency_cliff_avoidance(self, optimization_planner):
         """Test that algorithm avoids efficiency cliff (>12 agents)."""
         # Even for very complex tasks, should not exceed efficiency cliff
@@ -275,7 +271,6 @@ class TestAgentCountOptimization:
 
         assert has_core_role, f"No core roles in minimal team: {roles}"
         assert len(roles) >= 1, "Empty team assigned"
-
 
 
 @pytest.mark.unit

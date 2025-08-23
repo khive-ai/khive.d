@@ -6,14 +6,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from khive.services.composition.parts import ComposerRequest
-from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.orchestration.parts import (
-    AgentRequest,
-    OrchestrationPlan,
-)
 from lionagi.fields import Instruct
 from lionagi.service.imodel import iModel
+
+from khive.services.composition.parts import ComposerRequest
+from khive.services.orchestration.orchestrator import LionOrchestrator
+from khive.services.orchestration.parts import AgentRequest, OrchestrationPlan
 
 
 class TestLionOrchestratorInitialization:
@@ -309,7 +307,9 @@ class TestBranchCreation:
                     "khive.services.orchestration.orchestrator.composer_service"
                 ) as mock_composer,
             ):
-                mock_cc = MagicMock()
+                mock_cc = MagicMock(spec=iModel)
+                mock_cc.endpoint = MagicMock()
+                mock_cc.endpoint.endpoint = "anthropic/claude-3-5-sonnet-20241022"
                 mock_create_cc.return_value = mock_cc
 
                 mock_response = MagicMock()
@@ -393,7 +393,9 @@ class TestPlanExpansion:
                 "khive.services.orchestration.orchestrator.composer_service"
             ) as mock_composer,
         ):
-            mock_cc = MagicMock()
+            mock_cc = MagicMock(spec=iModel)
+            mock_cc.endpoint = MagicMock()
+            mock_cc.endpoint.endpoint = "anthropic/claude-3-5-sonnet-20241022"
             mock_create_cc_patch.return_value = mock_cc
 
             mock_response = MagicMock()

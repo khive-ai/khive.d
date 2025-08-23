@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from .models import CacheEntry, CacheStats
 
@@ -12,7 +12,7 @@ class CacheBackend(ABC):
     """Abstract base class for cache backends."""
 
     @abstractmethod
-    async def get(self, key: str) -> Optional[CacheEntry]:
+    async def get(self, key: str) -> CacheEntry | None:
         """Get a cache entry by key.
 
         Args:
@@ -21,15 +21,14 @@ class CacheBackend(ABC):
         Returns:
             CacheEntry if found, None otherwise
         """
-        pass
 
     @abstractmethod
     async def set(
         self,
         key: str,
         value: Any,
-        ttl_seconds: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        ttl_seconds: int | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """Set a cache entry.
 
@@ -42,7 +41,6 @@ class CacheBackend(ABC):
         Returns:
             True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
     async def delete(self, key: str) -> bool:
@@ -54,7 +52,6 @@ class CacheBackend(ABC):
         Returns:
             True if deleted, False if not found
         """
-        pass
 
     @abstractmethod
     async def exists(self, key: str) -> bool:
@@ -66,7 +63,6 @@ class CacheBackend(ABC):
         Returns:
             True if exists, False otherwise
         """
-        pass
 
     @abstractmethod
     async def clear_pattern(self, pattern: str) -> int:
@@ -78,7 +74,6 @@ class CacheBackend(ABC):
         Returns:
             Number of keys deleted
         """
-        pass
 
     @abstractmethod
     async def get_stats(self) -> CacheStats:
@@ -87,7 +82,6 @@ class CacheBackend(ABC):
         Returns:
             Cache statistics
         """
-        pass
 
     @abstractmethod
     async def health_check(self) -> bool:
@@ -96,9 +90,7 @@ class CacheBackend(ABC):
         Returns:
             True if healthy, False otherwise
         """
-        pass
 
     @abstractmethod
     async def close(self) -> None:
         """Close the cache backend connection."""
-        pass
