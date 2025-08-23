@@ -161,22 +161,14 @@ class CacheKey(BaseModel):
 class CacheError(Exception):
     """Base exception for cache-related errors."""
 
-    pass
-
 
 class CacheConnectionError(CacheError):
     """Exception raised when Redis connection fails."""
-
-    pass
 
 
 class CacheSerializationError(CacheError):
     """Exception raised when serialization/deserialization fails."""
 
-    pass
-
 
 class CacheKeyError(CacheError):
     """Exception raised for invalid cache keys."""
-
-    pass

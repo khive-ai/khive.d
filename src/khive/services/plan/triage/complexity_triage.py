@@ -116,7 +116,7 @@ def _create_dynamic_triage_vote() -> type[BaseModel]:
             list[RoleLiteral],
             Field(
                 default_factory=list,
-                max_items=3,
+                max_length=3,
                 description="Suggested roles (empty if escalating)",
             ),
         ),
@@ -124,7 +124,7 @@ def _create_dynamic_triage_vote() -> type[BaseModel]:
             list[DomainLiteral],
             Field(
                 default_factory=list,
-                max_items=2,
+                max_length=2,
                 description="Suggested domains (empty if escalating)",
             ),
         ),
