@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="6" failures="5" skipped="0" tests="11" time="1.056" timestamp="2025-08-23T03:30:36.513987-04:00" hostname="Mac"><testcase classname="test_comprehensive_benchmarks.TestKhivePerformanceBenchmarks" name="test_cache_service_performance_benchmark" time="0.069"><failure message="AttributeError: 'Process' object has no attribute 'io_counters'">tests/performance/test_comprehensive_benchmarks.py:86: in test_cache_service_performance_benchmark
+    async with benchmark_framework.async_benchmark(
+../.local/share/uv/python/cpython-3.10.15-macos-aarch64-none/lib/python3.10/contextlib.py:199: in __aenter__
+    return await anext(self.gen)
+src/khive/services/performance/benchmark_framework.py:357: in async_benchmark
+    monitor.start_monitoring()
+src/khive/services/performance/benchmark_framework.py:192: in start_monitoring
+    self.start_io = self.process.io_counters()
+E   AttributeError: 'Process' object has no attribute 'io_counters'</failure></testcase><testcase classname="test_comprehensive_benchmarks.TestKhivePerformanceBenchmarks" name="test_memory_usage_patterns_benchmark" time="0.068"><failure message="AttributeError: 'Process' object has no attribute 'io_counters'">tests/performance/test_comprehensive_benchmarks.py:302: in test_memory_usage_patterns_benchmark
+    async with benchmark_framework.async_benchmark(
+../.local/share/uv/python/cpython-3.10.15-macos-aarch64-none/lib/python3.10/contextlib.py:199: in __aenter__
+    return await anext(self.gen)
+src/khive/services/performance/benchmark_framework.py:357: in async_benchmark
+    monitor.start_monitoring()
+src/khive/services/performance/benchmark_framework.py:192: in start_monitoring
+    self.start_io = self.process.io_counters()
+E   AttributeError: 'Process' object has no attribute 'io_counters'</failure></testcase><testcase classname="test_comprehensive_benchmarks.TestKhivePerformanceBenchmarks" name="test_session_service_performance_benchmark" time="0.064"><failure message="AttributeError: 'Process' object has no attribute 'io_counters'">tests/performance/test_comprehensive_benchmarks.py:199: in test_session_service_performance_benchmark
+    async with benchmark_framework.async_benchmark(
+../.local/share/uv/python/cpython-3.10.15-macos-aarch64-none/lib/python3.10/contextlib.py:199: in __aenter__
+    return await anext(self.gen)
+src/khive/services/performance/benchmark_framework.py:357: in async_benchmark
+    monitor.start_monitoring()
+src/khive/services/performance/benchmark_framework.py:192: in start_monitoring
+    self.start_io = self.process.io_counters()
+E   AttributeError: 'Process' object has no attribute 'io_counters'</failure></testcase><testcase classname="test_comprehensive_benchmarks.TestKhivePerformanceBenchmarks" name="test_concurrent_load_benchmark" time="0.035"><failure message="AttributeError: 'Process' object has no attribute 'io_counters'">tests/performance/test_comprehensive_benchmarks.py:275: in test_concurrent_load_benchmark
+    load_result = await benchmark_framework.benchmark_load(
+src/khive/services/performance/benchmark_framework.py:436: in benchmark_load
+    monitor.start_monitoring()
+src/khive/services/performance/benchmark_framework.py:192: in start_monitoring
+    self.start_io = self.process.io_counters()
+E   AttributeError: 'Process' object has no attribute 'io_counters'</failure></testcase><testcase classname="test_comprehensive_benchmarks.TestKhivePerformanceBenchmarks" name="test_artifacts_service_performance_benchmark" time="0.064"><failure message="AttributeError: 'Process' object has no attribute 'io_counters'">tests/performance/test_comprehensive_benchmarks.py:130: in test_artifacts_service_performance_benchmark
+    async with benchmark_framework.async_benchmark(
+../.local/share/uv/python/cpython-3.10.15-macos-aarch64-none/lib/python3.10/contextlib.py:199: in __aenter__
+    return await anext(self.gen)
+src/khive/services/performance/benchmark_framework.py:357: in async_benchmark
+    monitor.start_monitoring()
+src/khive/services/performance/benchmark_framework.py:192: in start_monitoring
+    self.start_io = self.process.io_counters()
+E   AttributeError: 'Process' object has no attribute 'io_counters'</failure></testcase><testcase classname="test_comprehensive_benchmarks.TestPerformanceAnalysisFramework" name="test_performance_analyzer" time="0.066"><error message="failed on setup with &quot;AttributeError: 'Process' object has no attribute 'io_counters'&quot;">tests/performance/test_comprehensive_benchmarks.py:378: in sample_benchmark_storage
+    with framework.benchmark(
+../.local/share/uv/python/cpython-3.10.15-macos-aarch64-none/lib/python3.10/contextlib.py:135: in __enter__
+    return next(self.gen)
+src/khive/services/performance/benchmark_framework.py:314: in benchmark
+    monitor.start_monitoring()
+src/khive/services/performance/benchmark_framework.py:192: in start_monitoring
+    self.start_io = self.process.io_counters()
+E   AttributeError: 'Process' object has no attribute 'io_counters'</error></testcase><testcase classname="test_comprehensive_benchmarks.TestPerformanceAnalysisFramework" name="test_bottleneck_identifier" time="0.064"><error message="failed on setup with &quot;AttributeError: 'Process' object has no attribute 'io_counters'&quot;">tests/performance/test_comprehensive_benchmarks.py:378: in sample_benchmark_storage
+    with framework.benchmark(
+../.local/share/uv/python/cpython-3.10.15-macos-aarch64-none/lib/python3.10/contextlib.py:135: in __enter__
+    return next(self.gen)
+src/khive/services/performance/benchmark_framework.py:314: in benchmark
+    monitor.start_monitoring()
+src/khive/services/performance/benchmark_framework.py:192: in start_monitoring
+    self.start_io = self.process.io_counters()
+E   AttributeError: 'Process' object has no attribute 'io_counters'</error></testcase><testcase classname="test_comprehensive_benchmarks.TestPerformanceAnalysisFramework" name="test_trend_analyzer" time="0.067"><error message="failed on setup with &quot;AttributeError: 'Process' object has no attribute 'io_counters'&quot;">tests/performance/test_comprehensive_benchmarks.py:378: in sample_benchmark_storage
+    with framework.benchmark(
+../.local/share/uv/python/cpython-3.10.15-macos-aarch64-none/lib/python3.10/contextlib.py:135: in __enter__
+    return next(self.gen)
+src/khive/services/performance/benchmark_framework.py:314: in benchmark
+    monitor.start_monitoring()
+src/khive/services/performance/benchmark_framework.py:192: in start_monitoring
+    self.start_io = self.process.io_counters()
+E   AttributeError: 'Process' object has no attribute 'io_counters'</error></testcase><testcase classname="test_comprehensive_benchmarks.TestPerformanceAnalysisFramework" name="test_regression_detector" time="0.064"><error message="failed on setup with &quot;AttributeError: 'Process' object has no attribute 'io_counters'&quot;">tests/performance/test_comprehensive_benchmarks.py:378: in sample_benchmark_storage
+    with framework.benchmark(
+../.local/share/uv/python/cpython-3.10.15-macos-aarch64-none/lib/python3.10/contextlib.py:135: in __enter__
+    return next(self.gen)
+src/khive/services/performance/benchmark_framework.py:314: in benchmark
+    monitor.start_monitoring()
+src/khive/services/performance/benchmark_framework.py:192: in start_monitoring
+    self.start_io = self.process.io_counters()
+E   AttributeError: 'Process' object has no attribute 'io_counters'</error></testcase><testcase classname="test_comprehensive_benchmarks.TestPerformanceAnalysisFramework" name="test_optimization_recommender" time="0.063"><error message="failed on setup with &quot;AttributeError: 'Process' object has no attribute 'io_counters'&quot;">tests/performance/test_comprehensive_benchmarks.py:378: in sample_benchmark_storage
+    with framework.benchmark(
+../.local/share/uv/python/cpython-3.10.15-macos-aarch64-none/lib/python3.10/contextlib.py:135: in __enter__
+    return next(self.gen)
+src/khive/services/performance/benchmark_framework.py:314: in benchmark
+    monitor.start_monitoring()
+src/khive/services/performance/benchmark_framework.py:192: in start_monitoring
+    self.start_io = self.process.io_counters()
+E   AttributeError: 'Process' object has no attribute 'io_counters'</error></testcase><testcase classname="test_comprehensive_benchmarks.TestPerformanceAnalysisFramework" name="test_performance_reporter" time="0.063"><error message="failed on setup with &quot;AttributeError: 'Process' object has no attribute 'io_counters'&quot;">tests/performance/test_comprehensive_benchmarks.py:378: in sample_benchmark_storage
+    with framework.benchmark(
+../.local/share/uv/python/cpython-3.10.15-macos-aarch64-none/lib/python3.10/contextlib.py:135: in __enter__
+    return next(self.gen)
+src/khive/services/performance/benchmark_framework.py:314: in benchmark
+    monitor.start_monitoring()
+src/khive/services/performance/benchmark_framework.py:192: in start_monitoring
+    self.start_io = self.process.io_counters()
+E   AttributeError: 'Process' object has no attribute 'io_counters'</error></testcase></testsuite></testsuites>

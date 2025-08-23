@@ -17,21 +17,12 @@ from pydantic import ValidationError
 
 from khive.services.plan.cost_tracker import CostTracker
 from khive.services.plan.models import OrchestrationEvaluation
-from khive.services.plan.parts import (
-    AgentRecommendation,
-    ComplexityLevel,
-    PlannerRequest,
-    PlannerResponse,
-    QualityGate,
-    TaskPhase,
-    WorkflowPattern,
-)
-from khive.services.plan.planner_service import (
-    ComplexityTier,
-    OrchestrationPlanner,
-    PlannerService,
-    Request,
-)
+from khive.services.plan.parts import (AgentRecommendation, ComplexityLevel,
+                                       PlannerRequest, PlannerResponse,
+                                       QualityGate, TaskPhase, WorkflowPattern)
+from khive.services.plan.planner_service import (ComplexityTier,
+                                                 OrchestrationPlanner,
+                                                 PlannerService, Request)
 from tests.fixtures.planning_fixtures import MockOpenAIResponse
 
 
@@ -287,9 +278,9 @@ class TestRoleSelection:
 
                     # Check mandatory roles are included
                     for role in scenario["expected_roles"]:
-                        assert (
-                            role in selected_roles
-                        ), f"Mandatory role '{role}' missing for request: {scenario['request']}"
+                        assert role in selected_roles, (
+                            f"Mandatory role '{role}' missing for request: {scenario['request']}"
+                        )
 
     def test_phase_dependency_mapping(self, mock_decision_matrix):
         """Test that role selection considers phase dependencies."""
@@ -816,9 +807,9 @@ class TestPerformanceAndReliability:
 
                 # Validate performance
                 total_time = end_time - start_time
-                assert (
-                    total_time < max_time
-                ), f"Performance test failed: {total_time}s > {max_time}s"
+                assert total_time < max_time, (
+                    f"Performance test failed: {total_time}s > {max_time}s"
+                )
 
                 # Validate all responses succeeded
                 for response in responses:

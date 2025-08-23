@@ -5,8 +5,8 @@ from .models import CacheConfig, CacheMetrics
 from .redis_client import RedisClient
 
 __all__ = [
+    "CacheConfig",
+    "CacheMetrics",
     "PlanningCacheService",
     "RedisClient",
-    "CacheMetrics",
-    "CacheConfig",
 ]

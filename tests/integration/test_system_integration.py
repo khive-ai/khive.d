@@ -10,11 +10,9 @@ Tests complete system functionality including:
 """
 
 import asyncio
-import json
 import logging
 import time
 from pathlib import Path
-from typing import Dict, List
 from unittest.mock import patch
 
 import pytest
@@ -417,9 +415,9 @@ class TestSystemIntegration:
         assert "planning_cached" in scenario.results, "Planning caching failed"
         assert "phases_completed" in scenario.results, "Phase execution failed"
         assert "system_validation" in scenario.results, "System validation failed"
-        assert (
-            "performance_metrics" in scenario.results
-        ), "Performance validation failed"
+        assert "performance_metrics" in scenario.results, (
+            "Performance validation failed"
+        )
 
         # Verify system state consistency
         final_documents = artifacts_service.list_session_documents(project_session_id)
@@ -427,9 +425,9 @@ class TestSystemIntegration:
             len(planning_result["phases"]) + 1 + 5
         )  # phases + summary + concurrent tests
 
-        assert (
-            len(final_documents) >= expected_minimum_docs
-        ), f"Expected at least {expected_minimum_docs} documents, got {len(final_documents)}"
+        assert len(final_documents) >= expected_minimum_docs, (
+            f"Expected at least {expected_minimum_docs} documents, got {len(final_documents)}"
+        )
 
     @pytest.mark.performance
     @pytest.mark.integration
@@ -622,19 +620,23 @@ class TestSystemIntegration:
 
         assert (
             session_results.get("sessions_per_second", 0) >= min_sessions_per_second
-        ), f"Session creation too slow: {session_results.get('sessions_per_second', 0)} < {min_sessions_per_second}"
+        ), (
+            f"Session creation too slow: {session_results.get('sessions_per_second', 0)} < {min_sessions_per_second}"
+        )
 
-        assert (
-            doc_results.get("operations_per_second", 0) >= min_doc_ops_per_second
-        ), f"Document operations too slow: {doc_results.get('operations_per_second', 0)} < {min_doc_ops_per_second}"
+        assert doc_results.get("operations_per_second", 0) >= min_doc_ops_per_second, (
+            f"Document operations too slow: {doc_results.get('operations_per_second', 0)} < {min_doc_ops_per_second}"
+        )
 
         assert (
             cache_results.get("operations_per_second", 0) >= min_cache_ops_per_second
-        ), f"Cache operations too slow: {cache_results.get('operations_per_second', 0)} < {min_cache_ops_per_second}"
+        ), (
+            f"Cache operations too slow: {cache_results.get('operations_per_second', 0)} < {min_cache_ops_per_second}"
+        )
 
-        assert (
-            consistency_results.get("error_rate", 1) <= max_error_rate
-        ), f"Error rate too high: {consistency_results.get('error_rate', 1)} > {max_error_rate}"
+        assert consistency_results.get("error_rate", 1) <= max_error_rate, (
+            f"Error rate too high: {consistency_results.get('error_rate', 1)} > {max_error_rate}"
+        )
 
         assert scenario.is_successful(), f"Load test failed: {scenario.errors}"
 
@@ -785,14 +787,14 @@ class TestSystemIntegration:
         ]
 
         for result_key in required_results:
-            assert (
-                result_key in scenario.results
-            ), f"Missing resilience test result: {result_key}"
+            assert result_key in scenario.results, (
+                f"Missing resilience test result: {result_key}"
+            )
             if isinstance(scenario.results[result_key], bool):
-                assert scenario.results[
-                    result_key
-                ], f"Resilience test failed for: {result_key}"
+                assert scenario.results[result_key], (
+                    f"Resilience test failed for: {result_key}"
+                )
 
-        assert (
-            scenario.is_successful()
-        ), f"System resilience test failed: {scenario.errors}"
+        assert scenario.is_successful(), (
+            f"System resilience test failed: {scenario.errors}"
+        )

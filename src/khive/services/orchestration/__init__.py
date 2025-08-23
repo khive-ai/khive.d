@@ -1,21 +1,9 @@
 from .orchestrator import LionOrchestrator
-from .parts import (
-    AgentRequest,
-    BaseGate,
-    ComplexityAssessment,
-    FanoutConfig,
-    FanoutPatterns,
-    FanoutResponse,
-    FanoutWithGatedRefinementResponse,
-    GateComponent,
-    Issue,
-    IssueExecution,
-    IssueNum,
-    IssuePlan,
-    IssueResult,
-    OrchestrationPlan,
-    RefinementConfig,
-)
+from .parts import (AgentRequest, BaseGate, ComplexityAssessment, FanoutConfig,
+                    FanoutPatterns, FanoutResponse,
+                    FanoutWithGatedRefinementResponse, GateComponent, Issue,
+                    IssueExecution, IssueNum, IssuePlan, IssueResult,
+                    OrchestrationPlan, RefinementConfig)
 
 __all__ = (
     "AgentRequest",

@@ -11,14 +11,13 @@ This module provides:
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from typing import Any, Dict, List
-
-import pytest
 
 from tests.validation.test_artifacts_validation import TestArtifactsValidation
 from tests.validation.test_cache_validation import TestCacheValidation
-from tests.validation.test_composition_validation import TestCompositionValidation
-from tests.validation.test_orchestration_validation import TestOrchestrationValidation
+from tests.validation.test_composition_validation import \
+    TestCompositionValidation
+from tests.validation.test_orchestration_validation import \
+    TestOrchestrationValidation
 from tests.validation.test_session_validation import TestSessionValidation
 
 
@@ -42,7 +41,7 @@ class ServiceValidationSummary:
     passed_tests: int
     failed_tests: int
     total_duration: float
-    errors: List[str]
+    errors: list[str]
 
     @property
     def pass_rate(self) -> float:
@@ -56,8 +55,8 @@ class ComprehensiveValidationRunner:
     """Runner for comprehensive validation testing across all services."""
 
     def __init__(self):
-        self.results: List[ValidationResult] = []
-        self.service_summaries: Dict[str, ServiceValidationSummary] = {}
+        self.results: list[ValidationResult] = []
+        self.service_summaries: dict[str, ServiceValidationSummary] = {}
 
     def run_service_validation(
         self, service_name: str, test_class: type
@@ -129,7 +128,7 @@ class ComprehensiveValidationRunner:
 
         return summary
 
-    def run_all_validations(self) -> Dict[str, ServiceValidationSummary]:
+    def run_all_validations(self) -> dict[str, ServiceValidationSummary]:
         """Run validation tests for all services."""
         print("🚀 Starting comprehensive khive validation testing...")
         print("=" * 60)
@@ -159,7 +158,7 @@ class ComprehensiveValidationRunner:
 
         return self.service_summaries
 
-    def run_parallel_validations(self) -> Dict[str, ServiceValidationSummary]:
+    def run_parallel_validations(self) -> dict[str, ServiceValidationSummary]:
         """Run validation tests in parallel for better performance."""
         print("🚀 Starting parallel comprehensive validation testing...")
         print("=" * 60)
@@ -213,34 +212,30 @@ class ComprehensiveValidationRunner:
         total_duration = sum(s.total_duration for s in self.service_summaries.values())
         overall_pass_rate = (total_passed / total_tests * 100) if total_tests > 0 else 0
 
-        report_lines.extend(
-            [
-                "📊 OVERALL STATISTICS:",
-                f"  Total Tests: {total_tests}",
-                f"  Passed: {total_passed} ({overall_pass_rate:.1f}%)",
-                f"  Failed: {total_failed}",
-                f"  Total Duration: {total_duration:.2f}s",
-                (
-                    f"  Average Test Duration: {total_duration / total_tests:.3f}s"
-                    if total_tests > 0
-                    else "  Average Test Duration: N/A"
-                ),
-                "",
-            ]
-        )
+        report_lines.extend([
+            "📊 OVERALL STATISTICS:",
+            f"  Total Tests: {total_tests}",
+            f"  Passed: {total_passed} ({overall_pass_rate:.1f}%)",
+            f"  Failed: {total_failed}",
+            f"  Total Duration: {total_duration:.2f}s",
+            (
+                f"  Average Test Duration: {total_duration / total_tests:.3f}s"
+                if total_tests > 0
+                else "  Average Test Duration: N/A"
+            ),
+            "",
+        ])
 
         # Service-by-service breakdown
         report_lines.append("🔍 SERVICE VALIDATION BREAKDOWN:")
 
         for service_name, summary in self.service_summaries.items():
             status_emoji = "✅" if summary.failed_tests == 0 else "❌"
-            report_lines.extend(
-                [
-                    f"{status_emoji} {service_name}:",
-                    f"    Tests: {summary.passed_tests}/{summary.total_tests} passed ({summary.pass_rate:.1f}%)",
-                    f"    Duration: {summary.total_duration:.2f}s",
-                ]
-            )
+            report_lines.extend([
+                f"{status_emoji} {service_name}:",
+                f"    Tests: {summary.passed_tests}/{summary.total_tests} passed ({summary.pass_rate:.1f}%)",
+                f"    Duration: {summary.total_duration:.2f}s",
+            ])
 
             if summary.errors:
                 report_lines.append("    Errors:")
@@ -255,21 +250,17 @@ class ComprehensiveValidationRunner:
 
         # Performance insights
         if total_tests > 0:
-            report_lines.extend(
-                [
-                    "⚡ PERFORMANCE INSIGHTS:",
-                    f"  Fastest Service: {min(self.service_summaries.values(), key=lambda s: s.total_duration / max(s.total_tests, 1)).service_name}",
-                    f"  Slowest Service: {max(self.service_summaries.values(), key=lambda s: s.total_duration / max(s.total_tests, 1)).service_name}",
-                    "",
-                ]
-            )
+            report_lines.extend([
+                "⚡ PERFORMANCE INSIGHTS:",
+                f"  Fastest Service: {min(self.service_summaries.values(), key=lambda s: s.total_duration / max(s.total_tests, 1)).service_name}",
+                f"  Slowest Service: {max(self.service_summaries.values(), key=lambda s: s.total_duration / max(s.total_tests, 1)).service_name}",
+                "",
+            ])
 
         # Recommendations
-        report_lines.extend(
-            [
-                "💡 RECOMMENDATIONS:",
-            ]
-        )
+        report_lines.extend([
+            "💡 RECOMMENDATIONS:",
+        ])
 
         failing_services = [
             s.service_name
@@ -327,9 +318,9 @@ class TestComprehensiveValidation:
         for service_name in critical_services:
             if service_name in summaries:
                 summary = summaries[service_name]
-                assert (
-                    summary.pass_rate >= 90
-                ), f"{service_name} has low pass rate: {summary.pass_rate:.1f}%"
+                assert summary.pass_rate >= 90, (
+                    f"{service_name} has low pass rate: {summary.pass_rate:.1f}%"
+                )
 
     def test_all_service_validations_parallel(self):
         """Test all service validations in parallel."""
@@ -343,9 +334,9 @@ class TestComprehensiveValidation:
         total_passed = sum(s.passed_tests for s in summaries.values())
         overall_pass_rate = (total_passed / total_tests * 100) if total_tests > 0 else 0
 
-        assert (
-            overall_pass_rate >= 85
-        ), f"Overall pass rate too low: {overall_pass_rate:.1f}%"
+        assert overall_pass_rate >= 85, (
+            f"Overall pass rate too low: {overall_pass_rate:.1f}%"
+        )
         assert total_tests >= 50, f"Too few tests: {total_tests}"
 
     def test_validation_performance(self):
@@ -363,9 +354,9 @@ class TestComprehensiveValidation:
         total_tests = sum(s.total_tests for s in runner.service_summaries.values())
         if total_tests > 0:
             avg_test_time = total_time / total_tests
-            assert (
-                avg_test_time < 0.5
-            ), f"Average test time too slow: {avg_test_time:.3f}s"
+            assert avg_test_time < 0.5, (
+                f"Average test time too slow: {avg_test_time:.3f}s"
+            )
 
     def test_validation_coverage_completeness(self):
         """Test that validation coverage is comprehensive."""
@@ -384,15 +375,15 @@ class TestComprehensiveValidation:
         tested_services = set(summaries.keys())
         missing_services = expected_services - tested_services
 
-        assert (
-            not missing_services
-        ), f"Missing validation for services: {missing_services}"
+        assert not missing_services, (
+            f"Missing validation for services: {missing_services}"
+        )
 
         # Ensure reasonable test coverage per service
         for service_name, summary in summaries.items():
-            assert (
-                summary.total_tests >= 5
-            ), f"{service_name} has too few tests: {summary.total_tests}"
+            assert summary.total_tests >= 5, (
+                f"{service_name} has too few tests: {summary.total_tests}"
+            )
 
     def test_cross_service_integration_patterns(self):
         """Test validation patterns that span multiple services."""
@@ -412,9 +403,9 @@ class TestComprehensiveValidation:
             if service_name in summaries:
                 summary = summaries[service_name]
                 # Services with interdependencies need higher coverage
-                assert (
-                    summary.pass_rate >= 95
-                ), f"Interdependent service {service_name} needs higher pass rate"
+                assert summary.pass_rate >= 95, (
+                    f"Interdependent service {service_name} needs higher pass rate"
+                )
 
 
 def run_comprehensive_validation_suite():

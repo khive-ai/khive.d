@@ -8,14 +8,16 @@ import asyncio
 import json
 import os
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Any, Dict, Generator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
 
-from khive.services.artifacts.factory import ArtifactsConfig, create_artifacts_service
+from khive.services.artifacts.factory import (ArtifactsConfig,
+                                              create_artifacts_service)
 from khive.services.artifacts.models import Author
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.cache.config import CacheConfig
@@ -51,7 +53,7 @@ def temp_workspace(integration_temp_dir: Path) -> Path:
 
 
 @pytest.fixture
-def integration_env() -> Generator[Dict[str, Any], None, None]:
+def integration_env() -> Generator[dict[str, Any], None, None]:
     """Set environment variables for integration testing."""
     original_env = dict(os.environ)
 
@@ -126,15 +128,13 @@ def mock_openai_client():
     mock_response.choices = [
         MagicMock(
             message=MagicMock(
-                content=json.dumps(
-                    {
-                        "complexity": "medium",
-                        "confidence": 0.85,
-                        "reasoning": "Integration testing scenario with moderate complexity",
-                        "recommended_agents": 3,
-                        "roles": ["researcher", "implementer", "tester"],
-                    }
-                )
+                content=json.dumps({
+                    "complexity": "medium",
+                    "confidence": 0.85,
+                    "reasoning": "Integration testing scenario with moderate complexity",
+                    "recommended_agents": 3,
+                    "roles": ["researcher", "implementer", "tester"],
+                })
             )
         )
     ]
@@ -240,7 +240,7 @@ This is a sample document created during integration testing.
 """
 
     @staticmethod
-    def sample_session_metadata() -> Dict[str, Any]:
+    def sample_session_metadata() -> dict[str, Any]:
         """Sample session metadata for integration testing."""
         return {
             "project": "integration_testing",

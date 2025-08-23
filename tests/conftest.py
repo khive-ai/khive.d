@@ -15,26 +15,23 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "fixtures"))
 
 # Import CLI fixtures
 from tests.fixtures.cli_fixtures import *  # noqa: F403
-
 # Import composition fixtures
 from tests.fixtures.composition.composition_fixtures import *  # noqa: F403
 from tests.fixtures.composition.performance_fixtures import *  # noqa: F403
 from tests.fixtures.composition.security_fixtures import *  # noqa: F403
-
 # Import filesystem fixtures
 from tests.fixtures.filesystem_fixtures import *  # noqa: F403
-
 # Import gated refinement fixtures
 from tests.fixtures.gated_refinement_fixtures import *  # noqa: F403
-
 # Import orchestration fixtures
 from tests.fixtures.orchestration.orchestration_fixtures import *  # noqa: F403
-
 # Import planning fixtures
 from tests.fixtures.planning_fixtures import *  # noqa: F403
-
 # Import service fixtures
 from tests.fixtures.service_fixtures import *  # noqa: F403
+
+# Import MCP fixtures (temporarily disabled due to fastmcp/mcp version conflict)
+# from tests.fixtures.mcp.core_fixtures import *
 
 
 @pytest.fixture(scope="session")

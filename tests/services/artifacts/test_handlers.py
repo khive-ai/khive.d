@@ -1,19 +1,14 @@
 """Tests for artifacts handlers (timeout manager and handoff coordinator)."""
 
 import asyncio
-from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from khive.services.artifacts.handlers.handoff_coordinator import (
-    AgentSpec,
-    HandoffCoordinator,
-)
-from khive.services.artifacts.handlers.timeout_manager import (
-    TimeoutConfig,
-    TimeoutManager,
-    TimeoutType,
-)
+    AgentSpec, HandoffCoordinator)
+from khive.services.artifacts.handlers.timeout_manager import (TimeoutConfig,
+                                                               TimeoutManager,
+                                                               TimeoutType)
 
 
 class TestTimeoutManager:

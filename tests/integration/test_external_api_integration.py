@@ -12,7 +12,6 @@ Tests integration with external APIs including:
 import asyncio
 import json
 import time
-from typing import Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -36,7 +35,7 @@ class MockExternalAPIManager:
         """Set the simulated latency for API calls."""
         self.latency_ms = latency_ms
 
-    async def simulate_openai_completion(self, request: Dict) -> Dict:
+    async def simulate_openai_completion(self, request: dict) -> dict:
         """Simulate OpenAI completion API call."""
         self.call_count += 1
 
@@ -58,25 +57,23 @@ class MockExternalAPIManager:
                 "choices": [
                     {
                         "message": {
-                            "content": json.dumps(
-                                {
-                                    "complexity": (
-                                        "high" if len(prompt) > 100 else "medium"
-                                    ),
-                                    "confidence": 0.85,
-                                    "reasoning": f"Analysis of request with {len(prompt)} characters",
-                                    "recommended_agents": 5 if len(prompt) > 100 else 3,
-                                    "roles": [
-                                        "researcher",
-                                        "architect",
-                                        "implementer",
-                                        "tester",
-                                        "reviewer",
-                                    ],
-                                    "estimated_cost": 0.25,
-                                    "processing_time": self.latency_ms / 1000.0,
-                                }
-                            )
+                            "content": json.dumps({
+                                "complexity": (
+                                    "high" if len(prompt) > 100 else "medium"
+                                ),
+                                "confidence": 0.85,
+                                "reasoning": f"Analysis of request with {len(prompt)} characters",
+                                "recommended_agents": 5 if len(prompt) > 100 else 3,
+                                "roles": [
+                                    "researcher",
+                                    "architect",
+                                    "implementer",
+                                    "tester",
+                                    "reviewer",
+                                ],
+                                "estimated_cost": 0.25,
+                                "processing_time": self.latency_ms / 1000.0,
+                            })
                         }
                     }
                 ],
@@ -118,9 +115,9 @@ class TestExternalAPIIntegration:
         mock_client = AsyncMock()
 
         # Configure realistic response
-        expected_response = await api_manager.simulate_openai_completion(
-            {"messages": [{"content": planning_request}]}
-        )
+        expected_response = await api_manager.simulate_openai_completion({
+            "messages": [{"content": planning_request}]
+        })
 
         mock_client.chat.completions.create.return_value = MagicMock(
             choices=[
@@ -208,13 +205,9 @@ class TestExternalAPIIntegration:
         for attempt in range(10):
             try:
                 # Simulate API call
-                response = await api_manager.simulate_openai_completion(
-                    {
-                        "messages": [
-                            {"content": f"{planning_request} - attempt {attempt}"}
-                        ]
-                    }
-                )
+                response = await api_manager.simulate_openai_completion({
+                    "messages": [{"content": f"{planning_request} - attempt {attempt}"}]
+                })
                 successful_calls += 1
 
                 # Cache successful response
@@ -276,9 +269,9 @@ class TestExternalAPIIntegration:
                     rate_limited_calls += 1
 
                 # Make the API call
-                response = await api_manager.simulate_openai_completion(
-                    {"messages": [{"content": f"Rate limiting test call {call_id}"}]}
-                )
+                response = await api_manager.simulate_openai_completion({
+                    "messages": [{"content": f"Rate limiting test call {call_id}"}]
+                })
 
                 call_times.append(time.time())
                 successful_calls += 1
@@ -300,20 +293,20 @@ class TestExternalAPIIntegration:
         total_time = time.time() - start_time
 
         # Verify rate limiting behavior
-        assert (
-            total_time >= test_duration_seconds
-        ), "Test should take at least the specified duration"
-        assert (
-            successful_calls <= expected_max_calls + 2
-        ), f"Rate limiting not working: {successful_calls} > {expected_max_calls}"
+        assert total_time >= test_duration_seconds, (
+            "Test should take at least the specified duration"
+        )
+        assert successful_calls <= expected_max_calls + 2, (
+            f"Rate limiting not working: {successful_calls} > {expected_max_calls}"
+        )
 
         # Verify call distribution over time
         if len(call_times) > 0:
             # Check that calls are distributed over time (not all at once)
             time_spread = max(call_times) - min(call_times)
-            assert (
-                time_spread >= 1.0
-            ), "Calls should be spread over time due to rate limiting"
+            assert time_spread >= 1.0, (
+                "Calls should be spread over time due to rate limiting"
+            )
 
     @pytest.mark.integration
     async def test_api_timeout_and_circuit_breaker(
@@ -329,7 +322,7 @@ class TestExternalAPIIntegration:
         circuit_breaker_open = False
         circuit_breaker_threshold = 3
 
-        async def api_call_with_timeout(request: str) -> Dict:
+        async def api_call_with_timeout(request: str) -> dict:
             """Make API call with timeout and circuit breaker logic."""
             nonlocal failure_count, circuit_breaker_open
 
@@ -340,9 +333,9 @@ class TestExternalAPIIntegration:
             try:
                 # Make API call with timeout
                 response = await asyncio.wait_for(
-                    api_manager.simulate_openai_completion(
-                        {"messages": [{"content": request}]}
-                    ),
+                    api_manager.simulate_openai_completion({
+                        "messages": [{"content": request}]
+                    }),
                     timeout=timeout_threshold,
                 )
 
@@ -372,14 +365,12 @@ class TestExternalAPIIntegration:
             result = await api_call_with_timeout(f"Timeout test {i}")
             call_time = time.time() - start_time
 
-            timeout_results.append(
-                {
-                    "call_index": i,
-                    "result": result,
-                    "call_time": call_time,
-                    "circuit_breaker_open": circuit_breaker_open,
-                }
-            )
+            timeout_results.append({
+                "call_index": i,
+                "result": result,
+                "call_time": call_time,
+                "circuit_breaker_open": circuit_breaker_open,
+            })
 
             # Cache the result (including errors)
             cache_key = f"timeout_test:{i}"
@@ -395,18 +386,18 @@ class TestExternalAPIIntegration:
             if "circuit_breaker" in r["result"].get("source", "")
         ]
 
-        assert (
-            len(timeout_calls) >= 3
-        ), "Should have timeout calls before circuit breaker opens"
-        assert (
-            len(circuit_breaker_calls) >= 1
-        ), "Circuit breaker should open after threshold"
+        assert len(timeout_calls) >= 3, (
+            "Should have timeout calls before circuit breaker opens"
+        )
+        assert len(circuit_breaker_calls) >= 1, (
+            "Circuit breaker should open after threshold"
+        )
 
         # Verify timeout duration
         for result in timeout_calls:
-            assert (
-                result["call_time"] <= timeout_threshold + 0.5
-            ), f"Timeout not enforced properly: {result['call_time']}s"
+            assert result["call_time"] <= timeout_threshold + 0.5, (
+                f"Timeout not enforced properly: {result['call_time']}s"
+            )
 
         # Test circuit breaker reset (would require additional logic in real implementation)
         circuit_breaker_open = False  # Simulate manual reset
@@ -417,9 +408,9 @@ class TestExternalAPIIntegration:
 
         # Make a successful call after reset
         reset_result = await api_call_with_timeout("Circuit breaker reset test")
-        assert (
-            "error" not in reset_result
-        ), "Call should succeed after circuit breaker reset"
+        assert "error" not in reset_result, (
+            "Call should succeed after circuit breaker reset"
+        )
 
     @pytest.mark.integration
     async def test_api_cost_tracking_and_budget_management(
@@ -444,7 +435,7 @@ class TestExternalAPIIntegration:
             ttl=3600,
         )
 
-        async def tracked_api_call(request: str) -> Dict:
+        async def tracked_api_call(request: str) -> dict:
             """Make API call with cost tracking."""
             # Get current budget status
             budget_status = await redis_cache.get(budget_cache_key)
@@ -458,9 +449,9 @@ class TestExternalAPIIntegration:
 
             # Make API call
             try:
-                response = await api_manager.simulate_openai_completion(
-                    {"messages": [{"content": request}]}
-                )
+                response = await api_manager.simulate_openai_completion({
+                    "messages": [{"content": request}]
+                })
 
                 # Update cost tracking
                 budget_status["current_cost"] += cost_per_call
@@ -504,9 +495,9 @@ class TestExternalAPIIntegration:
 
         # Should allow approximately budget_limit / cost_per_call calls
         expected_successful_calls = int(budget_limit / cost_per_call)
-        assert (
-            len(successful_calls) <= expected_successful_calls + 1
-        ), f"Too many successful calls: {len(successful_calls)}"
+        assert len(successful_calls) <= expected_successful_calls + 1, (
+            f"Too many successful calls: {len(successful_calls)}"
+        )
         assert len(budget_exceeded_calls) > 0, "Budget limit should be enforced"
 
         # Verify cost calculation accuracy
@@ -515,9 +506,9 @@ class TestExternalAPIIntegration:
             expected_total_cost = len(successful_calls) * cost_per_call
             actual_total_cost = final_call["cost_info"]["total_cost"]
 
-            assert (
-                abs(actual_total_cost - expected_total_cost) < 0.01
-            ), f"Cost calculation error: {actual_total_cost} != {expected_total_cost}"
+            assert abs(actual_total_cost - expected_total_cost) < 0.01, (
+                f"Cost calculation error: {actual_total_cost} != {expected_total_cost}"
+            )
 
         # Verify budget status in cache
         final_budget_status = await redis_cache.get(budget_cache_key)
@@ -555,7 +546,7 @@ class TestExternalAPIIntegration:
                 request_index = i % len(unique_requests)
                 test_requests.append(f"{unique_requests[request_index]} - variant {i}")
 
-        async def cached_api_call(request: str, call_id: int) -> Dict:
+        async def cached_api_call(request: str, call_id: int) -> dict:
             """Make API call with caching."""
             cache_key = f"api_cache:{hash(request)}"
 
@@ -567,9 +558,9 @@ class TestExternalAPIIntegration:
             # Make API call
             try:
                 start_time = time.time()
-                response = await api_manager.simulate_openai_completion(
-                    {"messages": [{"content": request}]}
-                )
+                response = await api_manager.simulate_openai_completion({
+                    "messages": [{"content": request}]
+                })
                 api_call_time = time.time() - start_time
 
                 # Add metadata
@@ -613,14 +604,14 @@ class TestExternalAPIIntegration:
                 r.get("api_call_time", 0) for r in cache_misses
             ) / len(cache_misses)
 
-            assert (
-                avg_cache_miss_time > avg_cache_hit_time * 5
-            ), "Cache should provide significant performance improvement"
+            assert avg_cache_miss_time > avg_cache_hit_time * 5, (
+                "Cache should provide significant performance improvement"
+            )
 
         # Verify overall performance
         operations_per_second = len(successful_calls) / total_time
         expected_min_throughput = 10  # ops/sec (accounting for caching improvement)
 
-        assert (
-            operations_per_second > expected_min_throughput
-        ), f"Throughput too low: {operations_per_second} ops/sec < {expected_min_throughput}"
+        assert operations_per_second > expected_min_throughput, (
+            f"Throughput too low: {operations_per_second} ops/sec < {expected_min_throughput}"
+        )

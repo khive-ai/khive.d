@@ -5,21 +5,14 @@ and performance characteristics under various conditions.
 """
 
 import asyncio
-import json
 import time
-from datetime import datetime, timedelta
-from typing import Any, Dict
+from datetime import datetime
 
 import pytest
 
 from khive.services.cache.config import CacheConfig
-from khive.services.cache.models import CacheEntry, CacheStats
+from khive.services.cache.models import CacheStats
 from khive.services.cache.redis_cache import RedisCache
-from tests.integration.fixtures.external_services import (
-    MockRedisServer,
-    mock_redis_cache,
-    real_redis_cache,
-)
 
 
 @pytest.mark.integration
@@ -153,8 +146,7 @@ class TestRedisCacheIntegration:
         # Concurrent get operations
         async def get_test_data(index: int):
             key = f"concurrent_key_{index}"
-            value = await cache.get(key)
-            return value
+            return await cache.get(key)
 
         get_tasks = [get_test_data(i) for i in range(num_operations)]
         get_results = await asyncio.gather(*get_tasks, return_exceptions=True)
@@ -206,9 +198,9 @@ class TestRedisCacheIntegration:
 
         # Performance assertions
         assert storage_duration < 10.0, f"Storage took too long: {storage_duration}s"
-        assert (
-            retrieval_duration < 10.0
-        ), f"Retrieval took too long: {retrieval_duration}s"
+        assert retrieval_duration < 10.0, (
+            f"Retrieval took too long: {retrieval_duration}s"
+        )
 
     async def test_cache_stats_tracking(self, mock_redis_cache):
         """Test cache statistics tracking functionality."""
@@ -419,9 +411,9 @@ class TestCachePerformance:
         operations_per_second = total_operations / duration if duration > 0 else 0
 
         # Performance assertions
-        assert (
-            operations_per_second > 100
-        ), f"Throughput too low: {operations_per_second} ops/sec"
+        assert operations_per_second > 100, (
+            f"Throughput too low: {operations_per_second} ops/sec"
+        )
         assert duration < 30.0, f"Batch operations took too long: {duration}s"
 
     async def test_cache_latency_distribution(self, mock_redis_cache):
@@ -459,7 +451,7 @@ class TestCachePerformance:
         assert max_latency < 1000, f"Maximum latency too high: {max_latency}ms"
 
         # Log performance metrics for analysis
-        print(f"Cache Performance Metrics:")
+        print("Cache Performance Metrics:")
         print(f"  Average latency: {avg_latency:.2f}ms")
         print(f"  95th percentile: {p95_latency:.2f}ms")
         print(f"  99th percentile: {p99_latency:.2f}ms")

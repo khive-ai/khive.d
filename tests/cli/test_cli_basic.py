@@ -7,13 +7,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from khive.cli.khive_cli import (
-    COMMAND_DESCRIPTIONS,
-    COMMANDS,
-    _get_full_module_path,
-    _print_root_help,
-    main,
-)
+from khive.cli.khive_cli import (COMMAND_DESCRIPTIONS, COMMANDS,
+                                 _get_full_module_path, _print_root_help, main)
 
 
 class TestCLIBasics:

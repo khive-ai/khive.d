@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import redis.asyncio as redis
 from redis.asyncio import ConnectionPool
@@ -13,8 +13,10 @@ from redis.exceptions import ConnectionError, RedisError, TimeoutError
 from khive.utils import get_logger
 
 from .base import CacheBackend
-from .config import CacheConfig
 from .models import CacheEntry, CacheStats
+
+if TYPE_CHECKING:
+    from .config import CacheConfig
 
 logger = get_logger("khive.services.cache.redis")
 
@@ -70,10 +72,10 @@ class RedisCache(CacheBackend):
             )
 
         except (ConnectionError, TimeoutError) as e:
-            logger.error(f"Failed to connect to Redis: {e}")
+            logger.exception(f"Failed to connect to Redis: {e}")
             raise
         except Exception as e:
-            logger.error(f"Unexpected error connecting to Redis: {e}")
+            logger.exception(f"Unexpected error connecting to Redis: {e}")
             raise
 
     async def get(self, key: str) -> CacheEntry | None:
@@ -120,7 +122,7 @@ class RedisCache(CacheBackend):
             self._stats.misses += 1
             return None
         except Exception as e:
-            logger.error(f"Unexpected error getting key {key}: {e}")
+            logger.exception(f"Unexpected error getting key {key}: {e}")
             self._stats.misses += 1
             if not self.config.fallback_on_error:
                 raise
@@ -188,7 +190,7 @@ class RedisCache(CacheBackend):
                 raise
             return False
         except Exception as e:
-            logger.error(f"Unexpected error setting key {key}: {e}")
+            logger.exception(f"Unexpected error setting key {key}: {e}")
             if not self.config.fallback_on_error:
                 raise
             return False
@@ -213,7 +215,7 @@ class RedisCache(CacheBackend):
                 raise
             return False
         except Exception as e:
-            logger.error(f"Unexpected error deleting key {key}: {e}")
+            logger.exception(f"Unexpected error deleting key {key}: {e}")
             if not self.config.fallback_on_error:
                 raise
             return False
@@ -234,7 +236,7 @@ class RedisCache(CacheBackend):
                 raise
             return False
         except Exception as e:
-            logger.error(f"Unexpected error checking existence of key {key}: {e}")
+            logger.exception(f"Unexpected error checking existence of key {key}: {e}")
             if not self.config.fallback_on_error:
                 raise
             return False
@@ -266,7 +268,7 @@ class RedisCache(CacheBackend):
                 raise
             return 0
         except Exception as e:
-            logger.error(f"Unexpected error clearing pattern {pattern}: {e}")
+            logger.exception(f"Unexpected error clearing pattern {pattern}: {e}")
             if not self.config.fallback_on_error:
                 raise
             return 0
@@ -293,7 +295,7 @@ class RedisCache(CacheBackend):
             logger.warning(f"Redis error getting stats: {e}")
             return self._stats
         except Exception as e:
-            logger.error(f"Unexpected error getting stats: {e}")
+            logger.exception(f"Unexpected error getting stats: {e}")
             return self._stats
 
     async def health_check(self) -> bool:
@@ -307,7 +309,7 @@ class RedisCache(CacheBackend):
             logger.warning("Redis health check failed: connection error")
             return False
         except Exception as e:
-            logger.error(f"Redis health check failed: {e}")
+            logger.exception(f"Redis health check failed: {e}")
             return False
 
     async def close(self) -> None:
@@ -321,7 +323,7 @@ class RedisCache(CacheBackend):
             logger.info("Redis cache connection closed")
 
         except Exception as e:
-            logger.error(f"Error closing Redis connection: {e}")
+            logger.exception(f"Error closing Redis connection: {e}")
         finally:
             self._redis = None
             self._pool = None

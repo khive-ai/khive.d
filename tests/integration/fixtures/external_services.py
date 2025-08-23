@@ -5,13 +5,11 @@ with both real and mocked implementations.
 """
 
 import asyncio
-import json
 import os
-from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock
+from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
-from redis.asyncio import Redis
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 from khive.services.cache.config import CacheConfig
@@ -22,7 +20,7 @@ class MockRedisServer:
     """Mock Redis server for testing Redis integration without real Redis."""
 
     def __init__(self):
-        self._data: Dict[str, Any] = {}
+        self._data: dict[str, Any] = {}
         self._connected = True  # Start connected for testing
 
     async def connect(self):
@@ -34,7 +32,7 @@ class MockRedisServer:
         """Simulate Redis disconnection."""
         self._connected = False
 
-    async def set(self, key: str, value: str, ex: Optional[int] = None):
+    async def set(self, key: str, value: str, ex: int | None = None):
         """Mock Redis SET operation."""
         if not self._connected:
             raise RedisConnectionError("Not connected to Redis")
@@ -83,7 +81,7 @@ class MockRedisServer:
         if pattern == "*":
             return list(self._data.keys())
         # For more complex patterns, you'd implement proper pattern matching
-        return [key for key in self._data.keys() if pattern.replace("*", "") in key]
+        return [key for key in self._data if pattern.replace("*", "") in key]
 
     async def flushdb(self):
         """Mock Redis FLUSHDB operation."""
@@ -92,7 +90,7 @@ class MockRedisServer:
         self._data.clear()
         return True
 
-    async def info(self, section: Optional[str] = None):
+    async def info(self, section: str | None = None):
         """Mock Redis INFO operation."""
         if not self._connected:
             raise RedisConnectionError("Not connected to Redis")
@@ -127,7 +125,7 @@ class MockOpenAIClient:
         self.success_rate = success_rate
         self.call_count = 0
 
-    def create_completion_response(self, prompt: str) -> Dict[str, Any]:
+    def create_completion_response(self, prompt: str) -> dict[str, Any]:
         """Create a mock completion response."""
         return {
             "id": f"mock-completion-{self.call_count}",
@@ -148,7 +146,7 @@ class MockOpenAIClient:
             },
         }
 
-    async def create_completion(self, **kwargs) -> Dict[str, Any]:
+    async def create_completion(self, **kwargs) -> dict[str, Any]:
         """Mock completion creation."""
         await asyncio.sleep(self.response_delay)
         self.call_count += 1
@@ -163,8 +161,7 @@ class MockOpenAIClient:
 @pytest.fixture
 def mock_redis_server():
     """Fixture providing a mock Redis server."""
-    server = MockRedisServer()
-    return server
+    return MockRedisServer()
 
 
 @pytest.fixture

@@ -4,22 +4,13 @@ Tests error conditions, edge cases, exception handling, and recovery
 scenarios in the CLI system.
 """
 
-import importlib
 import sys
-import tempfile
-from pathlib import Path
 from types import ModuleType
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from khive.cli.khive_cli import (
-    COMMANDS,
-    _get_full_module_path,
-    _load_command_module,
-    _print_root_help,
-    main,
-)
+from khive.cli.khive_cli import _load_command_module, _print_root_help, main
 
 
 class TestModuleLoadingErrors:
@@ -386,7 +377,7 @@ class TestConfigurationErrors:
 
         with patch("khive.cli.khive_cli.COMMANDS", malformed_commands):
             # Should handle malformed values gracefully
-            for cmd_name in malformed_commands.keys():
+            for cmd_name in malformed_commands:
                 with pytest.raises(SystemExit):
                     main([cmd_name])
 
@@ -479,7 +470,6 @@ class TestConcurrencyErrors:
         # This test would require actual signal generation
         # which is complex in a test environment
         # Focus on KeyboardInterrupt which is the most common
-        pass
 
 
 class TestEdgeCaseErrors:
@@ -560,7 +550,6 @@ class TestRecoveryScenarios:
         """Test behavior when only some commands fail to load."""
         # This would test scenarios where some commands work and others don't
         # In practice, this would require mocking specific command modules
-        pass
 
     def test_help_system_robustness(self, capsys):
         """Test help system works even with broken commands."""

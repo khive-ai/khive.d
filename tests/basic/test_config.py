@@ -207,21 +207,21 @@ class TestPatterns:
 
             # Basic progression checks
             if complexity_level == 1:  # simple
-                assert (
-                    agent_count <= 4
-                ), f"Simple tasks should have ≤4 agents, got {agent_count}"
+                assert agent_count <= 4, (
+                    f"Simple tasks should have ≤4 agents, got {agent_count}"
+                )
             elif complexity_level == 2:  # medium
-                assert (
-                    3 <= agent_count <= 7
-                ), f"Medium tasks should have 3-7 agents, got {agent_count}"
+                assert 3 <= agent_count <= 7, (
+                    f"Medium tasks should have 3-7 agents, got {agent_count}"
+                )
             elif complexity_level == 3:  # complex
-                assert (
-                    5 <= agent_count <= 12
-                ), f"Complex tasks should have 5-12 agents, got {agent_count}"
+                assert 5 <= agent_count <= 12, (
+                    f"Complex tasks should have 5-12 agents, got {agent_count}"
+                )
             elif complexity_level == 4:  # very_complex
-                assert (
-                    agent_count >= 8
-                ), f"Very complex tasks should have ≥8 agents, got {agent_count}"
+                assert agent_count >= 8, (
+                    f"Very complex tasks should have ≥8 agents, got {agent_count}"
+                )
 
     @staticmethod
     def assert_role_consistency(evaluations: list[OrchestrationEvaluation]):
@@ -242,9 +242,9 @@ class TestPatterns:
                 assert has_validation, f"Complex task missing validation roles: {roles}"
 
             # Role count should not exceed agent count
-            assert (
-                len(roles) <= evaluation.total_agents
-            ), f"More roles ({len(roles)}) than agents ({evaluation.total_agents})"
+            assert len(roles) <= evaluation.total_agents, (
+                f"More roles ({len(roles)}) than agents ({evaluation.total_agents})"
+            )
 
     @staticmethod
     def create_mock_evaluation(

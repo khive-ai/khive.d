@@ -750,12 +750,11 @@ class AgentComposer:
             return {
                 key: self._sanitize_domain_data(value) for key, value in data.items()
             }
-        elif isinstance(data, list):
+        if isinstance(data, list):
             return [self._sanitize_domain_data(item) for item in data]
-        elif isinstance(data, str):
+        if isinstance(data, str):
             return self._sanitize_context(data)
-        else:
-            return data
+        return data
 
     def get_unique_agent_id(self, role: str, domain: str) -> str:
         """Generate unique agent identifier, appending version if duplicate"""

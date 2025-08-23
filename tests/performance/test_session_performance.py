@@ -13,12 +13,11 @@ Comprehensive performance testing for the khive session management service inclu
 
 import asyncio
 import time
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 from khive.services.session.parts import SessionRequest, SessionResponse
-from khive.services.session.session import DiaryWritingAssistant, SessionInitializer
 from khive.services.session.session_service import SessionService
 
 
@@ -90,15 +89,15 @@ class TestSessionBenchmarks:
         max_time = max(initialization_times)
 
         # Performance assertions
-        assert (
-            avg_time < threshold
-        ), f"Average session init time too slow: {avg_time:.6f}s"
-        assert (
-            min_time < threshold * 0.5
-        ), f"Minimum session init time too slow: {min_time:.6f}s"
-        assert (
-            max_time < threshold * 2.0
-        ), f"Maximum session init time too slow: {max_time:.6f}s"
+        assert avg_time < threshold, (
+            f"Average session init time too slow: {avg_time:.6f}s"
+        )
+        assert min_time < threshold * 0.5, (
+            f"Minimum session init time too slow: {min_time:.6f}s"
+        )
+        assert max_time < threshold * 2.0, (
+            f"Maximum session init time too slow: {max_time:.6f}s"
+        )
 
         metrics = performance_profiler.get_comprehensive_metrics()
         print(
@@ -170,12 +169,12 @@ class TestSessionBenchmarks:
         min_time = min(status_times)
         max_time = max(status_times)
 
-        assert (
-            avg_time < threshold
-        ), f"Average status check time too slow: {avg_time:.6f}s"
-        assert (
-            max_time < threshold * 2.0
-        ), f"Maximum status check time too slow: {max_time:.6f}s"
+        assert avg_time < threshold, (
+            f"Average status check time too slow: {avg_time:.6f}s"
+        )
+        assert max_time < threshold * 2.0, (
+            f"Maximum status check time too slow: {max_time:.6f}s"
+        )
 
         print(
             f"Session status - Avg: {avg_time:.6f}s, Min: {min_time:.6f}s, Max: {max_time:.6f}s"
@@ -245,12 +244,12 @@ class TestSessionBenchmarks:
         min_time = min(end_times)
         max_time = max(end_times)
 
-        assert (
-            avg_time < threshold
-        ), f"Average session end time too slow: {avg_time:.6f}s"
-        assert (
-            max_time < threshold * 2.0
-        ), f"Maximum session end time too slow: {max_time:.6f}s"
+        assert avg_time < threshold, (
+            f"Average session end time too slow: {avg_time:.6f}s"
+        )
+        assert max_time < threshold * 2.0, (
+            f"Maximum session end time too slow: {max_time:.6f}s"
+        )
 
         print(
             f"Session end - Avg: {avg_time:.6f}s, Min: {min_time:.6f}s, Max: {max_time:.6f}s"
@@ -286,8 +285,7 @@ class TestSessionScalability:
                 }
                 mock_initializer.return_value = mock_instance
 
-                response = await service.handle_request(request)
-                return response
+                return await service.handle_request(request)
 
         # Test different concurrency levels
         concurrency_levels = [1, 5, 10, 25, 50]
@@ -323,18 +321,18 @@ class TestSessionScalability:
 
         for concurrency, results in scaling_results.items():
             # Success rate should remain high under load
-            assert (
-                results["success_rate"] > 0.95
-            ), f"Success rate too low at {concurrency} concurrent sessions: {results['success_rate']:.4f}"
+            assert results["success_rate"] > 0.95, (
+                f"Success rate too low at {concurrency} concurrent sessions: {results['success_rate']:.4f}"
+            )
 
             # Throughput should be reasonable for the concurrency level
             if concurrency <= concurrent_sessions_limit:
                 min_expected_throughput = min(
                     concurrency * 5, 100
                 )  # Scale with concurrency, max 100
-                assert (
-                    results["throughput"] >= min_expected_throughput
-                ), f"Throughput too low at {concurrency} concurrent sessions: {results['throughput']:.2f} ops/sec"
+                assert results["throughput"] >= min_expected_throughput, (
+                    f"Throughput too low at {concurrency} concurrent sessions: {results['throughput']:.2f} ops/sec"
+                )
 
     @pytest.mark.asyncio
     async def test_session_locking_performance(
@@ -399,21 +397,17 @@ class TestSessionScalability:
 
                             response = await service.handle_request(request)
 
-                    results.append(
-                        {
-                            "success": response.success,
-                            "action": request.action,
-                        }
-                    )
+                    results.append({
+                        "success": response.success,
+                        "action": request.action,
+                    })
 
                 except Exception as e:
-                    results.append(
-                        {
-                            "success": False,
-                            "action": request.action,
-                            "error": str(e),
-                        }
-                    )
+                    results.append({
+                        "success": False,
+                        "action": request.action,
+                        "error": str(e),
+                    })
 
             return results
 
@@ -453,7 +447,7 @@ class TestSessionScalability:
         success_rate = successful_operations / max(total_operations, 1)
         throughput = total_operations / lock_performance_time
 
-        print(f"Session locking performance:")
+        print("Session locking performance:")
         print(f"- Total operations: {total_operations}")
         print(f"- Successful operations: {successful_operations}")
         print(f"- Success rate: {success_rate:.4f}")
@@ -461,12 +455,12 @@ class TestSessionScalability:
         print(f"- Total time: {lock_performance_time:.6f}s")
 
         # Verify locking doesn't significantly impact performance
-        assert (
-            success_rate > 0.95
-        ), f"Session locking success rate too low: {success_rate:.4f}"
-        assert (
-            throughput > 50.0
-        ), f"Session locking throughput too low: {throughput:.2f} ops/sec"
+        assert success_rate > 0.95, (
+            f"Session locking success rate too low: {success_rate:.4f}"
+        )
+        assert throughput > 50.0, (
+            f"Session locking throughput too low: {throughput:.2f} ops/sec"
+        )
 
 
 class TestSessionMemoryPerformance:
@@ -517,8 +511,7 @@ class TestSessionMemoryPerformance:
                 }
                 mock_initializer.return_value = mock_instance
 
-                response = await service.handle_request(request)
-                return response
+                return await service.handle_request(request)
 
         performance_profiler.start_measurement()
 
@@ -559,13 +552,13 @@ class TestSessionMemoryPerformance:
             max_expected_memory = memory_limit * (
                 complexity / 5.0
             )  # Scale with complexity
-            assert (
-                results["memory_delta_mb"] < max_expected_memory
-            ), f"Memory usage too high for complexity {complexity}: {results['memory_delta_mb']:.2f}MB"
+            assert results["memory_delta_mb"] < max_expected_memory, (
+                f"Memory usage too high for complexity {complexity}: {results['memory_delta_mb']:.2f}MB"
+            )
 
-            assert results[
-                "success"
-            ], f"Session memory test failed for complexity {complexity}"
+            assert results["success"], (
+                f"Session memory test failed for complexity {complexity}"
+            )
 
     @pytest.mark.asyncio
     async def test_session_memory_leak_detection(
@@ -636,14 +629,12 @@ class TestSessionMemoryPerformance:
                 return asyncio.run(session_lifecycle())
 
             memory_usage = memory_monitor(single_lifecycle)
-            memory_measurements.append(
-                {
-                    "iteration": i,
-                    "memory_delta_mb": memory_usage["memory_delta_mb"],
-                    "execution_time": memory_usage["execution_time"],
-                    "success": memory_usage["success"],
-                }
-            )
+            memory_measurements.append({
+                "iteration": i,
+                "memory_delta_mb": memory_usage["memory_delta_mb"],
+                "execution_time": memory_usage["execution_time"],
+                "success": memory_usage["success"],
+            })
 
             performance_profiler.record_operation(
                 memory_usage["execution_time"],
@@ -678,12 +669,12 @@ class TestSessionMemoryPerformance:
         print(f"Total memory growth: {total_memory_growth:.2f}MB")
 
         # Assert no significant memory leaks
-        assert (
-            avg_memory_per_operation < 0.5
-        ), f"Potential memory leak: {avg_memory_per_operation:.4f}MB per operation"
-        assert (
-            successful_operations / iterations > 0.95
-        ), f"Success rate too low: {successful_operations / iterations:.4f}"
+        assert avg_memory_per_operation < 0.5, (
+            f"Potential memory leak: {avg_memory_per_operation:.4f}MB per operation"
+        )
+        assert successful_operations / iterations > 0.95, (
+            f"Success rate too low: {successful_operations / iterations:.4f}"
+        )
 
 
 class TestSessionStressTesting:
@@ -810,7 +801,7 @@ class TestSessionStressTesting:
         error_rate = len(errors) / max(completed_operations + len(errors), 1)
         throughput = completed_operations / total_time
 
-        print(f"Session stress test results:")
+        print("Session stress test results:")
         print(f"- Duration: {total_time:.2f}s")
         print(f"- Completed operations: {completed_operations}")
         print(f"- Errors: {len(errors)}")
@@ -822,6 +813,6 @@ class TestSessionStressTesting:
         assert completed_operations > 0, "No operations completed during stress test"
 
         metrics = performance_profiler.get_comprehensive_metrics()
-        assert (
-            metrics["success_rate"] > 0.9
-        ), f"Success rate too low: {metrics['success_rate']:.4f}"
+        assert metrics["success_rate"] > 0.9, (
+            f"Success rate too low: {metrics['success_rate']:.4f}"
+        )

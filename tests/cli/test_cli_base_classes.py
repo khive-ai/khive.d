@@ -8,7 +8,7 @@ import argparse
 import sys
 from abc import ABC
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -147,7 +147,6 @@ class TestAsyncCommandExecution:
     def test_async_command_with_existing_event_loop(self):
         """Test handling when event loop exists."""
         import asyncio
-        import threading
 
         async def async_task():
             return {"status": "success"}
@@ -208,7 +207,7 @@ class TestErrorHandlingPatterns:
 
         try:
             risky_function()
-            assert False, "Should have raised exception"
+            raise AssertionError("Should have raised exception")
         except ValueError as e:
             assert str(e) == "Test error"
 
@@ -227,7 +226,7 @@ class TestErrorHandlingPatterns:
         """Test KeyboardInterrupt handling."""
 
         def interrupt_function():
-            raise KeyboardInterrupt()
+            raise KeyboardInterrupt
 
         with pytest.raises(KeyboardInterrupt):
             interrupt_function()

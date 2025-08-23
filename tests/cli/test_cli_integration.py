@@ -9,14 +9,13 @@ Tests for end-to-end khive CLI workflows including:
 """
 
 import json
-import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, call, patch
+from unittest.mock import patch
 
 import pytest
 
-from khive.cli.khive_cli import COMMAND_DESCRIPTIONS, COMMANDS, main
+from khive.cli.khive_cli import COMMANDS, main
 
 
 class TestRealCommandIntegration:
@@ -33,7 +32,7 @@ class TestRealCommandIntegration:
         assert "available commands" in captured.out.lower()
 
         # Should list actual commands
-        for cmd_name in COMMANDS.keys():
+        for cmd_name in COMMANDS:
             assert cmd_name in captured.out
 
     def test_help_flag_integration(self, capsys):
@@ -122,7 +121,7 @@ class TestConfigurationWorkflows:
             [general]
             verbose = true
             dry_run = false
-            
+
             [specific_settings]
             timeout = 30
             retries = 3
@@ -353,8 +352,9 @@ class TestCommandInteractionPatterns:
                         return self._execute_operation()
                     except Exception as e:
                         if attempt == self.max_attempts - 1:
-                            raise e
+                            raise
                         continue
+                return None
 
             def _execute_operation(self):
                 # Simulate operation that succeeds on 3rd attempt
@@ -418,8 +418,7 @@ class TestFullWorkflowIntegration:
                     self.validate_environment()
                     self.load_configuration()
                     result = self.execute_operation()
-                    output = self.generate_output(result)
-                    return output
+                    return self.generate_output(result)
                 finally:
                     self.cleanup_resources()
 
@@ -627,22 +626,18 @@ class TestCrossCommandIntegration:
                 for stage_name, stage_func in self.pipeline_stages:
                     try:
                         stage_result = stage_func(current_data)
-                        results.append(
-                            {
-                                "stage": stage_name,
-                                "status": "success",
-                                "result": stage_result,
-                            }
-                        )
+                        results.append({
+                            "stage": stage_name,
+                            "status": "success",
+                            "result": stage_result,
+                        })
                         current_data = stage_result  # Output becomes next input
                     except Exception as e:
-                        results.append(
-                            {
-                                "stage": stage_name,
-                                "status": "error",
-                                "error": str(e),
-                            }
-                        )
+                        results.append({
+                            "stage": stage_name,
+                            "status": "error",
+                            "error": str(e),
+                        })
                         break
 
                 return {"pipeline_results": results, "final_data": current_data}

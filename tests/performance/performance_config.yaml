@@ -1,0 +1,150 @@
+# Performance Testing Configuration for Khive System
+# This file defines performance thresholds, test scenarios, and quality gates
+
+# Quality Gates - Performance thresholds that must be met
+quality_gates:
+  orchestration:
+    max_init_time_ms: 100
+    max_branch_creation_ms: 500
+    min_throughput_ops_sec: 10
+    max_memory_growth_mb: 50
+    max_p95_response_time_ms: 1000
+    max_memory_per_orchestrator_mb: 10
+
+  composition:
+    max_agent_creation_ms: 200
+    min_throughput_ops_sec: 5
+    max_memory_per_agent_mb: 5
+    max_scaling_degradation_ratio: 2.0
+    max_composition_time_ms: 300
+
+  memory:
+    max_leak_rate_mb_per_op: 0.1
+    max_peak_memory_mb: 200
+    max_memory_growth_trend_mb: 10
+    min_cleanup_efficiency_pct: 80
+    max_concurrent_memory_mb: 150
+
+  scalability:
+    min_scaling_efficiency: 0.5
+    max_response_time_degradation: 3.0
+    min_success_rate_under_load: 0.85
+    max_resource_usage_per_op_mb: 2.0
+    max_scalability_test_time_sec: 30
+
+  planning:
+    max_simple_plan_ms: 200
+    max_complex_plan_ms: 2000
+    min_planning_throughput_ops_sec: 5
+    max_planning_memory_mb: 100
+
+  session:
+    max_session_create_ms: 50
+    max_session_load_ms: 25
+    max_memory_per_session_mb: 5
+    max_concurrent_sessions: 100
+
+# Test Scenarios Configuration
+test_scenarios:
+  load_testing:
+    concurrent_levels: [1, 5, 10, 25, 50, 100]
+    operations_per_level: [5, 10, 20]
+    ramp_up_seconds: [0.5, 1.0, 2.0]
+    max_test_duration_sec: 60
+
+  memory_testing:
+    dataset_sizes_mb: [0.1, 0.5, 1.0, 5.0, 10.0]
+    iteration_counts: [10, 25, 50, 100]
+    memory_leak_threshold_mb: 1.0
+    cleanup_verification_delay_sec: 1.0
+
+  stress_testing:
+    cpu_intensive_scales: [1, 5, 10, 20]
+    memory_intensive_scales: [1, 3, 5, 8, 12]
+    concurrent_stress_levels: [5, 10, 20, 30]
+    stress_test_duration_sec: 30
+    max_acceptable_failure_rate: 0.15
+
+  scalability_testing:
+    agent_count_scales: [1, 5, 10, 25, 50, 100]
+    workflow_complexity_levels: ["simple", "medium", "complex"]
+    data_size_scales: [1, 5, 10, 25, 50]
+    concurrency_scales: [1, 5, 10, 20, 40]
+
+# Benchmark Configuration
+benchmarking:
+  pytest_benchmark:
+    min_rounds: 5
+    max_time: 30.0
+    disable_gc: false
+    warmup: true
+    warmup_iterations: 3
+    
+  statistical_analysis:
+    confidence_level: 0.95
+    outlier_detection: true
+    trend_analysis: true
+    regression_threshold_percent: 15.0
+
+# Monitoring and Reporting
+monitoring:
+  resource_tracking:
+    cpu_monitoring: true
+    memory_monitoring: true
+    thread_monitoring: true
+    disk_io_monitoring: false  # Disable for CI environments
+    
+  snapshot_intervals:
+    performance_snapshots_sec: 5.0
+    memory_snapshots_sec: 2.0
+    resource_snapshots_sec: 10.0
+    
+  report_generation:
+    detailed_metrics: true
+    statistical_analysis: true
+    trend_charts: false  # Requires matplotlib
+    export_formats: ["json", "csv"]
+
+# CI/CD Integration
+ci_integration:
+  fail_on_regression: true
+  regression_threshold_percent: 20.0  # More lenient for CI
+  max_test_runtime_minutes: 15
+  parallel_execution: true
+  
+  notification:
+    slack_webhook: null  # Set in CI environment
+    email_recipients: []
+    
+  artifact_retention:
+    keep_reports: 30  # days
+    keep_benchmark_data: 7  # days
+
+# Environment-Specific Overrides
+environments:
+  development:
+    quality_gates:
+      # Relaxed thresholds for development
+      orchestration:
+        max_init_time_ms: 200
+        min_throughput_ops_sec: 5
+      memory:
+        max_peak_memory_mb: 300
+        
+  ci:
+    test_scenarios:
+      load_testing:
+        concurrent_levels: [1, 5, 10]  # Reduced for CI
+        max_test_duration_sec: 30
+    ci_integration:
+      max_test_runtime_minutes: 10
+      
+  production:
+    quality_gates:
+      # Strict thresholds for production validation
+      orchestration:
+        max_init_time_ms: 50
+        min_throughput_ops_sec: 20
+      memory:
+        max_peak_memory_mb: 100
+        max_leak_rate_mb_per_op: 0.05

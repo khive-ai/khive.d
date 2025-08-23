@@ -9,9 +9,6 @@ This module provides systematic validation testing for:
 
 from typing import Any
 
-import pytest
-from pydantic import ValidationError
-
 from khive.services.session.parts import SessionRequest, SessionResponse
 from tests.validation.pydantic_validators import BaseValidationPattern
 
@@ -482,7 +479,6 @@ class SessionServiceCrossValidator:
             first_failure = failed_responses[0]
             # Subsequent operations after failure might also fail
             # This is business logic, but we can validate patterns
-            pass
 
         return issues
 
@@ -637,7 +633,7 @@ class TestSessionValidation:
         )
 
         # Each request-response pair should be consistent
-        for req, resp in zip(requests, responses):
+        for req, resp in zip(requests, responses, strict=False):
             pair_issues = (
                 SessionServiceCrossValidator.validate_request_response_consistency(
                     req, resp

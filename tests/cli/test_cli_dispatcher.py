@@ -8,23 +8,16 @@ Tests for the core khive CLI dispatcher including:
 - Entry point validation
 """
 
-import importlib
 import sys
-from types import ModuleType
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from khive.cli.khive_cli import (
-    COMMAND_DESCRIPTIONS,
-    COMMAND_MODULE_BASE_PATH,
-    COMMANDS,
-    ENTRY_POINT_FUNCTION_NAME,
-    _get_full_module_path,
-    _load_command_module,
-    _print_root_help,
-    main,
-)
+from khive.cli.khive_cli import (COMMAND_DESCRIPTIONS,
+                                 COMMAND_MODULE_BASE_PATH, COMMANDS,
+                                 ENTRY_POINT_FUNCTION_NAME,
+                                 _get_full_module_path, _load_command_module,
+                                 _print_root_help, main)
 
 
 class TestCommandDiscovery:
@@ -55,7 +48,7 @@ class TestCommandDiscovery:
         assert len(COMMANDS) > 0
 
         # All keys should be strings (command names)
-        for cmd_name in COMMANDS.keys():
+        for cmd_name in COMMANDS:
             assert isinstance(cmd_name, str)
             assert len(cmd_name) > 0
 
@@ -69,7 +62,7 @@ class TestCommandDiscovery:
         assert isinstance(COMMAND_DESCRIPTIONS, dict)
 
         # Not all commands need descriptions, but all description keys should be valid commands
-        for cmd_name in COMMAND_DESCRIPTIONS.keys():
+        for cmd_name in COMMAND_DESCRIPTIONS:
             assert isinstance(cmd_name, str)
             # Command descriptions can exist for commands not yet implemented
             # so we don't require cmd_name to be in COMMANDS
@@ -178,7 +171,7 @@ class TestHelpSystem:
         captured = capsys.readouterr()
 
         # Should include all commands from COMMANDS dict
-        for cmd_name in COMMANDS.keys():
+        for cmd_name in COMMANDS:
             assert cmd_name in captured.out
 
     def test_print_root_help_includes_descriptions(self, capsys):
@@ -187,7 +180,7 @@ class TestHelpSystem:
         captured = capsys.readouterr()
 
         # Should include descriptions from COMMAND_DESCRIPTIONS
-        for cmd_name, description in COMMAND_DESCRIPTIONS.items():
+        for cmd_name in COMMAND_DESCRIPTIONS:
             if cmd_name in COMMANDS:  # Only check descriptions for actual commands
                 # Description should appear after command name
                 lines = captured.out.split("\n")
@@ -448,7 +441,7 @@ class TestEdgeCases:
     def test_command_names_with_special_characters(self):
         """Test that command names with special characters are handled properly."""
         # This test checks our current command names for any issues
-        for cmd_name in COMMANDS.keys():
+        for cmd_name in COMMANDS:
             # Command names should not contain spaces or other problematic characters
             assert " " not in cmd_name
             assert "\t" not in cmd_name
@@ -465,6 +458,6 @@ class TestEdgeCases:
             for part in parts:
                 # Allow hyphens in module names (they get converted to underscores)
                 normalized_part = part.replace("-", "_")
-                assert (
-                    normalized_part.isidentifier()
-                ), f"Invalid module name part: {part}"
+                assert normalized_part.isidentifier(), (
+                    f"Invalid module name part: {part}"
+                )

@@ -157,7 +157,8 @@ def _initialize_adapter():
         HookEvent._async_registry.get("lionagi_async_pg")
     except AdapterNotFoundError:
         print("🔄 Initializing database adapter for Claude hooks...")
-        from lionagi.adapters.async_postgres_adapter import LionAGIAsyncPostgresAdapter
+        from lionagi.adapters.async_postgres_adapter import \
+            LionAGIAsyncPostgresAdapter
 
         HookEvent.register_async_adapter(LionAGIAsyncPostgresAdapter)
 

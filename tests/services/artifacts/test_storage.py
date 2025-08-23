@@ -61,7 +61,7 @@ class TestFileSystemStorageRepository:
         assert expected_path.exists()
 
         # Verify content
-        with open(expected_path, "r") as f:
+        with open(expected_path) as f:
             content = f.read()
             assert "Test content" in content
             assert sample_document.name in content
@@ -181,7 +181,7 @@ class TestFileSystemStorageRepository:
         assert registry_path.exists()
 
         # Verify registry content
-        with open(registry_path, "r") as f:
+        with open(registry_path) as f:
             registry_data = json.load(f)
             assert sample_document.name in registry_data.get("artifacts", {})
 

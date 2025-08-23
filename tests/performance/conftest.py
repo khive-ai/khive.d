@@ -2,17 +2,15 @@
 
 import asyncio
 import gc
-import os
 import time
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 import psutil
 import pytest
 
 from khive.services.artifacts import ArtifactsService
 from khive.services.cache.service import CacheService
-from khive.services.composition.agent_composer import AgentComposer
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.plan.planner_service import PlannerService
 from khive.services.session.session_service import SessionService
@@ -52,20 +50,16 @@ class PerformanceProfiler:
             memory_info = self.process.memory_info()
             cpu_percent = self.process.cpu_percent()
 
-            self.memory_snapshots.append(
-                {
-                    "timestamp": time.perf_counter(),
-                    "rss_mb": memory_info.rss / (1024 * 1024),
-                    "vms_mb": memory_info.vms / (1024 * 1024),
-                }
-            )
+            self.memory_snapshots.append({
+                "timestamp": time.perf_counter(),
+                "rss_mb": memory_info.rss / (1024 * 1024),
+                "vms_mb": memory_info.vms / (1024 * 1024),
+            })
 
-            self.cpu_snapshots.append(
-                {
-                    "timestamp": time.perf_counter(),
-                    "cpu_percent": cpu_percent,
-                }
-            )
+            self.cpu_snapshots.append({
+                "timestamp": time.perf_counter(),
+                "cpu_percent": cpu_percent,
+            })
         except Exception:
             # Handle cases where process monitoring fails
             pass
@@ -75,18 +69,16 @@ class PerformanceProfiler:
         duration: float,
         success: bool = True,
         operation_type: str = "general",
-        metadata: Optional[Dict] = None,
+        metadata: dict | None = None,
     ):
         """Record an individual operation with metadata."""
-        self.operation_times.append(
-            {
-                "duration": duration,
-                "success": success,
-                "operation_type": operation_type,
-                "timestamp": time.perf_counter(),
-                "metadata": metadata or {},
-            }
-        )
+        self.operation_times.append({
+            "duration": duration,
+            "success": success,
+            "operation_type": operation_type,
+            "timestamp": time.perf_counter(),
+            "metadata": metadata or {},
+        })
 
         if success:
             self.success_count += 1
@@ -97,14 +89,12 @@ class PerformanceProfiler:
         """Add a custom performance metric."""
         if name not in self.custom_metrics:
             self.custom_metrics[name] = []
-        self.custom_metrics[name].append(
-            {
-                "value": value,
-                "timestamp": time.perf_counter(),
-            }
-        )
+        self.custom_metrics[name].append({
+            "value": value,
+            "timestamp": time.perf_counter(),
+        })
 
-    def get_comprehensive_metrics(self) -> Dict[str, Any]:
+    def get_comprehensive_metrics(self) -> dict[str, Any]:
         """Get comprehensive performance metrics."""
         total_time = (
             self.end_time - self.start_time if self.start_time and self.end_time else 0
@@ -125,17 +115,15 @@ class PerformanceProfiler:
         # Operation timing metrics
         if self.operation_times:
             durations = [op["duration"] for op in self.operation_times]
-            metrics.update(
-                {
-                    "avg_operation_time": sum(durations) / len(durations),
-                    "min_operation_time": min(durations),
-                    "max_operation_time": max(durations),
-                    "operation_count": len(durations),
-                    "p50_operation_time": sorted(durations)[len(durations) // 2],
-                    "p95_operation_time": sorted(durations)[int(len(durations) * 0.95)],
-                    "p99_operation_time": sorted(durations)[int(len(durations) * 0.99)],
-                }
-            )
+            metrics.update({
+                "avg_operation_time": sum(durations) / len(durations),
+                "min_operation_time": min(durations),
+                "max_operation_time": max(durations),
+                "operation_count": len(durations),
+                "p50_operation_time": sorted(durations)[len(durations) // 2],
+                "p95_operation_time": sorted(durations)[int(len(durations) * 0.95)],
+                "p99_operation_time": sorted(durations)[int(len(durations) * 0.99)],
+            })
 
             # Operation type breakdown
             op_types = {}
@@ -161,15 +149,13 @@ class PerformanceProfiler:
             peak_memory = max(snap["rss_mb"] for snap in self.memory_snapshots)
             final_memory = self.memory_snapshots[-1]["rss_mb"]
 
-            metrics.update(
-                {
-                    "initial_memory_mb": initial_memory,
-                    "peak_memory_mb": peak_memory,
-                    "final_memory_mb": final_memory,
-                    "memory_growth_mb": final_memory - initial_memory,
-                    "peak_memory_delta_mb": peak_memory - initial_memory,
-                }
-            )
+            metrics.update({
+                "initial_memory_mb": initial_memory,
+                "peak_memory_mb": peak_memory,
+                "final_memory_mb": final_memory,
+                "memory_growth_mb": final_memory - initial_memory,
+                "peak_memory_delta_mb": peak_memory - initial_memory,
+            })
 
         # CPU metrics
         if self.cpu_snapshots:
@@ -179,13 +165,11 @@ class PerformanceProfiler:
                 if snap["cpu_percent"] > 0
             ]
             if cpu_values:
-                metrics.update(
-                    {
-                        "avg_cpu_percent": sum(cpu_values) / len(cpu_values),
-                        "max_cpu_percent": max(cpu_values),
-                        "min_cpu_percent": min(cpu_values),
-                    }
-                )
+                metrics.update({
+                    "avg_cpu_percent": sum(cpu_values) / len(cpu_values),
+                    "max_cpu_percent": max(cpu_values),
+                    "min_cpu_percent": min(cpu_values),
+                })
 
         # Custom metrics
         if self.custom_metrics:
@@ -195,7 +179,7 @@ class PerformanceProfiler:
                     numeric_values = [
                         v["value"]
                         for v in values
-                        if isinstance(v["value"], (int, float))
+                        if isinstance(v["value"], int | float)
                     ]
                     if numeric_values:
                         metrics["custom_metrics"][name] = {
@@ -218,7 +202,7 @@ class PerformanceProfiler:
 class LoadTestRunner:
     """Advanced load testing runner for khive services."""
 
-    def __init__(self, profiler: Optional[PerformanceProfiler] = None):
+    def __init__(self, profiler: PerformanceProfiler | None = None):
         self.profiler = profiler or PerformanceProfiler()
 
     async def run_async_load_test(
@@ -227,7 +211,7 @@ class LoadTestRunner:
         concurrent_tasks: int = 10,
         operations_per_task: int = 10,
         ramp_up_seconds: float = 1.0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run asynchronous load test with controlled ramp-up."""
         results = {"tasks": [], "errors": [], "start_time": None, "end_time": None}
 
@@ -246,7 +230,7 @@ class LoadTestRunner:
                     success = True
                 except Exception as e:
                     task_results["errors"] += 1
-                    results["errors"].append(f"Task {task_id}, Op {op_id}: {str(e)}")
+                    results["errors"].append(f"Task {task_id}, Op {op_id}: {e!s}")
                     success = False
 
                 end_time = time.perf_counter()
@@ -284,21 +268,16 @@ class LoadTestRunner:
         total_errors = sum(t["errors"] for t in results["tasks"])
         all_times = [t for task in results["tasks"] for t in task["times"]]
 
-        results.update(
-            {
-                "total_operations": total_operations,
-                "total_errors": total_errors,
-                "success_rate": total_operations
-                / max(total_operations + total_errors, 1),
-                "total_time": results["end_time"] - results["start_time"],
-                "throughput": total_operations
-                / (results["end_time"] - results["start_time"]),
-                "avg_response_time": (
-                    sum(all_times) / len(all_times) if all_times else 0
-                ),
-                "performance_metrics": self.profiler.get_comprehensive_metrics(),
-            }
-        )
+        results.update({
+            "total_operations": total_operations,
+            "total_errors": total_errors,
+            "success_rate": total_operations / max(total_operations + total_errors, 1),
+            "total_time": results["end_time"] - results["start_time"],
+            "throughput": total_operations
+            / (results["end_time"] - results["start_time"]),
+            "avg_response_time": (sum(all_times) / len(all_times) if all_times else 0),
+            "performance_metrics": self.profiler.get_comprehensive_metrics(),
+        })
 
         return results
 
@@ -322,7 +301,7 @@ def load_test_runner(performance_profiler):
 def memory_monitor():
     """Provide memory usage monitoring functionality."""
 
-    def measure_memory_usage(func: Callable, *args, **kwargs) -> Dict[str, Any]:
+    def measure_memory_usage(func: Callable, *args, **kwargs) -> dict[str, Any]:
         """Measure memory usage of a function call."""
         process = psutil.Process()
 
@@ -405,7 +384,7 @@ def large_dataset_generator():
 
     def generate_dataset(
         size_mb: int = 1, complexity: str = "medium"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate a large dataset for testing."""
         if complexity == "simple":
             # Simple repetitive data
@@ -437,7 +416,7 @@ def large_dataset_generator():
 
         return data
 
-    def _generate_recursive_data(depth: int, breadth: int) -> Dict:
+    def _generate_recursive_data(depth: int, breadth: int) -> dict:
         """Generate recursive nested data structure."""
         if depth <= 0:
             return {"value": "leaf_data_" + "x" * 50}

@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
-import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from khive.utils import get_logger
 
-from .base import CacheBackend
 from .config import CacheConfig
-from .models import CacheEntry, CacheKey, CacheStats
+from .models import CacheKey, CacheStats
 from .redis_cache import RedisCache
+
+if TYPE_CHECKING:
+    from .base import CacheBackend
 
 logger = get_logger("khive.services.cache.service")
 
@@ -20,14 +22,14 @@ logger = get_logger("khive.services.cache.service")
 class CacheService:
     """High-level cache service that orchestrates cache backends."""
 
-    def __init__(self, config: Optional[CacheConfig] = None):
+    def __init__(self, config: CacheConfig | None = None):
         """Initialize cache service.
 
         Args:
             config: Cache configuration. If None, loads from environment.
         """
         self.config = config or CacheConfig.from_env()
-        self._backend: Optional[CacheBackend] = None
+        self._backend: CacheBackend | None = None
         self._stats = CacheStats()
         self._initialized = False
 
@@ -56,7 +58,7 @@ class CacheService:
                     raise ConnectionError("Cache backend unhealthy")
 
         except Exception as e:
-            logger.error(f"Failed to initialize cache service: {e}")
+            logger.exception(f"Failed to initialize cache service: {e}")
             if not self.config.fallback_on_error:
                 raise
 
@@ -68,7 +70,7 @@ class CacheService:
         self._initialized = False
         logger.info("Cache service closed")
 
-    def _generate_hash(self, data: Union[str, Dict[str, Any]]) -> str:
+    def _generate_hash(self, data: str | dict[str, Any]) -> str:
         """Generate consistent hash for cache keys."""
         if isinstance(data, dict):
             # Sort dict for consistent hashing
@@ -80,9 +82,9 @@ class CacheService:
 
     async def cache_planning_result(
         self,
-        request: Union[str, Dict[str, Any]],
+        request: str | dict[str, Any],
         result: Any,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """Cache planning service results.
 
@@ -116,12 +118,10 @@ class CacheService:
             return success
 
         except Exception as e:
-            logger.error(f"Error caching planning result: {e}")
+            logger.exception(f"Error caching planning result: {e}")
             return False
 
-    async def get_planning_result(
-        self, request: Union[str, Dict[str, Any]]
-    ) -> Optional[Any]:
+    async def get_planning_result(self, request: str | dict[str, Any]) -> Any | None:
         """Retrieve cached planning result.
 
         Args:
@@ -143,21 +143,20 @@ class CacheService:
                 logger.debug(f"Cache hit for planning result hash {request_hash}")
                 self._stats.hits += 1
                 return entry.value
-            else:
-                logger.debug(f"Cache miss for planning result hash {request_hash}")
-                self._stats.misses += 1
-                return None
+            logger.debug(f"Cache miss for planning result hash {request_hash}")
+            self._stats.misses += 1
+            return None
 
         except Exception as e:
-            logger.error(f"Error retrieving planning result: {e}")
+            logger.exception(f"Error retrieving planning result: {e}")
             self._stats.misses += 1
             return None
 
     async def cache_complexity_assessment(
         self,
-        request: Union[str, Dict[str, Any]],
+        request: str | dict[str, Any],
         assessment: Any,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """Cache complexity assessment results.
 
@@ -187,12 +186,12 @@ class CacheService:
             return success
 
         except Exception as e:
-            logger.error(f"Error caching complexity assessment: {e}")
+            logger.exception(f"Error caching complexity assessment: {e}")
             return False
 
     async def get_complexity_assessment(
-        self, request: Union[str, Dict[str, Any]]
-    ) -> Optional[Any]:
+        self, request: str | dict[str, Any]
+    ) -> Any | None:
         """Retrieve cached complexity assessment.
 
         Args:
@@ -214,15 +213,12 @@ class CacheService:
                 logger.debug(f"Cache hit for complexity assessment hash {request_hash}")
                 self._stats.hits += 1
                 return entry.value
-            else:
-                logger.debug(
-                    f"Cache miss for complexity assessment hash {request_hash}"
-                )
-                self._stats.misses += 1
-                return None
+            logger.debug(f"Cache miss for complexity assessment hash {request_hash}")
+            self._stats.misses += 1
+            return None
 
         except Exception as e:
-            logger.error(f"Error retrieving complexity assessment: {e}")
+            logger.exception(f"Error retrieving complexity assessment: {e}")
             self._stats.misses += 1
             return None
 
@@ -230,8 +226,8 @@ class CacheService:
         self,
         key: str,
         value: Any,
-        ttl_seconds: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        ttl_seconds: int | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> bool:
         """Generic cache set operation.
 
@@ -250,10 +246,10 @@ class CacheService:
         try:
             return await self._backend.set(key, value, ttl_seconds, metadata)
         except Exception as e:
-            logger.error(f"Error setting cache key {key}: {e}")
+            logger.exception(f"Error setting cache key {key}: {e}")
             return False
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """Generic cache get operation.
 
         Args:
@@ -271,12 +267,11 @@ class CacheService:
             if entry and not entry.is_expired():
                 self._stats.hits += 1
                 return entry.value
-            else:
-                self._stats.misses += 1
-                return None
+            self._stats.misses += 1
+            return None
 
         except Exception as e:
-            logger.error(f"Error getting cache key {key}: {e}")
+            logger.exception(f"Error getting cache key {key}: {e}")
             self._stats.misses += 1
             return None
 
@@ -295,7 +290,7 @@ class CacheService:
         try:
             return await self._backend.delete(key)
         except Exception as e:
-            logger.error(f"Error deleting cache key {key}: {e}")
+            logger.exception(f"Error deleting cache key {key}: {e}")
             return False
 
     async def clear_pattern(self, pattern: str) -> int:
@@ -313,7 +308,7 @@ class CacheService:
         try:
             return await self._backend.clear_pattern(pattern)
         except Exception as e:
-            logger.error(f"Error clearing cache pattern {pattern}: {e}")
+            logger.exception(f"Error clearing cache pattern {pattern}: {e}")
             return 0
 
     async def get_stats(self) -> CacheStats:
@@ -337,7 +332,7 @@ class CacheService:
             return self._stats
 
         except Exception as e:
-            logger.error(f"Error getting cache stats: {e}")
+            logger.exception(f"Error getting cache stats: {e}")
             return self._stats
 
     async def health_check(self) -> bool:
@@ -355,7 +350,7 @@ class CacheService:
         try:
             return await self._backend.health_check()
         except Exception as e:
-            logger.error(f"Cache health check failed: {e}")
+            logger.exception(f"Cache health check failed: {e}")
             return False
 
     def _is_available(self) -> bool:
@@ -365,10 +360,8 @@ class CacheService:
 
         if not self._initialized:
             # Try to initialize if not already done
-            try:
+            with contextlib.suppress(Exception):
                 asyncio.create_task(self.initialize())
-            except Exception:
-                pass
             return False
 
         return self._backend is not None

@@ -32,12 +32,8 @@ from pathlib import Path
 from typing import Any
 
 from fastmcp.client import Client
-from fastmcp.client.transports import (
-    PythonStdioTransport,
-    SSETransport,
-    StdioTransport,
-    StreamableHttpTransport,
-)
+from fastmcp.client.transports import (PythonStdioTransport, SSETransport,
+                                       StdioTransport, StreamableHttpTransport)
 
 from khive.utils import BaseConfig, die, error_msg, info_msg, log_msg, warn_msg
 
@@ -877,13 +873,11 @@ class MCPCommand(BaseCLICommand):
                                     f"Error processing tool {getattr(tool, 'name', 'unknown')}: {tool_error}"
                                 )
                                 # Add minimal info for problematic tools
-                                tools_info.append(
-                                    {
-                                        "name": getattr(tool, "name", "unknown"),
-                                        "description": f"Error: {tool_error}",
-                                        "error": True,
-                                    }
-                                )
+                                tools_info.append({
+                                    "name": getattr(tool, "name", "unknown"),
+                                    "description": f"Error: {tool_error}",
+                                    "error": True,
+                                })
 
                         return CLIResult(
                             status="success",

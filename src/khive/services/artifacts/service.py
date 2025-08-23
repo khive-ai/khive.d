@@ -154,15 +154,13 @@ class ArtifactsService:
 
         # Determine document type for registry (map DocumentType to template types)
         registry_doc_type = doc_type.value
-        if doc_type == DocumentType.DELIVERABLE and doc_name.startswith(
-            (
-                "CRR_",
-                "TDS_",
-                "RR_",
-                "IP_",
-                "TI_",
-            )
-        ):
+        if doc_type == DocumentType.DELIVERABLE and doc_name.startswith((
+            "CRR_",
+            "TDS_",
+            "RR_",
+            "IP_",
+            "TI_",
+        )):
             registry_doc_type = doc_name.split("_")[0]  # Extract CRR, TDS, etc.
         elif doc_type == DocumentType.SCRATCHPAD:
             registry_doc_type = "artifact"
@@ -299,7 +297,7 @@ class ArtifactsService:
             except Exception as e:
                 # If the save fails (e.g., disk full), the lock is released by the context manager
                 # The document on disk remains in its previous state due to atomic save
-                logger.error(f"Failed to save document {doc_name}: {e}")
+                logger.exception(f"Failed to save document {doc_name}: {e}")
                 raise
 
             return document
@@ -442,7 +440,7 @@ class ArtifactsService:
 
             logger.debug(f"Saved artifact registry for session {registry.session_id}")
         except Exception as e:
-            logger.error(f"Failed to save artifact registry: {e}")
+            logger.exception(f"Failed to save artifact registry: {e}")
             raise
 
     async def register_artifact(

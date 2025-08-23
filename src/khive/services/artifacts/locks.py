@@ -44,7 +44,7 @@ class LockManager:
 
     @asynccontextmanager
     async def acquire(
-        self, resource_key: str, timeout: float = None
+        self, resource_key: str, timeout: float | None = None
     ) -> AsyncIterator[None]:
         """
         Acquires a lock for the given resource key with a timeout.

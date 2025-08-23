@@ -5,33 +5,18 @@ decision workflows, and multi-agent evaluation scenarios.
 """
 
 import asyncio
-import json
 import time
-from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 import yaml
 
-from khive.services.plan.cost_tracker import CostTracker
-from khive.services.plan.models import OrchestrationEvaluation
-from khive.services.plan.parts import (
-    AgentRecommendation,
-    ComplexityLevel,
-    PlannerRequest,
-    PlannerResponse,
-    TaskPhase,
-    WorkflowPattern,
-)
+from khive.services.plan.parts import (AgentRecommendation, ComplexityLevel,
+                                       PlannerRequest, PlannerResponse,
+                                       TaskPhase, WorkflowPattern)
 from khive.services.plan.planner_service import PlannerService
-from khive.services.plan.triage.complexity_triage import ComplexityTriageService
-from tests.integration.fixtures.external_services import (
-    MockOpenAIClient,
-    mock_openai_client,
-    slow_openai_client,
-    unreliable_openai_client,
-)
+from khive.services.plan.triage.complexity_triage import \
+    ComplexityTriageService
 
 
 @pytest.mark.integration
@@ -74,13 +59,11 @@ class TestPlanningServiceIntegration:
         with patch("khive.services.plan.planner_service.OpenAI") as mock_openai:
             mock_openai.return_value = mock_openai_client
 
-            service = PlannerService(
+            return PlannerService(
                 decision_matrix_path=str(decision_matrix_path),
                 openai_client=mock_openai_client,
                 enable_cost_tracking=True,
             )
-
-            return service
 
     @pytest.fixture
     def sample_requests(self):
@@ -407,9 +390,7 @@ class TestComplexityTriageIntegration:
         ) as mock_openai:
             mock_openai.return_value = mock_openai_client
 
-            service = ComplexityTriageService(openai_client=mock_openai_client)
-
-            return service
+            return ComplexityTriageService(openai_client=mock_openai_client)
 
     async def test_multi_agent_consensus_triage(self, triage_service):
         """Test multi-agent complexity consensus."""
@@ -491,9 +472,9 @@ class TestPlanningServicePerformance:
         requests_per_second = total_successful / duration if duration > 0 else 0
 
         # Performance assertions
-        assert (
-            requests_per_second > 5
-        ), f"Throughput too low: {requests_per_second} req/sec"
+        assert requests_per_second > 5, (
+            f"Throughput too low: {requests_per_second} req/sec"
+        )
         assert duration < 60.0, f"Batch planning took too long: {duration}s"
         assert total_successful >= num_requests * 0.8  # Allow 20% failure rate
 
@@ -526,9 +507,9 @@ class TestPlanningServicePerformance:
 
         # Verify memory usage is reasonable
         memory_increase_mb = memory_increase / (1024 * 1024)
-        assert (
-            memory_increase_mb < 500
-        ), f"Memory usage too high: {memory_increase_mb}MB"
+        assert memory_increase_mb < 500, (
+            f"Memory usage too high: {memory_increase_mb}MB"
+        )
 
         # Verify successful completions
         successful_results = [r for r in results if isinstance(r, PlannerResponse)]

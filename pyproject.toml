@@ -8,6 +8,7 @@ dependencies = [
     "aiofiles>=22.1.0",
     "fastmcp>=2.10.0",
     "lionagi[graph,postgres,rich,sqlite]>=0.15.9",
+    "mcp>=1.13.0",
     "nest-asyncio>=1.5.0",
     "openai>=1.100.0",
     "plotly>=6.0.0",
@@ -34,7 +35,7 @@ addopts = [
     "--durations=5",                        # Show 5 slowest tests
     "--cov=src/khive",                      # Enable coverage
     "--cov-report=term-missing",            # Show missing lines
-    "--cov-fail-under=13",                  # Realistic threshold matching current coverage
+    "--cov-fail-under=90",                  # Target >90% coverage as required
 ]
 
 # Async support
@@ -51,6 +52,22 @@ markers = [
     "regression: Regression tests for known bug fixes",
     "external: Tests requiring external services (OpenAI API, etc.)",
     "consistency: Tests for deterministic behavior validation",
+    "async_test: Async/await pattern tests",
+    "concurrency: Concurrent execution and thread safety tests",
+    "timeout_handling: Timeout and cancellation handling tests",
+    "race_condition: Race condition detection tests",
+    "deadlock: Deadlock prevention tests",
+    "resource_cleanup: Resource cleanup and management tests",
+    "mcp_protocol: MCP protocol compliance tests",
+    "mcp_transport: MCP transport reliability tests",
+    "mcp_lifecycle: MCP server lifecycle management tests",
+    "mcp_server_lifecycle: MCP server lifecycle with configuration and workspace management",
+    "mcp_error_handling: MCP error handling and recovery tests",
+    "mcp_configuration: MCP configuration management tests", 
+    "mcp_performance: MCP performance and stress tests",
+    "mcp_cc_toolkit: MCP CC toolkit integration tests",
+    "mcp_workspace: MCP workspace isolation tests",
+    "mcp_real_servers: MCP real server integration tests",
 ]
 
 # Test environment
@@ -82,7 +99,7 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 show_missing = true
-fail_under = 1.0  # Realistic baseline matching actual coverage
+fail_under = 90.0  # Target >90% coverage for production deployment
 
 [tool.coverage.xml]
 output = "coverage.xml"
@@ -115,6 +132,7 @@ dev = [
     "bandit>=1.7.10",
     "coverage>=7.6.0",
     "locust>=2.32.3",
+    "hypothesis>=6.138.2",
 ]
 
 

@@ -10,12 +10,9 @@ from typing import Any
 
 import anyio
 
-from khive.services.claude.hooks.hook_event import (
-    HookEvent,
-    HookEventContent,
-    hook_event_logger,
-    shield,
-)
+from khive.services.claude.hooks.hook_event import (HookEvent,
+                                                    HookEventContent,
+                                                    hook_event_logger, shield)
 
 
 def handle_prompt_submitted(
@@ -42,7 +39,9 @@ def handle_prompt_submitted(
         estimated_complexity = (
             "high"
             if prompt_length > 1000
-            else "medium" if prompt_length > 200 else "low"
+            else "medium"
+            if prompt_length > 200
+            else "low"
         )
 
         event = HookEvent(

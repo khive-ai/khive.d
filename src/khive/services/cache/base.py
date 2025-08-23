@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .models import CacheEntry, CacheStats
+if TYPE_CHECKING:
+    from .models import CacheEntry, CacheStats
 
 
 class CacheBackend(ABC):

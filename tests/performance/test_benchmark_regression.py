@@ -13,10 +13,8 @@ Comprehensive performance benchmarking and regression detection including:
 
 import json
 import statistics
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import pytest
 
@@ -29,8 +27,8 @@ class PerformanceBenchmark:
         test_name: str,
         operation_type: str,
         timestamp: datetime,
-        metrics: Dict[str, float],
-        metadata: Optional[Dict] = None,
+        metrics: dict[str, float],
+        metadata: dict | None = None,
     ):
         self.test_name = test_name
         self.operation_type = operation_type
@@ -38,7 +36,7 @@ class PerformanceBenchmark:
         self.metrics = metrics
         self.metadata = metadata or {}
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert benchmark to dictionary for serialization."""
         return {
             "test_name": self.test_name,
@@ -49,7 +47,7 @@ class PerformanceBenchmark:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "PerformanceBenchmark":
+    def from_dict(cls, data: dict) -> "PerformanceBenchmark":
         """Create benchmark from dictionary."""
         return cls(
             test_name=data["test_name"],
@@ -63,7 +61,7 @@ class PerformanceBenchmark:
 class BenchmarkStorage:
     """Storage and retrieval system for performance benchmarks."""
 
-    def __init__(self, storage_path: Optional[Path] = None):
+    def __init__(self, storage_path: Path | None = None):
         self.storage_path = storage_path or Path(".khive/performance/benchmarks")
         self.storage_path.mkdir(parents=True, exist_ok=True)
         self.benchmark_file = self.storage_path / "benchmarks.jsonl"
@@ -76,10 +74,10 @@ class BenchmarkStorage:
 
     def load_benchmarks(
         self,
-        test_name: Optional[str] = None,
-        operation_type: Optional[str] = None,
-        days_back: Optional[int] = 30,
-    ) -> List[PerformanceBenchmark]:
+        test_name: str | None = None,
+        operation_type: str | None = None,
+        days_back: int | None = 30,
+    ) -> list[PerformanceBenchmark]:
         """Load benchmarks with optional filtering."""
         benchmarks = []
 
@@ -88,7 +86,7 @@ class BenchmarkStorage:
 
         cutoff_date = datetime.now() - timedelta(days=days_back) if days_back else None
 
-        with open(self.benchmark_file, "r") as f:
+        with open(self.benchmark_file) as f:
             for line in f:
                 try:
                     data = json.loads(line.strip())
@@ -111,7 +109,7 @@ class BenchmarkStorage:
 
     def get_latest_baseline(
         self, test_name: str, operation_type: str
-    ) -> Optional[PerformanceBenchmark]:
+    ) -> PerformanceBenchmark | None:
         """Get the most recent baseline benchmark."""
         benchmarks = self.load_benchmarks(
             test_name=test_name, operation_type=operation_type
@@ -139,10 +137,10 @@ class RegressionDetector:
 
     def detect_regression(
         self,
-        current_metrics: Dict[str, float],
-        historical_benchmarks: List[PerformanceBenchmark],
+        current_metrics: dict[str, float],
+        historical_benchmarks: list[PerformanceBenchmark],
         metric_name: str = "avg_operation_time",
-    ) -> Dict:
+    ) -> dict:
         """Detect performance regressions."""
 
         if len(historical_benchmarks) < self.min_samples:
@@ -212,7 +210,7 @@ class RegressionDetector:
             ),
         }
 
-    def _analyze_trend(self, values: List[float]) -> Dict:
+    def _analyze_trend(self, values: list[float]) -> dict:
         """Analyze performance trend over time."""
         if len(values) < 3:
             return {"trend": "insufficient_data"}
@@ -253,19 +251,20 @@ class RegressionDetector:
         }
 
     def _get_recommendation(
-        self, regression_detected: bool, relative_change: float, trend_analysis: Dict
+        self, regression_detected: bool, relative_change: float, trend_analysis: dict
     ) -> str:
         """Generate recommendations based on regression analysis."""
         if not regression_detected:
             if trend_analysis["trend"] == "improving":
                 return "Performance is stable and improving. Continue current optimizations."
-            else:
-                return "Performance is within acceptable limits. Continue monitoring."
+            return "Performance is within acceptable limits. Continue monitoring."
 
         severity = (
             "critical"
             if relative_change > 2.0
-            else "moderate" if relative_change > 1.5 else "minor"
+            else "moderate"
+            if relative_change > 1.5
+            else "minor"
         )
 
         recommendations = {
@@ -285,10 +284,10 @@ class BenchmarkReporter:
 
     def generate_report(
         self,
-        test_results: Dict,
+        test_results: dict,
         days_back: int = 30,
-        output_path: Optional[Path] = None,
-    ) -> Dict:
+        output_path: Path | None = None,
+    ) -> dict:
         """Generate comprehensive performance report."""
 
         report = {
@@ -321,13 +320,11 @@ class BenchmarkReporter:
                 )
 
                 if regression_result["regression_detected"]:
-                    report["regressions"].append(
-                        {
-                            "test_name": test_name,
-                            "operation_type": operation_type,
-                            "regression_details": regression_result,
-                        }
-                    )
+                    report["regressions"].append({
+                        "test_name": test_name,
+                        "operation_type": operation_type,
+                        "regression_details": regression_result,
+                    })
 
                 # Store trend analysis
                 report["trends"][f"{test_name}_{operation_type}"] = (
@@ -338,9 +335,9 @@ class BenchmarkReporter:
             report["test_summary"][test_name] = {
                 "operations_tested": len(test_metrics),
                 "historical_samples": len(historical_benchmarks),
-                "regressions_detected": len(
-                    [r for r in report["regressions"] if r["test_name"] == test_name]
-                ),
+                "regressions_detected": len([
+                    r for r in report["regressions"] if r["test_name"] == test_name
+                ]),
             }
 
         # Generate recommendations
@@ -354,7 +351,7 @@ class BenchmarkReporter:
 
         return report
 
-    def _generate_recommendations(self, report: Dict) -> List[str]:
+    def _generate_recommendations(self, report: dict) -> list[str]:
         """Generate actionable recommendations from report."""
         recommendations = []
 
@@ -489,12 +486,12 @@ class TestBenchmarkRegression:
             current_metrics=current_metrics, historical_benchmarks=historical_benchmarks
         )
 
-        assert not result[
-            "regression_detected"
-        ], "Should not detect regression for stable performance"
-        assert (
-            result["relative_change"] < 1.3
-        ), "Relative change should be within threshold"
+        assert not result["regression_detected"], (
+            "Should not detect regression for stable performance"
+        )
+        assert result["relative_change"] < 1.3, (
+            "Relative change should be within threshold"
+        )
         print(
             f"No regression test: {result['current_value']:.6f}s (change: {result['relative_change']:.2f}x)"
         )
@@ -534,9 +531,9 @@ class TestBenchmarkRegression:
             current_metrics=current_metrics, historical_benchmarks=historical_benchmarks
         )
 
-        assert not result[
-            "regression_detected"
-        ], "Should not detect regression for improvement"
+        assert not result["regression_detected"], (
+            "Should not detect regression for improvement"
+        )
         assert result["relative_change"] < 1.0, "Should show improvement"
         print(
             f"Performance improvement test: {result['current_value']:.6f}s (change: {result['relative_change']:.2f}x)"
@@ -569,9 +566,9 @@ class TestBenchmarkRegression:
         )
 
         assert result["trend"]["trend"] == "degrading", "Should detect degrading trend"
-        assert (
-            result["trend"]["correlation"] > 0
-        ), "Should show positive correlation (degrading)"
+        assert result["trend"]["correlation"] > 0, (
+            "Should show positive correlation (degrading)"
+        )
         print(
             f"Trend analysis: {result['trend']['trend']} (correlation: {result['trend']['correlation']:.3f})"
         )
@@ -600,9 +597,9 @@ class TestBenchmarkRegression:
         )
 
         assert result["trend"]["trend"] == "improving", "Should detect improving trend"
-        assert (
-            result["trend"]["correlation"] < 0
-        ), "Should show negative correlation (improving)"
+        assert result["trend"]["correlation"] < 0, (
+            "Should show negative correlation (improving)"
+        )
         print(
             f"Improving trend analysis: {result['trend']['trend']} (correlation: {result['trend']['correlation']:.3f})"
         )
@@ -743,27 +740,27 @@ class TestBenchmarkRegression:
         for operation_name, metrics in current_results.items():
             if operation_name.startswith("cache_"):
                 threshold = performance_thresholds["cache"]["cache_get_ms"] / 1000
-                assert (
-                    metrics["avg_operation_time"] < threshold
-                ), f"Cache operation {operation_name} exceeds threshold: {metrics['avg_operation_time']:.6f}s > {threshold:.6f}s"
+                assert metrics["avg_operation_time"] < threshold, (
+                    f"Cache operation {operation_name} exceeds threshold: {metrics['avg_operation_time']:.6f}s > {threshold:.6f}s"
+                )
 
             elif operation_name.startswith("session_"):
                 threshold = (
                     performance_thresholds["session"]["session_create_ms"] / 1000
                 )
-                assert (
-                    metrics["avg_operation_time"] < threshold
-                ), f"Session operation {operation_name} exceeds threshold: {metrics['avg_operation_time']:.6f}s > {threshold:.6f}s"
+                assert metrics["avg_operation_time"] < threshold, (
+                    f"Session operation {operation_name} exceeds threshold: {metrics['avg_operation_time']:.6f}s > {threshold:.6f}s"
+                )
 
-        print(f"Continuous monitoring integration test completed")
+        print("Continuous monitoring integration test completed")
         print(f"Monitored {len(test_operations)} operations")
-        print(f"All operations within performance thresholds: ✓")
+        print("All operations within performance thresholds: ✓")
 
         # Verify comprehensive metrics
         comprehensive_metrics = performance_profiler.get_comprehensive_metrics()
-        assert (
-            comprehensive_metrics["success_rate"] == 1.0
-        ), "All monitoring operations should succeed"
-        assert comprehensive_metrics["total_operations"] == len(
-            test_operations
-        ), "Should record all operations"
+        assert comprehensive_metrics["success_rate"] == 1.0, (
+            "All monitoring operations should succeed"
+        )
+        assert comprehensive_metrics["total_operations"] == len(test_operations), (
+            "Should record all operations"
+        )

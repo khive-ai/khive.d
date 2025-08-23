@@ -12,15 +12,15 @@ Comprehensive performance testing for the khive artifacts service including:
 """
 
 import asyncio
-import tempfile
 import time
-from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from khive.services.artifacts.exceptions import DocumentAlreadyExists, DocumentNotFound
-from khive.services.artifacts.models import Author, Document, DocumentType, Session
+from khive.services.artifacts.exceptions import (DocumentAlreadyExists,
+                                                 DocumentNotFound)
+from khive.services.artifacts.models import (Author, Document, DocumentType,
+                                             Session)
 from khive.services.artifacts.service import ArtifactsService
 
 
@@ -229,15 +229,15 @@ class TestArtifactsBenchmarks:
         max_time = max(creation_times)
 
         # Performance assertions
-        assert (
-            avg_time < threshold
-        ), f"Average document creation time too slow: {avg_time:.6f}s"
-        assert (
-            min_time < threshold * 0.5
-        ), f"Minimum document creation time too slow: {min_time:.6f}s"
-        assert (
-            max_time < threshold * 3.0
-        ), f"Maximum document creation time too slow: {max_time:.6f}s"
+        assert avg_time < threshold, (
+            f"Average document creation time too slow: {avg_time:.6f}s"
+        )
+        assert min_time < threshold * 0.5, (
+            f"Minimum document creation time too slow: {min_time:.6f}s"
+        )
+        assert max_time < threshold * 3.0, (
+            f"Maximum document creation time too slow: {max_time:.6f}s"
+        )
 
         print(
             f"Document creation - Avg: {avg_time:.6f}s, Min: {min_time:.6f}s, Max: {max_time:.6f}s"
@@ -317,12 +317,12 @@ class TestArtifactsBenchmarks:
         min_time = min(retrieval_times)
         max_time = max(retrieval_times)
 
-        assert (
-            avg_time < threshold
-        ), f"Average document retrieval time too slow: {avg_time:.6f}s"
-        assert (
-            max_time < threshold * 2.0
-        ), f"Maximum document retrieval time too slow: {max_time:.6f}s"
+        assert avg_time < threshold, (
+            f"Average document retrieval time too slow: {avg_time:.6f}s"
+        )
+        assert max_time < threshold * 2.0, (
+            f"Maximum document retrieval time too slow: {max_time:.6f}s"
+        )
 
         print(
             f"Document retrieval - Avg: {avg_time:.6f}s, Min: {min_time:.6f}s, Max: {max_time:.6f}s"
@@ -415,15 +415,15 @@ class TestArtifactsBenchmarks:
         avg_create_time = sum(session_creation_times) / len(session_creation_times)
         avg_retrieve_time = sum(session_retrieval_times) / len(session_retrieval_times)
 
-        assert (
-            avg_create_time < threshold
-        ), f"Average session creation time too slow: {avg_create_time:.6f}s"
-        assert (
-            avg_retrieve_time < threshold * 0.5
-        ), f"Average session retrieval time too slow: {avg_retrieve_time:.6f}s"
-        assert (
-            listing_time < threshold
-        ), f"Session listing time too slow: {listing_time:.6f}s"
+        assert avg_create_time < threshold, (
+            f"Average session creation time too slow: {avg_create_time:.6f}s"
+        )
+        assert avg_retrieve_time < threshold * 0.5, (
+            f"Average session retrieval time too slow: {avg_retrieve_time:.6f}s"
+        )
+        assert listing_time < threshold, (
+            f"Session listing time too slow: {listing_time:.6f}s"
+        )
 
         print(f"Session create - Avg: {avg_create_time:.6f}s")
         print(f"Session retrieve - Avg: {avg_retrieve_time:.6f}s")
@@ -455,12 +455,10 @@ class TestArtifactsScalability:
             operation = random.choice(["create", "get"])
             doc_id = random.randint(1, 100)
             doc_name = f"concurrent_doc_{doc_id}"
-            doc_type = random.choice(
-                [
-                    DocumentType.SCRATCHPAD,
-                    DocumentType.DELIVERABLE,
-                ]
-            )
+            doc_type = random.choice([
+                DocumentType.SCRATCHPAD,
+                DocumentType.DELIVERABLE,
+            ])
 
             try:
                 if operation == "create":
@@ -524,14 +522,14 @@ class TestArtifactsScalability:
         min_threshold = performance_thresholds["artifacts"]["throughput_ops_per_sec"]
 
         for concurrency, results in scaling_results.items():
-            assert (
-                results["success_rate"] > 0.90
-            ), f"Success rate too low at {concurrency} concurrent operations: {results['success_rate']:.4f}"
+            assert results["success_rate"] > 0.90, (
+                f"Success rate too low at {concurrency} concurrent operations: {results['success_rate']:.4f}"
+            )
 
             if concurrency == 1:
-                assert (
-                    results["throughput"] >= min_threshold
-                ), f"Single-threaded throughput too low: {results['throughput']:.2f} ops/sec"
+                assert results["throughput"] >= min_threshold, (
+                    f"Single-threaded throughput too low: {results['throughput']:.2f} ops/sec"
+                )
 
     @pytest.mark.asyncio
     async def test_large_document_handling_performance(
@@ -617,9 +615,9 @@ class TestArtifactsScalability:
         # Verify large document performance scales reasonably
         for size_mb, metrics in large_doc_times.items():
             max_expected_time = threshold * (size_mb / 5.0)  # Scale with size
-            assert (
-                metrics["avg"] < max_expected_time
-            ), f"Large document ({size_mb}MB) processing too slow: {metrics['avg']:.6f}s"
+            assert metrics["avg"] < max_expected_time, (
+                f"Large document ({size_mb}MB) processing too slow: {metrics['avg']:.6f}s"
+            )
             print(f"Large doc {size_mb}MB - Avg: {metrics['avg']:.6f}s")
 
 
@@ -687,9 +685,9 @@ class TestArtifactsMemoryPerformance:
 
         # Verify memory usage is reasonable
         memory_limit = performance_thresholds["artifacts"]["memory_limit_mb"]
-        assert (
-            memory_usage["memory_delta_mb"] < memory_limit
-        ), f"Artifact registry memory usage too high: {memory_usage['memory_delta_mb']:.2f}MB"
+        assert memory_usage["memory_delta_mb"] < memory_limit, (
+            f"Artifact registry memory usage too high: {memory_usage['memory_delta_mb']:.2f}MB"
+        )
 
         assert memory_usage["success"], "Artifact registry operation should succeed"
         assert memory_usage["result"] == 100, "Should have created 100 documents"
@@ -734,12 +732,10 @@ class TestArtifactsStressTesting:
             try:
                 if operation == "create":
                     doc_name = f"stress_doc_{random.randint(1, 1000)}"
-                    doc_type = random.choice(
-                        [
-                            DocumentType.SCRATCHPAD,
-                            DocumentType.DELIVERABLE,
-                        ]
-                    )
+                    doc_type = random.choice([
+                        DocumentType.SCRATCHPAD,
+                        DocumentType.DELIVERABLE,
+                    ])
                     content = (
                         f"Stress test content {random.randint(1, 100)}"
                         * random.randint(10, 50)
@@ -756,15 +752,13 @@ class TestArtifactsStressTesting:
                         )
                     return document is not None
 
-                elif operation == "get":
+                if operation == "get":
                     # Try to get a document that might or might not exist
                     doc_name = f"stress_doc_{random.randint(1, 1000)}"
-                    doc_type = random.choice(
-                        [
-                            DocumentType.SCRATCHPAD,
-                            DocumentType.DELIVERABLE,
-                        ]
-                    )
+                    doc_type = random.choice([
+                        DocumentType.SCRATCHPAD,
+                        DocumentType.DELIVERABLE,
+                    ])
 
                     try:
                         document = await service.get_document(
@@ -833,7 +827,7 @@ class TestArtifactsStressTesting:
         error_rate = len(errors) / max(completed_operations + len(errors), 1)
         throughput = completed_operations / total_time
 
-        print(f"Artifacts stress test results:")
+        print("Artifacts stress test results:")
         print(f"- Duration: {total_time:.2f}s")
         print(f"- Completed operations: {completed_operations}")
         print(f"- Errors: {len(errors)}")
@@ -846,6 +840,6 @@ class TestArtifactsStressTesting:
         assert completed_operations > 0, "No operations completed during stress test"
 
         metrics = performance_profiler.get_comprehensive_metrics()
-        assert (
-            metrics["success_rate"] > 0.85
-        ), f"Success rate too low: {metrics['success_rate']:.4f}"
+        assert metrics["success_rate"] > 0.85, (
+            f"Success rate too low: {metrics['success_rate']:.4f}"
+        )

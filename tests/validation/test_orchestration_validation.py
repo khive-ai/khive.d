@@ -9,21 +9,15 @@ This module provides systematic validation testing for:
 - Cross-model orchestration workflow validation
 """
 
-from typing import Any, Literal
+from typing import Any
 
-import pytest
 from lionagi.fields import Instruct
-from pydantic import ValidationError
 
 from khive.services.composition.parts import ComposerRequest
-from khive.services.orchestration.parts import (
-    AgentRequest,
-    BaseGate,
-    ComplexityAssessment,
-    DeliverableType,
-    GateComponent,
-    OrchestrationPlan,
-)
+from khive.services.orchestration.parts import (AgentRequest, BaseGate,
+                                                ComplexityAssessment,
+                                                GateComponent,
+                                                OrchestrationPlan)
 from tests.validation.pydantic_validators import BaseValidationPattern
 
 # ============================================================================
@@ -753,11 +747,10 @@ class OrchestrationServiceCrossValidator:
         if (
             "RequirementsAnalysis" in analysis_types
             and "FeatureImplementation" in analysis_types
-        ):
-            if plan.execution_strategy == "concurrent":
-                issues.append(
-                    "Requirements analysis and implementation running concurrently"
-                )
+        ) and plan.execution_strategy == "concurrent":
+            issues.append(
+                "Requirements analysis and implementation running concurrently"
+            )
 
         return issues
 
@@ -778,7 +771,9 @@ class OrchestrationServiceCrossValidator:
             )
             return issues
 
-        for i, (plan, assessment, gate) in enumerate(zip(plans, assessments, gates)):
+        for i, (plan, assessment, gate) in enumerate(
+            zip(plans, assessments, gates, strict=False)
+        ):
             # Plan-assessment consistency
             plan_issues = (
                 OrchestrationServiceCrossValidator.validate_plan_complexity_consistency(

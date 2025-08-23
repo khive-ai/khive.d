@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 # Add src to path so we can import khive
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from khive.services.composition.agent_composer import AgentComposer
 

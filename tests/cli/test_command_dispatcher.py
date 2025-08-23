@@ -5,22 +5,16 @@ and error handling in the main CLI entry point.
 """
 
 import sys
-from pathlib import Path
 from types import ModuleType
 from unittest.mock import Mock, patch
 
 import pytest
 
-from khive.cli.khive_cli import (
-    COMMAND_DESCRIPTIONS,
-    COMMAND_MODULE_BASE_PATH,
-    COMMANDS,
-    ENTRY_POINT_FUNCTION_NAME,
-    _get_full_module_path,
-    _load_command_module,
-    _print_root_help,
-    main,
-)
+from khive.cli.khive_cli import (COMMAND_DESCRIPTIONS,
+                                 COMMAND_MODULE_BASE_PATH, COMMANDS,
+                                 ENTRY_POINT_FUNCTION_NAME,
+                                 _get_full_module_path, _load_command_module,
+                                 _print_root_help, main)
 
 
 class TestCommandMapping:
@@ -46,7 +40,7 @@ class TestCommandMapping:
         assert isinstance(COMMAND_DESCRIPTIONS, dict)
 
         # Every command should have a description
-        for command_name in COMMANDS.keys():
+        for command_name in COMMANDS:
             if command_name not in COMMAND_DESCRIPTIONS:
                 # Some commands might not have descriptions yet, that's ok
                 continue
@@ -98,7 +92,7 @@ class TestModulePathConstruction:
 
     def test_get_full_module_path_with_existing_commands(self):
         """Test module path construction for all existing commands."""
-        for command_name, module_name in COMMANDS.items():
+        for module_name in COMMANDS.values():
             result = _get_full_module_path(module_name)
             expected = f"{COMMAND_MODULE_BASE_PATH}.{module_name}"
             assert result == expected
@@ -183,7 +177,7 @@ class TestHelpSystem:
         _print_root_help()
         captured = capsys.readouterr()
 
-        for command_name in COMMANDS.keys():
+        for command_name in COMMANDS:
             assert command_name in captured.out
 
     def test_print_root_help_includes_descriptions(self, capsys):
@@ -201,9 +195,7 @@ class TestHelpSystem:
         captured = capsys.readouterr()
 
         lines = captured.out.split("\n")
-        command_lines = [
-            line for line in lines if any(cmd in line for cmd in COMMANDS.keys())
-        ]
+        command_lines = [line for line in lines if any(cmd in line for cmd in COMMANDS)]
 
         # Should have proper indentation
         for line in command_lines:
@@ -414,7 +406,7 @@ class TestEdgeCases:
         # We can't test actual module existence here as it would require file system access
         # but we can test the mapping consistency
 
-        for command_name, module_name in COMMANDS.items():
+        for module_name in COMMANDS.values():
             full_path = _get_full_module_path(module_name)
             assert full_path.endswith(module_name)
             assert COMMAND_MODULE_BASE_PATH in full_path
@@ -441,7 +433,7 @@ class TestSystemIntegration:
         # Test _print_root_help signature
         sig = inspect.signature(_print_root_help)
         assert len(sig.parameters) == 0
-        assert sig.return_annotation == None
+        assert sig.return_annotation is None
 
     def test_module_loading_functions_signature(self):
         """Test module loading function signatures."""

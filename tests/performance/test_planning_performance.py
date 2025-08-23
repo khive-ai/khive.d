@@ -16,24 +16,14 @@ import json
 import tempfile
 import time
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 import yaml
 
 from khive.services.artifacts.handlers import TimeoutConfig
-from khive.services.plan.parts import (
-    ComplexityLevel,
-    PlannerRequest,
-    QualityGate,
-    TaskPhase,
-    WorkflowPattern,
-)
-from khive.services.plan.planner_service import (
-    ComplexityTier,
-    OrchestrationPlanner,
-    Request,
-)
+from khive.services.plan.planner_service import (ComplexityTier,
+                                                 OrchestrationPlanner, Request)
 
 
 class TestPlanningBenchmarks:
@@ -112,15 +102,15 @@ class TestPlanningBenchmarks:
             max_time = max(assessment_times)
 
             # Performance assertions
-            assert (
-                avg_time < threshold
-            ), f"Average assessment time too slow: {avg_time:.6f}s"
-            assert (
-                min_time < threshold * 0.5
-            ), f"Minimum assessment time too slow: {min_time:.6f}s"
-            assert (
-                max_time < threshold * 2.0
-            ), f"Maximum assessment time too slow: {max_time:.6f}s"
+            assert avg_time < threshold, (
+                f"Average assessment time too slow: {avg_time:.6f}s"
+            )
+            assert min_time < threshold * 0.5, (
+                f"Minimum assessment time too slow: {min_time:.6f}s"
+            )
+            assert max_time < threshold * 2.0, (
+                f"Maximum assessment time too slow: {max_time:.6f}s"
+            )
 
             print(
                 f"Complexity assessment - Avg: {avg_time:.6f}s, Min: {min_time:.6f}s, Max: {max_time:.6f}s"
@@ -251,12 +241,12 @@ class TestPlanningBenchmarks:
                 min_time = min(selection_times)
                 max_time = max(selection_times)
 
-                assert (
-                    avg_time < threshold
-                ), f"Average role selection time too slow: {avg_time:.6f}s"
-                assert (
-                    max_time < threshold * 2.0
-                ), f"Maximum role selection time too slow: {max_time:.6f}s"
+                assert avg_time < threshold, (
+                    f"Average role selection time too slow: {avg_time:.6f}s"
+                )
+                assert max_time < threshold * 2.0, (
+                    f"Maximum role selection time too slow: {max_time:.6f}s"
+                )
 
                 print(
                     f"Role selection - Avg: {avg_time:.6f}s, Min: {min_time:.6f}s, Max: {max_time:.6f}s"
@@ -357,9 +347,9 @@ class TestPlanningBenchmarks:
                                 expected_domain_count = (
                                     len(categories) * domains_per_category
                                 )
-                                assert (
-                                    len(domains) == expected_domain_count
-                                ), f"Expected {expected_domain_count} domains, got {len(domains)}"
+                                assert len(domains) == expected_domain_count, (
+                                    f"Expected {expected_domain_count} domains, got {len(domains)}"
+                                )
 
                             except Exception as e:
                                 success = False
@@ -383,12 +373,12 @@ class TestPlanningBenchmarks:
                 min_time = min(loading_times)
                 max_time = max(loading_times)
 
-                assert (
-                    avg_time < threshold
-                ), f"Average domain loading time too slow: {avg_time:.6f}s"
-                assert (
-                    max_time < threshold * 2.0
-                ), f"Maximum domain loading time too slow: {max_time:.6f}s"
+                assert avg_time < threshold, (
+                    f"Average domain loading time too slow: {avg_time:.6f}s"
+                )
+                assert max_time < threshold * 2.0, (
+                    f"Maximum domain loading time too slow: {max_time:.6f}s"
+                )
 
                 print(
                     f"Domain loading - Avg: {avg_time:.6f}s, Min: {min_time:.6f}s, Max: {max_time:.6f}s"
@@ -436,8 +426,7 @@ class TestPlanningScalability:
                     with patch.object(
                         planner, "assess", return_value=ComplexityTier.MEDIUM
                     ):
-                        complexity = planner.assess(request)
-                        return complexity
+                        return planner.assess(request)
 
                 # Test different concurrency levels
                 concurrency_levels = [1, 5, 10, 20]
@@ -471,15 +460,15 @@ class TestPlanningScalability:
                 ]
 
                 for concurrency, results in scaling_results.items():
-                    assert (
-                        results["success_rate"] > 0.95
-                    ), f"Success rate too low at {concurrency} concurrent operations: {results['success_rate']:.4f}"
+                    assert results["success_rate"] > 0.95, (
+                        f"Success rate too low at {concurrency} concurrent operations: {results['success_rate']:.4f}"
+                    )
 
                     if concurrency == 1:
                         # Single-threaded should meet minimum throughput
-                        assert (
-                            results["throughput"] >= min_threshold
-                        ), f"Single-threaded throughput too low: {results['throughput']:.2f} ops/sec"
+                        assert results["throughput"] >= min_threshold, (
+                            f"Single-threaded throughput too low: {results['throughput']:.2f} ops/sec"
+                        )
 
     @pytest.mark.asyncio
     async def test_large_scale_planning_performance(
@@ -608,9 +597,9 @@ class TestPlanningScalability:
                 # Verify planning performance scales reasonably
                 for scale, metrics in planning_times.items():
                     max_expected_time = threshold * (2 if scale == "very_large" else 1)
-                    assert (
-                        metrics["avg"] < max_expected_time
-                    ), f"Large scale planning for {scale} too slow: {metrics['avg']:.6f}s"
+                    assert metrics["avg"] < max_expected_time, (
+                        f"Large scale planning for {scale} too slow: {metrics['avg']:.6f}s"
+                    )
                     print(f"Large scale {scale} - Avg: {metrics['avg']:.6f}s")
 
 
@@ -674,9 +663,9 @@ class TestPlanningMemoryPerformance:
 
             # Verify memory usage is reasonable
             memory_limit = performance_thresholds["planning"]["memory_limit_mb"]
-            assert (
-                memory_usage["memory_delta_mb"] < memory_limit
-            ), f"Cost tracking memory usage too high: {memory_usage['memory_delta_mb']:.2f}MB"
+            assert memory_usage["memory_delta_mb"] < memory_limit, (
+                f"Cost tracking memory usage too high: {memory_usage['memory_delta_mb']:.2f}MB"
+            )
 
             assert memory_usage["success"], "Cost tracking operation should succeed"
 
@@ -783,9 +772,9 @@ class TestPlanningMemoryPerformance:
 
             # Verify timeout management doesn't add significant overhead
             for config_name, metrics in timeout_performance.items():
-                assert (
-                    metrics["avg"] < threshold
-                ), f"Timeout management overhead too high for {config_name}: {metrics['avg']:.6f}s"
+                assert metrics["avg"] < threshold, (
+                    f"Timeout management overhead too high for {config_name}: {metrics['avg']:.6f}s"
+                )
                 print(f"Timeout {config_name} - Avg: {metrics['avg']:.6f}s")
 
 
@@ -897,7 +886,7 @@ class TestPlanningStressTesting:
             error_rate = len(errors) / max(completed_operations + len(errors), 1)
             throughput = completed_operations / total_time
 
-            print(f"Planning stress test results:")
+            print("Planning stress test results:")
             print(f"- Duration: {total_time:.2f}s")
             print(f"- Completed operations: {completed_operations}")
             print(f"- Errors: {len(errors)}")
@@ -905,14 +894,14 @@ class TestPlanningStressTesting:
             print(f"- Error rate: {error_rate:.4f}")
 
             # Verify system survived stress test
-            assert (
-                error_rate < 0.15
-            ), f"Error rate too high under stress: {error_rate:.4f}"
-            assert (
-                completed_operations > 0
-            ), "No operations completed during stress test"
+            assert error_rate < 0.15, (
+                f"Error rate too high under stress: {error_rate:.4f}"
+            )
+            assert completed_operations > 0, (
+                "No operations completed during stress test"
+            )
 
             metrics = performance_profiler.get_comprehensive_metrics()
-            assert (
-                metrics["success_rate"] > 0.85
-            ), f"Success rate too low: {metrics['success_rate']:.4f}"
+            assert metrics["success_rate"] > 0.85, (
+                f"Success rate too low: {metrics['success_rate']:.4f}"
+            )

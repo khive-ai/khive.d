@@ -121,7 +121,7 @@ Run specific service performance tests:
 # Orchestration performance
 pytest tests/performance/test_orchestration_performance.py -v
 
-# Cache performance  
+# Cache performance
 pytest tests/performance/test_cache_performance.py -v
 
 # Integration performance
@@ -172,12 +172,12 @@ Example benchmark test:
 ```python
 def test_cache_get_set_performance(performance_profiler, performance_thresholds):
     threshold = performance_thresholds['cache']['cache_get_ms'] / 1000
-    
+
     for i in range(100):
         start_time = time.perf_counter()
         result = await cache_service.get(f"key_{i}")
         end_time = time.perf_counter()
-        
+
         operation_time = end_time - start_time
         assert operation_time < threshold
         performance_profiler.record_operation(operation_time, success=True)
@@ -202,7 +202,7 @@ async def test_concurrent_operations_scaling(load_test_runner):
             concurrent_tasks=concurrency,
             operations_per_task=20
         )
-        
+
         assert results['success_rate'] > 0.95
         assert results['throughput'] > min_acceptable_throughput
 ```
@@ -222,7 +222,7 @@ Example memory test:
 def test_memory_leak_detection(memory_monitor):
     for i in range(100):
         memory_usage = memory_monitor(lambda: perform_operation())
-        
+
         if i > 20 and memory_usage['memory_delta_mb'] > 5.0:
             pytest.fail(f"Potential memory leak detected at iteration {i}")
 ```
@@ -242,10 +242,10 @@ Example stress test:
 async def test_high_concurrency_stress():
     concurrent_ops = 100
     duration = 30  # seconds
-    
+
     completed_operations = 0
     errors = []
-    
+
     async def stress_worker():
         nonlocal completed_operations
         while time.perf_counter() - start_time < duration:
@@ -254,10 +254,10 @@ async def test_high_concurrency_stress():
                 completed_operations += 1
             except Exception as e:
                 errors.append(str(e))
-    
+
     tasks = [asyncio.create_task(stress_worker()) for _ in range(concurrent_ops)]
     await asyncio.gather(*tasks, return_exceptions=True)
-    
+
     error_rate = len(errors) / max(completed_operations + len(errors), 1)
     assert error_rate < 0.1  # Less than 10% error rate
 ```
@@ -363,7 +363,7 @@ export PERF_SESSION_CREATE_MS=50
 export PERF_ORCHESTRATION_MEMORY_MB=50
 export PERF_CACHE_MEMORY_MB=200
 
-# Throughput targets (operations per second)  
+# Throughput targets (operations per second)
 export PERF_CACHE_THROUGHPUT_OPS=1000
 export PERF_ARTIFACTS_THROUGHPUT_OPS=50
 
@@ -382,29 +382,29 @@ import pytest
 from khive.services.custom import CustomService
 
 class TestCustomServicePerformance:
-    
+
     @pytest.mark.asyncio
     async def test_custom_operation_performance(
         self, performance_profiler, performance_thresholds
     ):
         service = CustomService()
-        
+
         performance_profiler.start_measurement()
-        
+
         for i in range(100):
             start_time = time.perf_counter()
             result = await service.custom_operation(f"input_{i}")
             end_time = time.perf_counter()
-            
+
             operation_time = end_time - start_time
             performance_profiler.record_operation(
                 operation_time,
                 success=result is not None,
                 operation_type="custom_operation"
             )
-        
+
         performance_profiler.end_measurement()
-        
+
         metrics = performance_profiler.get_comprehensive_metrics()
         assert metrics['avg_operation_time'] < 0.050  # 50ms threshold
         assert metrics['success_rate'] > 0.99
@@ -474,13 +474,13 @@ from pathlib import Path
 def check_performance_regressions(report_path: Path):
     with open(report_path) as f:
         report = json.load(f)
-    
+
     regressions = report.get('regressions', [])
     critical_regressions = [
-        r for r in regressions 
+        r for r in regressions
         if r['regression_details'].get('relative_change', 0) > 2.0
     ]
-    
+
     if critical_regressions:
         send_alert(
             f"CRITICAL: {len(critical_regressions)} performance regressions detected",
@@ -488,7 +488,7 @@ def check_performance_regressions(report_path: Path):
         )
     elif regressions:
         send_warning(
-            f"WARNING: {len(regressions)} performance regressions detected", 
+            f"WARNING: {len(regressions)} performance regressions detected",
             details=regressions
         )
 
@@ -545,7 +545,7 @@ def send_alert(message: str, details: list):
 # Run tests in parallel
 pytest tests/performance/ -n auto
 
-# Skip slow tests during development  
+# Skip slow tests during development
 pytest tests/performance/ -m "not slow"
 
 # Run only critical performance tests

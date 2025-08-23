@@ -12,9 +12,6 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import pytest
-from pydantic import ValidationError
-
 from khive.services.cache.models import CacheEntry, CacheKey, CacheStats
 from tests.validation.pydantic_validators import BaseValidationPattern
 

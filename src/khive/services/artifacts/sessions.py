@@ -9,12 +9,8 @@ import logging
 import re
 from pathlib import Path
 
-from .exceptions import (
-    SessionAlreadyExists,
-    SessionNotFound,
-    StorageError,
-    ValidationError,
-)
+from .exceptions import (SessionAlreadyExists, SessionNotFound, StorageError,
+                         ValidationError)
 from .models import DocumentType, Session, SessionStatus
 
 logger = logging.getLogger(__name__)
@@ -114,7 +110,9 @@ class SessionManager:
             return session
 
         except OSError as e:
-            logger.error(f"Failed to create session workspace for {session.id}: {e}")
+            logger.exception(
+                f"Failed to create session workspace for {session.id}: {e}"
+            )
             raise StorageError(f"Failed to create session workspace: {e}") from e
 
     async def get_session(self, session_id: str) -> Session:
@@ -242,7 +240,7 @@ class SessionManager:
                     sessions.append(path.name)
             return sorted(sessions)
         except OSError as e:
-            logger.error(f"Failed to list sessions: {e}")
+            logger.exception(f"Failed to list sessions: {e}")
             return []
 
     async def archive_session(self, session_id: str) -> None:
@@ -252,7 +250,7 @@ class SessionManager:
         Args:
             session_id: Session to archive
         """
-        session = await self.get_session(session_id)
+        await self.get_session(session_id)
         # TODO: Update session metadata to mark as archived
         logger.info(f"Session {session_id} archived")
 

@@ -6,8 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from khive.services.artifacts.exceptions import SessionNotFound, ValidationError
-from khive.services.artifacts.models import Author, Session
+from khive.services.artifacts.exceptions import (SessionNotFound,
+                                                 ValidationError)
+from khive.services.artifacts.models import Author
 from khive.services.artifacts.sessions import SessionManager
 
 

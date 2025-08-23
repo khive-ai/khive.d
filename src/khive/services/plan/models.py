@@ -57,7 +57,8 @@ class OrchestrationEvaluation(BaseModel):
                 validated_roles.append(role)
             else:
                 # Try to find the closest matching valid role
-                from lionagi.libs.validate.string_similarity import string_similarity
+                from lionagi.libs.validate.string_similarity import \
+                    string_similarity
 
                 # Convert set to list for string_similarity
                 valid_roles_list = list(ALL_AGENT_ROLES)

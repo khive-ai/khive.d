@@ -12,15 +12,18 @@ import logging
 import os
 import uuid
 from datetime import datetime
-from pathlib import Path
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 import aiofiles
 import yaml
 
 from .exceptions import DocumentNotFound, StorageError
 from .models import Author, ContributionMetadata, Document, DocumentType
-from .sessions import SessionManager
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from .sessions import SessionManager
 
 logger = logging.getLogger(__name__)
 
@@ -293,7 +296,7 @@ class FileSystemStorageRepository(IStorageRepository):
             return await asyncio.to_thread(_list_files)
 
         except Exception as e:
-            logger.error(
+            logger.exception(
                 f"Failed to list documents for {session_id}/{doc_type.value}: {e}"
             )
             return []

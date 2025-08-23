@@ -20,15 +20,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, TypeVar
 
-from khive.utils import (
-    BaseConfig,
-    die,
-    get_project_root,
-    info_msg,
-    load_toml_config,
-    print_json_result,
-    validate_directory,
-)
+from khive.utils import (BaseConfig, die, get_project_root, info_msg,
+                         load_toml_config, print_json_result,
+                         validate_directory)
 
 # Type variables
 ConfigType = TypeVar("ConfigType", bound=BaseConfig)

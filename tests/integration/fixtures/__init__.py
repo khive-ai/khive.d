@@ -3,18 +3,11 @@
 import pytest
 
 # Import fixtures from external_services module to make them available
-from .external_services import (
-    integration_env,
-    mock_openai_client,
-    mock_redis_cache,
-    mock_redis_connected,
-    mock_redis_server,
-    real_redis_available,
-    real_redis_cache,
-    redis_cache_config,
-    slow_openai_client,
-    unreliable_openai_client,
-)
+from .external_services import (integration_env, mock_openai_client,
+                                mock_redis_cache, mock_redis_connected,
+                                mock_redis_server, real_redis_available,
+                                real_redis_cache, redis_cache_config,
+                                slow_openai_client, unreliable_openai_client)
 
 
 @pytest.fixture(scope="session")

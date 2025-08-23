@@ -482,7 +482,7 @@ class TestPlanExpansion:
         # Create plan with more agents than max_agents
         agent_requests = [
             AgentRequest(
-                instruct=Instruct(instruction=f"Task {i}"),
+                instruct=Instruct(instruction=f"Task {i}", guidance="Test guidance"),
                 compose_request=sample_composer_request,
                 analysis_type="RequirementsAnalysis",
             )

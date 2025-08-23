@@ -20,12 +20,8 @@ from pydantic import ValidationError
 from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
-    AgentRequest,
-    BaseGate,
-    GateComponent,
-    GatedMultiPhaseOrchestrationResponse,
-    OrchestrationPlan,
-)
+    AgentRequest, BaseGate, FanoutWithGatedRefinementResponse, GateComponent,
+    OrchestrationPlan)
 from tests.fixtures.gated_refinement_fixtures import create_mock_orchestrator
 
 
@@ -155,7 +151,7 @@ class TestGatedMultiPhaseOrchestrationPattern:
             mock_create_branch.return_value = "qa_branch_id"
 
             # Execute fanout with gated refinement
-            result = await orchestrator.gated_multi_phase_orchestration(
+            result = await orchestrator.fanout_w_gated_refinement(
                 initial_desc="Test initial phase",
                 refinement_desc="Test refinement phase",
                 gate_instruction="Evaluate quality",
@@ -165,7 +161,7 @@ class TestGatedMultiPhaseOrchestrationPattern:
             )
 
             # Verify response structure
-            assert isinstance(result, GatedMultiPhaseOrchestrationResponse)
+            assert isinstance(result, FanoutWithGatedRefinementResponse)
             assert hasattr(result, "gate_passed")
             assert hasattr(result, "refinement_executed")
             assert result.gate_passed is True
@@ -225,7 +221,7 @@ class TestGatedMultiPhaseOrchestrationPattern:
             mock_create_branch.return_value = "qa_branch_id"
 
             # Execute with refinement scenario
-            result = await orchestrator.gated_multi_phase_orchestration(
+            result = await orchestrator.fanout_w_gated_refinement(
                 initial_desc="Test initial phase",
                 refinement_desc="Test refinement phase",
                 gate_instruction="Evaluate quality strictly",
@@ -434,7 +430,7 @@ class TestErrorRecoveryMechanisms:
             mock_run_flow.side_effect = FlowExecutionError("Flow execution failed")
 
             with pytest.raises(FlowExecutionError):
-                await orchestrator.gated_multi_phase_orchestration(
+                await orchestrator.fanout_w_gated_refinement(
                     initial_desc="Test",
                     refinement_desc="Test refinement",
                     gate_instruction="Test gate",
@@ -454,7 +450,7 @@ class TestErrorRecoveryMechanisms:
             )
 
             with pytest.raises(BranchCreationError):
-                await orchestrator.gated_multi_phase_orchestration(
+                await orchestrator.fanout_w_gated_refinement(
                     initial_desc="Test",
                     refinement_desc="Test refinement",
                     gate_instruction="Test gate",
@@ -665,7 +661,7 @@ class TestCoverageScenarios:
             ]
             mock_create_branch.return_value = "qa_branch_id"
 
-            result = await orchestrator.gated_multi_phase_orchestration(
+            result = await orchestrator.fanout_w_gated_refinement(
                 initial_desc="Complex test scenario",
                 refinement_desc="Address all quality issues",
                 gate_instruction="Perform thorough quality evaluation",
@@ -726,7 +722,7 @@ class TestCoverageScenarios:
             for viz_mode in visualization_modes:
                 with contextlib.suppress(Exception):
                     # Expected to fail in test environment, but should handle viz parameter
-                    await orchestrator.gated_multi_phase_orchestration(
+                    await orchestrator.fanout_w_gated_refinement(
                         initial_desc="Viz test",
                         refinement_desc="Viz refinement",
                         gate_instruction="Test gate",

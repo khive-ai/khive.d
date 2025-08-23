@@ -12,7 +12,7 @@ Tests for khive CLI error handling including:
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -473,7 +473,7 @@ class TestBaseCLICommandErrorHandling:
                 return BaseConfig()
 
             def _execute(self, args, config):
-                raise KeyboardInterrupt()
+                raise KeyboardInterrupt
 
         command = TestCommand("test", "Test command")
 

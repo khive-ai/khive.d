@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  core-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,20 +34,145 @@ jobs:
         run: uv run ruff format --check tests/cli/ tests/basic/ || true
 
       - name: Run core tests with coverage
-        run: uv run pytest tests/cli/test_cli_basic.py tests/basic/test_core_functionality.py tests/basic/test_base_models.py
+        run: uv run pytest tests/cli/test_cli_basic.py tests/basic/test_core_functionality.py tests/basic/test_base_models.py --cov-report=xml
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage-report
-          path: htmlcov/
+          name: core-coverage-report
+          path: |
+            htmlcov/
+            coverage.xml
 
-      - name: Upload test results
+  async-concurrency-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        test-type: [
+          "async_test",
+          "concurrency", 
+          "timeout_handling",
+          "race_condition and deadlock",
+          "resource_cleanup"
+        ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run async/concurrency tests with parallel execution
+        run: |
+          uv run pytest \
+            -m "${{ matrix.test-type }}" \
+            -n auto \
+            --timeout=300 \
+            --timeout-method=thread \
+            --cov=src/khive \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --durations=10 \
+            -v \
+            tests/
+
+      - name: Upload test coverage
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results
+          name: async-coverage-${{ matrix.test-type }}
           path: |
-            .coverage
             htmlcov/
+            coverage.xml
+
+  integration-async-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [core-tests]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run integration async tests
+        run: |
+          uv run pytest \
+            tests/integration/ \
+            -m "async_test or concurrency" \
+            -n 4 \
+            --timeout=600 \
+            --timeout-method=thread \
+            --cov=src/khive \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --durations=20 \
+            -v
+
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-async-results
+          path: |
+            htmlcov/
+            coverage.xml
+            .coverage
+
+  performance-async-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [core-tests]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run performance async tests
+        run: |
+          uv run pytest \
+            -m "performance and (async_test or concurrency)" \
+            -n 2 \
+            --timeout=900 \
+            --timeout-method=thread \
+            --cov=src/khive \
+            --cov-report=xml \
+            --durations=30 \
+            -v \
+            tests/
+
+      - name: Upload performance test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-async-results
+          path: |
+            htmlcov/
+            coverage.xml

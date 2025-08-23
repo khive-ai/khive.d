@@ -7,24 +7,16 @@ workflow systems, and factory patterns.
 import argparse
 import json
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from khive.cli.base import (
-    BaseCLICommand,
-    CLICommandFactory,
-    CLIResult,
-    CommandWorkflow,
-    ConfigurableCLICommand,
-    FileBasedCLICommand,
-    GitBasedCLICommand,
-    WorkflowStep,
-    cli_command,
-)
+from khive.cli.base import (BaseCLICommand, CLICommandFactory, CLIResult,
+                            CommandWorkflow, ConfigurableCLICommand,
+                            FileBasedCLICommand, GitBasedCLICommand,
+                            WorkflowStep, cli_command)
 from khive.utils import BaseConfig
 
 

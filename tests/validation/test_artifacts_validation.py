@@ -10,25 +10,17 @@ This module provides systematic validation testing for:
 """
 
 import tempfile
-import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
 
 import pytest
-from pydantic import ValidationError
 
-from khive.services.artifacts.models import (
-    ArtifactRegistry,
-    ArtifactRegistryEntry,
-    Author,
-    ContributionMetadata,
-    Document,
-    DocumentType,
-    Session,
-    SessionStatus,
-)
+from khive.services.artifacts.models import (ArtifactRegistry,
+                                             ArtifactRegistryEntry, Author,
+                                             ContributionMetadata, Document,
+                                             DocumentType, Session,
+                                             SessionStatus)
 from tests.validation.pydantic_validators import BaseValidationPattern
 
 # ============================================================================

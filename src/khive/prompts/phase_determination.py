@@ -101,9 +101,7 @@ def determine_required_phases(request_text: str) -> list[str]:
     ]
 
     # Sort phases according to logical order
-    ordered_phases = [phase for phase in phase_order if phase in phases]
-
-    return ordered_phases
+    return [phase for phase in phase_order if phase in phases]
 
 
 def get_phase_description(phase_name: str) -> str:

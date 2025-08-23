@@ -6,17 +6,13 @@ and cross-service integration with the artifacts storage system.
 
 import asyncio
 import json
-import tempfile
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
-from khive.services.artifacts.exceptions import DocumentAlreadyExists, DocumentNotFound
+from khive.services.artifacts.exceptions import (DocumentAlreadyExists,
+                                                 DocumentNotFound)
 from khive.services.artifacts.factory import create_artifacts_service
-from khive.services.artifacts.locks import LockManager
-from khive.services.artifacts.models import Author, DocumentType, Session
-from khive.services.artifacts.sessions import SessionManager
+from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.storage import FilesystemStorageRepository
 
 
@@ -159,7 +155,7 @@ class TestArtifactsServiceIntegration:
         registry_file = session_path / "artifact_registry.json"
         if registry_file.exists():
             # Read current registry
-            with open(registry_file, "r") as f:
+            with open(registry_file) as f:
                 registry_data = json.load(f)
 
             # Verify document is in registry
@@ -342,7 +338,6 @@ class TestArtifactsServiceWithExternalStorage:
 
     async def test_filesystem_storage_integration(self, temp_workspace):
         """Test integration with filesystem storage backend."""
-        from khive.services.artifacts.storage import FilesystemStorageRepository
 
         storage_repo = FilesystemStorageRepository(temp_workspace)
 

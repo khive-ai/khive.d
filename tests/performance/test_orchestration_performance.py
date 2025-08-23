@@ -11,22 +11,13 @@ Comprehensive performance testing for the khive orchestration service including:
 """
 
 import asyncio
-import tempfile
 import time
-from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-import yaml
 
 from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.orchestration.parts import (
-    AgentRequest,
-    GateOptions,
-    OrchestrationPlan,
-)
 
 
 class TestOrchestrationBenchmarks:
@@ -78,12 +69,12 @@ class TestOrchestrationBenchmarks:
 
         # Performance assertions
         assert avg_time < threshold, f"Average init time too slow: {avg_time:.6f}s"
-        assert (
-            min_time < threshold * 0.5
-        ), f"Minimum init time too slow: {min_time:.6f}s"
-        assert (
-            max_time < threshold * 2.0
-        ), f"Maximum init time too slow: {max_time:.6f}s"
+        assert min_time < threshold * 0.5, (
+            f"Minimum init time too slow: {min_time:.6f}s"
+        )
+        assert max_time < threshold * 2.0, (
+            f"Maximum init time too slow: {max_time:.6f}s"
+        )
 
         metrics = performance_profiler.get_comprehensive_metrics()
         print(
@@ -170,12 +161,12 @@ class TestOrchestrationBenchmarks:
         min_time = min(branch_creation_times)
         max_time = max(branch_creation_times)
 
-        assert (
-            avg_time < threshold
-        ), f"Average branch creation time too slow: {avg_time:.6f}s"
-        assert (
-            max_time < threshold * 2.0
-        ), f"Maximum branch creation time too slow: {max_time:.6f}s"
+        assert avg_time < threshold, (
+            f"Average branch creation time too slow: {avg_time:.6f}s"
+        )
+        assert max_time < threshold * 2.0, (
+            f"Maximum branch creation time too slow: {max_time:.6f}s"
+        )
 
         print(
             f"Branch creation - Avg: {avg_time:.6f}s, Min: {min_time:.6f}s, Max: {max_time:.6f}s"
@@ -237,9 +228,9 @@ class TestOrchestrationBenchmarks:
 
         # Verify all analysis types perform within acceptable limits
         for analysis_type, metrics in analysis_times.items():
-            assert (
-                metrics["avg"] < threshold
-            ), f"{analysis_type} average time too slow: {metrics['avg']:.6f}s"
+            assert metrics["avg"] < threshold, (
+                f"{analysis_type} average time too slow: {metrics['avg']:.6f}s"
+            )
             print(
                 f"{analysis_type} - Avg: {metrics['avg']:.6f}s, Min: {metrics['min']:.6f}s, Max: {metrics['max']:.6f}s"
             )
@@ -303,14 +294,14 @@ class TestOrchestrationScalability:
 
         for concurrency, results in scaling_results.items():
             # All concurrency levels should maintain minimum throughput
-            assert (
-                results["throughput"] >= min_threshold
-            ), f"Throughput too low at {concurrency} concurrent ops: {results['throughput']:.2f} ops/sec"
+            assert results["throughput"] >= min_threshold, (
+                f"Throughput too low at {concurrency} concurrent ops: {results['throughput']:.2f} ops/sec"
+            )
 
             # Success rate should remain high
-            assert (
-                results["success_rate"] > 0.95
-            ), f"Success rate too low at {concurrency} concurrent ops: {results['success_rate']:.4f}"
+            assert results["success_rate"] > 0.95, (
+                f"Success rate too low at {concurrency} concurrent ops: {results['success_rate']:.4f}"
+            )
 
     @pytest.mark.asyncio
     async def test_flow_planning_scalability(
@@ -389,9 +380,9 @@ class TestOrchestrationScalability:
 
         # All planning operations should complete within threshold
         for complexity, metrics in planning_times.items():
-            assert (
-                metrics["avg"] < threshold
-            ), f"Flow planning for {complexity} too slow: {metrics['avg']:.6f}s"
+            assert metrics["avg"] < threshold, (
+                f"Flow planning for {complexity} too slow: {metrics['avg']:.6f}s"
+            )
             print(f"Flow planning {complexity} - Avg: {metrics['avg']:.6f}s")
 
 
@@ -475,9 +466,9 @@ class TestOrchestrationMemoryPerformance:
             max_expected_memory = memory_limit * (
                 complexity / 10.0
             )  # Scale with complexity
-            assert (
-                results["memory_delta_mb"] < max_expected_memory
-            ), f"Memory usage too high for complexity {complexity}: {results['memory_delta_mb']:.2f}MB"
+            assert results["memory_delta_mb"] < max_expected_memory, (
+                f"Memory usage too high for complexity {complexity}: {results['memory_delta_mb']:.2f}MB"
+            )
 
             assert results["success"], f"Memory test failed for complexity {complexity}"
 
@@ -527,14 +518,12 @@ class TestOrchestrationMemoryPerformance:
                 return asyncio.run(repeated_orchestration_cycle())
 
             memory_usage = memory_monitor(single_cycle)
-            memory_measurements.append(
-                {
-                    "iteration": i,
-                    "memory_delta_mb": memory_usage["memory_delta_mb"],
-                    "execution_time": memory_usage["execution_time"],
-                    "success": memory_usage["success"],
-                }
-            )
+            memory_measurements.append({
+                "iteration": i,
+                "memory_delta_mb": memory_usage["memory_delta_mb"],
+                "execution_time": memory_usage["execution_time"],
+                "success": memory_usage["success"],
+            })
 
             performance_profiler.record_operation(
                 memory_usage["execution_time"],
@@ -571,12 +560,12 @@ class TestOrchestrationMemoryPerformance:
         print(f"Total memory growth: {total_memory_growth:.2f}MB")
 
         # Assert no significant memory leaks
-        assert (
-            avg_memory_per_operation < 1.0
-        ), f"Potential memory leak: {avg_memory_per_operation:.4f}MB per operation"
-        assert (
-            successful_operations / iterations > 0.95
-        ), f"Success rate too low: {successful_operations / iterations:.4f}"
+        assert avg_memory_per_operation < 1.0, (
+            f"Potential memory leak: {avg_memory_per_operation:.4f}MB per operation"
+        )
+        assert successful_operations / iterations > 0.95, (
+            f"Success rate too low: {successful_operations / iterations:.4f}"
+        )
 
 
 class TestOrchestrationStressTesting:
@@ -655,7 +644,7 @@ class TestOrchestrationStressTesting:
         actual_throughput = completed_operations / total_time
         error_rate = len(errors) / max(completed_operations + len(errors), 1)
 
-        print(f"Stress test results:")
+        print("Stress test results:")
         print(f"- Duration: {total_time:.2f}s")
         print(f"- Completed operations: {completed_operations}")
         print(f"- Errors: {len(errors)}")
@@ -667,6 +656,6 @@ class TestOrchestrationStressTesting:
         assert completed_operations > 0, "No operations completed during stress test"
 
         metrics = performance_profiler.get_comprehensive_metrics()
-        assert (
-            metrics["success_rate"] > 0.9
-        ), f"Success rate too low: {metrics['success_rate']:.4f}"
+        assert metrics["success_rate"] > 0.9, (
+            f"Success rate too low: {metrics['success_rate']:.4f}"
+        )

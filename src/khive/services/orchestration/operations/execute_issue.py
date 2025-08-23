@@ -1,19 +1,13 @@
 import logging
 
-from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.orchestration.parts import (
-    FanoutPatterns,
-    Issue,
-    IssueExecution,
-    IssuePlan,
-    IssueResult,
-)
-from khive.services.orchestration.prompts import (
-    KHIVE_PLAN_REMINDER,
-    REDO_ORCHESTRATOR_INSTRUCTION,
-    SYNTHESIS_INSTRUCTION,
-)
 from lionagi.libs.concurrency import get_cancelled_exc_class
+
+from khive.services.orchestration.orchestrator import LionOrchestrator
+from khive.services.orchestration.parts import (FanoutPatterns, Issue,
+                                                IssueExecution, IssuePlan,
+                                                IssueResult)
+from khive.services.orchestration.prompts import (
+    KHIVE_PLAN_REMINDER, REDO_ORCHESTRATOR_INSTRUCTION, SYNTHESIS_INSTRUCTION)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("KhiveOperations")

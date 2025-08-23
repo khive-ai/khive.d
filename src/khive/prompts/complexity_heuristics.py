@@ -96,10 +96,8 @@ def assess_by_heuristics(text: str) -> list[str]:
         hits.append("very_complex")
     # Mixed very_complex with other patterns - escalate to highest
     elif (
-        very_complex_count > 0
-        and (complex_count > 0 or simple_count > 0)
-        or very_complex_count >= 2
-    ):
+        very_complex_count > 0 and (complex_count > 0 or simple_count > 0)
+    ) or very_complex_count >= 2:
         hits.append("very_complex")
     elif complex_count >= 2:
         hits.append("complex")
