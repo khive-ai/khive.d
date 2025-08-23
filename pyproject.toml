@@ -46,6 +46,11 @@ markers = [
     "integration: Integration tests with dependencies",
     "slow: Slow-running tests (>5s)",
     "cli: Command-line interface tests",
+    "performance: Performance and benchmark tests",
+    "benchmark: Performance benchmark tests requiring timing assertions",
+    "regression: Regression tests for known bug fixes",
+    "external: Tests requiring external services (OpenAI API, etc.)",
+    "consistency: Tests for deterministic behavior validation",
 ]
 
 # Test environment
