@@ -1,6 +1,5 @@
 """Comprehensive tests for orchestration Pydantic models."""
 
-
 import pytest
 from lionagi.fields import Instruct
 from pydantic import ValidationError
@@ -8,9 +7,15 @@ from pydantic import ValidationError
 from khive.prompts import AgentRole
 from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.parts import AgentRequest, OrchestrationPlan
-from khive.services.plan.parts import (AgentRecommendation, ComplexityLevel,
-                                       PlannerRequest, PlannerResponse,
-                                       QualityGate, TaskPhase, WorkflowPattern)
+from khive.services.plan.parts import (
+    AgentRecommendation,
+    ComplexityLevel,
+    PlannerRequest,
+    PlannerResponse,
+    QualityGate,
+    TaskPhase,
+    WorkflowPattern,
+)
 
 
 class TestAgentRequest:

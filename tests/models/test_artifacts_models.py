@@ -6,9 +6,13 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from khive.services.artifacts.models import (Author, ContributionMetadata,
-                                             Document, DocumentType,
-                                             SessionStatus)
+from khive.services.artifacts.models import (
+    Author,
+    ContributionMetadata,
+    Document,
+    DocumentType,
+    SessionStatus,
+)
 
 
 class TestDocumentType:

@@ -15,8 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from khive.services.artifacts.factory import (ArtifactsConfig,
-                                              create_artifacts_service)
+from khive.services.artifacts.factory import ArtifactsConfig, create_artifacts_service
 from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.orchestration.orchestrator import LionOrchestrator
@@ -490,7 +489,7 @@ This {role} agent successfully completed analysis in the {domain} domain.
 ## Successful Agents:
 {chr(10).join([f"✅ {agent.role}: {agent.execution_time:.3f}s" for agent in successful_agents])}
 
-## Failed Agents:  
+## Failed Agents:
 {chr(10).join([f"❌ {agent.role}: {agent.error}" for agent in failed_agents])}
 
 ## Isolation Validation:
@@ -501,7 +500,7 @@ This {role} agent successfully completed analysis in the {domain} domain.
 ✅ Resource cleanup maintained
 
 ## Conclusion:
-The multi-agent coordination system successfully isolated failures and 
+The multi-agent coordination system successfully isolated failures and
 maintained operational capability with {len(successful_agents)}/{len(agent_results)} agents completing successfully.
 
 ## Status: ✅ Failure Isolation Validated
@@ -511,9 +510,9 @@ maintained operational capability with {len(successful_agents)}/{len(agent_resul
 
         # Validate isolation effectiveness
         registry = await artifacts_service.get_artifact_registry(session_id)
-        deliverable_count = len([
-            a for a in registry.artifacts if "deliverable" in a.file_path
-        ])
+        deliverable_count = len(
+            [a for a in registry.artifacts if "deliverable" in a.file_path]
+        )
         assert deliverable_count >= 3  # 2 successful + 1 failure report
 
     @pytest.mark.asyncio
@@ -559,10 +558,10 @@ Based on research deliverable: {researcher_result.deliverable_id}
    ```
 
 2. **Consumer Interface**
-   ```python  
+   ```python
    async def dequeue(timeout: int = 30):
        return await asyncio.wait_for(
-           redis_client.brpop(queue_key), 
+           redis_client.brpop(queue_key),
            timeout=timeout
        )
    ```
@@ -573,7 +572,7 @@ Based on research deliverable: {researcher_result.deliverable_id}
    - Health monitoring
 
 ### Integration Points:
-- Handoff from research: ✅ Complete  
+- Handoff from research: ✅ Complete
 - Ready for implementation handoff: ✅ Ready
 - Testing coordination: ✅ Prepared
 
@@ -603,7 +602,7 @@ Based on research deliverable: {researcher_result.deliverable_id}
             content=f"""# Coordinated Handoff Test Results
 
 ## Handoff Chain Validation:
-1. ✅ Research → Architecture handoff successful  
+1. ✅ Research → Architecture handoff successful
 2. ✅ Architecture → Implementation handoff successful
 3. ✅ Implementation → Testing handoff successful
 
@@ -612,16 +611,16 @@ Based on research deliverable: {researcher_result.deliverable_id}
 async def test_queue_handoff_integration():
     # Test full handoff chain
     research_data = await get_research_findings()
-    architecture = await apply_architecture_design(research_data) 
+    architecture = await apply_architecture_design(research_data)
     implementation = await execute_implementation(architecture)
     test_results = await validate_implementation(implementation)
-    
+
     assert all([research_data, architecture, implementation, test_results])
 ```
 
 ## Handoff Quality Metrics:
 - Continuity: ✅ No information loss between handoffs
-- Consistency: ✅ Design patterns maintained through chain  
+- Consistency: ✅ Design patterns maintained through chain
 - Completeness: ✅ All requirements addressed at each stage
 - Timing: ✅ Handoffs completed within expected timeframes
 
@@ -668,12 +667,14 @@ async def test_queue_handoff_integration():
         domains = ["async-programming", "software-architecture"]
 
         for i, role in enumerate(roles):
-            agent_configs.append({
-                "agent_id": f"large_scale_agent_{i:02d}",
-                "role": role,
-                "domain": domains[i % len(domains)],
-                "task": f"Execute {role} tasks in large-scale coordination",
-            })
+            agent_configs.append(
+                {
+                    "agent_id": f"large_scale_agent_{i:02d}",
+                    "role": role,
+                    "domain": domains[i % len(domains)],
+                    "task": f"Execute {role} tasks in large-scale coordination",
+                }
+            )
 
         # Execute agents in batches to simulate realistic orchestration
         batch_size = 4
@@ -736,7 +737,7 @@ async def test_queue_handoff_integration():
 ## System Validation:
 ✅ Large-scale coordination successful
 ✅ Resource management effective
-✅ Performance within expected bounds  
+✅ Performance within expected bounds
 ✅ Error isolation maintained
 ✅ Deliverable generation complete
 

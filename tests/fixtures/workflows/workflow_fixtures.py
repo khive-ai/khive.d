@@ -19,8 +19,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from khive.services.artifacts.factory import (ArtifactsConfig,
-                                              create_artifacts_service)
+from khive.services.artifacts.factory import ArtifactsConfig, create_artifacts_service
 from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.orchestration.orchestrator import LionOrchestrator
@@ -201,19 +200,21 @@ class WorkflowTestDataGenerator:
                 role=role,
                 domain=domain,
                 task=f"Execute {role} tasks for {workflow_type.value} workflow",
-                execution_delay=0.1
-                if workflow_type != WorkflowType.PERFORMANCE
-                else 0.05,
+                execution_delay=(
+                    0.1 if workflow_type != WorkflowType.PERFORMANCE else 0.05
+                ),
             )
 
             # Add failure scenarios for recovery testing
             if workflow_type == WorkflowType.RECOVERY and i % 3 == 0:
                 config.should_fail = True
-                config.failure_type = random.choice([
-                    "timeout",
-                    "connection_error",
-                    "partial_failure",
-                ])
+                config.failure_type = random.choice(
+                    [
+                        "timeout",
+                        "connection_error",
+                        "partial_failure",
+                    ]
+                )
 
             agents.append(config)
 
@@ -474,11 +475,13 @@ Successfully completed {agent_config.role} analysis in {agent_config.domain} dom
             processed_results = []
             for result in agent_results:
                 if isinstance(result, Exception):
-                    processed_results.append({
-                        "status": "exception",
-                        "error": str(result),
-                        "execution_time": 0.0,
-                    })
+                    processed_results.append(
+                        {
+                            "status": "exception",
+                            "error": str(result),
+                            "execution_time": 0.0,
+                        }
+                    )
                 else:
                     processed_results.append(result)
             agent_results = processed_results
@@ -502,9 +505,9 @@ Successfully completed {agent_config.role} analysis in {agent_config.domain} dom
 
         # Validate artifacts
         registry = await artifacts_service.get_artifact_registry(session_id)
-        deliverable_count = len([
-            a for a in registry.artifacts if "deliverable" in a.file_path
-        ])
+        deliverable_count = len(
+            [a for a in registry.artifacts if "deliverable" in a.file_path]
+        )
 
         return {
             "scenario_name": scenario.name,

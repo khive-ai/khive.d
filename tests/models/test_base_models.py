@@ -106,7 +106,7 @@ class TestBaseModelCore:
         # Should work with field name
         model1 = TestModel(user_name="test")
         assert model1.user_name == "test"
-        
+
         # Should also work with generated alias (underscore to dash)
         model2 = TestModel(**{"user-name": "test_alias"})
         assert model2.user_name == "test_alias"
@@ -400,10 +400,12 @@ class TestBaseModelPerformance:
         # Create complex nested structure
         nested_data = []
         for i in range(50):
-            nested_data.append({
-                "id": i,
-                "data": {f"key_{j}": f"value_{i}_{j}" for j in range(10)},
-            })
+            nested_data.append(
+                {
+                    "id": i,
+                    "data": {f"key_{j}": f"value_{i}_{j}" for j in range(10)},
+                }
+            )
 
         start_time = time.time()
         model = ContainerModel(nested_items=nested_data)

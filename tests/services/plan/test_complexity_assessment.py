@@ -22,10 +22,13 @@ from unittest.mock import patch
 import pytest
 
 from khive.prompts.complexity_heuristics import assess_by_heuristics
+
 # from khive.prompts.phase_determination import determine_task_phases  # Function not available
 from khive.services.plan.planner_service import ComplexityTier
 from khive.services.plan.triage.complexity_triage import (
-    ComplexityTriageService, TriageConsensus)
+    ComplexityTriageService,
+    TriageConsensus,
+)
 
 
 @pytest.mark.unit
@@ -204,9 +207,9 @@ class TestPhaseDetectionAlgorithms:
             overlap_ratio = len(overlap) / len(expected_lower) if expected_lower else 0
 
             # Allow partial matching - at least 30% overlap
-            assert overlap_ratio >= 0.3, (
-                f"Poor phase detection for '{task}': {detected_phases}"
-            )
+            assert (
+                overlap_ratio >= 0.3
+            ), f"Poor phase detection for '{task}': {detected_phases}"
 
     def test_phase_ordering(self):
         """Test that detected phases follow logical ordering."""
@@ -230,7 +233,7 @@ class TestPhaseDetectionAlgorithms:
         complex_task = """
         Develop a comprehensive e-commerce platform including:
         1. Research market requirements and competitor analysis
-        2. Design system architecture and database schema  
+        2. Design system architecture and database schema
         3. Implement user authentication and authorization
         4. Create product catalog and shopping cart functionality
         5. Integrate payment processing and order management
@@ -339,9 +342,9 @@ class TestComplexityTriageAlgorithms:
 
             # Check agent count is in expected range
             min_agents, max_agents = scenario["expected_agent_count"]
-            assert min_agents <= result.agent_count <= max_agents, (
-                f"Agent count {result.agent_count} outside range [{min_agents}, {max_agents}]"
-            )
+            assert (
+                min_agents <= result.agent_count <= max_agents
+            ), f"Agent count {result.agent_count} outside range [{min_agents}, {max_agents}]"
 
             # Check role recommendations include expected roles
             expected_role_set = set(scenario["expected_roles"])
@@ -356,9 +359,9 @@ class TestComplexityTriageAlgorithms:
 
         # Assert minimum 75% overall accuracy
         overall_accuracy = correct_assessments / len(triage_test_scenarios)
-        assert overall_accuracy >= 0.75, (
-            f"Triage accuracy {overall_accuracy:.2%} below 75% threshold"
-        )
+        assert (
+            overall_accuracy >= 0.75
+        ), f"Triage accuracy {overall_accuracy:.2%} below 75% threshold"
 
     @patch(
         "khive.services.plan.triage.complexity_triage.ComplexityTriageService._evaluate_with_llm"
@@ -507,9 +510,9 @@ class TestDecisionMatrixAlgorithms:
                     best_match_tier = tier
 
             # Verify matching algorithm works
-            assert best_match_tier == expected_tier, (
-                f"Expected tier {expected_tier} but got {best_match_tier} for '{task}'"
-            )
+            assert (
+                best_match_tier == expected_tier
+            ), f"Expected tier {expected_tier} but got {best_match_tier} for '{task}'"
             assert best_match_count >= 1, f"No indicators matched for '{task}'"
 
     def test_agent_count_parsing(self, mock_decision_matrix):
@@ -520,18 +523,18 @@ class TestDecisionMatrixAlgorithms:
             agent_range = config["agent_count"]
 
             # Should be in format "min-max"
-            assert "-" in agent_range, (
-                f"Invalid agent range format for {tier}: {agent_range}"
-            )
+            assert (
+                "-" in agent_range
+            ), f"Invalid agent range format for {tier}: {agent_range}"
 
             min_str, max_str = agent_range.split("-")
             min_agents = int(min_str)
             max_agents = int(max_str)
 
             # Verify range validity
-            assert 1 <= min_agents <= max_agents <= 12, (
-                f"Invalid agent range for {tier}: {min_agents}-{max_agents}"
-            )
+            assert (
+                1 <= min_agents <= max_agents <= 12
+            ), f"Invalid agent range for {tier}: {min_agents}-{max_agents}"
 
             # Verify ranges follow complexity progression
             if tier == "simple":
@@ -589,9 +592,9 @@ class TestAlgorithmPerformance:
         avg_time_per_assessment = total_time / len(tasks)
 
         # Should process assessments quickly
-        assert avg_time_per_assessment < 0.01, (
-            f"Heuristic assessment too slow: {avg_time_per_assessment:.4f}s per task"
-        )
+        assert (
+            avg_time_per_assessment < 0.01
+        ), f"Heuristic assessment too slow: {avg_time_per_assessment:.4f}s per task"
         assert total_time < 1.0, f"Batch assessment too slow: {total_time:.2f}s"
 
     def test_memory_usage_stability(self):

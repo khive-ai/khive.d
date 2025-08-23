@@ -301,19 +301,21 @@ class ResourceExhaustionFixtures:
             "wide_nesting": "root:\n"
             + "".join([f"  key_{i}: value_{i}\n" for i in range(10000)]),
             "repeated_anchors": "&anchor " + "value\n" + "repeated: *anchor\n" * 1000,
-            "large_string_values": "\n".join([
-                f"key_{i}: {'x' * 1000}" for i in range(1000)
-            ]),
+            "large_string_values": "\n".join(
+                [f"key_{i}: {'x' * 1000}" for i in range(1000)]
+            ),
             "nested_lists": "data:\n"
-            + "".join([
-                f"  - item_{i}:\n    - {list(range(100))}\n" for i in range(100)
-            ]),
+            + "".join(
+                [f"  - item_{i}:\n    - {list(range(100))}\n" for i in range(100)]
+            ),
             "complex_mapping": "mapping:\n"
-            + "".join([
-                f"  key_{i}:\n    nested_{j}: value_{i}_{j}\n"
-                for i in range(100)
-                for j in range(50)
-            ]),
+            + "".join(
+                [
+                    f"  key_{i}:\n    nested_{j}: value_{i}_{j}\n"
+                    for i in range(100)
+                    for j in range(50)
+                ]
+            ),
         }
 
     @staticmethod

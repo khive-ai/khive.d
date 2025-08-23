@@ -3,10 +3,8 @@
 from typing import Literal
 
 from .design import DESIGN_GATE_PROMPT, MINIMAL_DESIGN_GATE_PROMPT
-from .documentation import (DOCUMENTATION_GATE_PROMPT,
-                            MINIMAL_DOCUMENTATION_GATE_PROMPT)
-from .performance import (MINIMAL_PERFORMANCE_GATE_PROMPT,
-                          PERFORMANCE_GATE_PROMPT)
+from .documentation import DOCUMENTATION_GATE_PROMPT, MINIMAL_DOCUMENTATION_GATE_PROMPT
+from .performance import MINIMAL_PERFORMANCE_GATE_PROMPT, PERFORMANCE_GATE_PROMPT
 from .security import MINIMAL_SECURITY_GATE_PROMPT, SECURITY_GATE_PROMPT
 from .testing import MINIMAL_TESTING_GATE_PROMPT, TESTING_GATE_PROMPT
 

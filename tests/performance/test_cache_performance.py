@@ -180,9 +180,9 @@ class TestCacheBenchmarks:
                         if isinstance(test_value, dict | list):
                             assert retrieved_value == test_value, "Cached data mismatch"
                         else:
-                            assert str(retrieved_value) == str(test_value), (
-                                "Cached data mismatch"
-                            )
+                            assert str(retrieved_value) == str(
+                                test_value
+                            ), "Cached data mismatch"
 
                 except Exception as e:
                     get_success = False
@@ -209,18 +209,18 @@ class TestCacheBenchmarks:
         max_get_time = max(get_times)
 
         # Performance assertions
-        assert avg_set_time < threshold_set, (
-            f"Average cache set time too slow: {avg_set_time:.6f}s"
-        )
-        assert avg_get_time < threshold_get, (
-            f"Average cache get time too slow: {avg_get_time:.6f}s"
-        )
-        assert max_set_time < threshold_set * 3.0, (
-            f"Maximum cache set time too slow: {max_set_time:.6f}s"
-        )
-        assert max_get_time < threshold_get * 2.0, (
-            f"Maximum cache get time too slow: {max_get_time:.6f}s"
-        )
+        assert (
+            avg_set_time < threshold_set
+        ), f"Average cache set time too slow: {avg_set_time:.6f}s"
+        assert (
+            avg_get_time < threshold_get
+        ), f"Average cache get time too slow: {avg_get_time:.6f}s"
+        assert (
+            max_set_time < threshold_set * 3.0
+        ), f"Maximum cache set time too slow: {max_set_time:.6f}s"
+        assert (
+            max_get_time < threshold_get * 2.0
+        ), f"Maximum cache get time too slow: {max_get_time:.6f}s"
 
         print(
             f"Cache set - Avg: {avg_set_time:.6f}s, Min: {min_set_time:.6f}s, Max: {max_set_time:.6f}s"
@@ -287,12 +287,12 @@ class TestCacheBenchmarks:
         min_time = min(hash_times)
         max_time = max(hash_times)
 
-        assert avg_time < threshold, (
-            f"Average hash generation time too slow: {avg_time:.6f}s"
-        )
-        assert max_time < threshold * 10.0, (
-            f"Maximum hash generation time too slow: {max_time:.6f}s"
-        )
+        assert (
+            avg_time < threshold
+        ), f"Average hash generation time too slow: {avg_time:.6f}s"
+        assert (
+            max_time < threshold * 10.0
+        ), f"Maximum hash generation time too slow: {max_time:.6f}s"
 
         print(
             f"Hash generation - Avg: {avg_time:.6f}s, Min: {min_time:.6f}s, Max: {max_time:.6f}s"
@@ -417,12 +417,12 @@ class TestCacheBenchmarks:
         avg_cache_time = sum(cache_times) / len(cache_times)
         avg_retrieve_time = sum(retrieve_times) / len(retrieve_times)
 
-        assert avg_cache_time < threshold, (
-            f"Average complexity caching time too slow: {avg_cache_time:.6f}s"
-        )
-        assert avg_retrieve_time < threshold * 0.8, (
-            f"Average complexity retrieval time too slow: {avg_retrieve_time:.6f}s"
-        )
+        assert (
+            avg_cache_time < threshold
+        ), f"Average complexity caching time too slow: {avg_cache_time:.6f}s"
+        assert (
+            avg_retrieve_time < threshold * 0.8
+        ), f"Average complexity retrieval time too slow: {avg_retrieve_time:.6f}s"
 
         print(f"Complexity cache - Avg: {avg_cache_time:.6f}s")
         print(f"Complexity retrieve - Avg: {avg_retrieve_time:.6f}s")
@@ -507,23 +507,23 @@ class TestCacheScalability:
         min_threshold = performance_thresholds["cache"]["throughput_ops_per_sec"]
 
         for concurrency, results in scaling_results.items():
-            assert results["success_rate"] > 0.95, (
-                f"Success rate too low at {concurrency} concurrent operations: {results['success_rate']:.4f}"
-            )
+            assert (
+                results["success_rate"] > 0.95
+            ), f"Success rate too low at {concurrency} concurrent operations: {results['success_rate']:.4f}"
 
             # Throughput should scale with concurrency up to backend limits
             if concurrency == 1:
-                assert results["throughput"] >= min_threshold, (
-                    f"Single-threaded cache throughput too low: {results['throughput']:.2f} ops/sec"
-                )
+                assert (
+                    results["throughput"] >= min_threshold
+                ), f"Single-threaded cache throughput too low: {results['throughput']:.2f} ops/sec"
             elif concurrency <= 50:
                 # Should maintain reasonable throughput
                 expected_min_throughput = min_threshold * min(
                     concurrency, 20
                 )  # Scale up to 20x
-                assert results["throughput"] >= expected_min_throughput, (
-                    f"Cache throughput too low at {concurrency} concurrent operations: {results['throughput']:.2f} ops/sec"
-                )
+                assert (
+                    results["throughput"] >= expected_min_throughput
+                ), f"Cache throughput too low at {concurrency} concurrent operations: {results['throughput']:.2f} ops/sec"
 
     @pytest.mark.asyncio
     async def test_cache_hit_miss_performance(
@@ -585,15 +585,15 @@ class TestCacheScalability:
 
                     if should_hit:
                         # Should be a cache hit
-                        assert result is not None, (
-                            f"Expected cache hit but got miss for {request_key}"
-                        )
+                        assert (
+                            result is not None
+                        ), f"Expected cache hit but got miss for {request_key}"
                         hit_times.append(time.perf_counter() - start_time)
                     else:
                         # Should be a cache miss
-                        assert result is None, (
-                            f"Expected cache miss but got hit for {request_key}"
-                        )
+                        assert (
+                            result is None
+                        ), f"Expected cache miss but got hit for {request_key}"
                         miss_times.append(time.perf_counter() - start_time)
 
                     success = True
@@ -624,14 +624,14 @@ class TestCacheScalability:
         # Analyze hit/miss performance
         for scenario_name, results in hit_miss_results.items():
             if results["avg_hit_time"] > 0:
-                assert results["avg_hit_time"] < threshold, (
-                    f"Cache hit time too slow in {scenario_name}: {results['avg_hit_time']:.6f}s"
-                )
+                assert (
+                    results["avg_hit_time"] < threshold
+                ), f"Cache hit time too slow in {scenario_name}: {results['avg_hit_time']:.6f}s"
 
             if results["avg_miss_time"] > 0:
-                assert results["avg_miss_time"] < threshold, (
-                    f"Cache miss time too slow in {scenario_name}: {results['avg_miss_time']:.6f}s"
-                )
+                assert (
+                    results["avg_miss_time"] < threshold
+                ), f"Cache miss time too slow in {scenario_name}: {results['avg_miss_time']:.6f}s"
 
             print(
                 f"{scenario_name}: Hit ratio {results['actual_hit_ratio']:.2f}, "
@@ -707,9 +707,9 @@ class TestCacheMemoryPerformance:
 
         # Verify memory usage is reasonable
         memory_limit = performance_thresholds["cache"]["memory_limit_mb"]
-        assert memory_usage["memory_delta_mb"] < memory_limit, (
-            f"Cache large object memory usage too high: {memory_usage['memory_delta_mb']:.2f}MB"
-        )
+        assert (
+            memory_usage["memory_delta_mb"] < memory_limit
+        ), f"Cache large object memory usage too high: {memory_usage['memory_delta_mb']:.2f}MB"
 
         assert memory_usage["success"], "Large object caching should succeed"
         assert memory_usage["result"] > 0, "Should have cached some objects"
@@ -743,12 +743,14 @@ class TestCacheStressTesting:
             """High-stress cache operation."""
             import random
 
-            operation = random.choice([
-                "set",
-                "get",
-                "set",
-                "get",
-            ])  # Favor get/set operations
+            operation = random.choice(
+                [
+                    "set",
+                    "get",
+                    "set",
+                    "get",
+                ]
+            )  # Favor get/set operations
             cache_id = random.randint(1, 10000)
 
             try:
@@ -871,11 +873,11 @@ class TestCacheStressTesting:
         # Verify system survived stress test
         assert error_rate < 0.1, f"Error rate too high under stress: {error_rate:.4f}"
         assert completed_operations > 0, "No operations completed during stress test"
-        assert throughput > 100.0, (
-            f"Cache throughput too low under stress: {throughput:.2f} ops/sec"
-        )
+        assert (
+            throughput > 100.0
+        ), f"Cache throughput too low under stress: {throughput:.2f} ops/sec"
 
         metrics = performance_profiler.get_comprehensive_metrics()
-        assert metrics["success_rate"] > 0.9, (
-            f"Success rate too low: {metrics['success_rate']:.4f}"
-        )
+        assert (
+            metrics["success_rate"] > 0.9
+        ), f"Success rate too low: {metrics['success_rate']:.4f}"

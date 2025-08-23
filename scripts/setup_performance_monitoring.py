@@ -150,16 +150,16 @@ def run_performance_tests(
     fail_on_regression=True
 ):
     """Run performance tests with comprehensive reporting."""
-    
+
     print(f"🚀 Running performance tests: {test_pattern}")
-    
+
     # Import pytest here to handle missing dependency gracefully
     try:
         import pytest
     except ImportError:
         print("❌ pytest not found. Install with: pip install pytest")
         return False
-    
+
     # Run pytest with performance markers
     pytest_args = [
         test_pattern,
@@ -168,80 +168,80 @@ def run_performance_tests(
         "--tb=short",
         f"--junit-xml=performance_results/pytest_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xml"
     ]
-    
+
     if ci_mode:
         pytest_args.extend(["--quiet", "--no-header"])
-    
+
     # Run tests
     exit_code = pytest.main(pytest_args)
-    
+
     if generate_report and not ci_mode:
         generate_performance_report()
-    
+
     if ci_mode:
         generate_ci_report(fail_on_regression)
-    
+
     return exit_code == 0
 
 
 def generate_performance_report():
     """Generate comprehensive performance report."""
-    
+
     print("📊 Generating performance report...")
-    
+
     try:
         storage = BenchmarkStorage()
         reporter = PerformanceReporter(storage)
-        
+
         report_files = reporter.generate_comprehensive_report(
             report_name="automated_performance_report",
             days_back=30,
             include_recommendations=True
         )
-        
+
         print(f"✅ Performance report generated:")
         for file_type, file_path in report_files.items():
             print(f"   {file_type.upper()}: {file_path}")
-            
+
     except Exception as e:
         print(f"❌ Failed to generate performance report: {e}")
 
 
 def generate_ci_report(fail_on_regression=True):
     """Generate CI-focused performance report."""
-    
+
     print("🔍 Generating CI performance report...")
-    
+
     try:
         storage = BenchmarkStorage()
         reporter = PerformanceReporter(storage)
-        
+
         # Get recent results for CI analysis
         recent_results = storage.get_results(days_back=1, limit=50)
-        
+
         ci_report = reporter.generate_ci_report(
             current_results=recent_results,
             comparison_days=7,
             fail_on_regression=fail_on_regression
         )
-        
+
         # Save CI report
         ci_report_file = Path(f"performance_results/ci_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
         ci_report_file.parent.mkdir(exist_ok=True)
-        
+
         with open(ci_report_file, 'w') as f:
             json.dump(ci_report, f, indent=2)
-        
+
         print(f"✅ CI report status: {ci_report['status']}")
         print(f"   Regressions: {len(ci_report.get('regressions', []))}")
         print(f"   Bottlenecks: {len(ci_report.get('bottlenecks', []))}")
         print(f"   Report saved: {ci_report_file}")
-        
+
         # Exit with error if CI should fail
         if fail_on_regression and ci_report['status'] == 'FAIL':
             print("❌ CI failing due to performance issues")
             sys.exit(1)
-            
+
     except Exception as e:
         print(f"❌ Failed to generate CI report: {e}")
         if fail_on_regression:
@@ -250,44 +250,44 @@ def generate_ci_report(fail_on_regression=True):
 
 def main():
     """Main entry point."""
-    
+
     parser = argparse.ArgumentParser(
         description="Run khive performance tests with comprehensive reporting"
     )
-    
+
     parser.add_argument(
         "--pattern",
         default="tests/performance/test_comprehensive_benchmarks.py",
         help="Test pattern to run (default: comprehensive benchmarks)"
     )
-    
+
     parser.add_argument(
         "--no-report",
         action="store_true",
         help="Skip generating performance report"
     )
-    
+
     parser.add_argument(
         "--ci",
-        action="store_true", 
+        action="store_true",
         help="Run in CI mode with minimal output"
     )
-    
+
     parser.add_argument(
         "--no-fail-on-regression",
         action="store_true",
         help="Don't fail CI on performance regressions"
     )
-    
+
     args = parser.parse_args()
-    
+
     success = run_performance_tests(
         test_pattern=args.pattern,
         generate_report=not args.no_report,
         ci_mode=args.ci,
         fail_on_regression=not args.no_fail_on_regression
     )
-    
+
     if not success:
         print("❌ Performance tests failed")
         sys.exit(1)
@@ -322,26 +322,26 @@ jobs:
   performance-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-        
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install uv
         uv sync
-        
+
     - name: Run performance benchmarks
       run: |
         python scripts/performance/run_performance_tests.py --ci
-        
+
     - name: Upload performance results
       if: always()
       uses: actions/upload-artifact@v3
@@ -351,7 +351,7 @@ jobs:
           performance_results/
           .khive/performance/reports/
         retention-days: 30
-        
+
     - name: Comment PR with performance results
       if: github.event_name == 'pull_request' && always()
       uses: actions/github-script@v6
@@ -359,22 +359,22 @@ jobs:
         script: |
           const fs = require('fs');
           const glob = require('@actions/glob');
-          
+
           // Find latest CI report
           const globber = await glob.create('performance_results/ci_report_*.json');
           const files = await globber.glob();
-          
+
           if (files.length > 0) {
             const reportFile = files.sort().pop(); // Get latest
             const report = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
-            
+
             const status = report.status;
             const regressions = report.regressions || [];
             const bottlenecks = report.bottlenecks || [];
-            
+
             let comment = `## 🔍 Performance Test Results\\n\\n`;
             comment += `**Status:** ${status === 'PASS' ? '✅ PASS' : '❌ FAIL'}\\n\\n`;
-            
+
             if (regressions.length > 0) {
               comment += `### ⚠️ Performance Regressions (${regressions.length})\\n`;
               regressions.slice(0, 5).forEach(reg => {
@@ -382,20 +382,20 @@ jobs:
               });
               comment += '\\n';
             }
-            
+
             if (bottlenecks.length > 0) {
               comment += `### 🐛 Performance Bottlenecks (${bottlenecks.length})\\n`;
               bottlenecks.slice(0, 5).forEach(bot => {
                 comment += `- **${bot.benchmark_name}**: ${bot.bottleneck_type} bottleneck (${bot.performance_impact.toFixed(1)}% impact)\\n`;
               });
             }
-            
+
             if (regressions.length === 0 && bottlenecks.length === 0) {
               comment += '✅ No performance issues detected!\\n';
             }
-            
+
             comment += `\\n---\\n*Generated by khive performance monitoring*`;
-            
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -403,7 +403,7 @@ jobs:
               body: comment
             });
           }
-          
+
     - name: Fail on performance regression
       if: always()
       run: |
@@ -438,7 +438,7 @@ This document describes the comprehensive performance monitoring infrastructure 
 The performance monitoring system provides:
 
 - **Benchmarking Framework**: Comprehensive performance measurement with resource monitoring
-- **Statistical Analysis**: Trend detection, regression analysis, and bottleneck identification  
+- **Statistical Analysis**: Trend detection, regression analysis, and bottleneck identification
 - **Optimization Recommendations**: AI-powered suggestions for performance improvements
 - **Automated Reporting**: HTML dashboards, CI integration, and trend reports
 - **Storage & Persistence**: SQLite and JSON-based performance data storage

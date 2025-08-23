@@ -5,10 +5,14 @@ import asyncio
 import pytest
 
 from khive.services.artifacts.handlers.handoff_coordinator import (
-    AgentSpec, HandoffCoordinator)
-from khive.services.artifacts.handlers.timeout_manager import (TimeoutConfig,
-                                                               TimeoutManager,
-                                                               TimeoutType)
+    AgentSpec,
+    HandoffCoordinator,
+)
+from khive.services.artifacts.handlers.timeout_manager import (
+    TimeoutConfig,
+    TimeoutManager,
+    TimeoutType,
+)
 
 
 class TestTimeoutManager:

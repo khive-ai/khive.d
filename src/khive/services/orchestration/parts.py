@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 from lionagi.fields import Instruct
 
-from khive.services.composition.parts import AgentRole, ComposerRequest
 from khive.security.secure_models import SecureAgentRequestMixin
+from khive.services.composition.parts import AgentRole, ComposerRequest
 
 DeliverableType = Literal[
     "RequirementsAnalysis",

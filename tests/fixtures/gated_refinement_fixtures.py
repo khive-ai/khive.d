@@ -8,8 +8,12 @@ from lionagi.fields import Instruct
 from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
-    AgentRequest, BaseGate, FanoutWithGatedRefinementResponse, GateComponent,
-    OrchestrationPlan)
+    AgentRequest,
+    BaseGate,
+    FanoutWithGatedRefinementResponse,
+    GateComponent,
+    OrchestrationPlan,
+)
 
 
 def create_mock_orchestrator(flow_name: str = "test_flow") -> LionOrchestrator:

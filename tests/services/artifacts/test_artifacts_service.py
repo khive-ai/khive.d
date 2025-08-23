@@ -5,10 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from khive.services.artifacts.exceptions import (DocumentAlreadyExists,
-                                                 DocumentNotFound)
-from khive.services.artifacts.factory import (ArtifactsConfig,
-                                              create_artifacts_service)
+from khive.services.artifacts.exceptions import DocumentAlreadyExists, DocumentNotFound
+from khive.services.artifacts.factory import ArtifactsConfig, create_artifacts_service
 from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.service import ArtifactsService
 

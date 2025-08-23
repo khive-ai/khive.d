@@ -13,11 +13,16 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from khive.cli.khive_cli import (COMMAND_DESCRIPTIONS,
-                                 COMMAND_MODULE_BASE_PATH, COMMANDS,
-                                 ENTRY_POINT_FUNCTION_NAME,
-                                 _get_full_module_path, _load_command_module,
-                                 _print_root_help, main)
+from khive.cli.khive_cli import (
+    COMMAND_DESCRIPTIONS,
+    COMMAND_MODULE_BASE_PATH,
+    COMMANDS,
+    ENTRY_POINT_FUNCTION_NAME,
+    _get_full_module_path,
+    _load_command_module,
+    _print_root_help,
+    main,
+)
 
 
 class TestCommandDiscovery:
@@ -458,6 +463,6 @@ class TestEdgeCases:
             for part in parts:
                 # Allow hyphens in module names (they get converted to underscores)
                 normalized_part = part.replace("-", "_")
-                assert normalized_part.isidentifier(), (
-                    f"Invalid module name part: {part}"
-                )
+                assert (
+                    normalized_part.isidentifier()
+                ), f"Invalid module name part: {part}"

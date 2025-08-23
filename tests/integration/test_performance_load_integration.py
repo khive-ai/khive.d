@@ -25,8 +25,7 @@ from uuid import uuid4
 import psutil
 import pytest
 
-from khive.services.artifacts.factory import (ArtifactsConfig,
-                                              create_artifacts_service)
+from khive.services.artifacts.factory import ArtifactsConfig, create_artifacts_service
 from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.orchestration.orchestrator import LionOrchestrator
@@ -50,11 +49,13 @@ class PerformanceLoadValidator:
 
     def record_load_metric(self, load_level: int, metric_name: str, value: float):
         """Record a performance metric for a specific load level."""
-        self.load_metrics[load_level].append({
-            "metric": metric_name,
-            "value": value,
-            "timestamp": time.perf_counter(),
-        })
+        self.load_metrics[load_level].append(
+            {
+                "metric": metric_name,
+                "value": value,
+                "timestamp": time.perf_counter(),
+            }
+        )
 
     def take_resource_snapshot(self, label: str):
         """Take a system resource snapshot."""
@@ -180,25 +181,29 @@ class ConcurrentSessionManager:
             await self.artifacts_service.create_session(session_id)
             end_time = time.perf_counter()
 
-            self.session_metrics[session_id].append({
-                "operation": "create",
-                "duration": end_time - start_time,
-                "success": True,
-                "timestamp": end_time,
-            })
+            self.session_metrics[session_id].append(
+                {
+                    "operation": "create",
+                    "duration": end_time - start_time,
+                    "success": True,
+                    "timestamp": end_time,
+                }
+            )
 
             return session_id
 
         except Exception as e:
             end_time = time.perf_counter()
 
-            self.session_metrics[session_id].append({
-                "operation": "create",
-                "duration": end_time - start_time,
-                "success": False,
-                "error": str(e),
-                "timestamp": end_time,
-            })
+            self.session_metrics[session_id].append(
+                {
+                    "operation": "create",
+                    "duration": end_time - start_time,
+                    "success": False,
+                    "error": str(e),
+                    "timestamp": end_time,
+                }
+            )
 
             raise
 
@@ -296,14 +301,14 @@ class ConcurrentSessionManager:
                 "total_operations": len(operations),
                 "successful_operations": len(successful_ops),
                 "failed_operations": len(failed_ops),
-                "success_rate": len(successful_ops) / len(operations)
-                if operations
-                else 0,
-                "avg_duration": statistics.mean([
-                    op["duration"] for op in successful_ops
-                ])
-                if successful_ops
-                else 0,
+                "success_rate": (
+                    len(successful_ops) / len(operations) if operations else 0
+                ),
+                "avg_duration": (
+                    statistics.mean([op["duration"] for op in successful_ops])
+                    if successful_ops
+                    else 0
+                ),
             }
 
             all_operations.extend(operations)
@@ -317,12 +322,14 @@ class ConcurrentSessionManager:
                 "total_operations": len(all_operations),
                 "successful_operations": len(successful_all),
                 "overall_success_rate": len(successful_all) / len(all_operations),
-                "avg_operation_duration": statistics.mean(durations)
-                if durations
-                else 0,
-                "p95_operation_duration": statistics.quantiles(durations, n=20)[18]
-                if len(durations) >= 20
-                else max(durations, default=0),
+                "avg_operation_duration": (
+                    statistics.mean(durations) if durations else 0
+                ),
+                "p95_operation_duration": (
+                    statistics.quantiles(durations, n=20)[18]
+                    if len(durations) >= 20
+                    else max(durations, default=0)
+                ),
                 "session_summaries": session_summaries,
             }
         else:
@@ -533,7 +540,7 @@ class TestPerformanceLoadIntegration:
                             doc_name=f"{agent_role}_deliverable_{agent_index}",
                             doc_type=DocumentType.DELIVERABLE,
                             content=f"""# {agent_role.title()} Agent Deliverable
-                            
+
 ## Workflow: {workflow_id}
 ## Agent: {agent_id}
 
@@ -716,9 +723,9 @@ class TestPerformanceLoadIntegration:
             if isinstance(r, dict) and r.get("success", False)
         ]
         overall_success_rate = len(successful_workflows) / len(all_workflow_results)
-        assert overall_success_rate >= 0.8, (
-            f"Low overall success rate: {overall_success_rate}"
-        )
+        assert (
+            overall_success_rate >= 0.8
+        ), f"Low overall success rate: {overall_success_rate}"
 
         # Coordination efficiency should remain reasonable under load
         coordination_efficiencies = []
@@ -728,9 +735,9 @@ class TestPerformanceLoadIntegration:
 
         if coordination_efficiencies:
             avg_coordination_efficiency = statistics.mean(coordination_efficiencies)
-            assert avg_coordination_efficiency >= 0.6, (
-                f"Poor coordination efficiency: {avg_coordination_efficiency}"
-            )
+            assert (
+                avg_coordination_efficiency >= 0.6
+            ), f"Poor coordination efficiency: {avg_coordination_efficiency}"
 
         # Response times should remain reasonable
         workflow_durations = [r["total_duration"] for r in successful_workflows]
@@ -740,9 +747,9 @@ class TestPerformanceLoadIntegration:
                 if len(workflow_durations) >= 20
                 else max(workflow_durations)
             )
-            assert p95_duration <= 15.0, (
-                f"P95 workflow duration too high: {p95_duration}s"
-            )
+            assert (
+                p95_duration <= 15.0
+            ), f"P95 workflow duration too high: {p95_duration}s"
 
         # Validate performance thresholds for each concurrency level
         for concurrency_level in concurrency_levels:
@@ -753,18 +760,18 @@ class TestPerformanceLoadIntegration:
 
             # Allow some threshold failures at higher concurrency levels
             max_failures = 2 if concurrency_level >= 15 else 1
-            assert len(failed_validations) <= max_failures, (
-                f"Too many threshold failures at concurrency {concurrency_level}: {failed_validations}"
-            )
+            assert (
+                len(failed_validations) <= max_failures
+            ), f"Too many threshold failures at concurrency {concurrency_level}: {failed_validations}"
 
         # Resource usage should be reasonable
         resource_analysis = performance_validator.analyze_resource_growth(
             "concurrent_coordination_start", "concurrent_coordination_end"
         )
 
-        assert resource_analysis.get("memory_growth_mb", 0) <= 200, (
-            f"Excessive memory growth: {resource_analysis.get('memory_growth_mb', 0)}MB"
-        )
+        assert (
+            resource_analysis.get("memory_growth_mb", 0) <= 200
+        ), f"Excessive memory growth: {resource_analysis.get('memory_growth_mb', 0)}MB"
 
     @pytest.mark.asyncio
     @pytest.mark.performance
@@ -809,9 +816,9 @@ class TestPerformanceLoadIntegration:
                     session_count, "session_creation_time", creation_duration
                 )
 
-                assert len(session_ids) >= session_count * 0.9, (
-                    f"Too few sessions created: {len(session_ids)}/{session_count}"
-                )
+                assert (
+                    len(session_ids) >= session_count * 0.9
+                ), f"Too few sessions created: {len(session_ids)}/{session_count}"
 
                 # Execute concurrent operations across sessions
                 operations_start = time.perf_counter()
@@ -846,14 +853,14 @@ class TestPerformanceLoadIntegration:
                 )
 
                 # Validate session-level performance
-                assert operation_results["success_rate"] >= 0.85, (
-                    f"Low operation success rate at {session_count} sessions: {operation_results['success_rate']}"
-                )
+                assert (
+                    operation_results["success_rate"] >= 0.85
+                ), f"Low operation success rate at {session_count} sessions: {operation_results['success_rate']}"
 
                 # Throughput should remain reasonable
-                assert operations_rate >= 10.0, (
-                    f"Low operations throughput at {session_count} sessions: {operations_rate} ops/sec"
-                )
+                assert (
+                    operations_rate >= 10.0
+                ), f"Low operations throughput at {session_count} sessions: {operations_rate} ops/sec"
 
                 # Memory analysis for this level
                 resource_growth = performance_validator.analyze_resource_growth(
@@ -865,9 +872,9 @@ class TestPerformanceLoadIntegration:
                 memory_per_session = (
                     resource_growth.get("memory_growth_mb", 0) / session_count
                 )
-                assert memory_per_session <= 5.0, (
-                    f"Excessive memory per session: {memory_per_session:.2f}MB"
-                )
+                assert (
+                    memory_per_session <= 5.0
+                ), f"Excessive memory per session: {memory_per_session:.2f}MB"
 
             except Exception as e:
                 level_end = time.perf_counter()
@@ -886,9 +893,7 @@ class TestPerformanceLoadIntegration:
                     raise AssertionError(
                         f"Session stress test failed at {session_count} sessions: {e}"
                     )
-                print(
-                    f"Expected failure at high session count {session_count}: {e}"
-                )
+                print(f"Expected failure at high session count {session_count}: {e}")
 
             # Recovery pause between levels
             await asyncio.sleep(2.0)
@@ -900,19 +905,19 @@ class TestPerformanceLoadIntegration:
         session_summary = session_manager.get_session_performance_summary()
 
         # Validate overall session handling performance
-        assert session_summary["overall_success_rate"] >= 0.8, (
-            f"Overall session success rate too low: {session_summary['overall_success_rate']}"
-        )
+        assert (
+            session_summary["overall_success_rate"] >= 0.8
+        ), f"Overall session success rate too low: {session_summary['overall_success_rate']}"
 
         # Average operation time should be reasonable
-        assert session_summary["avg_operation_duration"] <= 2.0, (
-            f"Average session operation too slow: {session_summary['avg_operation_duration']}s"
-        )
+        assert (
+            session_summary["avg_operation_duration"] <= 2.0
+        ), f"Average session operation too slow: {session_summary['avg_operation_duration']}s"
 
         # P95 should be reasonable
-        assert session_summary.get("p95_operation_duration", 0) <= 5.0, (
-            f"P95 session operation too slow: {session_summary.get('p95_operation_duration', 0)}s"
-        )
+        assert (
+            session_summary.get("p95_operation_duration", 0) <= 5.0
+        ), f"P95 session operation too slow: {session_summary.get('p95_operation_duration', 0)}s"
 
         # Resource usage validation
         final_resource_analysis = performance_validator.analyze_resource_growth(
@@ -921,9 +926,9 @@ class TestPerformanceLoadIntegration:
 
         # Total memory growth should be bounded
         total_memory_growth = final_resource_analysis.get("memory_growth_mb", 0)
-        assert total_memory_growth <= 500, (
-            f"Excessive total memory growth: {total_memory_growth}MB"
-        )
+        assert (
+            total_memory_growth <= 500
+        ), f"Excessive total memory growth: {total_memory_growth}MB"
 
         # Validate tracemalloc didn't detect major leaks
         if tracemalloc.is_tracing():
@@ -1071,18 +1076,20 @@ class TestPerformanceLoadIntegration:
                         "memory_vms_mb": memory_info.vms / (1024 * 1024),
                         "cpu_percent": process.cpu_percent(),
                         "num_threads": process.num_threads(),
-                        "num_fds": process.num_fds()
-                        if hasattr(process, "num_fds")
-                        else 0,
+                        "num_fds": (
+                            process.num_fds() if hasattr(process, "num_fds") else 0
+                        ),
                     }
 
                     # Add system-wide metrics
                     system_memory = psutil.virtual_memory()
-                    metric.update({
-                        "system_memory_percent": system_memory.percent,
-                        "system_memory_available_mb": system_memory.available
-                        / (1024 * 1024),
-                    })
+                    metric.update(
+                        {
+                            "system_memory_percent": system_memory.percent,
+                            "system_memory_available_mb": system_memory.available
+                            / (1024 * 1024),
+                        }
+                    )
 
                     metrics.append(metric)
 
@@ -1159,13 +1166,15 @@ class TestPerformanceLoadIntegration:
                     "peak_cpu_percent": max(cpu_usage) if cpu_usage else 0,
                 }
 
-                system_metrics_history.append({
-                    "load_config": load_config,
-                    "level_duration": level_duration,
-                    "success_rate": success_rate,
-                    "resource_analysis": resource_analysis,
-                    "resource_metrics": resource_metrics,
-                })
+                system_metrics_history.append(
+                    {
+                        "load_config": load_config,
+                        "level_duration": level_duration,
+                        "success_rate": success_rate,
+                        "resource_analysis": resource_analysis,
+                        "resource_metrics": resource_metrics,
+                    }
+                )
 
                 performance_validator.record_load_metric(
                     concurrent_workflows,
@@ -1182,9 +1191,9 @@ class TestPerformanceLoadIntegration:
                 )
 
             # Validate resource behavior for this level
-            assert success_rate >= 0.7, (
-                f"Low success rate at load level {level_label}: {success_rate}"
-            )
+            assert (
+                success_rate >= 0.7
+            ), f"Low success rate at load level {level_label}: {success_rate}"
 
             # Allow system recovery
             await asyncio.sleep(5.0)
@@ -1218,16 +1227,16 @@ class TestPerformanceLoadIntegration:
             memory_efficiency = (
                 memory_growth_ratio / load_growth_ratio if load_growth_ratio > 0 else 1
             )
-            assert memory_efficiency <= 2.0, (
-                f"Poor memory scaling efficiency: {memory_efficiency}"
-            )
+            assert (
+                memory_efficiency <= 2.0
+            ), f"Poor memory scaling efficiency: {memory_efficiency}"
 
         # Success rates should remain reasonable across load levels
         success_rates = [entry["success_rate"] for entry in system_metrics_history]
         min_success_rate = min(success_rates)
-        assert min_success_rate >= 0.6, (
-            f"Success rate degraded too much under load: {min_success_rate}"
-        )
+        assert (
+            min_success_rate >= 0.6
+        ), f"Success rate degraded too much under load: {min_success_rate}"
 
         # CPU usage should be reasonable
         cpu_peaks = [
@@ -1242,6 +1251,6 @@ class TestPerformanceLoadIntegration:
             "resource_behavior_start", "resource_behavior_end"
         )
 
-        assert total_resource_growth.get("memory_growth_mb", 0) <= 300, (
-            f"Excessive total memory growth: {total_resource_growth.get('memory_growth_mb', 0)}MB"
-        )
+        assert (
+            total_resource_growth.get("memory_growth_mb", 0) <= 300
+        ), f"Excessive total memory growth: {total_resource_growth.get('memory_growth_mb', 0)}MB"

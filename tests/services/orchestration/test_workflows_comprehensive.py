@@ -20,8 +20,12 @@ from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
-    AgentRequest, ComposerRequest, FanoutResponse,
-    FanoutWithGatedRefinementResponse, OrchestrationPlan)
+    AgentRequest,
+    ComposerRequest,
+    FanoutResponse,
+    FanoutWithGatedRefinementResponse,
+    OrchestrationPlan,
+)
 from khive.services.plan.parts import ComplexityLevel, TaskPhase
 
 

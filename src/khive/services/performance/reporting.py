@@ -6,8 +6,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from .analysis import (BottleneckIdentifier, PerformanceAnalyzer,
-                       RegressionDetector, TrendAnalyzer)
+from .analysis import (
+    BottleneckIdentifier,
+    PerformanceAnalyzer,
+    RegressionDetector,
+    TrendAnalyzer,
+)
 from .benchmark_framework import BenchmarkResult
 from .optimization import OptimizationRecommender
 from .storage import BenchmarkStorage
@@ -314,15 +318,15 @@ class PerformanceReporter:
         summary = {
             "overall_health": "GOOD",  # Will be updated based on analysis
             "key_metrics": {
-                "avg_response_time_ms": (statistics.mean(durations) * 1000)
-                if durations
-                else 0,
-                "system_reliability": (statistics.mean(success_rates) * 100)
-                if success_rates
-                else 0,
-                "avg_memory_usage_mb": statistics.mean(memory_usage)
-                if memory_usage
-                else 0,
+                "avg_response_time_ms": (
+                    (statistics.mean(durations) * 1000) if durations else 0
+                ),
+                "system_reliability": (
+                    (statistics.mean(success_rates) * 100) if success_rates else 0
+                ),
+                "avg_memory_usage_mb": (
+                    statistics.mean(memory_usage) if memory_usage else 0
+                ),
                 "total_operations": sum(r.metrics.operations_count for r in results),
             },
             "performance_trends": {"improving": 0, "stable": 0, "degrading": 0},
@@ -421,16 +425,18 @@ class PerformanceReporter:
             "memory_usage": {
                 "avg_peak_mb": statistics.mean(memory_values) if memory_values else 0,
                 "max_peak_mb": max(memory_values) if memory_values else 0,
-                "p95_peak_mb": sorted(memory_values)[int(len(memory_values) * 0.95)]
-                if memory_values
-                else 0,
+                "p95_peak_mb": (
+                    sorted(memory_values)[int(len(memory_values) * 0.95)]
+                    if memory_values
+                    else 0
+                ),
             },
             "cpu_usage": {
                 "avg_peak_percent": statistics.mean(cpu_values) if cpu_values else 0,
                 "max_peak_percent": max(cpu_values) if cpu_values else 0,
-                "p95_peak_percent": sorted(cpu_values)[int(len(cpu_values) * 0.95)]
-                if cpu_values
-                else 0,
+                "p95_peak_percent": (
+                    sorted(cpu_values)[int(len(cpu_values) * 0.95)] if cpu_values else 0
+                ),
             },
             "io_usage": {
                 "avg_total_bytes": statistics.mean(io_values) if io_values else 0,
@@ -730,17 +736,17 @@ class PerformanceReporter:
         import statistics
 
         return {
-            "avg_response_time_ms": (statistics.mean(durations) * 1000)
-            if durations
-            else 0,
+            "avg_response_time_ms": (
+                (statistics.mean(durations) * 1000) if durations else 0
+            ),
             "p95_response_time_ms": (
-                sorted(durations)[int(len(durations) * 0.95)] * 1000
-            )
-            if durations
-            else 0,
-            "success_rate_percent": (statistics.mean(success_rates) * 100)
-            if success_rates
-            else 0,
+                (sorted(durations)[int(len(durations) * 0.95)] * 1000)
+                if durations
+                else 0
+            ),
+            "success_rate_percent": (
+                (statistics.mean(success_rates) * 100) if success_rates else 0
+            ),
             "avg_memory_usage_mb": statistics.mean(memory_usage) if memory_usage else 0,
             "max_memory_usage_mb": max(memory_usage) if memory_usage else 0,
             "total_operations": sum(
@@ -785,11 +791,13 @@ class PerformanceReporter:
 
         # Add general recommendations
         if regressions or bottlenecks:
-            recommendations.extend([
-                "Run performance profiling to identify root causes",
-                "Consider reverting recent changes if regressions are severe",
-                "Add performance tests to prevent future regressions",
-            ])
+            recommendations.extend(
+                [
+                    "Run performance profiling to identify root causes",
+                    "Consider reverting recent changes if regressions are severe",
+                    "Add performance tests to prevent future regressions",
+                ]
+            )
 
         return recommendations
 
@@ -941,27 +949,27 @@ class PerformanceReporter:
                 <p>Analysis Period: {metadata.get("analysis_period_days", "Unknown")} days</p>
                 <p>Benchmarks Analyzed: {metadata.get("total_benchmarks", 0)}</p>
             </div>
-            
+
             <div class="section">
                 <h2>Executive Summary</h2>
                 <div class="metric">
-                    <strong>Overall Health:</strong> 
+                    <strong>Overall Health:</strong>
                     <span class="{"success" if summary.get("overall_health") == "GOOD" else "warning" if summary.get("overall_health") == "ATTENTION" else "critical"}">
                         {summary.get("overall_health", "UNKNOWN")}
                     </span>
                 </div>
-                
+
                 <h3>Key Metrics</h3>
                 {self._format_key_metrics_html(summary.get("key_metrics", {}))}
-                
+
                 <h3>Critical Issues</h3>
                 <ul>
                     {"".join(f"<li class='critical'>{issue}</li>" for issue in summary.get("critical_issues", []))}
                 </ul>
             </div>
-            
+
             {self._format_sections_html(report_data)}
-            
+
             <div class="section">
                 <p><em>Report generated by Khive Performance Monitoring System</em></p>
             </div>
@@ -1164,35 +1172,35 @@ on:
 jobs:
   performance-tests:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -e .
         pip install pytest pytest-benchmark
-    
+
     - name: Run performance benchmarks
       run: |
         python -m pytest tests/performance/ --benchmark-json=benchmark_results.json
-    
+
     - name: Analyze performance results
       run: |
         python scripts/analyze_performance.py benchmark_results.json
-    
+
     - name: Upload performance report
       uses: actions/upload-artifact@v3
       with:
         name: performance-report
         path: performance_report.html
-    
+
     - name: Comment PR with results
       if: github.event_name == 'pull_request'
       uses: actions/github-script@v6
@@ -1200,14 +1208,14 @@ jobs:
         script: |
           const fs = require('fs');
           const report = fs.readFileSync('performance_summary.txt', 'utf8');
-          
+
           github.rest.issues.createComment({
             issue_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
             body: `## Performance Test Results\\n\\n\\`\\`\\`\\n${report}\\n\\`\\`\\``
           });
-    
+
     - name: Fail on performance regression
       run: |
         python scripts/check_performance_regression.py benchmark_results.json
@@ -1238,21 +1246,21 @@ from datetime import datetime
 
 def analyze_benchmark_results(results_file):
     """Analyze benchmark results and generate reports."""
-    
+
     with open(results_file) as f:
         data = json.load(f)
-    
+
     # Extract benchmark results
     benchmarks = data.get('benchmarks', [])
-    
+
     if not benchmarks:
         print("No benchmark results found")
         return
-    
+
     # Generate summary
     total_benchmarks = len(benchmarks)
     avg_duration = sum(b['stats']['mean'] for b in benchmarks) / total_benchmarks
-    
+
     summary = f"""
 Performance Analysis Summary
 ===========================
@@ -1263,31 +1271,31 @@ Generated: {datetime.now().isoformat()}
 
 Top 5 Slowest Tests:
 """
-    
+
     # Sort by duration and show top 5
     sorted_benchmarks = sorted(benchmarks, key=lambda x: x['stats']['mean'], reverse=True)
-    
+
     for i, benchmark in enumerate(sorted_benchmarks[:5], 1):
         name = benchmark['name']
         duration = benchmark['stats']['mean']
         summary += f"  {i}. {name}: {duration:.4f}s\\n"
-    
+
     # Write summary
     with open('performance_summary.txt', 'w') as f:
         f.write(summary)
-    
+
     print(summary)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python analyze_performance.py <results_file>")
         sys.exit(1)
-    
+
     results_file = sys.argv[1]
     if not Path(results_file).exists():
         print(f"Results file not found: {results_file}")
         sys.exit(1)
-    
+
     analyze_benchmark_results(results_file)
 '''
 
@@ -1307,35 +1315,35 @@ from pathlib import Path
 
 def check_regressions(results_file, threshold=1.2):
     """Check for performance regressions."""
-    
+
     with open(results_file) as f:
         data = json.load(f)
-    
+
     benchmarks = data.get('benchmarks', [])
-    
+
     if not benchmarks:
         print("No benchmark results to check")
         return True
-    
+
     # For now, check if any benchmark takes longer than threshold
     slow_benchmarks = []
-    
+
     for benchmark in benchmarks:
         duration = benchmark['stats']['mean']
         name = benchmark['name']
-        
+
         # Simple threshold check (in real implementation, compare with baseline)
         if duration > 1.0:  # More than 1 second
             slow_benchmarks.append((name, duration))
-    
+
     if slow_benchmarks:
         print("Performance issues detected:")
         for name, duration in slow_benchmarks:
             print(f"  - {name}: {duration:.4f}s (too slow)")
-        
+
         print(f"\\nFailing CI due to {len(slow_benchmarks)} slow benchmarks")
         return False
-    
+
     print("All benchmarks within acceptable performance limits")
     return True
 
@@ -1343,12 +1351,12 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python check_performance_regression.py <results_file>")
         sys.exit(1)
-    
+
     results_file = sys.argv[1]
     if not Path(results_file).exists():
         print(f"Results file not found: {results_file}")
         sys.exit(1)
-    
+
     success = check_regressions(results_file)
     sys.exit(0 if success else 1)
 '''
@@ -1368,7 +1376,7 @@ import json
 
 def setup_performance_monitoring():
     """Set up performance monitoring configuration."""
-    
+
     # Create performance monitoring config
     config = {
         "performance_thresholds": {
@@ -1387,30 +1395,30 @@ def setup_performance_monitoring():
             "email_recipients": []
         }
     }
-    
+
     config_file = Path("performance_config.json")
     with open(config_file, 'w') as f:
         json.dump(config, f, indent=2)
-    
+
     print(f"Performance monitoring configuration created: {config_file}")
-    
+
     # Create test performance config
     perf_dir = Path("tests/performance")
     perf_dir.mkdir(parents=True, exist_ok=True)
-    
+
     pytest_ini = perf_dir / "pytest.ini"
     with open(pytest_ini, 'w') as f:
         f.write("""[tool:pytest]
 markers =
     performance: Performance benchmark tests
     slow: Slow-running tests (>5s)
-    
-addopts = 
+
+addopts =
     --benchmark-only
     --benchmark-sort=mean
     --benchmark-min-rounds=3
 """)
-    
+
     print("Performance test configuration created")
 
 if __name__ == "__main__":
@@ -1431,18 +1439,18 @@ if __name__ == "__main__":
         jenkins_pipeline = """
 pipeline {
     agent any
-    
+
     triggers {
         cron('H 0 * * *')  // Daily
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
-        
+
         stage('Setup') {
             steps {
                 sh 'python -m pip install --upgrade pip'
@@ -1450,27 +1458,27 @@ pipeline {
                 sh 'pip install pytest pytest-benchmark'
             }
         }
-        
+
         stage('Performance Tests') {
             steps {
                 sh 'python -m pytest tests/performance/ --benchmark-json=benchmark_results.json'
             }
         }
-        
+
         stage('Performance Analysis') {
             steps {
                 script {
                     sh 'python scripts/analyze_performance.py benchmark_results.json'
-                    
+
                     // Archive performance results
                     archiveArtifacts artifacts: 'benchmark_results.json,performance_summary.txt', allowEmptyArchive: false
-                    
+
                     // Check for regressions
                     def regressionCheck = sh(
                         script: 'python scripts/check_performance_regression.py benchmark_results.json',
                         returnStatus: true
                     )
-                    
+
                     if (regressionCheck != 0) {
                         currentBuild.result = 'UNSTABLE'
                         error('Performance regressions detected')
@@ -1478,7 +1486,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Generate Reports') {
             steps {
                 script {
@@ -1500,7 +1508,7 @@ pipeline {
             }
         }
     }
-    
+
     post {
         always {
             cleanWs()

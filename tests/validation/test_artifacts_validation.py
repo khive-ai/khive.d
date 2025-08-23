@@ -16,11 +16,16 @@ from typing import Any
 
 import pytest
 
-from khive.services.artifacts.models import (ArtifactRegistry,
-                                             ArtifactRegistryEntry, Author,
-                                             ContributionMetadata, Document,
-                                             DocumentType, Session,
-                                             SessionStatus)
+from khive.services.artifacts.models import (
+    ArtifactRegistry,
+    ArtifactRegistryEntry,
+    Author,
+    ContributionMetadata,
+    Document,
+    DocumentType,
+    Session,
+    SessionStatus,
+)
 from tests.validation.pydantic_validators import BaseValidationPattern
 
 # ============================================================================

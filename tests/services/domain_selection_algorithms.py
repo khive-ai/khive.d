@@ -12,9 +12,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from khive.services.plan.models import OrchestrationEvaluation
-from khive.services.plan.planner_service import (ComplexityTier,
-                                                 OrchestrationPlanner,
-                                                 PlannerService, Request)
+from khive.services.plan.planner_service import (
+    ComplexityTier,
+    OrchestrationPlanner,
+    PlannerService,
+    Request,
+)
 from khive.services.plan.triage.complexity_triage import TriageConsensus
 
 # Domain selection test scenarios
@@ -239,9 +242,9 @@ class TestDomainSelectionAccuracy:
             total_keywords = len(set(keywords) | set(domain_keywords))
             relevance_score = overlap / total_keywords if total_keywords > 0 else 0
 
-            assert score_range[0] <= relevance_score <= score_range[1], (
-                f"Failed {description}: score {relevance_score:.3f} not in range {score_range}"
-            )
+            assert (
+                score_range[0] <= relevance_score <= score_range[1]
+            ), f"Failed {description}: score {relevance_score:.3f} not in range {score_range}"
 
     def test_complexity_domain_matching(self, mock_planner):
         """Test that domain selection matches task complexity appropriately."""
@@ -273,9 +276,9 @@ class TestDomainSelectionAccuracy:
             available = mock_planner.available_domains
 
             found_domains = [d for d in suitable_domains if d in available]
-            assert len(found_domains) > 0, (
-                f"No suitable domains found for {description}: {suitable_domains} not in {available}"
-            )
+            assert (
+                len(found_domains) > 0
+            ), f"No suitable domains found for {description}: {suitable_domains} not in {available}"
 
     def test_role_domain_affinity_validation(self, mock_planner):
         """Test that role-domain affinity scores are reasonable."""
@@ -337,9 +340,9 @@ class TestDomainSelectionConsistency:
 
             # All selections should be identical
             unique_selections = set(tuple(s) for s in selections)
-            assert len(unique_selections) == 1, (
-                f"Inconsistent domain selection for '{task}': {unique_selections}"
-            )
+            assert (
+                len(unique_selections) == 1
+            ), f"Inconsistent domain selection for '{task}': {unique_selections}"
 
     def test_domain_selection_stability(self, mock_planner):
         """Test stability of domain selection under minor input variations."""
@@ -375,9 +378,9 @@ class TestDomainSelectionConsistency:
 
             if total > 0:
                 similarity = overlap / total
-                assert similarity >= 0.8, (
-                    f"Low similarity between domain selections: {similarity:.2f}"
-                )
+                assert (
+                    similarity >= 0.8
+                ), f"Low similarity between domain selections: {similarity:.2f}"
 
     def test_consistent_domain_ranking(self, mock_planner):
         """Test that domain ranking is consistent across runs."""
@@ -469,9 +472,9 @@ class TestDomainSelectionEdgeCases:
         end_time = time.time()
         processing_time = end_time - start_time
 
-        assert processing_time < 1.0, (
-            f"Long task processing too slow: {processing_time:.3f}s"
-        )
+        assert (
+            processing_time < 1.0
+        ), f"Long task processing too slow: {processing_time:.3f}s"
 
     def test_task_with_special_characters(self, mock_planner):
         """Test domain selection with special characters in task description."""
@@ -573,9 +576,9 @@ class TestDomainSelectionPerformance:
 
         print(f"Domain matching performance: {avg_time_ms:.4f}ms per operation")
 
-        assert avg_time_ms < max_time_ms, (
-            f"Domain matching too slow: {avg_time_ms:.4f}ms > {max_time_ms}ms"
-        )
+        assert (
+            avg_time_ms < max_time_ms
+        ), f"Domain matching too slow: {avg_time_ms:.4f}ms > {max_time_ms}ms"
 
     @pytest.mark.benchmark
     def test_large_domain_set_performance(self, mock_planner):
@@ -605,9 +608,9 @@ class TestDomainSelectionPerformance:
             f"Large domain set performance: {processing_time_ms:.4f}ms for {len(large_domain_set)} domains"
         )
 
-        assert processing_time_ms < max_time_ms, (
-            f"Large domain set processing too slow: {processing_time_ms:.4f}ms > {max_time_ms}ms"
-        )
+        assert (
+            processing_time_ms < max_time_ms
+        ), f"Large domain set processing too slow: {processing_time_ms:.4f}ms > {max_time_ms}ms"
 
     @pytest.mark.benchmark
     def test_concurrent_domain_selection(self, mock_planner):
@@ -657,9 +660,9 @@ class TestDomainSelectionPerformance:
 
         # Should complete without errors and within reasonable time
         assert len(errors) == 0, f"Concurrent selection errors: {errors}"
-        assert total_time_ms < 1000, (
-            f"Concurrent selection too slow: {total_time_ms:.4f}ms"
-        )
+        assert (
+            total_time_ms < 1000
+        ), f"Concurrent selection too slow: {total_time_ms:.4f}ms"
         assert len(results) == len(tasks), "Missing results from concurrent execution"
 
 
@@ -676,8 +679,7 @@ class TestDomainSelectionIntegration:
     async def test_domain_selection_in_planning_workflow(self, tmp_path):
         """Test domain selection integration with complete planning workflow."""
         # Mock triage service
-        from khive.services.plan.triage.complexity_triage import \
-            ComplexityTriageService
+        from khive.services.plan.triage.complexity_triage import ComplexityTriageService
 
         mock_triage_consensus = TriageConsensus(
             should_escalate=True,

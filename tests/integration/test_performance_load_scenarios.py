@@ -12,8 +12,7 @@ from typing import Any
 
 import pytest
 
-from khive.services.artifacts.factory import (ArtifactsConfig,
-                                              create_artifacts_service)
+from khive.services.artifacts.factory import ArtifactsConfig, create_artifacts_service
 from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.service import ArtifactsService
 
@@ -42,29 +41,35 @@ class PerformanceProfiler:
             end_time = time.time()
             end_memory = self._get_memory_usage()
 
-            self.metrics["operation_times"].append({
-                "operation": operation_name,
-                "duration": end_time - start_time,
-                "status": "success",
-            })
+            self.metrics["operation_times"].append(
+                {
+                    "operation": operation_name,
+                    "duration": end_time - start_time,
+                    "status": "success",
+                }
+            )
 
-            self.metrics["memory_usage"].append({
-                "operation": operation_name,
-                "start_memory": start_memory,
-                "end_memory": end_memory,
-                "memory_delta": end_memory - start_memory,
-            })
+            self.metrics["memory_usage"].append(
+                {
+                    "operation": operation_name,
+                    "start_memory": start_memory,
+                    "end_memory": end_memory,
+                    "memory_delta": end_memory - start_memory,
+                }
+            )
 
             return result
 
         except Exception as e:
             end_time = time.time()
-            self.metrics["operation_times"].append({
-                "operation": operation_name,
-                "duration": end_time - start_time,
-                "status": "failed",
-                "error": str(e),
-            })
+            self.metrics["operation_times"].append(
+                {
+                    "operation": operation_name,
+                    "duration": end_time - start_time,
+                    "status": "failed",
+                    "error": str(e),
+                }
+            )
             raise
 
     def _get_memory_usage(self) -> float:
@@ -99,25 +104,26 @@ class PerformanceProfiler:
             "success_rate": len(successful_ops)
             / len(self.metrics["operation_times"])
             * 100,
-            "average_duration": sum(op["duration"] for op in successful_ops)
-            / len(successful_ops)
-            if successful_ops
-            else 0,
-            "min_duration": min(op["duration"] for op in successful_ops)
-            if successful_ops
-            else 0,
-            "max_duration": max(op["duration"] for op in successful_ops)
-            if successful_ops
-            else 0,
+            "average_duration": (
+                sum(op["duration"] for op in successful_ops) / len(successful_ops)
+                if successful_ops
+                else 0
+            ),
+            "min_duration": (
+                min(op["duration"] for op in successful_ops) if successful_ops else 0
+            ),
+            "max_duration": (
+                max(op["duration"] for op in successful_ops) if successful_ops else 0
+            ),
             "total_memory_usage": sum(
                 m["memory_delta"] for m in self.metrics["memory_usage"]
             ),
-            "average_memory_delta": sum(
-                m["memory_delta"] for m in self.metrics["memory_usage"]
-            )
-            / len(self.metrics["memory_usage"])
-            if self.metrics["memory_usage"]
-            else 0,
+            "average_memory_delta": (
+                sum(m["memory_delta"] for m in self.metrics["memory_usage"])
+                / len(self.metrics["memory_usage"])
+                if self.metrics["memory_usage"]
+                else 0
+            ),
         }
 
 
@@ -287,9 +293,9 @@ Total operations across all levels: {sum(volume_levels)}
         assert all(
             result["success_rate"] >= 95 for result in performance_results.values()
         ), "Success rate should remain high under load"
-        assert performance_results[200]["throughput"] > 5.0, (
-            "Should maintain reasonable throughput at highest volume"
-        )
+        assert (
+            performance_results[200]["throughput"] > 5.0
+        ), "Should maintain reasonable throughput at highest volume"
         assert perf_summary["success_rate"] >= 95, "Overall success rate should be high"
 
     @pytest.mark.asyncio
@@ -445,15 +451,15 @@ Status: ✅ Created in Session
         )
 
         # Validate concurrent session performance
-        assert total_successful / total_operations >= 0.95, (
-            "Should maintain high success rate across concurrent sessions"
-        )
-        assert overall_throughput >= 10.0, (
-            "Should maintain reasonable overall throughput"
-        )
-        assert all(r["successful_operations"] >= 18 for r in session_results), (
-            "Each session should complete most operations"
-        )
+        assert (
+            total_successful / total_operations >= 0.95
+        ), "Should maintain high success rate across concurrent sessions"
+        assert (
+            overall_throughput >= 10.0
+        ), "Should maintain reasonable overall throughput"
+        assert all(
+            r["successful_operations"] >= 18 for r in session_results
+        ), "Each session should complete most operations"
 
     @pytest.mark.asyncio
     async def test_sustained_load_endurance(
@@ -515,20 +521,24 @@ Status: ✅ Created under Sustained Load
         while time.time() - start_time < test_duration_seconds:
             try:
                 result = await sustained_operation()
-                endurance_results.append({
-                    "operation_id": operation_counter,
-                    "timestamp": time.time(),
-                    "status": "success",
-                    "elapsed_time": time.time() - start_time,
-                })
+                endurance_results.append(
+                    {
+                        "operation_id": operation_counter,
+                        "timestamp": time.time(),
+                        "status": "success",
+                        "elapsed_time": time.time() - start_time,
+                    }
+                )
             except Exception as e:
-                endurance_results.append({
-                    "operation_id": operation_counter,
-                    "timestamp": time.time(),
-                    "status": "failed",
-                    "error": str(e),
-                    "elapsed_time": time.time() - start_time,
-                })
+                endurance_results.append(
+                    {
+                        "operation_id": operation_counter,
+                        "timestamp": time.time(),
+                        "status": "failed",
+                        "error": str(e),
+                        "elapsed_time": time.time() - start_time,
+                    }
+                )
 
             await asyncio.sleep(operation_interval)
 
@@ -613,12 +623,12 @@ Status: ✅ Created under Sustained Load
         )
 
         # Validate endurance performance
-        assert len(successful_ops) / len(endurance_results) >= 0.90, (
-            "Should maintain high success rate during sustained load"
-        )
-        assert len(endurance_results) >= 80, (
-            "Should complete reasonable number of operations"
-        )
-        assert perf_summary["max_duration"] < 2.0, (
-            "Individual operations should not become extremely slow"
-        )
+        assert (
+            len(successful_ops) / len(endurance_results) >= 0.90
+        ), "Should maintain high success rate during sustained load"
+        assert (
+            len(endurance_results) >= 80
+        ), "Should complete reasonable number of operations"
+        assert (
+            perf_summary["max_duration"] < 2.0
+        ), "Individual operations should not become extremely slow"

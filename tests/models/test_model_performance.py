@@ -6,15 +6,26 @@ from datetime import datetime, timedelta, timezone
 from lionagi.fields import Instruct
 
 from khive.prompts import AgentRole
-from khive.services.artifacts.models import (Author, ContributionMetadata,
-                                             Document, DocumentType)
-from khive.services.composition.parts import (ComposerRequest,
-                                              ComposerResponse,
-                                              DomainExpertise)
+from khive.services.artifacts.models import (
+    Author,
+    ContributionMetadata,
+    Document,
+    DocumentType,
+)
+from khive.services.composition.parts import (
+    ComposerRequest,
+    ComposerResponse,
+    DomainExpertise,
+)
 from khive.services.orchestration.parts import AgentRequest, OrchestrationPlan
-from khive.services.plan.parts import (AgentRecommendation, ComplexityLevel,
-                                       PlannerResponse, QualityGate, TaskPhase,
-                                       WorkflowPattern)
+from khive.services.plan.parts import (
+    AgentRecommendation,
+    ComplexityLevel,
+    PlannerResponse,
+    QualityGate,
+    TaskPhase,
+    WorkflowPattern,
+)
 
 
 class TestModelCreationPerformance:
@@ -349,8 +360,7 @@ class TestModelValidationPerformance:
 
         for data in constraint_test_data:
             try:
-                from khive.services.composition.parts import \
-                    AgentCompositionRequest
+                from khive.services.composition.parts import AgentCompositionRequest
 
                 request = AgentCompositionRequest(**data)
                 valid_requests.append(request)

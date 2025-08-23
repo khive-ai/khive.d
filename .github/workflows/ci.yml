@@ -53,10 +53,10 @@ jobs:
       matrix:
         test-type: [
           "async_test",
-          "concurrency", 
+          "concurrency",
           "timeout_handling",
           "race_condition and deadlock",
-          "resource_cleanup"
+          "resource_cleanup",
         ]
     steps:
       - uses: actions/checkout@v4

@@ -397,9 +397,15 @@ class TestMCPConfigurationParsing:
         config_file.write_text(malformed_config)
 
         # Test that MCPConfig handles malformed JSON gracefully
-        with pytest.raises((json.JSONDecodeError, ValueError, FileNotFoundError)) as exc_info:
+        with pytest.raises(
+            (
+                json.JSONDecodeError,
+                ValueError,
+                FileNotFoundError,
+            )
+        ) as exc_info:
             mcp_config = MCPConfig(project_root=str(temp_project))
-        
+
         # Should raise specific error types for malformed JSON
         assert str(exc_info.value) != ""  # Error should have meaningful message
 
@@ -512,6 +518,6 @@ class TestMCPConfigurationSecurity:
         file_mode = file_stat.st_mode & 0o777
 
         # Should be readable/writable by owner only
-        assert file_mode <= 0o600, (
-            f"Config file permissions too permissive: {oct(file_mode)}"
-        )
+        assert (
+            file_mode <= 0o600
+        ), f"Config file permissions too permissive: {oct(file_mode)}"

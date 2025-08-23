@@ -153,14 +153,16 @@ class PerformanceAnalyzer:
         # Percentiles
         if len(values) > 1:
             sorted_values = sorted(values)
-            analysis.update({
-                "p25": sorted_values[int(len(sorted_values) * 0.25)],
-                "p50": sorted_values[int(len(sorted_values) * 0.50)],
-                "p75": sorted_values[int(len(sorted_values) * 0.75)],
-                "p90": sorted_values[int(len(sorted_values) * 0.90)],
-                "p95": sorted_values[int(len(sorted_values) * 0.95)],
-                "p99": sorted_values[int(len(sorted_values) * 0.99)],
-            })
+            analysis.update(
+                {
+                    "p25": sorted_values[int(len(sorted_values) * 0.25)],
+                    "p50": sorted_values[int(len(sorted_values) * 0.50)],
+                    "p75": sorted_values[int(len(sorted_values) * 0.75)],
+                    "p90": sorted_values[int(len(sorted_values) * 0.90)],
+                    "p95": sorted_values[int(len(sorted_values) * 0.95)],
+                    "p99": sorted_values[int(len(sorted_values) * 0.99)],
+                }
+            )
 
         # Time-based analysis
         if len(timestamps) > 1:
@@ -404,9 +406,9 @@ class TrendAnalyzer:
                 "operation_type": operation_type,
                 "metric_name": metric_name,
                 "days_analyzed": days_back,
-                "coefficient_of_variation": std_deviation / mean_value
-                if mean_value != 0
-                else 0,
+                "coefficient_of_variation": (
+                    std_deviation / mean_value if mean_value != 0 else 0
+                ),
             },
         )
 
@@ -982,12 +984,12 @@ class BottleneckIdentifier:
                 metadata={
                     "avg_io_bytes": avg_io,
                     "max_io_bytes": max_io,
-                    "avg_read_bytes": statistics.mean(io_read_values)
-                    if io_read_values
-                    else 0,
-                    "avg_write_bytes": statistics.mean(io_write_values)
-                    if io_write_values
-                    else 0,
+                    "avg_read_bytes": (
+                        statistics.mean(io_read_values) if io_read_values else 0
+                    ),
+                    "avg_write_bytes": (
+                        statistics.mean(io_write_values) if io_write_values else 0
+                    ),
                 },
             )
 

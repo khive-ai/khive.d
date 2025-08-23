@@ -1,11 +1,13 @@
 """Basic performance tests to validate the benchmarking infrastructure."""
 
-
 import pytest
 
-from khive.services.performance import (BenchmarkFramework, BenchmarkStorage,
-                                        PerformanceAnalyzer,
-                                        PerformanceReporter)
+from khive.services.performance import (
+    BenchmarkFramework,
+    BenchmarkStorage,
+    PerformanceAnalyzer,
+    PerformanceReporter,
+)
 
 
 class TestBasicPerformanceBenchmarks:
@@ -27,7 +29,9 @@ class TestBasicPerformanceBenchmarks:
         from datetime import datetime
 
         from khive.services.performance.benchmark_framework import (
-            BenchmarkResult, PerformanceMetrics)
+            BenchmarkResult,
+            PerformanceMetrics,
+        )
 
         # Create a simple test result
         metrics = PerformanceMetrics(
@@ -62,7 +66,9 @@ class TestBasicPerformanceBenchmarks:
         from datetime import datetime
 
         from khive.services.performance.benchmark_framework import (
-            BenchmarkResult, PerformanceMetrics)
+            BenchmarkResult,
+            PerformanceMetrics,
+        )
 
         # Create a test benchmark result with memory metrics
         metrics = PerformanceMetrics(
@@ -104,7 +110,9 @@ class TestBasicPerformanceBenchmarks:
         from datetime import datetime
 
         from khive.services.performance.benchmark_framework import (
-            BenchmarkResult, PerformanceMetrics)
+            BenchmarkResult,
+            PerformanceMetrics,
+        )
 
         # Create test result for concurrent operations
         metrics = PerformanceMetrics(

@@ -31,11 +31,21 @@ from typing import Any
 
 from khive.cli.base import CLIResult, ConfigurableCLICommand, cli_command
 from khive.core import TimePolicy
-from khive.services.artifacts import (ArtifactsConfig, Author, DocumentType,
-                                      SessionAlreadyExists,
-                                      create_artifacts_service)
-from khive.utils import (KHIVE_CONFIG_DIR, BaseConfig, ensure_directory,
-                         log_msg, safe_write_file, warn_msg)
+from khive.services.artifacts import (
+    ArtifactsConfig,
+    Author,
+    DocumentType,
+    SessionAlreadyExists,
+    create_artifacts_service,
+)
+from khive.utils import (
+    KHIVE_CONFIG_DIR,
+    BaseConfig,
+    ensure_directory,
+    log_msg,
+    safe_write_file,
+    warn_msg,
+)
 
 
 # --- Template Data Classes ---
@@ -326,15 +336,17 @@ class NewDocCommand(ConfigurableCLICommand):
         template_data = []
         for category, tpls in sorted(categorized.items()):
             for tpl in sorted(tpls, key=lambda t: t.doc_type):
-                template_data.append({
-                    "category": category,
-                    "type": tpl.doc_type,
-                    "title": tpl.title,
-                    "description": tpl.description,
-                    "filename": tpl.path.name,
-                    "variables": tpl.variables,
-                    "tags": tpl.tags,
-                })
+                template_data.append(
+                    {
+                        "category": category,
+                        "type": tpl.doc_type,
+                        "title": tpl.title,
+                        "description": tpl.description,
+                        "filename": tpl.path.name,
+                        "variables": tpl.variables,
+                        "tags": tpl.tags,
+                    }
+                )
 
         return CLIResult(
             status="success",

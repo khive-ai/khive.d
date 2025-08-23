@@ -23,14 +23,20 @@ from khive.services.artifacts.service import ArtifactsService
 from khive.services.cache.config import CacheConfig
 from khive.services.cache.service import CacheService
 from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.plan.planner_service import (ComplexityTier,
-                                                 OrchestrationPlanner, Request)
+from khive.services.plan.planner_service import (
+    ComplexityTier,
+    OrchestrationPlanner,
+    Request,
+)
 from khive.services.session.parts import SessionRequest
 from khive.services.session.session_service import SessionService
 
 # Import mock classes from individual test files
-from .test_artifacts_performance import (MockLockManager, MockSessionManager,
-                                         MockStorageRepository)
+from .test_artifacts_performance import (
+    MockLockManager,
+    MockSessionManager,
+    MockStorageRepository,
+)
 from .test_cache_performance import MockRedisCache
 
 
@@ -233,12 +239,14 @@ class IntegratedWorkflowService:
                     session_id=artifacts_session.session_id,
                     doc_name="planning_results",
                     doc_type=DocumentType.SCRATCHPAD,
-                    content=json.dumps({
-                        "request": user_request,
-                        "complexity": str(complexity),
-                        "roles": selected_roles,
-                        "timestamp": time.time(),
-                    }),
+                    content=json.dumps(
+                        {
+                            "request": user_request,
+                            "complexity": str(complexity),
+                            "roles": selected_roles,
+                            "timestamp": time.time(),
+                        }
+                    ),
                     author=Author(name="integration_test", email="test@example.com"),
                     description="Planning results from integration workflow",
                 )
@@ -330,22 +338,22 @@ class TestIntegrationBenchmarks:
                 success = result["success"]
 
                 # Verify workflow completed successfully
-                assert result["success"], (
-                    f"Workflow failed: {result.get('error', 'Unknown error')}"
-                )
-                assert len(result["artifacts_created"]) >= 2, (
-                    "Should create planning and implementation artifacts"
-                )
-                assert "session_init" in result["phases"], (
-                    "Should complete session initialization"
-                )
+                assert result[
+                    "success"
+                ], f"Workflow failed: {result.get('error', 'Unknown error')}"
+                assert (
+                    len(result["artifacts_created"]) >= 2
+                ), "Should create planning and implementation artifacts"
+                assert (
+                    "session_init" in result["phases"]
+                ), "Should complete session initialization"
                 assert "planning" in result["phases"], "Should complete planning phase"
-                assert "orchestration" in result["phases"], (
-                    "Should complete orchestration phase"
-                )
-                assert "artifacts" in result["phases"], (
-                    "Should complete artifacts phase"
-                )
+                assert (
+                    "orchestration" in result["phases"]
+                ), "Should complete orchestration phase"
+                assert (
+                    "artifacts" in result["phases"]
+                ), "Should complete artifacts phase"
 
             except Exception as e:
                 success = False
@@ -378,12 +386,12 @@ class TestIntegrationBenchmarks:
         max_time = max(workflow_times)
 
         # Performance assertions
-        assert avg_time < threshold, (
-            f"Average E2E workflow time too slow: {avg_time:.6f}s"
-        )
-        assert max_time < threshold * 2.0, (
-            f"Maximum E2E workflow time too slow: {max_time:.6f}s"
-        )
+        assert (
+            avg_time < threshold
+        ), f"Average E2E workflow time too slow: {avg_time:.6f}s"
+        assert (
+            max_time < threshold * 2.0
+        ), f"Maximum E2E workflow time too slow: {max_time:.6f}s"
 
         print(
             f"End-to-end workflow - Avg: {avg_time:.6f}s, Min: {min_time:.6f}s, Max: {max_time:.6f}s"
@@ -588,9 +596,9 @@ class TestIntegrationBenchmarks:
             # Adjust threshold based on number of operations
             adjusted_threshold = threshold * (metrics["operations"] / 3.0)
 
-            assert metrics["avg"] < adjusted_threshold, (
-                f"Dependency chain {scenario_name} average time too slow: {metrics['avg']:.6f}s"
-            )
+            assert (
+                metrics["avg"] < adjusted_threshold
+            ), f"Dependency chain {scenario_name} average time too slow: {metrics['avg']:.6f}s"
 
             print(
                 f"Dependency chain {scenario_name} - Avg: {metrics['avg']:.6f}s, "
@@ -659,15 +667,15 @@ class TestIntegrationScalability:
 
         # Verify scaling characteristics
         for concurrency, results in scaling_results.items():
-            assert results["success_rate"] > 0.80, (
-                f"Success rate too low at {concurrency} concurrent workflows: {results['success_rate']:.4f}"
-            )
+            assert (
+                results["success_rate"] > 0.80
+            ), f"Success rate too low at {concurrency} concurrent workflows: {results['success_rate']:.4f}"
 
             # Throughput should be reasonable for the complexity
             if concurrency == 1:
-                assert results["throughput"] > 0.1, (
-                    f"Single workflow throughput too low: {results['throughput']:.2f} workflows/sec"
-                )
+                assert (
+                    results["throughput"] > 0.1
+                ), f"Single workflow throughput too low: {results['throughput']:.2f} workflows/sec"
 
     @pytest.mark.asyncio
     async def test_resource_contention_performance(
@@ -814,13 +822,13 @@ class TestIntegrationScalability:
 
         # Verify system handles contention reasonably
         for scenario_name, results in contention_results.items():
-            assert results["success_rate"] > 0.7, (
-                f"Success rate too low under {scenario_name}: {results['success_rate']:.4f}"
-            )
+            assert (
+                results["success_rate"] > 0.7
+            ), f"Success rate too low under {scenario_name}: {results['success_rate']:.4f}"
 
-            assert results["throughput"] > 0.5, (
-                f"Throughput too low under {scenario_name}: {results['throughput']:.2f} ops/sec"
-            )
+            assert (
+                results["throughput"] > 0.5
+            ), f"Throughput too low under {scenario_name}: {results['throughput']:.2f} ops/sec"
 
 
 class TestIntegrationMemoryPerformance:
@@ -881,9 +889,9 @@ class TestIntegrationMemoryPerformance:
         )
 
         # Verify reasonable memory usage
-        assert memory_usage["memory_delta_mb"] < 100.0, (
-            f"Multi-service memory usage too high: {memory_usage['memory_delta_mb']:.2f}MB"
-        )
+        assert (
+            memory_usage["memory_delta_mb"] < 100.0
+        ), f"Multi-service memory usage too high: {memory_usage['memory_delta_mb']:.2f}MB"
 
         assert memory_usage["success"], "Multi-service memory test should succeed"
         assert memory_usage["result"] > 0, "Should complete some workflows"

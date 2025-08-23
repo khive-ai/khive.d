@@ -6,6 +6,7 @@ These tests complement the existing security_validation tests with additional at
 
 import concurrent.futures
 import os
+
 # Add src to path
 import sys
 import tempfile
@@ -161,9 +162,9 @@ class TestAdvancedInjectionAttempts:
                 )
 
                 if contains_dangerous:
-                    assert "[FILTERED]" in sanitized, (
-                        f"Should filter: {injection[:50]}..."
-                    )
+                    assert (
+                        "[FILTERED]" in sanitized
+                    ), f"Should filter: {injection[:50]}..."
                     print(f"✓ Filtered advanced injection: {injection[:30]}...")
 
     def test_encoded_payload_attempts(self):
@@ -280,9 +281,9 @@ class TestResourceExhaustionEdgeCases:
             print(f"✓ Handled extremely long line: {type(result)}")
 
             # Many small keys (memory fragmentation attack)
-            many_keys_content = "\n".join([
-                f"key_{i}: value_{i}" for i in range(100000)
-            ])
+            many_keys_content = "\n".join(
+                [f"key_{i}: value_{i}" for i in range(100000)]
+            )
             many_keys_file = temp_path / "many_keys.yaml"
             many_keys_file.write_text(many_keys_content)
 

@@ -34,13 +34,15 @@ class ConcurrencyTestHarness:
         """Record resource access for race condition analysis."""
         with self._lock:
             timestamp = time.time()
-            self.access_log.append({
-                "timestamp": timestamp,
-                "agent_id": agent_id,
-                "resource_id": resource_id,
-                "operation": operation,
-                "thread_id": threading.get_ident(),
-            })
+            self.access_log.append(
+                {
+                    "timestamp": timestamp,
+                    "agent_id": agent_id,
+                    "resource_id": resource_id,
+                    "operation": operation,
+                    "thread_id": threading.get_ident(),
+                }
+            )
 
     def get_resource(self, resource_id: str):
         """Get shared resource with access logging."""
@@ -68,15 +70,17 @@ class ConcurrencyTestHarness:
             for i, access1 in enumerate(write_accesses):
                 for access2 in write_accesses[i + 1 :]:
                     if abs(access1["timestamp"] - access2["timestamp"]) < 0.05:
-                        races.append({
-                            "resource_id": resource_id,
-                            "agent1": access1["agent_id"],
-                            "agent2": access2["agent_id"],
-                            "time_diff": abs(
-                                access1["timestamp"] - access2["timestamp"]
-                            ),
-                            "type": "concurrent_write",
-                        })
+                        races.append(
+                            {
+                                "resource_id": resource_id,
+                                "agent1": access1["agent_id"],
+                                "agent2": access2["agent_id"],
+                                "time_diff": abs(
+                                    access1["timestamp"] - access2["timestamp"]
+                                ),
+                                "type": "concurrent_write",
+                            }
+                        )
 
         return races
 
@@ -209,23 +213,23 @@ class TestMultiAgentCoordination:
             successful_creations = [
                 bid for bid in branch_ids if not isinstance(bid, Exception)
             ]
-            assert len(successful_creations) == len(compose_requests), (
-                "All branch creations should succeed"
-            )
-            assert len(set(successful_creations)) == len(successful_creations), (
-                "All branch IDs should be unique"
-            )
+            assert len(successful_creations) == len(
+                compose_requests
+            ), "All branch creations should succeed"
+            assert len(set(successful_creations)) == len(
+                successful_creations
+            ), "All branch IDs should be unique"
 
             # Performance validation - should be much faster than sequential
             max_sequential_time = len(compose_requests) * 0.1  # 100ms per creation
-            assert execution_time < max_sequential_time * 0.5, (
-                "Concurrent execution should be significantly faster"
-            )
+            assert (
+                execution_time < max_sequential_time * 0.5
+            ), "Concurrent execution should be significantly faster"
 
             # Validate no major conflicts occurred
-            assert len(creation_conflicts) < len(compose_requests) * 0.2, (
-                "Minimal naming conflicts expected"
-            )
+            assert (
+                len(creation_conflicts) < len(compose_requests) * 0.2
+            ), "Minimal naming conflicts expected"
 
     @pytest.mark.asyncio
     async def test_shared_session_state_consistency(
@@ -277,26 +281,26 @@ class TestMultiAgentCoordination:
 
         # Validate consistency
         total_operations = sum(len(results) for results in all_results)
-        assert shared_state["counter"] == total_operations, (
-            "Counter should match total operations"
-        )
-        assert len(shared_state["operations"]) == total_operations, (
-            "All operations should be recorded"
-        )
+        assert (
+            shared_state["counter"] == total_operations
+        ), "Counter should match total operations"
+        assert (
+            len(shared_state["operations"]) == total_operations
+        ), "All operations should be recorded"
 
         # Check for race conditions
         race_conditions = concurrency_harness.detect_race_conditions()
 
         # With proper locking, there should be no race conditions on shared_state
         state_races = [r for r in race_conditions if r["resource_id"] == "shared_state"]
-        assert len(state_races) == 0, (
-            f"No race conditions expected with locking, found: {state_races}"
-        )
+        assert (
+            len(state_races) == 0
+        ), f"No race conditions expected with locking, found: {state_races}"
 
         # Performance should be reasonable
-        assert execution_time < 5.0, (
-            "Concurrent operations should complete within reasonable time"
-        )
+        assert (
+            execution_time < 5.0
+        ), "Concurrent operations should complete within reasonable time"
 
     @pytest.mark.asyncio
     async def test_resource_pool_contention_management(
@@ -327,11 +331,13 @@ class TestMultiAgentCoordination:
 
             async with semaphore:
                 acquire_time = time.time()
-                acquired_resources[resource_name].append({
-                    "agent_id": agent_id,
-                    "acquire_time": acquire_time,
-                    "thread_id": threading.get_ident(),
-                })
+                acquired_resources[resource_name].append(
+                    {
+                        "agent_id": agent_id,
+                        "acquire_time": acquire_time,
+                        "thread_id": threading.get_ident(),
+                    }
+                )
 
                 concurrency_harness.record_resource_access(
                     agent_id, resource_name, "acquired"
@@ -404,9 +410,9 @@ class TestMultiAgentCoordination:
 
         # Performance validation based on resource constraints
         # File system should take longest (sequential), cache should be fastest
-        assert execution_time > 0.3, (
-            "Should take some time due to file system serialization"
-        )
+        assert (
+            execution_time > 0.3
+        ), "Should take some time due to file system serialization"
         assert execution_time < 10.0, "Should complete within reasonable time"
 
 
@@ -428,10 +434,12 @@ class TestRaceConditionDetection:
             # Record the naming attempt
             timestamp = time.time()
             thread_id = threading.get_ident()
-            branch_name_attempts[name].append({
-                "timestamp": timestamp,
-                "thread_id": thread_id,
-            })
+            branch_name_attempts[name].append(
+                {
+                    "timestamp": timestamp,
+                    "thread_id": thread_id,
+                }
+            )
 
             # Simulate race condition - first few calls return None, then existing branch
             attempts_for_name = len(branch_name_attempts[name])
@@ -440,14 +448,16 @@ class TestRaceConditionDetection:
                 return None  # First attempt - name available
             if attempts_for_name == 2:
                 # Second concurrent attempt - create race condition
-                naming_conflicts.append({
-                    "name": name,
-                    "attempts": branch_name_attempts[name].copy(),
-                    "race_window": abs(
-                        branch_name_attempts[name][1]["timestamp"]
-                        - branch_name_attempts[name][0]["timestamp"]
-                    ),
-                })
+                naming_conflicts.append(
+                    {
+                        "name": name,
+                        "attempts": branch_name_attempts[name].copy(),
+                        "race_window": abs(
+                            branch_name_attempts[name][1]["timestamp"]
+                            - branch_name_attempts[name][0]["timestamp"]
+                        ),
+                    }
+                )
                 return None  # Still allow creation but flag the race
             return MagicMock()  # Subsequent attempts - branch exists
 
@@ -500,20 +510,20 @@ class TestRaceConditionDetection:
             successful_results = [r for r in results if not isinstance(r, Exception)]
 
             # All should succeed (with conflict resolution)
-            assert len(successful_results) >= 4, (
-                "Most branch creations should succeed despite races"
-            )
+            assert (
+                len(successful_results) >= 4
+            ), "Most branch creations should succeed despite races"
 
             # Verify race conditions were detected
-            assert len(naming_conflicts) > 0, (
-                "Race conditions should be detected in branch naming"
-            )
+            assert (
+                len(naming_conflicts) > 0
+            ), "Race conditions should be detected in branch naming"
 
             # Check race condition timing (should be very close)
             for conflict in naming_conflicts:
-                assert conflict["race_window"] < 0.1, (
-                    f"Race window too wide: {conflict['race_window']}"
-                )
+                assert (
+                    conflict["race_window"] < 0.1
+                ), f"Race window too wide: {conflict['race_window']}"
 
             # Record race conditions for analysis
             for conflict in naming_conflicts:
@@ -578,11 +588,13 @@ class TestRaceConditionDetection:
                 )
                 shared_counter["value"] = current_counter + 1
 
-                results.append({
-                    "dict_value": shared_dict.get(key, 0),
-                    "list_length": len(shared_list),
-                    "counter_value": shared_counter["value"],
-                })
+                results.append(
+                    {
+                        "dict_value": shared_dict.get(key, 0),
+                        "list_length": len(shared_list),
+                        "counter_value": shared_counter["value"],
+                    }
+                )
 
             return results
 
@@ -628,9 +640,9 @@ class TestRaceConditionDetection:
         detected_races = concurrency_harness.detect_race_conditions()
 
         # Assert race conditions were detected (this is expected in unsafe operations)
-        assert len(detected_races) > 0 or counter_race_detected or list_race_detected, (
-            "Race conditions should be detected in unsafe concurrent operations"
-        )
+        assert (
+            len(detected_races) > 0 or counter_race_detected or list_race_detected
+        ), "Race conditions should be detected in unsafe concurrent operations"
 
         # Record findings
         if counter_race_detected:
@@ -679,12 +691,14 @@ class TestDeadlockPrevention:
                 for resource in resource_chain:
                     # Record acquisition attempt
                     async with acquisition_lock:
-                        acquisition_order.append({
-                            "agent_id": agent_id,
-                            "resource": resource,
-                            "action": "attempting",
-                            "timestamp": time.time(),
-                        })
+                        acquisition_order.append(
+                            {
+                                "agent_id": agent_id,
+                                "resource": resource,
+                                "action": "attempting",
+                                "timestamp": time.time(),
+                            }
+                        )
 
                     # Acquire lock with timeout to prevent indefinite blocking
                     try:
@@ -695,12 +709,14 @@ class TestDeadlockPrevention:
                         acquired_locks.append(resource)
 
                         async with acquisition_lock:
-                            acquisition_order.append({
-                                "agent_id": agent_id,
-                                "resource": resource,
-                                "action": "acquired",
-                                "timestamp": time.time(),
-                            })
+                            acquisition_order.append(
+                                {
+                                    "agent_id": agent_id,
+                                    "resource": resource,
+                                    "action": "acquired",
+                                    "timestamp": time.time(),
+                                }
+                            )
 
                         # Simulate work with resource
                         await asyncio.sleep(0.1)
@@ -708,12 +724,14 @@ class TestDeadlockPrevention:
                     except asyncio.TimeoutError:
                         # Timeout indicates potential deadlock
                         async with acquisition_lock:
-                            acquisition_order.append({
-                                "agent_id": agent_id,
-                                "resource": resource,
-                                "action": "timeout",
-                                "timestamp": time.time(),
-                            })
+                            acquisition_order.append(
+                                {
+                                    "agent_id": agent_id,
+                                    "resource": resource,
+                                    "action": "timeout",
+                                    "timestamp": time.time(),
+                                }
+                            )
                         raise
 
                 return f"{agent_id}_completed"
@@ -723,12 +741,14 @@ class TestDeadlockPrevention:
                 for resource in reversed(acquired_locks):
                     resource_locks[resource].release()
                     async with acquisition_lock:
-                        acquisition_order.append({
-                            "agent_id": agent_id,
-                            "resource": resource,
-                            "action": "released",
-                            "timestamp": time.time(),
-                        })
+                        acquisition_order.append(
+                            {
+                                "agent_id": agent_id,
+                                "resource": resource,
+                                "action": "released",
+                                "timestamp": time.time(),
+                            }
+                        )
 
         # Create scenarios that could lead to deadlocks
         deadlock_prone_scenarios = [
@@ -779,20 +799,20 @@ class TestDeadlockPrevention:
         # Either high completion rate OR graceful timeout handling
         if len(timeout_exceptions) > 0:
             # Some operations timed out - this is acceptable as deadlock prevention
-            assert len(timeout_exceptions) < total_operations, (
-                "Not all operations should timeout"
-            )
+            assert (
+                len(timeout_exceptions) < total_operations
+            ), "Not all operations should timeout"
             assert completion_rate > 0.0, "Some operations should still complete"
         else:
             # All operations completed - ideal scenario
-            assert completion_rate >= 0.7, (
-                "Most operations should complete without deadlock"
-            )
+            assert (
+                completion_rate >= 0.7
+            ), "Most operations should complete without deadlock"
 
         # No unexpected exceptions
-        assert len(other_exceptions) == 0, (
-            f"No unexpected exceptions: {other_exceptions}"
-        )
+        assert (
+            len(other_exceptions) == 0
+        ), f"No unexpected exceptions: {other_exceptions}"
 
         # Analyze acquisition patterns for deadlock detection
         deadlock_indicators = []
@@ -806,11 +826,13 @@ class TestDeadlockPrevention:
         for agent_id, attempts in agent_attempts.items():
             timeout_attempts = [a for a in attempts if a["action"] == "timeout"]
             if len(timeout_attempts) > 0:
-                deadlock_indicators.append({
-                    "agent_id": agent_id,
-                    "timeout_resources": [a["resource"] for a in timeout_attempts],
-                    "indication": "potential_deadlock_prevented",
-                })
+                deadlock_indicators.append(
+                    {
+                        "agent_id": agent_id,
+                        "timeout_resources": [a["resource"] for a in timeout_attempts],
+                        "indication": "potential_deadlock_prevented",
+                    }
+                )
 
         # Record findings
         print("\nDeadlock Prevention Analysis:")
@@ -853,20 +875,24 @@ class TestDeadlockPrevention:
                 # Simulate work
                 await asyncio.sleep(0.05)
 
-                successful_operations.append({
-                    "agent_id": agent_id,
-                    "resources": ordered_resources,
-                    "original_order": needed_resources,
-                })
+                successful_operations.append(
+                    {
+                        "agent_id": agent_id,
+                        "resources": ordered_resources,
+                        "original_order": needed_resources,
+                    }
+                )
 
                 return f"{agent_id}_success"
 
             except Exception as e:
-                failed_operations.append({
-                    "agent_id": agent_id,
-                    "error": str(e),
-                    "resources": needed_resources,
-                })
+                failed_operations.append(
+                    {
+                        "agent_id": agent_id,
+                        "error": str(e),
+                        "resources": needed_resources,
+                    }
+                )
                 raise
 
             finally:
@@ -910,20 +936,20 @@ class TestDeadlockPrevention:
         exception_results = [r for r in results if isinstance(r, Exception)]
 
         # With proper ordering, no deadlocks should occur
-        assert len(successful_results) == len(resource_scenarios), (
-            "All operations should complete successfully with ordered resource acquisition"
-        )
-        assert len(exception_results) == 0, (
-            f"No exceptions expected with ordered acquisition: {exception_results}"
-        )
-        assert len(failed_operations) == 0, (
-            f"No failed operations expected: {failed_operations}"
-        )
+        assert len(successful_results) == len(
+            resource_scenarios
+        ), "All operations should complete successfully with ordered resource acquisition"
+        assert (
+            len(exception_results) == 0
+        ), f"No exceptions expected with ordered acquisition: {exception_results}"
+        assert (
+            len(failed_operations) == 0
+        ), f"No failed operations expected: {failed_operations}"
 
         # Execution should be efficient
-        assert execution_time < 2.0, (
-            "Ordered acquisition should complete quickly without deadlocks"
-        )
+        assert (
+            execution_time < 2.0
+        ), "Ordered acquisition should complete quickly without deadlocks"
 
         # Verify that resources were actually reordered
         reordered_count = 0
@@ -931,9 +957,9 @@ class TestDeadlockPrevention:
             if operation["resources"] != operation["original_order"]:
                 reordered_count += 1
 
-        assert reordered_count > 0, (
-            "Some resources should have been reordered for deadlock prevention"
-        )
+        assert (
+            reordered_count > 0
+        ), "Some resources should have been reordered for deadlock prevention"
 
 
 class TestThreadSafetyValidation:
@@ -990,12 +1016,14 @@ class TestThreadSafetyValidation:
                         )
                         modification_type_name = "default_branch_modify"
 
-                    session_modifications.append({
-                        "agent_id": agent_id,
-                        "modification_index": i,
-                        "modification_type": modification_type_name,
-                        "timestamp": time.time(),
-                    })
+                    session_modifications.append(
+                        {
+                            "agent_id": agent_id,
+                            "modification_index": i,
+                            "modification_type": modification_type_name,
+                            "timestamp": time.time(),
+                        }
+                    )
 
                     concurrency_harness.record_resource_access(
                         agent_id, "session_state", "modify_success"
@@ -1006,12 +1034,14 @@ class TestThreadSafetyValidation:
                     await asyncio.sleep(0.001)
 
                 except Exception as e:
-                    modification_errors.append({
-                        "agent_id": agent_id,
-                        "modification_index": i,
-                        "error": str(e),
-                        "timestamp": time.time(),
-                    })
+                    modification_errors.append(
+                        {
+                            "agent_id": agent_id,
+                            "modification_index": i,
+                            "error": str(e),
+                            "timestamp": time.time(),
+                        }
+                    )
                     concurrency_harness.record_resource_access(
                         agent_id, "session_state", "modify_error"
                     )
@@ -1043,17 +1073,17 @@ class TestThreadSafetyValidation:
         # With proper mocking, we should have minimal errors
         error_rate = len(modification_errors) / max(total_modifications, 1)
 
-        assert error_rate < 0.1, (
-            f"Error rate should be low for thread-safe operations: {error_rate:.2%}"
-        )
-        assert len(exception_results) == 0, (
-            f"No exceptions expected in thread-safe operations: {exception_results}"
-        )
+        assert (
+            error_rate < 0.1
+        ), f"Error rate should be low for thread-safe operations: {error_rate:.2%}"
+        assert (
+            len(exception_results) == 0
+        ), f"No exceptions expected in thread-safe operations: {exception_results}"
 
         # Performance should be reasonable
-        assert execution_time < 5.0, (
-            "Concurrent modifications should complete within reasonable time"
-        )
+        assert (
+            execution_time < 5.0
+        ), "Concurrent modifications should complete within reasonable time"
 
         # Verify modification consistency
         modification_by_type = defaultdict(list)
@@ -1062,9 +1092,9 @@ class TestThreadSafetyValidation:
 
         # Each modification type should have reasonable distribution
         for mod_type, modifications in modification_by_type.items():
-            assert len(modifications) > 0, (
-                f"Should have modifications of type {mod_type}"
-            )
+            assert (
+                len(modifications) > 0
+            ), f"Should have modifications of type {mod_type}"
 
         # Detect any race conditions in modifications
         detected_races = concurrency_harness.detect_race_conditions()
@@ -1098,23 +1128,27 @@ class TestThreadSafetyValidation:
                 async with self._lock:
                     self.active_count += 1
                     self.max_concurrent = max(self.max_concurrent, self.active_count)
-                    self.access_log.append({
-                        "action": "enter",
-                        "active_count": self.active_count,
-                        "timestamp": time.time(),
-                        "task_id": id(asyncio.current_task()),
-                    })
+                    self.access_log.append(
+                        {
+                            "action": "enter",
+                            "active_count": self.active_count,
+                            "timestamp": time.time(),
+                            "task_id": id(asyncio.current_task()),
+                        }
+                    )
                 return self
 
             async def __aexit__(self, exc_type, exc_val, exc_tb):
                 async with self._lock:
                     self.active_count -= 1
-                    self.access_log.append({
-                        "action": "exit",
-                        "active_count": self.active_count,
-                        "timestamp": time.time(),
-                        "task_id": id(asyncio.current_task()),
-                    })
+                    self.access_log.append(
+                        {
+                            "action": "exit",
+                            "active_count": self.active_count,
+                            "timestamp": time.time(),
+                            "task_id": id(asyncio.current_task()),
+                        }
+                    )
                 return False
 
         # Create multiple resources for testing
@@ -1167,36 +1201,36 @@ class TestThreadSafetyValidation:
         success_rate = successful_uses / max(total_uses, 1)
 
         # Context managers should be thread-safe
-        assert success_rate >= 0.9, (
-            f"Context managers should be highly reliable: {success_rate:.2%}"
-        )
-        assert error_uses < total_uses * 0.1, (
-            f"Minimal errors expected: {error_uses}/{total_uses}"
-        )
+        assert (
+            success_rate >= 0.9
+        ), f"Context managers should be highly reliable: {success_rate:.2%}"
+        assert (
+            error_uses < total_uses * 0.1
+        ), f"Minimal errors expected: {error_uses}/{total_uses}"
 
         # Validate resource state consistency
         for resource_id, resource in resources.items():
             # All resources should be properly released
-            assert resource.active_count == 0, (
-                f"Resource {resource_id} should be fully released: {resource.active_count}"
-            )
+            assert (
+                resource.active_count == 0
+            ), f"Resource {resource_id} should be fully released: {resource.active_count}"
 
             # Log should show balanced enter/exit calls
-            enter_count = len([
-                log for log in resource.access_log if log["action"] == "enter"
-            ])
-            exit_count = len([
-                log for log in resource.access_log if log["action"] == "exit"
-            ])
-
-            assert enter_count == exit_count, (
-                f"Resource {resource_id} should have balanced enter/exit calls"
+            enter_count = len(
+                [log for log in resource.access_log if log["action"] == "enter"]
             )
+            exit_count = len(
+                [log for log in resource.access_log if log["action"] == "exit"]
+            )
+
+            assert (
+                enter_count == exit_count
+            ), f"Resource {resource_id} should have balanced enter/exit calls"
 
             # Concurrent usage should be reasonable
-            assert resource.max_concurrent <= 6, (
-                f"Max concurrent usage should be reasonable for {resource_id}"
-            )
+            assert (
+                resource.max_concurrent <= 6
+            ), f"Max concurrent usage should be reasonable for {resource_id}"
 
         # Performance should be good
         assert execution_time < 3.0, "Context manager operations should be efficient"
@@ -1253,11 +1287,13 @@ class TestConcurrencyErrorHandling:
                     # Simulate work
                     await asyncio.sleep(0.01)
 
-                    successful_operations.append({
-                        "agent_id": agent_id,
-                        "operation_id": operation_id,
-                        "timestamp": time.time(),
-                    })
+                    successful_operations.append(
+                        {
+                            "agent_id": agent_id,
+                            "operation_id": operation_id,
+                            "timestamp": time.time(),
+                        }
+                    )
                     concurrency_harness.record_resource_access(
                         agent_id, operation_id, "success"
                     )
@@ -1265,13 +1301,15 @@ class TestConcurrencyErrorHandling:
 
                 except Exception as e:
                     # Record failure
-                    failed_operations.append({
-                        "agent_id": agent_id,
-                        "operation_id": operation_id,
-                        "error": str(e),
-                        "error_type": type(e).__name__,
-                        "timestamp": time.time(),
-                    })
+                    failed_operations.append(
+                        {
+                            "agent_id": agent_id,
+                            "operation_id": operation_id,
+                            "error": str(e),
+                            "error_type": type(e).__name__,
+                            "timestamp": time.time(),
+                        }
+                    )
                     concurrency_harness.record_resource_access(
                         agent_id, operation_id, "failed"
                     )
@@ -1280,12 +1318,14 @@ class TestConcurrencyErrorHandling:
                     try:
                         await asyncio.sleep(0.005)  # Brief recovery delay
 
-                        recovered_operations.append({
-                            "agent_id": agent_id,
-                            "operation_id": operation_id,
-                            "original_error": str(e),
-                            "timestamp": time.time(),
-                        })
+                        recovered_operations.append(
+                            {
+                                "agent_id": agent_id,
+                                "operation_id": operation_id,
+                                "original_error": str(e),
+                                "timestamp": time.time(),
+                            }
+                        )
                         concurrency_harness.record_resource_access(
                             agent_id, operation_id, "recovered"
                         )
@@ -1332,22 +1372,22 @@ class TestConcurrencyErrorHandling:
         recovery_rate = recovery_count / max(failure_count, 1)
 
         # Validate partial failure handling
-        assert success_rate > 0.4, (
-            f"Should have reasonable success rate despite failures: {success_rate:.2%}"
-        )
+        assert (
+            success_rate > 0.4
+        ), f"Should have reasonable success rate despite failures: {success_rate:.2%}"
         assert failure_count > 0, "Should have some failures to test handling"
-        assert recovery_rate > 0.5, (
-            f"Should recover from most failures: {recovery_rate:.2%}"
-        )
+        assert (
+            recovery_rate > 0.5
+        ), f"Should recover from most failures: {recovery_rate:.2%}"
 
         # System should remain responsive despite failures
         assert execution_time < 10.0, "System should handle failures efficiently"
 
         # No complete task failures (all should return results)
         task_exceptions = [r for r in all_results if isinstance(r, Exception)]
-        assert len(task_exceptions) == 0, (
-            f"No complete task failures expected: {task_exceptions}"
-        )
+        assert (
+            len(task_exceptions) == 0
+        ), f"No complete task failures expected: {task_exceptions}"
 
         # Validate failure distribution
         failure_by_agent = defaultdict(int)
@@ -1360,15 +1400,15 @@ class TestConcurrencyErrorHandling:
             expected_failures = op_count * expected_prob
 
             # Allow some variance but should be in reasonable range
-            assert actual_failures <= op_count, (
-                f"Agent {agent_id} can't fail more than total operations"
-            )
+            assert (
+                actual_failures <= op_count
+            ), f"Agent {agent_id} can't fail more than total operations"
 
             # For high-failure agents, should have some failures
             if expected_prob > 0.3:
-                assert actual_failures > 0, (
-                    f"High-failure agent {agent_id} should have some failures"
-                )
+                assert (
+                    actual_failures > 0
+                ), f"High-failure agent {agent_id} should have some failures"
 
         print("\nConcurrency Error Handling Analysis:")
         print(f"  - Total operations: {total_operations}")
@@ -1413,12 +1453,14 @@ class TestConcurrencyPerformance:
             await asyncio.sleep(0.01)  # 10ms of work
 
             end_time = time.time()
-            completed_operations.append({
-                "agent_id": agent_id,
-                "operation_id": operation_id,
-                "duration": end_time - start_time,
-                "timestamp": end_time,
-            })
+            completed_operations.append(
+                {
+                    "agent_id": agent_id,
+                    "operation_id": operation_id,
+                    "duration": end_time - start_time,
+                    "timestamp": end_time,
+                }
+            )
 
             return f"{agent_id}_op_{operation_id}"
 
@@ -1435,9 +1477,9 @@ class TestConcurrencyPerformance:
             ]
 
             batch_results = await asyncio.gather(*batch_tasks)
-            assert len(batch_results) == len(batch_tasks), (
-                "All batch operations should complete"
-            )
+            assert len(batch_results) == len(
+                batch_tasks
+            ), "All batch operations should complete"
 
         end_time = time.time()
         total_execution_time = end_time - start_time
@@ -1450,20 +1492,20 @@ class TestConcurrencyPerformance:
 
         # Performance validation
         min_throughput = performance_benchmarks["min_throughput_operations_per_sec"]
-        assert operations_per_second >= min_throughput, (
-            f"Throughput too low: {operations_per_second:.2f} ops/sec < {min_throughput} ops/sec"
-        )
+        assert (
+            operations_per_second >= min_throughput
+        ), f"Throughput too low: {operations_per_second:.2f} ops/sec < {min_throughput} ops/sec"
 
         # Individual operations should be reasonably fast
-        assert avg_operation_duration < 0.1, (
-            f"Average operation duration too high: {avg_operation_duration:.3f}s"
-        )
+        assert (
+            avg_operation_duration < 0.1
+        ), f"Average operation duration too high: {avg_operation_duration:.3f}s"
 
         # Total time should be reasonable for concurrent execution
         max_expected_time = (operation_count / min_throughput) * 1.5  # 50% buffer
-        assert total_execution_time < max_expected_time, (
-            f"Total execution time too high: {total_execution_time:.2f}s"
-        )
+        assert (
+            total_execution_time < max_expected_time
+        ), f"Total execution time too high: {total_execution_time:.2f}s"
 
         print("\nThroughput Performance:")
         print(f"  - Operations per second: {operations_per_second:.2f}")
@@ -1516,10 +1558,12 @@ class TestConcurrencyPerformance:
 
             # Create agents for this wave
             wave_tasks = [
-                asyncio.gather(*[
-                    memory_intensive_agent_operation(f"memory_agent_{agent_id}")
-                    for _ in range(operations_per_agent)
-                ])
+                asyncio.gather(
+                    *[
+                        memory_intensive_agent_operation(f"memory_agent_{agent_id}")
+                        for _ in range(operations_per_agent)
+                    ]
+                )
                 for agent_id in range(wave_start, wave_end)
             ]
 
@@ -1548,15 +1592,15 @@ class TestConcurrencyPerformance:
         max_total_growth = max_growth_per_agent * agent_count
 
         # Memory efficiency validation
-        assert memory_growth < max_total_growth, (
-            f"Memory growth too high: {memory_growth:.2f}MB > {max_total_growth:.2f}MB"
-        )
+        assert (
+            memory_growth < max_total_growth
+        ), f"Memory growth too high: {memory_growth:.2f}MB > {max_total_growth:.2f}MB"
 
         # Memory should be mostly cleaned up after execution
         cleanup_ratio = 1 - (final_memory_growth / max(memory_growth, 0.1))
-        assert cleanup_ratio > 0.7, (
-            f"Poor memory cleanup: {cleanup_ratio:.2%} cleanup ratio"
-        )
+        assert (
+            cleanup_ratio > 0.7
+        ), f"Poor memory cleanup: {cleanup_ratio:.2%} cleanup ratio"
 
         print("\nMemory Efficiency Analysis:")
         print(f"  - Baseline memory: {baseline_memory:.2f}MB")
@@ -1582,12 +1626,14 @@ def test_execution_reporter():
             self, test_name: str, status: str, metrics: dict[str, Any]
         ):
             """Record test execution results."""
-            self.test_results.append({
-                "test_name": test_name,
-                "status": status,
-                "metrics": metrics,
-                "timestamp": time.time(),
-            })
+            self.test_results.append(
+                {
+                    "test_name": test_name,
+                    "status": status,
+                    "metrics": metrics,
+                    "timestamp": time.time(),
+                }
+            )
 
         def record_performance_metric(self, metric_name: str, value: float, unit: str):
             """Record performance measurements."""
@@ -1601,21 +1647,23 @@ def test_execution_reporter():
             self, finding_type: str, details: dict[str, Any]
         ):
             """Record concurrency-related findings."""
-            self.concurrency_findings.append({
-                "type": finding_type,
-                "details": details,
-                "timestamp": time.time(),
-            })
+            self.concurrency_findings.append(
+                {
+                    "type": finding_type,
+                    "details": details,
+                    "timestamp": time.time(),
+                }
+            )
 
         def generate_summary_report(self) -> str:
             """Generate a summary report of all test results."""
             total_tests = len(self.test_results)
-            passed_tests = len([
-                r for r in self.test_results if r["status"] == "passed"
-            ])
-            failed_tests = len([
-                r for r in self.test_results if r["status"] == "failed"
-            ])
+            passed_tests = len(
+                [r for r in self.test_results if r["status"] == "passed"]
+            )
+            failed_tests = len(
+                [r for r in self.test_results if r["status"] == "failed"]
+            )
 
             report = f"""
 # Concurrency Test Execution Summary

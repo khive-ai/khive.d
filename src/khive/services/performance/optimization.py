@@ -6,9 +6,15 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
-from .analysis import (BottleneckAnalysis, BottleneckIdentifier,
-                       PerformanceAnalyzer, RegressionDetector,
-                       RegressionSeverity, TrendAnalyzer, TrendDirection)
+from .analysis import (
+    BottleneckAnalysis,
+    BottleneckIdentifier,
+    PerformanceAnalyzer,
+    RegressionDetector,
+    RegressionSeverity,
+    TrendAnalyzer,
+    TrendDirection,
+)
 from .benchmark_framework import BenchmarkResult
 from .storage import BenchmarkStorage
 
@@ -369,12 +375,12 @@ async def optimized_operation():
     # Use async operations for I/O
     async with aiofiles.open('file.txt', 'r') as f:
         data = await f.read()
-    
+
     # Use asyncio.gather for concurrent operations
     results = await asyncio.gather(*[
         async_task(item) for item in data_items
     ])
-    
+
     return results
             """,
             # CPU optimization example
@@ -402,9 +408,9 @@ results = [process(item) for item in items if condition(item)]
             ),  # Conservative estimate
             confidence=bottleneck.confidence,
             implementation_complexity="medium",
-            estimated_effort_hours=8.0
-            if priority == OptimizationPriority.CRITICAL
-            else 4.0,
+            estimated_effort_hours=(
+                8.0 if priority == OptimizationPriority.CRITICAL else 4.0
+            ),
             evidence=[
                 f"CPU utilization: {utilization:.1f}%",
                 f"Performance impact: {impact:.1f}%",
@@ -464,12 +470,12 @@ class ObjectPool:
         self.create_func = create_func
         self.reset_func = reset_func
         self.pool = deque([create_func() for _ in range(initial_size)])
-    
+
     def acquire(self):
         if self.pool:
             return self.pool.popleft()
         return self.create_func()
-    
+
     def release(self, obj):
         self.reset_func(obj)
         self.pool.append(obj)
@@ -485,9 +491,9 @@ class ObjectPool:
             estimated_improvement_percent=min(impact * 0.5, 25),
             confidence=bottleneck.confidence,
             implementation_complexity="medium",
-            estimated_effort_hours=6.0
-            if priority == OptimizationPriority.CRITICAL
-            else 3.0,
+            estimated_effort_hours=(
+                6.0 if priority == OptimizationPriority.CRITICAL else 3.0
+            ),
             evidence=[
                 f"Memory usage: {utilization:.1f}MB",
                 f"Performance impact: {impact:.1f}%",
@@ -534,12 +540,12 @@ async def async_file_operations(filenames):
     async def read_file(filename):
         async with aiofiles.open(filename, 'r') as f:
             return await f.read()
-    
+
     # Process files concurrently
     results = await asyncio.gather(*[
         read_file(filename) for filename in filenames
     ])
-    
+
     return results
             """,
             # I/O batching example
@@ -565,9 +571,9 @@ def batch_file_operations(operations, batch_size=10):
             estimated_improvement_percent=min(impact * 0.7, 40),
             confidence=bottleneck.confidence,
             implementation_complexity="medium",
-            estimated_effort_hours=10.0
-            if priority == OptimizationPriority.CRITICAL
-            else 5.0,
+            estimated_effort_hours=(
+                10.0 if priority == OptimizationPriority.CRITICAL else 5.0
+            ),
             evidence=[
                 f"I/O operations: {utilization / 1024 / 1024:.1f}MB",
                 f"Performance impact: {impact:.1f}%",
@@ -618,11 +624,11 @@ class HTTPClientPool:
             enable_cleanup_closed=True
         )
         self.session = aiohttp.ClientSession(connector=connector)
-    
+
     async def make_request(self, url, **kwargs):
         async with self.session.get(url, **kwargs) as response:
             return await response.json()
-    
+
     async def close(self):
         await self.session.close()
             """,
@@ -635,7 +641,7 @@ async def batch_api_requests(urls, batch_size=10):
             batch_urls = urls[i:i+batch_size]
             tasks = [session.get(url) for url in batch_urls]
             responses = await asyncio.gather(*tasks)
-            
+
             for response in responses:
                 yield await response.json()
                 response.close()
@@ -651,9 +657,9 @@ async def batch_api_requests(urls, batch_size=10):
             estimated_improvement_percent=min(impact * 0.6, 35),
             confidence=bottleneck.confidence,
             implementation_complexity="medium",
-            estimated_effort_hours=8.0
-            if priority == OptimizationPriority.CRITICAL
-            else 4.0,
+            estimated_effort_hours=(
+                8.0 if priority == OptimizationPriority.CRITICAL else 4.0
+            ),
             evidence=[
                 f"Network usage: {utilization / 1024 / 1024:.1f}MB",
                 f"Performance impact: {impact:.1f}%",
@@ -743,12 +749,12 @@ async def batch_api_requests(urls, batch_size=10):
             priority=priority,
             estimated_improvement_percent=(relative_change - 1) * 100,
             confidence=regression_result.confidence,
-            implementation_complexity="high"
-            if severity == RegressionSeverity.CRITICAL
-            else "medium",
-            estimated_effort_hours=16.0
-            if severity == RegressionSeverity.CRITICAL
-            else 8.0,
+            implementation_complexity=(
+                "high" if severity == RegressionSeverity.CRITICAL else "medium"
+            ),
+            estimated_effort_hours=(
+                16.0 if severity == RegressionSeverity.CRITICAL else 8.0
+            ),
             evidence=[
                 f"Regression severity: {severity.value}",
                 f"Performance degradation: {relative_change:.1f}x",
@@ -830,9 +836,9 @@ async def batch_api_requests(urls, batch_size=10):
             estimated_improvement_percent=(change_rate - 1) * 100,
             confidence=confidence,
             implementation_complexity="medium",
-            estimated_effort_hours=6.0
-            if priority == OptimizationPriority.HIGH
-            else 3.0,
+            estimated_effort_hours=(
+                6.0 if priority == OptimizationPriority.HIGH else 3.0
+            ),
             evidence=[
                 f"Trend direction: {trend_analysis.direction.value}",
                 f"Performance change: {change_rate:.1f}x",
@@ -1234,12 +1240,14 @@ class PerformanceTuner:
             for rec in optimization_plan.all_recommendations[:2]:  # Apply top 2
                 if self._can_auto_apply(rec):
                     apply_result = self._apply_optimization(rec)
-                    applied_optimizations.append({
-                        "recommendation_id": rec.id,
-                        "title": rec.title,
-                        "applied": apply_result["success"],
-                        "message": apply_result.get("message", ""),
-                    })
+                    applied_optimizations.append(
+                        {
+                            "recommendation_id": rec.id,
+                            "title": rec.title,
+                            "applied": apply_result["success"],
+                            "message": apply_result.get("message", ""),
+                        }
+                    )
 
             if not applied_optimizations:
                 iteration_result["message"] = (

@@ -318,7 +318,11 @@ class TestCCToolkitCreation:
         assert "status" in result
         if result["status"] == "error":
             assert "error_type" in result
-            assert result["error_type"] in ["FileNotFoundError", "ConfigurationError", "PermissionError"]
+            assert result["error_type"] in [
+                "FileNotFoundError",
+                "ConfigurationError",
+                "PermissionError",
+            ]
             assert "error_message" in result
         # If success, should have proper result structure
         elif result["status"] == "success":
@@ -397,4 +401,6 @@ class TestCCToolkitCreation:
                 # Exception case - should be handled gracefully without crashing
                 assert isinstance(result, Exception)
                 # Verify it's an expected exception type
-                assert isinstance(result, (FileNotFoundError, PermissionError, ValueError))
+                assert isinstance(
+                    result, (FileNotFoundError, PermissionError, ValueError)
+                )

@@ -9,8 +9,7 @@ import json
 
 import pytest
 
-from khive.services.artifacts.exceptions import (DocumentAlreadyExists,
-                                                 DocumentNotFound)
+from khive.services.artifacts.exceptions import DocumentAlreadyExists, DocumentNotFound
 from khive.services.artifacts.factory import create_artifacts_service
 from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.storage import FilesystemStorageRepository
@@ -60,7 +59,9 @@ class TestArtifactsServiceIntegration:
         assert document.content == content
 
         # Retrieve document from session
-        retrieved_doc = await integration_artifacts_service.get_document(doc_id, session_id)
+        retrieved_doc = await integration_artifacts_service.get_document(
+            doc_id, session_id
+        )
         assert retrieved_doc.document_id == doc_id
         assert retrieved_doc.content == content
 

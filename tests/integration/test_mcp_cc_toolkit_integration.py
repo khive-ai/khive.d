@@ -46,12 +46,14 @@ class TestCCToolkitCreation:
 
         # Create basic project structure
         (project_dir / "src").mkdir()
-        (project_dir / "pyproject.toml").write_text("""
+        (project_dir / "pyproject.toml").write_text(
+            """
 [project]
 name = "test-project"
 version = "0.1.0"
 description = "Test project for MCP integration"
-""")
+"""
+        )
 
         # Copy MCP config to project
         mcp_dir = project_dir / ".khive" / "mcps"
@@ -61,11 +63,13 @@ description = "Test project for MCP integration"
 
         # Create .env file with test tokens
         env_file = project_dir / ".env"
-        env_file.write_text("""
+        env_file.write_text(
+            """
 GITHUB_TOKEN=test_github_token_123
 OPENAI_API_KEY=test_openai_key_456
 MCP_SERVER_DEBUG=true
-""")
+"""
+        )
 
         return project_dir
 

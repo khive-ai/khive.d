@@ -1,7 +1,11 @@
 """Two-tier complexity triage system."""
 
-from .complexity_triage import (ComplexityTriageService, TriageAnalyzer,
-                                TriageConsensus, TriageRecord)
+from .complexity_triage import (
+    ComplexityTriageService,
+    TriageAnalyzer,
+    TriageConsensus,
+    TriageRecord,
+)
 
 __all__ = [
     "ComplexityTriageService",

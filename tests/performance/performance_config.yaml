@@ -79,7 +79,7 @@ benchmarking:
     disable_gc: false
     warmup: true
     warmup_iterations: 3
-    
+
   statistical_analysis:
     confidence_level: 0.95
     outlier_detection: true
@@ -92,33 +92,33 @@ monitoring:
     cpu_monitoring: true
     memory_monitoring: true
     thread_monitoring: true
-    disk_io_monitoring: false  # Disable for CI environments
-    
+    disk_io_monitoring: false # Disable for CI environments
+
   snapshot_intervals:
     performance_snapshots_sec: 5.0
     memory_snapshots_sec: 2.0
     resource_snapshots_sec: 10.0
-    
+
   report_generation:
     detailed_metrics: true
     statistical_analysis: true
-    trend_charts: false  # Requires matplotlib
+    trend_charts: false # Requires matplotlib
     export_formats: ["json", "csv"]
 
 # CI/CD Integration
 ci_integration:
   fail_on_regression: true
-  regression_threshold_percent: 20.0  # More lenient for CI
+  regression_threshold_percent: 20.0 # More lenient for CI
   max_test_runtime_minutes: 15
   parallel_execution: true
-  
+
   notification:
-    slack_webhook: null  # Set in CI environment
+    slack_webhook: null # Set in CI environment
     email_recipients: []
-    
+
   artifact_retention:
-    keep_reports: 30  # days
-    keep_benchmark_data: 7  # days
+    keep_reports: 30 # days
+    keep_benchmark_data: 7 # days
 
 # Environment-Specific Overrides
 environments:
@@ -130,15 +130,15 @@ environments:
         min_throughput_ops_sec: 5
       memory:
         max_peak_memory_mb: 300
-        
+
   ci:
     test_scenarios:
       load_testing:
-        concurrent_levels: [1, 5, 10]  # Reduced for CI
+        concurrent_levels: [1, 5, 10] # Reduced for CI
         max_test_duration_sec: 30
     ci_integration:
       max_test_runtime_minutes: 10
-      
+
   production:
     quality_gates:
       # Strict thresholds for production validation

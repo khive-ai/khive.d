@@ -700,18 +700,18 @@ class TestInputSanitizationConsistency:
         # Check for consistency - all fields should handle malicious input similarly
         # Either all sanitize or all reject, but behavior should be consistent
         handling_methods = set(
-            "SANITIZED"
-            if result != "REJECTED" and malicious_input not in result
-            else "REJECTED"
-            if result == "REJECTED"
-            else "VULNERABLE"
+            (
+                "SANITIZED"
+                if result != "REJECTED" and malicious_input not in result
+                else "REJECTED" if result == "REJECTED" else "VULNERABLE"
+            )
             for result in sanitization_results.values()
         )
 
         # Should not have vulnerable fields if others are protected
-        assert "VULNERABLE" not in handling_methods, (
-            f"Inconsistent sanitization: {sanitization_results}"
-        )
+        assert (
+            "VULNERABLE" not in handling_methods
+        ), f"Inconsistent sanitization: {sanitization_results}"
 
     def test_sanitization_effectiveness_metrics(self):
         """Test and measure sanitization effectiveness across attack categories."""
@@ -769,6 +769,6 @@ class TestInputSanitizationConsistency:
             for metrics in effectiveness_metrics.values()
         ) / len(effectiveness_metrics)
 
-        assert overall_protected >= 0.9, (
-            f"Overall protection rate too low: {overall_protected:.1%}"
-        )
+        assert (
+            overall_protected >= 0.9
+        ), f"Overall protection rate too low: {overall_protected:.1%}"

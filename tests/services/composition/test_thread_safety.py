@@ -402,9 +402,9 @@ class TestResourceContention:
         success_rate = len(successful_loads) / (
             len(successful_loads) + len(failed_loads)
         )
-        assert success_rate > 0.95, (
-            f"Too many file operations failed: {len(failed_loads)} failures"
-        )
+        assert (
+            success_rate > 0.95
+        ), f"Too many file operations failed: {len(failed_loads)} failures"
 
         # Verify loaded data integrity
         for file_idx, result in all_results:
@@ -438,8 +438,7 @@ class TestResourceContention:
                 f"pattern_{i}": [f"item_{j}" for j in range(100)] for i in range(50)
             },
             "large_rules": {
-                f"rule_{i}": "x" * 1000
-                for i in range(100)  # 100 rules, 1KB each
+                f"rule_{i}": "x" * 1000 for i in range(100)  # 100 rules, 1KB each
             },
         }
         domain_file = domains_dir / "memory_domain.yaml"
@@ -476,17 +475,17 @@ class TestResourceContention:
 
         # Should handle memory pressure gracefully - allow some validation errors but expect most to succeed
         # At least 80% of requests should succeed under normal memory conditions
-        assert len(results) >= 40, (
-            f"Too many failures: {len(results)} successes, {len(memory_errors)} errors"
-        )
+        assert (
+            len(results) >= 40
+        ), f"Too many failures: {len(results)} successes, {len(memory_errors)} errors"
 
         # If there are genuine memory errors (not validation errors), flag them
         genuine_memory_errors = [
             e for e in memory_errors if isinstance(e[1], MemoryError)
         ]
-        assert len(genuine_memory_errors) == 0, (
-            f"Genuine memory errors: {genuine_memory_errors}"
-        )
+        assert (
+            len(genuine_memory_errors) == 0
+        ), f"Genuine memory errors: {genuine_memory_errors}"
 
         # Verify composition structure
         for result in results[:5]:  # Check first 5 results
@@ -554,9 +553,9 @@ class TestResourceContention:
             assert isinstance(result, dict), f"Quick operation failed: {result}"
 
         successful_blocking = [r for r in blocking_results if r[0] == "success"]
-        assert len(successful_blocking) == 20, (
-            f"Blocking operations failed: {blocking_results}"
-        )
+        assert (
+            len(successful_blocking) == 20
+        ), f"Blocking operations failed: {blocking_results}"
 
 
 class TestDeadlockPrevention:
@@ -663,23 +662,25 @@ class TestDeadlockPrevention:
                     future.result()
                 except Exception as e:
                     with operation_lock:
-                        completed_operations.append((
-                            "future",
-                            "timeout",
-                            "error",
-                            str(e),
-                        ))
+                        completed_operations.append(
+                            (
+                                "future",
+                                "timeout",
+                                "error",
+                                str(e),
+                            )
+                        )
 
         # Verify no deadlocks occurred
         successful_ops = [op for op in completed_operations if op[2] == "success"]
         failed_ops = [op for op in completed_operations if op[2] == "error"]
 
-        assert len(failed_ops) == 0, (
-            f"Operations failed (possible deadlock): {failed_ops}"
-        )
-        assert len(successful_ops) == 30, (
-            f"Expected 30 successful operations, got {len(successful_ops)}"
-        )
+        assert (
+            len(failed_ops) == 0
+        ), f"Operations failed (possible deadlock): {failed_ops}"
+        assert (
+            len(successful_ops) == 30
+        ), f"Expected 30 successful operations, got {len(successful_ops)}"
 
         # Verify all operations produced valid results
         for thread_id, op_type, status, result in successful_ops:

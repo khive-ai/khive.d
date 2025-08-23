@@ -1,9 +1,17 @@
 """Performance benchmarking and analysis service."""
 
-from .analysis import (BottleneckIdentifier, PerformanceAnalyzer,
-                       RegressionDetector, TrendAnalyzer)
-from .benchmark_framework import (BenchmarkFramework, BenchmarkResult,
-                                  BenchmarkSuite, PerformanceMetrics)
+from .analysis import (
+    BottleneckIdentifier,
+    PerformanceAnalyzer,
+    RegressionDetector,
+    TrendAnalyzer,
+)
+from .benchmark_framework import (
+    BenchmarkFramework,
+    BenchmarkResult,
+    BenchmarkSuite,
+    PerformanceMetrics,
+)
 from .optimization import OptimizationRecommender, PerformanceTuner
 from .reporting import CIIntegration, PerformanceReporter
 from .storage import BenchmarkStorage, PerformanceDatabase

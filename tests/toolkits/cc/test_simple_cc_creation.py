@@ -45,7 +45,7 @@ class TestSimpleCCToolkitCreation:
 
     # TODO: Implement actual CC creation tests once create_cc function is available
     # Current stub tests removed to avoid false test coverage confidence
-    
+
     def test_mcp_config_structure_validation(self, temp_project: Path):
         """Test MCP config file structure validation."""
         config_file = temp_project / ".khive" / "mcps" / "config.json"
@@ -54,7 +54,7 @@ class TestSimpleCCToolkitCreation:
         # Parse and validate config structure
         config_data = json.loads(config_file.read_text())
         assert "mcpServers" in config_data
-        
+
         # Validate server configuration structure
         for server_name, server_config in config_data["mcpServers"].items():
             assert isinstance(server_name, str)
@@ -96,8 +96,15 @@ class TestConfigurationHandling:
 
     def test_dangerous_command_detection(self):
         """Test detection of dangerous commands in MCP server configs."""
-        dangerous_patterns = ["rm -rf", "del /", "format ", "__import__", "eval(", "exec("]
-        
+        dangerous_patterns = [
+            "rm -rf",
+            "del /",
+            "format ",
+            "__import__",
+            "eval(",
+            "exec(",
+        ]
+
         test_cases = [
             ("rm -rf /", True),
             ("python -m server", False),
@@ -105,13 +112,14 @@ class TestConfigurationHandling:
             ("evil_command && rm -rf /", True),
             ("python -c 'eval(malicious_code)'", True),
         ]
-        
+
         for command, should_be_dangerous in test_cases:
             has_dangerous_pattern = any(
                 pattern in command.lower() for pattern in dangerous_patterns
             )
-            assert has_dangerous_pattern == should_be_dangerous, \
-                f"Command '{command}' danger detection failed"
+            assert (
+                has_dangerous_pattern == should_be_dangerous
+            ), f"Command '{command}' danger detection failed"
 
     def test_transport_detection(self):
         """Test transport type detection."""

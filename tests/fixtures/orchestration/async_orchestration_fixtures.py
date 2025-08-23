@@ -21,8 +21,11 @@ from khive.services.artifacts.models import Author, DocumentType
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.composition.parts import ComposerRequest
 from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.orchestration.parts import (AgentRequest, GateOptions,
-                                                OrchestrationPlan)
+from khive.services.orchestration.parts import (
+    AgentRequest,
+    GateOptions,
+    OrchestrationPlan,
+)
 from khive.services.plan.parts import ComplexityLevel, TaskPhase
 from khive.services.plan.planner_service import PlannerService
 
@@ -183,9 +186,7 @@ async def initialized_orchestrator(mock_cc_model, mock_session, mock_builder):
     """Create a fully initialized orchestrator for testing."""
     orchestrator = LionOrchestrator("test_orchestration_flow")
 
-    with (
-        pytest.MonkeyPatch().context() as mp,
-    ):
+    with (pytest.MonkeyPatch().context() as mp,):
         # Patch all the dependencies
         mp.setattr(
             "khive.services.orchestration.orchestrator.create_cc",

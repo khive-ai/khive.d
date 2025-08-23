@@ -95,9 +95,9 @@ class MCPPerformanceMonitor:
             "successful_operations": len([m for m in self.metrics if m.success]),
             "max_memory_increase": max(memory_deltas) if memory_deltas else 0,
             "min_memory_increase": min(memory_deltas) if memory_deltas else 0,
-            "average_memory_increase": sum(memory_deltas) / len(memory_deltas)
-            if memory_deltas
-            else 0,
+            "average_memory_increase": (
+                sum(memory_deltas) / len(memory_deltas) if memory_deltas else 0
+            ),
             "total_memory_increase": sum(memory_deltas) if memory_deltas else 0,
         }
 
@@ -121,16 +121,17 @@ class MCPPerformanceMonitor:
                 "total_count": len(op_metrics),
                 "successful_count": len(successful),
                 "failed_count": len(failed),
-                "average_duration": sum(m.duration for m in successful)
-                / len(successful)
-                if successful
-                else 0,
-                "max_duration": max(m.duration for m in successful)
-                if successful
-                else 0,
-                "min_duration": min(m.duration for m in successful)
-                if successful
-                else 0,
+                "average_duration": (
+                    sum(m.duration for m in successful) / len(successful)
+                    if successful
+                    else 0
+                ),
+                "max_duration": (
+                    max(m.duration for m in successful) if successful else 0
+                ),
+                "min_duration": (
+                    min(m.duration for m in successful) if successful else 0
+                ),
             }
 
         return report
@@ -157,24 +158,24 @@ class MCPPerformanceMonitor:
         # Check success rate
         if min_success_rate is not None:
             success_rate = len(successful) / len(metrics)
-            assert success_rate >= min_success_rate, (
-                f"Success rate {success_rate:.2%} below threshold {min_success_rate:.2%}"
-            )
+            assert (
+                success_rate >= min_success_rate
+            ), f"Success rate {success_rate:.2%} below threshold {min_success_rate:.2%}"
 
         # Check duration (only for successful operations)
         if max_duration is not None and successful:
             avg_duration = sum(m.duration for m in successful) / len(successful)
-            assert avg_duration <= max_duration, (
-                f"Average duration {avg_duration:.3f}s exceeds threshold {max_duration:.3f}s"
-            )
+            assert (
+                avg_duration <= max_duration
+            ), f"Average duration {avg_duration:.3f}s exceeds threshold {max_duration:.3f}s"
 
         # Check memory usage
         if max_memory_mb is not None and successful:
             max_memory_bytes = max_memory_mb * 1024 * 1024
             avg_memory_delta = sum(m.memory_delta for m in successful) / len(successful)
-            assert avg_memory_delta <= max_memory_bytes, (
-                f"Average memory increase {avg_memory_delta / 1024 / 1024:.1f}MB exceeds threshold {max_memory_mb}MB"
-            )
+            assert (
+                avg_memory_delta <= max_memory_bytes
+            ), f"Average memory increase {avg_memory_delta / 1024 / 1024:.1f}MB exceeds threshold {max_memory_mb}MB"
 
 
 class MCPConcurrencyTester:

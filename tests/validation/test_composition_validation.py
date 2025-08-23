@@ -10,10 +10,12 @@ This module provides systematic validation testing for:
 
 from typing import Any
 
-from khive.services.composition.parts import (AgentCompositionRequest,
-                                              ComposerRequest,
-                                              ComposerResponse,
-                                              DomainExpertise)
+from khive.services.composition.parts import (
+    AgentCompositionRequest,
+    ComposerRequest,
+    ComposerResponse,
+    DomainExpertise,
+)
 from tests.validation.pydantic_validators import BaseValidationPattern
 
 # ============================================================================
@@ -804,12 +806,14 @@ class CompositionServiceCrossValidator:
         # Validate individual domain expertise
         for expertise in response.domain_expertise:
             # Domain expertise should have reasonable content
-            if not any([
-                expertise.knowledge_patterns,
-                expertise.decision_rules,
-                expertise.specialized_tools,
-                expertise.confidence_thresholds,
-            ]):
+            if not any(
+                [
+                    expertise.knowledge_patterns,
+                    expertise.decision_rules,
+                    expertise.specialized_tools,
+                    expertise.confidence_thresholds,
+                ]
+            ):
                 issues.append(f"Domain expertise for '{expertise.domain_id}' is empty")
 
         return issues

@@ -15,8 +15,12 @@ from uuid import uuid4
 
 import pytest
 
-from khive.services.plan.parts import (ComplexityLevel, PlannerRequest,
-                                       QualityGate, WorkflowPattern)
+from khive.services.plan.parts import (
+    ComplexityLevel,
+    PlannerRequest,
+    QualityGate,
+    WorkflowPattern,
+)
 from khive.services.plan.planner_service import ComplexityTier
 
 

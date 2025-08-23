@@ -8,15 +8,21 @@ from datetime import datetime
 import pytest
 
 from khive.services.artifacts.service import ArtifactsService
+
 # Import khive services for testing
 from khive.services.cache.service import CacheService
+
 # Import performance framework
-from khive.services.performance import (BenchmarkFramework, BenchmarkStorage,
-                                        BottleneckIdentifier,
-                                        OptimizationRecommender,
-                                        PerformanceAnalyzer,
-                                        PerformanceReporter,
-                                        RegressionDetector, TrendAnalyzer)
+from khive.services.performance import (
+    BenchmarkFramework,
+    BenchmarkStorage,
+    BottleneckIdentifier,
+    OptimizationRecommender,
+    PerformanceAnalyzer,
+    PerformanceReporter,
+    RegressionDetector,
+    TrendAnalyzer,
+)
 from khive.services.session.session_service import SessionService
 
 
@@ -628,9 +634,9 @@ def test_framework_initialization_performance():
     initialization_time = end_time - start_time
 
     # Should initialize quickly
-    assert initialization_time < 1.0, (
-        f"Framework initialization too slow: {initialization_time:.3f}s"
-    )
+    assert (
+        initialization_time < 1.0
+    ), f"Framework initialization too slow: {initialization_time:.3f}s"
 
     print(f"Framework initialization: {initialization_time:.3f}s")
     return True

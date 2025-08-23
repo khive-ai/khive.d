@@ -238,8 +238,7 @@ class TestInputValidationSecurity:
 
     def test_orchestration_plan_validation(self):
         """Test validation of orchestration plan inputs."""
-        from khive.services.orchestration.parts import (AgentRequest,
-                                                        OrchestrationPlan)
+        from khive.services.orchestration.parts import AgentRequest, OrchestrationPlan
 
         # Valid plan should work
         valid_plan = OrchestrationPlan(

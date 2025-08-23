@@ -1,14 +1,15 @@
 """Comprehensive tests for composition Pydantic models."""
 
-
 import pytest
 from pydantic import ValidationError
 
 from khive.prompts import AgentRole
-from khive.services.composition.parts import (AgentCompositionRequest,
-                                              ComposerRequest,
-                                              ComposerResponse,
-                                              DomainExpertise)
+from khive.services.composition.parts import (
+    AgentCompositionRequest,
+    ComposerRequest,
+    ComposerResponse,
+    DomainExpertise,
+)
 
 
 class TestComposerRequest:

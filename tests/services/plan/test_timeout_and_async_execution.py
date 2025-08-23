@@ -8,8 +8,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from khive.services.artifacts.handlers.timeout_manager import (
-    TimeoutConfig, TimeoutManager, TimeoutResult, TimeoutStatus, TimeoutType,
-    create_timeout_manager, timeout_agent_execution, timeout_phase_completion)
+    TimeoutConfig,
+    TimeoutManager,
+    TimeoutResult,
+    TimeoutStatus,
+    TimeoutType,
+    create_timeout_manager,
+    timeout_agent_execution,
+    timeout_phase_completion,
+)
 from khive.services.plan.planner_service import OrchestrationPlanner
 
 

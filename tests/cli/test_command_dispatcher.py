@@ -10,11 +10,16 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from khive.cli.khive_cli import (COMMAND_DESCRIPTIONS,
-                                 COMMAND_MODULE_BASE_PATH, COMMANDS,
-                                 ENTRY_POINT_FUNCTION_NAME,
-                                 _get_full_module_path, _load_command_module,
-                                 _print_root_help, main)
+from khive.cli.khive_cli import (
+    COMMAND_DESCRIPTIONS,
+    COMMAND_MODULE_BASE_PATH,
+    COMMANDS,
+    ENTRY_POINT_FUNCTION_NAME,
+    _get_full_module_path,
+    _load_command_module,
+    _print_root_help,
+    main,
+)
 
 
 class TestCommandMapping:

@@ -236,11 +236,13 @@ class TestCrossServiceWorkflows:
                 },
             )
 
-            phase_results.append({
-                "phase": phase_name,
-                "document": completed_doc,
-                "execution_time": execution_time,
-            })
+            phase_results.append(
+                {
+                    "phase": phase_name,
+                    "document": completed_doc,
+                    "execution_time": execution_time,
+                }
+            )
 
         # Phase 4: Cross-phase coordination and validation
         # Create summary document linking all phases
@@ -295,9 +297,9 @@ class TestCrossServiceWorkflows:
 
         # Phase 6: Performance validation
         total_workflow_time = sum(r["execution_time"] for r in phase_results)
-        assert total_workflow_time < 10.0, (
-            "Full workflow should complete in reasonable time"
-        )
+        assert (
+            total_workflow_time < 10.0
+        ), "Full workflow should complete in reasonable time"
 
     @pytest.mark.integration
     async def test_error_propagation_across_services(
@@ -447,12 +449,12 @@ class TestCrossServiceWorkflows:
         ) / len(successful_workflows)
         workflows_per_second = num_concurrent_workflows / total_time
 
-        assert avg_execution_time < 5.0, (
-            f"Average workflow execution time too high: {avg_execution_time}s"
-        )
-        assert workflows_per_second > 1.0, (
-            f"Workflow throughput too low: {workflows_per_second} workflows/sec"
-        )
+        assert (
+            avg_execution_time < 5.0
+        ), f"Average workflow execution time too high: {avg_execution_time}s"
+        assert (
+            workflows_per_second > 1.0
+        ), f"Workflow throughput too low: {workflows_per_second} workflows/sec"
 
         # Verify data consistency across services
         for result in successful_workflows:

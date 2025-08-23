@@ -15,11 +15,13 @@ import pytest
 
 from khive.services.plan.models import OrchestrationEvaluation
 from khive.services.plan.parts import PlannerRequest
-from khive.services.plan.planner_service import (ComplexityTier,
-                                                 OrchestrationPlanner,
-                                                 PlannerService, Request)
-from khive.services.plan.triage.complexity_triage import \
-    ComplexityTriageService
+from khive.services.plan.planner_service import (
+    ComplexityTier,
+    OrchestrationPlanner,
+    PlannerService,
+    Request,
+)
+from khive.services.plan.triage.complexity_triage import ComplexityTriageService
 
 
 class BoundaryTestGenerator:
@@ -31,58 +33,71 @@ class BoundaryTestGenerator:
         variations_list = []
 
         # Length variations
-        variations_list.extend([
-            "",  # Empty
-            "x",  # Single char
-            base_text[:10],  # Truncated
-            base_text * 10,  # Repeated
-            base_text * 100,  # Very long
-        ])
+        variations_list.extend(
+            [
+                "",  # Empty
+                "x",  # Single char
+                base_text[:10],  # Truncated
+                base_text * 10,  # Repeated
+                base_text * 100,  # Very long
+            ]
+        )
 
         # Case variations
-        variations_list.extend([
-            base_text.upper(),
-            base_text.lower(),
-            base_text.title(),
-            "".join(
-                c.upper() if i % 2 == 0 else c.lower() for i, c in enumerate(base_text)
-            ),
-        ])
+        variations_list.extend(
+            [
+                base_text.upper(),
+                base_text.lower(),
+                base_text.title(),
+                "".join(
+                    c.upper() if i % 2 == 0 else c.lower()
+                    for i, c in enumerate(base_text)
+                ),
+            ]
+        )
 
         # Character variations
-        variations_list.extend([
-            base_text.replace(" ", ""),  # No spaces
-            base_text.replace(" ", "   "),  # Multiple spaces
-            base_text.replace(" ", "\t"),  # Tabs
-            base_text.replace(" ", "\n"),  # Newlines
-            base_text + "\n" * 10,  # Trailing newlines
-        ])
+        variations_list.extend(
+            [
+                base_text.replace(" ", ""),  # No spaces
+                base_text.replace(" ", "   "),  # Multiple spaces
+                base_text.replace(" ", "\t"),  # Tabs
+                base_text.replace(" ", "\n"),  # Newlines
+                base_text + "\n" * 10,  # Trailing newlines
+            ]
+        )
 
         # Special characters
         special_chars = "!@#$%^&*()[]{}|\\:;\"'<>?,./"
-        variations_list.extend([
-            base_text + special_chars,
-            special_chars + base_text,
-        ])
-        variations_list.extend([
-            base_text.replace(" ", random.choice(special_chars)) for _ in range(5)
-        ])
+        variations_list.extend(
+            [
+                base_text + special_chars,
+                special_chars + base_text,
+            ]
+        )
+        variations_list.extend(
+            [base_text.replace(" ", random.choice(special_chars)) for _ in range(5)]
+        )
 
         # Unicode variations
-        variations_list.extend([
-            "测试任务 研究系统",  # Chinese
-            "исследовать систему",  # Russian
-            "🚀🔬⚗️🧪 task",  # Emojis
-            "café naïve résumé",  # Accented characters
-            "𝓤𝓷𝓲𝓬𝓸𝓭𝓮 𝓽𝓮𝓼𝓽",  # Math symbols
-        ])
+        variations_list.extend(
+            [
+                "测试任务 研究系统",  # Chinese
+                "исследовать систему",  # Russian
+                "🚀🔬⚗️🧪 task",  # Emojis
+                "café naïve résumé",  # Accented characters
+                "𝓤𝓷𝓲𝓬𝓸𝓭𝓮 𝓽𝓮𝓼𝓽",  # Math symbols
+            ]
+        )
 
         # Numeric variations
-        variations_list.extend([
-            "123456789",  # Pure numbers
-            base_text + " " + str(random.randint(1, 1000000)),
-            f"{base_text} {random.random():.10f}",  # Floating point
-        ])
+        variations_list.extend(
+            [
+                "123456789",  # Pure numbers
+                base_text + " " + str(random.randint(1, 1000000)),
+                f"{base_text} {random.random():.10f}",  # Floating point
+            ]
+        )
 
         # Limit to requested number
         return variations_list[:variations]
@@ -238,9 +253,9 @@ class TestInputBoundaryConditions:
                 execution_time = time.perf_counter() - start_time
 
                 # Should complete within reasonable time even for large inputs
-                assert execution_time < 5.0, (
-                    f"Large input processing too slow: {execution_time}s for {len(long_input)} chars"
-                )
+                assert (
+                    execution_time < 5.0
+                ), f"Large input processing too slow: {execution_time}s for {len(long_input)} chars"
 
                 # Should produce valid results
                 assert isinstance(complexity, ComplexityTier)
@@ -368,9 +383,9 @@ class TestNumericalBoundaryConditions:
             agent_count = len(roles)
 
             # Verify boundaries are respected
-            assert 0 <= agent_count <= 12, (
-                f"Agent count {agent_count} exceeds absolute boundaries"
-            )
+            assert (
+                0 <= agent_count <= 12
+            ), f"Agent count {agent_count} exceeds absolute boundaries"
 
             # Note: With minimal configuration, exact ranges might not match
             # Just ensure reasonable behavior
@@ -456,9 +471,9 @@ class TestNumericalBoundaryConditions:
 
             # Final confidence should be within bounds
             final_confidence = consensus_data.get("confidence", 0.5)
-            assert 0.0 <= final_confidence <= 1.0, (
-                f"Confidence {final_confidence} outside valid range"
-            )
+            assert (
+                0.0 <= final_confidence <= 1.0
+            ), f"Confidence {final_confidence} outside valid range"
 
 
 @pytest.mark.boundary
@@ -490,9 +505,9 @@ class TestConcurrencyBoundaryConditions:
         successful_results = [r for r in results if isinstance(r, ComplexityTier)]
         failed_results = [r for r in results if isinstance(r, Exception)]
 
-        assert len(successful_results) >= len(tasks) * 0.9, (
-            f"Too many failures: {len(failed_results)} out of {len(tasks)}"
-        )
+        assert (
+            len(successful_results) >= len(tasks) * 0.9
+        ), f"Too many failures: {len(failed_results)} out of {len(tasks)}"
 
         # Verify results are valid
         for result in successful_results:
@@ -523,9 +538,9 @@ class TestConcurrencyBoundaryConditions:
 
         # Verify results
         successful_results = [r for r in results if isinstance(r, list)]
-        assert len(successful_results) >= len(tasks) * 0.9, (
-            "Too many concurrent failures"
-        )
+        assert (
+            len(successful_results) >= len(tasks) * 0.9
+        ), "Too many concurrent failures"
 
         for result in successful_results:
             assert isinstance(result, list)
@@ -645,9 +660,9 @@ class TestMemoryBoundaryConditions:
 
             # Memory growth should be reasonable (less than 100MB)
             memory_growth_mb = memory_growth / (1024 * 1024)
-            assert memory_growth_mb < 100, (
-                f"Memory growth too high: {memory_growth_mb:.1f}MB"
-            )
+            assert (
+                memory_growth_mb < 100
+            ), f"Memory growth too high: {memory_growth_mb:.1f}MB"
 
             # Cleanup references to help garbage collection
             del large_input, request, complexity, roles
@@ -687,9 +702,9 @@ class TestMemoryBoundaryConditions:
         memory_growth_mb = (final_memory - baseline_memory) / (1024 * 1024)
 
         # Memory growth should be minimal after garbage collection
-        assert memory_growth_mb < 50, (
-            f"Memory leak detected: {memory_growth_mb:.1f}MB growth"
-        )
+        assert (
+            memory_growth_mb < 50
+        ), f"Memory leak detected: {memory_growth_mb:.1f}MB growth"
 
 
 @pytest.mark.boundary
@@ -708,26 +723,28 @@ class TestDataIntegrityBoundaryConditions:
             roles = minimal_planner.select_roles(test_request, complexity)
             phases = minimal_planner._determine_required_phases(test_request)
 
-            results.append({
-                "complexity": complexity,
-                "roles": tuple(sorted(roles)),  # Sort for comparison
-                "phases": tuple(sorted(phases)),
-            })
+            results.append(
+                {
+                    "complexity": complexity,
+                    "roles": tuple(sorted(roles)),  # Sort for comparison
+                    "phases": tuple(sorted(phases)),
+                }
+            )
 
         # All results should be identical (deterministic behavior)
         first_result = results[0]
         for i, result in enumerate(results[1:], 1):
-            assert result["complexity"] == first_result["complexity"], (
-                f"Complexity inconsistency at iteration {i}: {result['complexity']} != {first_result['complexity']}"
-            )
+            assert (
+                result["complexity"] == first_result["complexity"]
+            ), f"Complexity inconsistency at iteration {i}: {result['complexity']} != {first_result['complexity']}"
 
-            assert result["roles"] == first_result["roles"], (
-                f"Roles inconsistency at iteration {i}: {result['roles']} != {first_result['roles']}"
-            )
+            assert (
+                result["roles"] == first_result["roles"]
+            ), f"Roles inconsistency at iteration {i}: {result['roles']} != {first_result['roles']}"
 
-            assert result["phases"] == first_result["phases"], (
-                f"Phases inconsistency at iteration {i}: {result['phases']} != {first_result['phases']}"
-            )
+            assert (
+                result["phases"] == first_result["phases"]
+            ), f"Phases inconsistency at iteration {i}: {result['phases']} != {first_result['phases']}"
 
     def test_state_isolation_between_requests(self, minimal_planner):
         """Test that different requests don't interfere with each other."""
@@ -747,11 +764,13 @@ class TestDataIntegrityBoundaryConditions:
                 actual_complexity = minimal_planner.assess(request)
                 roles = minimal_planner.select_roles(request, actual_complexity)
 
-                results.append({
-                    "request": request_text,
-                    "complexity": actual_complexity,
-                    "roles": roles,
-                })
+                results.append(
+                    {
+                        "request": request_text,
+                        "complexity": actual_complexity,
+                        "roles": roles,
+                    }
+                )
 
             # Results should be consistent regardless of processing order
             for i, (request_text, expected_complexity) in enumerate(test_cases):
@@ -761,9 +780,9 @@ class TestDataIntegrityBoundaryConditions:
 
                 # The complexity might not match exactly due to algorithm variations,
                 # but it should be consistent across different orderings
-                assert matching_result["complexity"] in ComplexityTier, (
-                    f"Invalid complexity type for '{request_text}'"
-                )
+                assert (
+                    matching_result["complexity"] in ComplexityTier
+                ), f"Invalid complexity type for '{request_text}'"
 
 
 if __name__ == "__main__":

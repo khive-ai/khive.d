@@ -369,31 +369,37 @@ class PerformanceTestRunner:
         if benchmark_analysis.get("statistics"):
             stats = benchmark_analysis["statistics"]
             if stats.get("slowest_benchmark_ms", 0) > 1000:  # > 1 second
-                recommendations.append({
-                    "type": "PERFORMANCE",
-                    "severity": "HIGH",
-                    "message": f"Slowest benchmark takes {stats['slowest_benchmark_ms']:.1f}ms - investigate bottlenecks",
-                    "category": "response_time",
-                })
+                recommendations.append(
+                    {
+                        "type": "PERFORMANCE",
+                        "severity": "HIGH",
+                        "message": f"Slowest benchmark takes {stats['slowest_benchmark_ms']:.1f}ms - investigate bottlenecks",
+                        "category": "response_time",
+                    }
+                )
 
             if stats.get("avg_throughput_ops_sec", 0) < 5:  # < 5 ops/sec average
-                recommendations.append({
-                    "type": "THROUGHPUT",
-                    "severity": "MEDIUM",
-                    "message": f"Average throughput is {stats['avg_throughput_ops_sec']:.2f} ops/sec - consider optimization",
-                    "category": "throughput",
-                })
+                recommendations.append(
+                    {
+                        "type": "THROUGHPUT",
+                        "severity": "MEDIUM",
+                        "message": f"Average throughput is {stats['avg_throughput_ops_sec']:.2f} ops/sec - consider optimization",
+                        "category": "throughput",
+                    }
+                )
 
         # Check quality gate failures
         for category, results in quality_gates.get("details", {}).items():
             if results.get("status") == "FAIL":
                 for violation in results.get("violations", []):
-                    recommendations.append({
-                        "type": "QUALITY_GATE",
-                        "severity": "HIGH",
-                        "message": f"{category}: {violation}",
-                        "category": category,
-                    })
+                    recommendations.append(
+                        {
+                            "type": "QUALITY_GATE",
+                            "severity": "HIGH",
+                            "message": f"{category}: {violation}",
+                            "category": category,
+                        }
+                    )
 
         # Memory recommendations
         categories = benchmark_analysis.get("categories", {})
@@ -401,12 +407,14 @@ class PerformanceTestRunner:
             if "memory" in cat_name.lower():
                 avg_time = cat_data.get("avg_mean_time_ms", 0)
                 if avg_time > 500:  # > 500ms for memory operations
-                    recommendations.append({
-                        "type": "MEMORY",
-                        "severity": "MEDIUM",
-                        "message": f"Memory operations averaging {avg_time:.1f}ms - check for memory leaks or inefficient allocation",
-                        "category": "memory",
-                    })
+                    recommendations.append(
+                        {
+                            "type": "MEMORY",
+                            "severity": "MEDIUM",
+                            "message": f"Memory operations averaging {avg_time:.1f}ms - check for memory leaks or inefficient allocation",
+                            "category": "memory",
+                        }
+                    )
 
         # Scalability recommendations
         for cat_name, cat_data in categories.items():
@@ -414,21 +422,25 @@ class PerformanceTestRunner:
                 max_time = cat_data.get("max_time_ms", 0)
                 avg_time = cat_data.get("avg_mean_time_ms", 0)
                 if max_time > avg_time * 5:  # High variance in response times
-                    recommendations.append({
-                        "type": "SCALABILITY",
-                        "severity": "MEDIUM",
-                        "message": f"High response time variance in {cat_name} (max: {max_time:.1f}ms, avg: {avg_time:.1f}ms) - investigate scaling bottlenecks",
-                        "category": "scalability",
-                    })
+                    recommendations.append(
+                        {
+                            "type": "SCALABILITY",
+                            "severity": "MEDIUM",
+                            "message": f"High response time variance in {cat_name} (max: {max_time:.1f}ms, avg: {avg_time:.1f}ms) - investigate scaling bottlenecks",
+                            "category": "scalability",
+                        }
+                    )
 
         # Add general recommendations if no specific issues found
         if not recommendations:
-            recommendations.append({
-                "type": "SUCCESS",
-                "severity": "INFO",
-                "message": "All performance tests passed! Consider adding more comprehensive test scenarios.",
-                "category": "general",
-            })
+            recommendations.append(
+                {
+                    "type": "SUCCESS",
+                    "severity": "INFO",
+                    "message": "All performance tests passed! Consider adding more comprehensive test scenarios.",
+                    "category": "general",
+                }
+            )
 
         return recommendations
 
@@ -562,19 +574,23 @@ class PerformanceTestRunner:
                 change_percent = ((current_time - baseline_time) / baseline_time) * 100
 
                 if change_percent > threshold_percent:
-                    regressions.append({
-                        "benchmark": name,
-                        "current_time_ms": current_time,
-                        "baseline_time_ms": baseline_time,
-                        "regression_percent": change_percent,
-                    })
+                    regressions.append(
+                        {
+                            "benchmark": name,
+                            "current_time_ms": current_time,
+                            "baseline_time_ms": baseline_time,
+                            "regression_percent": change_percent,
+                        }
+                    )
                 elif change_percent < -threshold_percent:
-                    improvements.append({
-                        "benchmark": name,
-                        "current_time_ms": current_time,
-                        "baseline_time_ms": baseline_time,
-                        "improvement_percent": abs(change_percent),
-                    })
+                    improvements.append(
+                        {
+                            "benchmark": name,
+                            "current_time_ms": current_time,
+                            "baseline_time_ms": baseline_time,
+                            "improvement_percent": abs(change_percent),
+                        }
+                    )
 
         regression_result = {
             "status": "REGRESSION" if regressions else "OK",
@@ -582,9 +598,9 @@ class PerformanceTestRunner:
             "threshold_percent": threshold_percent,
             "regressions": regressions,
             "improvements": improvements,
-            "total_comparisons": len([
-                b for b in current_benchmarks if b["name"] in baseline_lookup
-            ]),
+            "total_comparisons": len(
+                [b for b in current_benchmarks if b["name"] in baseline_lookup]
+            ),
         }
 
         return regression_result

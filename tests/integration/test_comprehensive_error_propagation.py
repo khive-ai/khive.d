@@ -852,7 +852,7 @@ class TestComprehensiveErrorPropagation:
 ## Distributed Resilience Validation:
 ✅ Network partition simulation functional
 ✅ Cross-partition dependency handling tested
-✅ Partition isolation prevents full system failure  
+✅ Partition isolation prevents full system failure
 ✅ Distributed coordination patterns validated
 ✅ Error propagation contained within partitions
 

@@ -1,6 +1,6 @@
 [project]
 name = "khive"
-version = "0.4.0"
+version = "0.4.1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -63,7 +63,7 @@ markers = [
     "mcp_lifecycle: MCP server lifecycle management tests",
     "mcp_server_lifecycle: MCP server lifecycle with configuration and workspace management",
     "mcp_error_handling: MCP error handling and recovery tests",
-    "mcp_configuration: MCP configuration management tests", 
+    "mcp_configuration: MCP configuration management tests",
     "mcp_performance: MCP performance and stress tests",
     "mcp_cc_toolkit: MCP CC toolkit integration tests",
     "mcp_workspace: MCP workspace isolation tests",

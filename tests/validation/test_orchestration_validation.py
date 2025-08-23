@@ -14,10 +14,13 @@ from typing import Any
 from lionagi.fields import Instruct
 
 from khive.services.composition.parts import ComposerRequest
-from khive.services.orchestration.parts import (AgentRequest, BaseGate,
-                                                ComplexityAssessment,
-                                                GateComponent,
-                                                OrchestrationPlan)
+from khive.services.orchestration.parts import (
+    AgentRequest,
+    BaseGate,
+    ComplexityAssessment,
+    GateComponent,
+    OrchestrationPlan,
+)
 from tests.validation.pydantic_validators import BaseValidationPattern
 
 # ============================================================================

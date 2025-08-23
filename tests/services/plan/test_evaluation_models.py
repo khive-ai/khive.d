@@ -21,9 +21,14 @@ import pytest
 from pydantic import ValidationError
 
 from khive.services.plan.models import OrchestrationEvaluation
-from khive.services.plan.parts import (AgentRecommendation, ComplexityLevel,
-                                       PlannerRequest, PlannerResponse,
-                                       QualityGate, WorkflowPattern)
+from khive.services.plan.parts import (
+    AgentRecommendation,
+    ComplexityLevel,
+    PlannerRequest,
+    PlannerResponse,
+    QualityGate,
+    WorkflowPattern,
+)
 from khive.services.plan.planner_service import ComplexityTier
 
 
@@ -278,12 +283,14 @@ class TestPlannerResponseModel:
         # Test maximum recommendations
         max_recommendations = []
         for i in range(13):  # Over efficiency cliff of 12
-            max_recommendations.append({
-                "role": "researcher",
-                "domain": "software-architecture",
-                "priority": i + 1,
-                "reasoning": f"Agent {i + 1}",
-            })
+            max_recommendations.append(
+                {
+                    "role": "researcher",
+                    "domain": "software-architecture",
+                    "priority": i + 1,
+                    "reasoning": f"Agent {i + 1}",
+                }
+            )
 
         data = {**valid_response_data, "agent_recommendations": max_recommendations}
         with pytest.raises(ValidationError):
