@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from khive.prompts import AgentRole
+from khive.security.secure_models import SecureComposerRequestMixin
 
 __all__ = (
     "AgentCompositionRequest",
@@ -19,8 +20,8 @@ __all__ = (
 )
 
 
-class ComposerRequest(BaseModel):
-    """Request to the composer service."""
+class ComposerRequest(SecureComposerRequestMixin, BaseModel):
+    """Request to the composer service - NOW WITH SECURITY VALIDATION"""
 
     role: AgentRole = Field(..., description="Agent role (e.g., researcher, architect)")
     domains: str | None = Field(None, description="Comma-separated domain list")

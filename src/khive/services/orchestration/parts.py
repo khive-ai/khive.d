@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 from lionagi.fields import Instruct
 
 from khive.services.composition.parts import AgentRole, ComposerRequest
+from khive.security.secure_models import SecureAgentRequestMixin
 
 DeliverableType = Literal[
     "RequirementsAnalysis",
@@ -29,7 +30,7 @@ DeliverableType = Literal[
 ]
 
 
-class AgentRequest(BaseModel):
+class AgentRequest(SecureAgentRequestMixin, BaseModel):
     instruct: Instruct
     compose_request: ComposerRequest
     analysis_type: DeliverableType | None = None
