@@ -5,6 +5,7 @@ from .complexity_triage import (
     TriageAnalyzer,
     TriageConsensus,
     TriageRecord,
+    TriageVote,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "TriageAnalyzer",
     "TriageConsensus",
     "TriageRecord",
+    "TriageVote",
 ]

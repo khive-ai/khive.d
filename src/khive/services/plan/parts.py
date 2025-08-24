@@ -86,9 +86,7 @@ class PlannerResponse(BaseModel):
 
     session_id: str | None = Field(None, description="Session ID for coordination")
 
-    confidence: float = Field(
-        ..., ge=0.0, le=1.0, description="Confidence in the plan (0.0-1.0)"
-    )
+    confidence: float = Field(..., description="Confidence in the plan (0.0-1.0)")
     error: str | None = Field(None, description="Error message if planning failed")
 
     class Config:
