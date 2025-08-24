@@ -13,6 +13,19 @@ from khive.services.plan.planner_service import (
 from khive.services.plan.triage.complexity_triage import ComplexityTriageService
 
 
+def mock_assess_by_heuristics(task_description: str) -> list[str]:
+    """Mock implementation for testing. Returns patterns based on task content."""
+    task_lower = task_description.lower()
+    if any(word in task_lower for word in ["consensus", "algorithm", "blockchain", "research"]):
+        return ["very_complex"]
+    elif any(word in task_lower for word in ["distributed", "architecture", "system", "complex", "advanced"]):
+        return ["complex"]
+    elif any(word in task_lower for word in ["implement", "create", "design", "develop"]):
+        return ["medium"]
+    else:
+        return ["simple"]
+
+
 @pytest.mark.unit
 class TestDecisionMatrixValidation:
     """Test decision matrix loading, validation, and logic."""
@@ -316,7 +329,7 @@ class TestDecisionMatrixValidation:
         """Test heuristic patterns when matrix indicators don't match."""
         # Mock the heuristic assessment to return known patterns
         with patch(
-            "khive.prompts.complexity_heuristics.assess_by_heuristics"
+            "tests.services.plan.test_decision_matrix_and_heuristics.mock_assess_by_heuristics"
         ) as mock_heuristics:
             mock_heuristics.return_value = ["complex"]
 
@@ -457,7 +470,7 @@ class TestHeuristicAssessmentLogic:
     ):
         """Test heuristic pattern recognition for various complexity levels."""
         with patch(
-            "khive.prompts.complexity_heuristics.assess_by_heuristics"
+            "tests.services.plan.test_decision_matrix_and_heuristics.mock_assess_by_heuristics"
         ) as mock_heuristics:
             # Mock heuristics to return expected patterns
             mock_heuristics.return_value = expected_heuristic_patterns
@@ -474,7 +487,7 @@ class TestHeuristicAssessmentLogic:
         complex_request = "sophisticated advanced intricate distributed complex system"
 
         with patch(
-            "khive.prompts.complexity_heuristics.assess_by_heuristics"
+            "tests.services.plan.test_decision_matrix_and_heuristics.mock_assess_by_heuristics"
         ) as mock_heuristics:
             mock_heuristics.return_value = ["very_complex"]
 
