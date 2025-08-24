@@ -12,137 +12,46 @@ from pathlib import Path
 from typing import Any, Literal
 
 from openai import AsyncOpenAI
-from pydantic import BaseModel, ConfigDict, Field, create_model
-
-from khive.utils import KHIVE_CONFIG_DIR
+from pydantic import BaseModel, ConfigDict, Field
 
 
-def _load_available_roles() -> list[str]:
-    """Load available roles from KHIVE_CONFIG_DIR/prompts/roles/"""
-    roles_dir = KHIVE_CONFIG_DIR / "prompts" / "roles"
-    if not roles_dir.exists():
-        # Fallback to default roles if user hasn't copied them yet
-        return [
-            "researcher",
-            "analyst",
-            "architect",
-            "implementer",
-            "tester",
-            "critic",
-            "reviewer",
-        ]
+class TriageVote(BaseModel):
+    """Individual triage agent's vote on complexity."""
 
-    roles = []
-    for role_file in roles_dir.glob("*.md"):
-        if role_file.name != "README.md":
-            roles.append(role_file.stem)
+    model_config = ConfigDict(extra="forbid")
 
-    return (
-        sorted(roles)
-        if roles
-        else [
-            "researcher",
-            "analyst",
-            "architect",
-            "implementer",
-            "tester",
-            "critic",
-            "reviewer",
-        ]
+    complexity: Literal["simple", "complex"] = Field(
+        description="simple or complex classification"
+    )
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence in assessment")
+    reasoning: str = Field(
+        max_length=200, description="Brief reasoning for complexity assessment"
     )
 
-
-def _load_available_domains() -> list[str]:
-    """Load available domains from KHIVE_CONFIG_DIR/prompts/domains/"""
-    domains_dir = KHIVE_CONFIG_DIR / "prompts" / "domains"
-    if not domains_dir.exists():
-        # Fallback to common domains if user hasn't copied them yet
-        return [
-            "api-design",
-            "backend-development",
-            "frontend-development",
-            "database-design",
-            "async-programming",
-        ]
-
-    domains = []
-    for category_dir in domains_dir.iterdir():
-        if category_dir.is_dir() and not category_dir.name.startswith("_"):
-            for domain_file in category_dir.glob("*.yaml"):
-                domains.append(domain_file.stem)
-
-    return (
-        sorted(domains)
-        if domains
-        else [
-            "api-design",
-            "backend-development",
-            "frontend-development",
-            "database-design",
-            "async-programming",
-        ]
+    # Always provide values (0 and empty lists for complex tasks)
+    recommended_agents: int = Field(
+        ge=0, le=10, description="Number of agents (0 if complex)"
     )
-
-
-def _create_dynamic_triage_vote() -> type[BaseModel]:
-    """Create TriageVote model with actual available roles and domains."""
-    available_roles = _load_available_roles()
-    available_domains = _load_available_domains()
-
-    # Create Literal types from actual available options
-    RoleLiteral = Literal[tuple(available_roles)]
-    DomainLiteral = Literal[tuple(available_domains)]
-
-    return create_model(
-        "TriageVote",
-        __config__=ConfigDict(extra="forbid"),
-        decision=(
-            Literal["proceed", "escalate"],
-            Field(description="proceed with fast triage or escalate to full consensus"),
-        ),
-        confidence=(
-            float,
-            Field(ge=0.0, le=1.0, description="Confidence in assessment"),
-        ),
-        reasoning=(
-            str,
-            Field(max_length=200, description="Brief reasoning for triage decision"),
-        ),
-        recommended_agents=(
-            int,
-            Field(ge=0, le=10, description="Number of agents (0 if escalating)"),
-        ),
-        suggested_roles=(
-            list[RoleLiteral],
-            Field(
-                default_factory=list,
-                max_length=3,
-                description="Suggested roles (empty if escalating)",
-            ),
-        ),
-        suggested_domains=(
-            list[DomainLiteral],
-            Field(
-                default_factory=list,
-                max_length=2,
-                description="Suggested domains (empty if escalating)",
-            ),
-        ),
-        __base__=BaseModel,
+    suggested_roles: list[str] = Field(
+        default_factory=list,
+        max_items=3,
+        description="Suggested roles (empty if complex)",
     )
-
-
-# TriageVote is now dynamically created - see _create_dynamic_triage_vote()
+    suggested_domains: list[str] = Field(
+        default_factory=list,
+        max_items=2,
+        description="Suggested domains (empty if complex)",
+    )
 
 
 class TriageConsensus(BaseModel):
     """Consensus from 3 triage agents."""
 
     should_escalate: bool
-    decision_votes: dict[str, int]  # {"proceed": 2, "escalate": 1}
+    complexity_votes: dict[str, int]  # {"simple": 2, "complex": 1}
     average_confidence: float
 
-    # Consensus recommendations if proceeding with fast triage
+    # Consensus recommendations if not escalating
     final_agent_count: int | None = None
     final_roles: list[str] | None = None
     final_domains: list[str] | None = None
@@ -159,7 +68,7 @@ class TriageRecord:
     votes: list[dict[str, Any]]
     consensus: dict[str, Any]
     escalated: bool
-    final_decision: str | None = None
+    final_complexity: str | None = None
     actual_agents_used: int | None = None
     execution_success: bool | None = None
 
@@ -184,13 +93,8 @@ class ComplexityTriageService:
                 raise ValueError("OPENAI_API_KEY not provided and not in environment")
 
         self.client = AsyncOpenAI(api_key=api_key)
-        self.model = "gpt-4.1-nano"  # Fast and cheap
+        self.model = "gpt-4o-mini"  # Fast and cheap
         self.temperature = 0.0  # Deterministic
-
-        # Create dynamic model with actual available roles/domains
-        self.TriageVote = _create_dynamic_triage_vote()
-        self.available_roles = _load_available_roles()
-        self.available_domains = _load_available_domains()
 
         # Data collection for future tuning
         self.data_dir = Path(".khive/data/triage")
@@ -219,53 +123,46 @@ class ComplexityTriageService:
 
         return consensus.should_escalate, consensus
 
-    async def _single_triage(self, prompt: str, perspective: str):
+    async def _single_triage(self, prompt: str, perspective: str) -> TriageVote:
         """Single triage agent evaluation."""
 
-        system_prompt = f"""You are a triage specialist focused on {perspective}.
+        system_prompt = f"""You are a complexity triage specialist focused on {perspective}.
 
-Decide whether to PROCEED with fast triage or ESCALATE to full consensus:
+Assess if this task is SIMPLE or COMPLEX:
 
-PROCEED (use 3 or fewer agents):
-- SIMPLE, single-step tasks
-- Well-defined, narrow scope
+SIMPLE tasks (use 3 or fewer agents):
+- Single clear objective
+- Well-defined scope
 - Standard patterns (fix bug, update docs, simple queries)
 - No cross-system dependencies
 - Can be done in one pass
-- NOT research, analysis, or design tasks
 
-ESCALATE (requires full planning consensus):
-- Research, analysis, or investigation tasks
-- Design, architecture, or planning tasks
-- Multiple objectives or phases (e.g., "research AND analyze")
+COMPLEX tasks (escalate to full planning):
+- Multiple objectives or phases
 - Vague or broad scope ("completely", "entire", "full system")
-- Novel problems or complex algorithms
+- Novel problems requiring research
 - Cross-system dependencies
 - Requires iteration or validation
-- Performance analysis or optimization
 
 Perspective: {perspective}
 - efficiency: Can this be done quickly with minimal agents?
 - scope: Is the scope well-bounded or expansive?
 - risk: Are there risks that require careful planning?
 
-If PROCEED, suggest 1-3 specific roles and domains from these valid options:
-Available roles: {", ".join(self.available_roles)}
-Available domains: {", ".join(self.available_domains)}
-
-If ESCALATE, set recommended_agents to 0 and leave lists empty.
+If SIMPLE, suggest 1-3 specific roles and domains.
+If COMPLEX, set recommended_agents to 0 and leave lists empty.
 Be deterministic and consistent."""
 
         user_prompt = f"""Task: {prompt}
 
 Provide your assessment in this exact JSON format:
 {{
-    "decision": "proceed" or "escalate",
+    "complexity": "simple" or "complex",
     "confidence": 0.0 to 1.0,
     "reasoning": "Brief explanation (max 200 chars)",
-    "recommended_agents": 1-3 if proceed, 0 if escalate,
-    "suggested_roles": ["role1", "role2"] if proceed, [] if escalate,
-    "suggested_domains": ["domain1"] if proceed, [] if escalate
+    "recommended_agents": 1-3 if simple, 0 if complex,
+    "suggested_roles": ["role1", "role2"] if simple, [] if complex,
+    "suggested_domains": ["domain1"] if simple, [] if complex
 }}"""
 
         response = await self.client.chat.completions.create(
@@ -279,72 +176,25 @@ Provide your assessment in this exact JSON format:
         )
 
         vote_data = json.loads(response.choices[0].message.content)
+        return TriageVote(**vote_data)
 
-        # Gracefully handle LLM errors in role/domain suggestions
-        corrected_data = self._correct_vote_data(vote_data)
-
-        return self.TriageVote(**corrected_data)
-
-    def _correct_vote_data(self, vote_data: dict) -> dict:
-        """Gracefully correct LLM mistakes in role/domain suggestions using string similarity."""
-        corrected = vote_data.copy()
-
-        # Correct suggested roles
-        if corrected.get("suggested_roles"):
-            corrected["suggested_roles"] = [
-                self._correct_string_value(role, self.available_roles)
-                for role in corrected["suggested_roles"]
-            ]
-
-        # Correct suggested domains
-        if corrected.get("suggested_domains"):
-            corrected["suggested_domains"] = [
-                self._correct_string_value(domain, self.available_domains)
-                for domain in corrected["suggested_domains"]
-            ]
-
-        return corrected
-
-    def _correct_string_value(self, value: str, valid_options: list[str]) -> str:
-        """Correct a single string value using lionagi string similarity."""
-        if value in valid_options:
-            return value
-
-        try:
-            from lionagi.libs.validate.string_similarity import string_similarity
-
-            corrected = string_similarity(
-                value,
-                valid_options,
-                threshold=0.8,
-                case_sensitive=False,
-                return_most_similar=True,
-            )
-
-            # If no good match found, return first valid option as fallback
-            return corrected if corrected else valid_options[0]
-
-        except ImportError:
-            # Fallback if lionagi not available - return first valid option
-            return valid_options[0]
-
-    def _build_consensus(self, votes: list) -> TriageConsensus:
+    def _build_consensus(self, votes: list[TriageVote]) -> TriageConsensus:
         """Build consensus from 3 votes."""
 
-        # Count decision votes
-        decision_votes = {"proceed": 0, "escalate": 0}
+        # Count complexity votes
+        complexity_votes = {"simple": 0, "complex": 0}
         for vote in votes:
-            decision_votes[vote.decision] += 1
+            complexity_votes[vote.complexity] += 1
 
-        # Should escalate if 2+ votes for escalate
-        should_escalate = decision_votes["escalate"] >= 2
+        # Should escalate if 2+ votes for complex
+        should_escalate = complexity_votes["complex"] >= 2
 
         # Average confidence
         avg_confidence = sum(v.confidence for v in votes) / len(votes)
 
         consensus = TriageConsensus(
             should_escalate=should_escalate,
-            decision_votes=decision_votes,
+            complexity_votes=complexity_votes,
             average_confidence=avg_confidence,
         )
 
@@ -380,13 +230,13 @@ Provide your assessment in this exact JSON format:
             consensus.final_domains = list(set(all_domains))[:2]
 
             # Combine reasoning
-            reasons = [v.reasoning for v in votes if v.decision == "proceed"]
+            reasons = [v.reasoning for v in votes if v.complexity == "simple"]
             consensus.consensus_reasoning = " | ".join(reasons)
 
         return consensus
 
     async def _record_triage(
-        self, prompt: str, votes: list, consensus: TriageConsensus
+        self, prompt: str, votes: list[TriageVote], consensus: TriageConsensus
     ):
         """Record triage decision for future model training."""
 
@@ -397,7 +247,7 @@ Provide your assessment in this exact JSON format:
             votes=[v.model_dump() for v in votes],
             consensus=consensus.model_dump(),
             escalated=consensus.should_escalate,
-            final_decision="escalate" if consensus.should_escalate else "proceed",
+            final_complexity="complex" if consensus.should_escalate else "simple",
         )
 
         # Append to JSONL file
