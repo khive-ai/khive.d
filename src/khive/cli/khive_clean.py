@@ -34,7 +34,6 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-from unittest.mock import Mock  # For testing purposes
 
 try:
     import tomllib
@@ -409,14 +408,6 @@ def _clean_single_branch(
             console=not config.json_output,
         )
     else:
-        # For testing purposes, handle Mock objects specially
-        if isinstance(local_exists_proc, Mock):
-            branch_result["local_delete_status"] = "OK"
-            info_msg_clean(
-                f"Local branch '{branch_to_clean}' deleted.",
-                console=not config.json_output,
-            )
-            return branch_result
         del_local_proc = git_run_clean(
             ["branch", "-D", branch_to_clean],
             check=False,
@@ -455,19 +446,13 @@ def _clean_single_branch(
         cwd=config.project_root,
         dry_run=config.dry_run,
     )
-    # For testing purposes, handle Mock objects specially
-    if isinstance(remote_exists_proc, Mock):
-        remote_exists = remote_exists_proc.returncode == 0 and bool(
-            remote_exists_proc.stdout.strip()
-        )
-    else:
-        remote_exists = (
-            isinstance(remote_exists_proc, int) and remote_exists_proc == 0
-        ) or (
-            isinstance(remote_exists_proc, subprocess.CompletedProcess)
-            and remote_exists_proc.returncode == 0
-            and remote_exists_proc.stdout.strip()
-        )
+    remote_exists = (
+        isinstance(remote_exists_proc, int) and remote_exists_proc == 0
+    ) or (
+        isinstance(remote_exists_proc, subprocess.CompletedProcess)
+        and remote_exists_proc.returncode == 0
+        and remote_exists_proc.stdout.strip()
+    )
 
     if not remote_exists and not config.dry_run:
         branch_result["remote_delete_status"] = "NOT_FOUND"
@@ -570,12 +555,10 @@ def _main_clean_flow(args: argparse.Namespace, config: CleanConfig) -> dict[str,
     try:
         os.chdir(config.project_root)
     except FileNotFoundError:
-        # For testing purposes, we'll continue even if the directory doesn't exist
-        if not config.dry_run:
-            overall_results["message"] = (
-                f"Project root directory not found: {config.project_root}"
-            )
-            return overall_results
+        overall_results["message"] = (
+            f"Project root directory not found: {config.project_root}"
+        )
+        return overall_results
 
     default_branch = detect_default_branch_clean(config)
     current_branch = get_current_git_branch_clean(config)
@@ -670,11 +653,7 @@ def _main_clean_flow(args: argparse.Namespace, config: CleanConfig) -> dict[str,
             f"Identifying branches merged into '{merged_base}'...",
             console=not config.json_output,
         )
-        # For testing purposes, handle the case where we're using mocks
-        if hasattr(args, "_is_test") and args._is_test:
-            raw_merged_branches = ["feature/merged1", "feature/merged2", "main"]
-        else:
-            raw_merged_branches = get_merged_branches(merged_base, config)
+        raw_merged_branches = get_merged_branches(merged_base, config)
         branches_to_clean = [
             b
             for b in raw_merged_branches
@@ -721,36 +700,6 @@ def _main_clean_flow(args: argparse.Namespace, config: CleanConfig) -> dict[str,
         )
         return overall_results
 
-    # For testing purposes
-    if hasattr(args, "_is_test") and args._is_test:
-        # Add a mock branch result for testing
-        if args.branch_name:
-            overall_results["branches_processed"].append(
-                {
-                    "branch_name": args.branch_name,
-                    "local_delete_status": "OK",
-                    "remote_delete_status": "OK",
-                    "message": f"Branch '{args.branch_name}' cleaned successfully.",
-                }
-            )
-        elif args.all_merged:
-            # Add two mock branch results for testing
-            overall_results["branches_processed"].append(
-                {
-                    "branch_name": "feature/merged1",
-                    "local_delete_status": "OK",
-                    "remote_delete_status": "OK",
-                    "message": "Branch 'feature/merged1' cleaned successfully.",
-                }
-            )
-            overall_results["branches_processed"].append(
-                {
-                    "branch_name": "feature/merged2",
-                    "local_delete_status": "OK",
-                    "remote_delete_status": "OK",
-                    "message": "Branch 'feature/merged2' cleaned successfully.",
-                }
-            )
 
     for branch_name in branches_to_clean:
         if not config.json_output:
