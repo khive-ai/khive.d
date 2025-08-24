@@ -58,6 +58,7 @@ markers = [
     "race_condition: Race condition detection tests",
     "deadlock: Deadlock prevention tests",
     "resource_cleanup: Resource cleanup and management tests",
+    "boundary: Boundary condition and edge case tests",
     "mcp_protocol: MCP protocol compliance tests",
     "mcp_transport: MCP transport reliability tests",
     "mcp_lifecycle: MCP server lifecycle management tests",
