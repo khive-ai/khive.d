@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "aiofiles>=22.1.0",
-    "fastmcp>=2.10.0",
+    "fastmcp>=2.11.0",
     "lionagi[graph,postgres,rich,sqlite]>=0.15.9",
     "mcp>=1.13.0",
     "nest-asyncio>=1.5.0",

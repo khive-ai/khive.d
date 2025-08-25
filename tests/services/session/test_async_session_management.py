@@ -10,7 +10,7 @@ import pytest
 from lionagi.service.imodel import iModel
 
 from khive.services.orchestration.orchestrator import LionOrchestrator
-from khive.services.orchestration.parts import GatedMultiPhaseOrchestrationResponse
+from khive.services.orchestration.parts import FanoutWithGatedRefinementResponse
 
 
 class TestSessionLifecycleManagement:

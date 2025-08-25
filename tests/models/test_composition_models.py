@@ -18,38 +18,38 @@ class TestComposerRequest:
     def test_valid_composer_request_creation(self):
         """Test creating valid ComposerRequest instances."""
         request = ComposerRequest(
-            role=AgentRole.RESEARCHER,
+            role="researcher",
             domains="async-programming,software-architecture",
             context="Testing task for async processing",
         )
 
-        assert request.role == AgentRole.RESEARCHER
+        assert request.role == "researcher"
         assert request.domains == "async-programming,software-architecture"
         assert request.context == "Testing task for async processing"
 
     def test_composer_request_minimal(self):
         """Test ComposerRequest with only required field."""
-        request = ComposerRequest(role=AgentRole.ARCHITECT)
+        request = ComposerRequest(role="architect")
 
-        assert request.role == AgentRole.ARCHITECT
+        assert request.role == "architect"
         assert request.domains is None
         assert request.context is None
 
     @pytest.mark.parametrize(
         "role",
         [
-            AgentRole.ANALYST,
-            AgentRole.ARCHITECT,
-            AgentRole.AUDITOR,
-            AgentRole.COMMENTATOR,
-            AgentRole.CRITIC,
-            AgentRole.IMPLEMENTER,
-            AgentRole.INNOVATOR,
-            AgentRole.RESEARCHER,
-            AgentRole.REVIEWER,
-            AgentRole.STRATEGIST,
-            AgentRole.TESTER,
-            AgentRole.THEORIST,
+            "analyst",
+            "architect",
+            "auditor",
+            "commentator",
+            "critic",
+            "implementer",
+            "innovator",
+            "researcher",
+            "reviewer",
+            "strategist",
+            "tester",
+            "theorist",
         ],
     )
     def test_all_valid_agent_roles(self, role):

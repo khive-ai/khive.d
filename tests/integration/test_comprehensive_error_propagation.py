@@ -810,12 +810,12 @@ class TestComprehensiveErrorPropagation:
 ## Partition Analysis:
 {
                 chr(10).join([
-                    f"### {partition.title()} (Partition {partition.split('_')[-1].upper()}):"
-                    f"{chr(10)}- Total agents: {stats['agents']}"
-                    f"{chr(10)}- Successful: {stats['successful']}"
-                    f"{chr(10)}- Failed: {stats['failed']}"
-                    f"{chr(10)}- Isolated: {stats['isolated']}"
-                    f"{chr(10)}- Success rate: {(stats['successful'] / stats['agents']) * 100:.1f}%"
+                    "### " + f"{partition.title()} (Partition {partition.split('_')[-1].upper()}):"
+                    + f"{chr(10)}- Total agents: {stats['agents']}"
+                    + f"{chr(10)}- Successful: {stats['successful']}"
+                    + f"{chr(10)}- Failed: {stats['failed']}"
+                    + f"{chr(10)}- Isolated: {stats['isolated']}"
+                    + f"{chr(10)}- Success rate: {(stats['successful'] / stats['agents']) * 100:.1f}%"
                     for partition, stats in partition_analysis.items()
                 ])
             }
@@ -823,13 +823,13 @@ class TestComprehensiveErrorPropagation:
 ## Agent Execution Results:
 {
                 chr(10).join([
-                    f"### {result['agent_id']} ({result.get('partition', 'unknown')}):"
-                    f"{chr(10)}- State: {result['state']}"
-                    f"{chr(10)}- Network latency: {result.get('network_latency', 0):.3f}s"
-                    f"{chr(10)}- Cross-partition deps: {result.get('cross_partition_deps', [])}"
-                    f"{chr(10)}- Error: {result['error'][:80] + '...' if result.get('error') and len(result['error']) > 80 else result.get('error') or 'None'}"
-                    f"{chr(10)}- Execution time: {result.get('execution_time', 0):.3f}s"
-                    for result in distributed_results[:8]  # Show first 8 for brevity
+                    "### " + f"{result['agent_id']} ({result.get('partition', 'unknown')}):"
+                    + f"{chr(10)}- State: {result['state']}"
+                    + f"{chr(10)}- Network latency: {result.get('network_latency', 0):.3f}s"
+                    + f"{chr(10)}- Cross-partition deps: {result.get('cross_partition_deps', [])}"
+                    + f"{chr(10)}- Error: {result['error'][:80] + '...' if result.get('error') and len(result['error']) > 80 else result.get('error') or 'None'}"
+                    + f"{chr(10)}- Execution time: {result.get('execution_time', 0):.3f}s"
+                    for result in distributed_results[:8]
                 ])
             }
 {"... and additional agents" if len(distributed_results) > 8 else ""}
