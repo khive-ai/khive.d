@@ -5,26 +5,24 @@ that was extracted from the planner service to support independent testing
 and modular usage in the khive plan system.
 """
 
-from typing import List
-
 
 class Request:
     """Request model for complexity assessment."""
-    
+
     def __init__(self, text: str):
         self.text = text.lower()  # For easier pattern matching
         self.original = text
 
 
-def assess_by_heuristics(task_description: str) -> List[str]:
+def assess_by_heuristics(task_description: str) -> list[str]:
     """Assess complexity using heuristic patterns when direct indicators don't match.
-    
-    This function analyzes a task description and returns a list of complexity 
+
+    This function analyzes a task description and returns a list of complexity
     tiers that match the task based on keyword patterns and heuristics.
-    
+
     Args:
         task_description: The task description to analyze
-        
+
     Returns:
         List of complexity tier strings (e.g., ["simple"], ["complex"])
     """
@@ -37,7 +35,7 @@ def assess_by_heuristics(task_description: str) -> List[str]:
         "simple",
         "basic",
         "quick",
-        "easy", 
+        "easy",
         "straightforward",
         "single",
         "one",
@@ -47,10 +45,10 @@ def assess_by_heuristics(task_description: str) -> List[str]:
         "fix",
         "update",
         "add",
-        "remove"
+        "remove",
     ]
 
-    # Complex indicators  
+    # Complex indicators
     complex_patterns = [
         "complex",
         "complicated",
@@ -58,17 +56,17 @@ def assess_by_heuristics(task_description: str) -> List[str]:
         "sophisticated",
         "distributed",
         "scalable",
-        "enterprise", 
+        "enterprise",
         "production",
         "multiple",
         "many",
         "various",
         "comprehensive",
         "implement",
-        "create", 
+        "create",
         "design",
         "develop",
-        "moderate"
+        "moderate",
     ]
 
     # Very complex indicators
@@ -83,14 +81,14 @@ def assess_by_heuristics(task_description: str) -> List[str]:
         "platform",
         "ecosystem",
         "migration",
-        "transformation", 
+        "transformation",
         "overhaul",
         "consensus",
         "algorithm",
         "blockchain",
         "machine learning",
         "architecture",
-        "system"
+        "system",
     ]
 
     # Count pattern matches

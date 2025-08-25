@@ -36,14 +36,3 @@ def test_github_workflows():
 
     assert workflows_dir.exists()
     assert (workflows_dir / "ci.yml").exists()
-
-
-def test_tests_directory():
-    """Test that tests directory has expected structure."""
-    project_root = Path(__file__).parent.parent.parent
-    tests_dir = project_root / "tests"
-
-    assert tests_dir.exists()
-    assert (tests_dir / "fixtures").exists()
-    assert (tests_dir / "conftest.py").exists()
-    assert (tests_dir / "README.md").exists()

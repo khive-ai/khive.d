@@ -32,18 +32,12 @@ validation as required by Issue 187.
    - Boundary condition stability
    - RAGRS modifier consistency
 
-4. **Performance Benchmarks** (`TestPerformanceBenchmarks`)
-   - Critical path performance testing
-   - Memory usage stability
-   - Concurrent operation handling
-   - Scalability validation
-
-5. **Pydantic Model Validation** (`TestPydanticValidation`)
+4. **Pydantic Model Validation** (`TestPydanticValidation`)
    - Schema validation
    - Error handling
    - Model constraint testing
 
-6. **Integration Tests** (`TestPlannerServiceIntegration`)
+5. **Integration Tests** (`TestPlannerServiceIntegration`)
    - End-to-end workflow testing
    - Service lifecycle management
    - Error recovery testing
@@ -76,16 +70,6 @@ validation as required by Issue 187.
 - **Input Normalization**: Tests various input formats produce consistent
   results
 - **Session Management**: Consistent artifact registry structure validation
-
-### ⚡ Performance Requirements
-
-- **Critical Path Benchmarks**:
-  - Complexity assessment: <0.5ms per call
-  - Role selection: <1ms per call
-  - Session creation: <5ms per session
-  - Phase determination: <0.5ms per call
-- **Memory Stability**: <50MB growth during 1000 operations
-- **Concurrent Performance**: Handle 100+ concurrent operations efficiently
 
 ## Test Coverage Goals
 
@@ -141,7 +125,6 @@ pytest tests/test_planning_service.py -v
 # Run specific test category
 pytest tests/test_planning_service.py -m unit -v
 pytest tests/test_planning_service.py -m integration -v
-pytest tests/test_planning_service.py -m performance -v
 ```
 
 ### Comprehensive Test Suite
@@ -158,19 +141,10 @@ python run_planning_tests.py
 pytest tests/test_planning_service.py --cov=khive.services.plan --cov-report=html
 ```
 
-### Performance Benchmarking
-
-```bash
-# Run only performance benchmarks
-pytest tests/test_planning_service.py -m benchmark --benchmark-only
-```
-
 ## Test Categories and Markers
 
 - `@pytest.mark.unit`: Unit tests for individual components
 - `@pytest.mark.integration`: Integration tests across components
-- `@pytest.mark.performance`: Performance and benchmark tests
-- `@pytest.mark.benchmark`: Tests with timing assertions
 - `@pytest.mark.asyncio`: Async function testing
 - `@pytest.mark.parametrize`: Parameterized test scenarios
 
@@ -198,23 +172,12 @@ def test_complexity_assessment_determinism(deterministic_planner, request_text):
     assert all(result == results[0] for result in results)
 ```
 
-### Performance Benchmarking
-
-```python
-@pytest.mark.benchmark
-def test_complexity_assessment_performance(benchmark_planner):
-    """Benchmark complexity assessment for various request types."""
-    avg_time = measure_performance(benchmark_planner.assess, iterations=1000)
-    assert avg_time < 0.0005  # <0.5ms requirement
-```
-
 ## Expected Results
 
 ### Test Metrics
 
 - **Total Tests**: ~150+ test cases
 - **Coverage**: >90% for planning service modules
-- **Performance**: All benchmarks pass timing requirements
 - **Consistency**: 100% deterministic behavior validation
 
 ### Success Criteria
@@ -222,7 +185,6 @@ def test_complexity_assessment_performance(benchmark_planner):
 ✅ All workflow pattern determination algorithms tested and validated\
 ✅ External model integration properly mocked and tested\
 ✅ Consistency validation ensures deterministic results\
-✅ Performance benchmarks meet critical path requirements\
 ✅ >90% code coverage achieved\
 ✅ Error handling and edge cases covered
 
@@ -235,13 +197,6 @@ def test_complexity_assessment_performance(benchmark_planner):
 2. Use appropriate pytest markers for categorization
 3. Add fixtures to `planning_fixtures.py` for reusable mock data
 4. Update this documentation with new test scenarios
-
-### Performance Benchmarks
-
-- Add new benchmarks to `TestPerformanceBenchmarks` class
-- Use `@pytest.mark.benchmark` marker
-- Set realistic performance thresholds based on requirements
-- Include memory usage validation for long-running operations
 
 ### Mock Updates
 

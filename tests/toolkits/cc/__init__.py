@@ -1,1 +1,0 @@
-"""Claude Code toolkit tests."""

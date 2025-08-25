@@ -2,42 +2,99 @@
 
 import asyncio
 import os
-import sys
 import tempfile
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-# Import all fixture modules so pytest can discover them
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "fixtures"))
+# Minimal fixture imports - only keep what's actually needed
 
-# Import CLI fixtures
-from tests.fixtures.cli_fixtures import *  # noqa: F403
 
-# Import composition fixtures
-from tests.fixtures.composition.composition_fixtures import *  # noqa: F403
-from tests.fixtures.composition.performance_fixtures import *  # noqa: F403
-from tests.fixtures.composition.security_fixtures import *  # noqa: F403
+@pytest.fixture
+def cli_runner():
+    """Basic CLI runner fixture."""
+    from click.testing import CliRunner
 
-# Import filesystem fixtures
-from tests.fixtures.filesystem_fixtures import *  # noqa: F403
+    return CliRunner()
 
-# Import gated refinement fixtures
-from tests.fixtures.gated_refinement_fixtures import *  # noqa: F403
 
-# Import orchestration fixtures
-from tests.fixtures.orchestration.orchestration_fixtures import *  # noqa: F403
+# ============================================================================
+# CRITICAL: PREVENT ALL REAL API CALLS IN TESTS
+# ============================================================================
 
-# Import planning fixtures
-from tests.fixtures.planning_fixtures import *  # noqa: F403
 
-# Import service fixtures
-from tests.fixtures.service_fixtures import *  # noqa: F403
+def create_mock_openai_response(content: str = None):
+    """Create a mock OpenAI API response."""
+    if content is None:
+        # Default mock response for triage service
+        content = '{"complexity": "simple", "confidence": 0.8, "reasoning": "Mock response", "recommended_agents": 2, "suggested_roles": ["researcher", "implementer"], "suggested_domains": ["api-design"]}'
 
-# Import MCP fixtures (temporarily disabled due to fastmcp/mcp version conflict)
-# from tests.fixtures.mcp.core_fixtures import *
+    mock_choice = MagicMock()
+    mock_choice.message.content = content
+
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    return mock_response
+
+
+@pytest.fixture(autouse=True)
+def mock_openai_globally():
+    """Mock all OpenAI clients globally to prevent any real API calls."""
+    # Create mock response for OpenAI
+    mock_response = create_mock_openai_response()
+
+    # Create mock async client
+    mock_async_client = AsyncMock()
+    mock_async_client.chat.completions.create.return_value = mock_response
+
+    # Create mock sync client
+    mock_sync_client = MagicMock()
+    mock_sync_client.chat.completions.create.return_value = mock_response
+
+    # Patch all OpenAI imports
+    patches = [
+        patch("openai.OpenAI", return_value=mock_sync_client),
+        patch("openai.AsyncOpenAI", return_value=mock_async_client),
+        # Patch where AsyncOpenAI is imported in the triage module
+        patch(
+            "khive.services.plan.triage.complexity_triage.AsyncOpenAI",
+            return_value=mock_async_client,
+        ),
+        # Patch where OpenAI is imported in the planner service
+        patch(
+            "khive.services.plan.planner_service.OpenAI", return_value=mock_sync_client
+        ),
+    ]
+
+    # Apply all patches
+    for p in patches:
+        p.start()
+
+    yield {"async_client": mock_async_client, "sync_client": mock_sync_client}
+
+    # Clean up patches
+    for p in patches:
+        try:
+            p.stop()
+        except RuntimeError:
+            pass
+
+
+@pytest.fixture(autouse=True)
+def ensure_no_real_api_calls():
+    """Ensure environment variables disable real API calls."""
+    with patch.dict(
+        os.environ,
+        {
+            "KHIVE_DISABLE_EXTERNAL_APIS": "true",
+            "KHIVE_TEST_MODE": "true",
+            "OPENAI_API_KEY": "test-key-should-never-be-used",
+        },
+    ):
+        yield
 
 
 @pytest.fixture(scope="session")

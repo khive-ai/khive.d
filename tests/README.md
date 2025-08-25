@@ -19,7 +19,6 @@ uv run pytest -x
 # Run specific test categories
 uv run pytest -m unit          # Unit tests only
 uv run pytest -m integration   # Integration tests only
-uv run pytest -m performance   # Performance tests only
 ```
 
 ## 📁 Test Architecture Structure
@@ -54,16 +53,13 @@ tests/
 2. **Realistic Simulation**: Mock external services with realistic behavior
    patterns
 3. **Maintainable Patterns**: Reusable fixtures and validation patterns
-4. **Performance Validation**: Test performance characteristics under load
-5. **Error Resilience**: Comprehensive error injection and recovery testing
+4. **Error Resilience**: Comprehensive error injection and recovery testing
 
 ### Test Categories
 
 - **Unit Tests** (`@pytest.mark.unit`): Individual component validation
 - **Integration Tests** (`@pytest.mark.integration`): End-to-end workflow
   validation
-- **Performance Tests** (`@pytest.mark.performance`): Load, latency, and
-  resource usage validation
 - **Regression Tests** (`@pytest.mark.regression`): Prevent known issues from
   reoccurring
 
@@ -283,14 +279,11 @@ def test_complexity_assessment(test_case, mock_decision_matrix):
 ### Performance Testing
 
 ```python
-@pytest.mark.performance
 async def test_concurrent_evaluations(multi_agent_evaluator):
-    """Test concurrent evaluation performance."""
+    """Test concurrent evaluation functionality."""
     request = "Build distributed consensus system"
 
-    start_time = time.time()
     results = await multi_agent_evaluator.evaluate_with_all_agents(request)
-    duration = time.time() - start_time
 
     # Validate performance
     assert duration < 5.0, f"Evaluation took too long: {duration}s"
