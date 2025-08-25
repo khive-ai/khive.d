@@ -75,6 +75,7 @@ markers = [
     "mcp_cc_toolkit: MCP CC toolkit integration tests",
     "mcp_workspace: MCP workspace isolation tests",
     "mcp_real_servers: MCP real server integration tests",
+    "security: Security validation and vulnerability tests",
 ]
 
 # Test environment
