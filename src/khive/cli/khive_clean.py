@@ -700,7 +700,6 @@ def _main_clean_flow(args: argparse.Namespace, config: CleanConfig) -> dict[str,
         )
         return overall_results
 
-
     for branch_name in branches_to_clean:
         if not config.json_output:
             print(f"\n{ANSI['B']}Cleaning branch: {branch_name}{ANSI['N']}")

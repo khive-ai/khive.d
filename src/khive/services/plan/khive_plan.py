@@ -67,12 +67,9 @@ def extract_issue_context(issue_data: dict) -> tuple[str, str]:
         label_names = [label.get("name", "") for label in labels]
         context_parts.append(f"Labels: {', '.join(label_names)}")
 
-    # Add body content (truncated if too long)
     if body:
         # Clean up body - remove excessive whitespace and limit length
         clean_body = " ".join(body.split())
-        if len(clean_body) > 1000:
-            clean_body = clean_body[:1000] + "... (truncated)"
         context_parts.append(f"Issue description: {clean_body}")
 
     context = "\n".join(context_parts)

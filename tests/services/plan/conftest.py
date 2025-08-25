@@ -19,7 +19,6 @@ import yaml
 
 from khive.services.plan.planner_service import OrchestrationPlanner
 from khive.services.plan.triage.complexity_triage import ComplexityTriageService
-from tests.fixtures.planning_fixtures import MockDecisionMatrix
 
 
 class TestConfiguration:
@@ -304,11 +303,29 @@ def mock_orchestration_planner():
                 "user_prompt_template": "User prompt",
             }
         ),
-        _load_decision_matrix=MagicMock(return_value=MockDecisionMatrix().data),
+        _load_decision_matrix=MagicMock(
+            return_value={
+                "complexity_assessment": {
+                    "simple": {"indicators": ["simple"], "threshold": 1}
+                },
+                "agent_role_selection": {"discovery_phase": {"roles": ["researcher"]}},
+                "workflow_patterns": {
+                    "sequential": {"description": "Linear progression"}
+                },
+            }
+        ),
     ):
         with patch.dict("os.environ", {"OPENAI_API_KEY": "test_key"}):
             planner = OrchestrationPlanner()
-            planner.matrix = MockDecisionMatrix().data
+            planner.matrix = {
+                "complexity_assessment": {
+                    "simple": {"indicators": ["simple"], "threshold": 1}
+                },
+                "agent_role_selection": {"discovery_phase": {"roles": ["researcher"]}},
+                "workflow_patterns": {
+                    "sequential": {"description": "Linear progression"}
+                },
+            }
             return planner
 
 
