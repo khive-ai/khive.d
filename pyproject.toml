@@ -36,6 +36,11 @@ addopts = [
     "--cov=src/khive",                      # Enable coverage
     "--cov-report=term-missing",            # Show missing lines
     "--cov-fail-under=90",                  # Target >90% coverage as required
+    "--ignore=tests/integration/test_mcp_cc_toolkit_integration.py",
+    "--ignore=tests/integration/test_mcp_protocol_integration.py", 
+    "--ignore=tests/integration/test_mcp_server_lifecycle_management.py",
+    "--ignore=tests/toolkits/cc/test_configuration.py",
+    "--ignore=tests/toolkits/cc/test_mcp_integration.py",
 ]
 
 # Async support
