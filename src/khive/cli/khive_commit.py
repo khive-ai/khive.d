@@ -896,6 +896,13 @@ def main() -> None:
 
     config = load_commit_config(args.project_root, args)
 
+    # Validate arguments early before any git operations
+    if not args.interactive and not args.message and not (args.type and args.subject):
+        die_commit(
+            "No commit message strategy: Provide a positional message, or --type and --subject, or use --interactive.",
+            json_output_flag=config.json_output,
+        )
+
     # If interactive, staging mode might also become interactive
     if (
         args.interactive and args.patch_stage is None
@@ -906,12 +913,6 @@ def main() -> None:
         warn_msg(
             "Positional 'message' provided along with structured flags (--type, --scope, etc.). Positional message will be used.",
             console=not config.json_output,
-        )
-
-    if not args.interactive and not args.message and not (args.type and args.subject):
-        die_commit(
-            "No commit message strategy: Provide a positional message, or --type and --subject, or use --interactive.",
-            json_output_flag=config.json_output,
         )
 
     results = _main_commit_flow(args, config)
