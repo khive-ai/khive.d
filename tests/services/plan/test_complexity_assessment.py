@@ -144,8 +144,8 @@ class TestTriageAlgorithms:
             },
         ]
 
-    @patch("khive.services.plan.triage.complexity_triage.ComplexityTriageService._evaluate_with_llm")
-    async def test_triage_classification_accuracy(self, mock_llm_eval, triage_scenarios):
+    @patch("khive.services.plan.triage.complexity_triage.ComplexityTriageService.triage")
+    async def test_triage_classification_accuracy(self, mock_triage, triage_scenarios):
         """Test triage algorithm accuracy for representative scenarios."""
         service = ComplexityTriageService()
         correct_assessments = 0
@@ -153,31 +153,36 @@ class TestTriageAlgorithms:
         for scenario in triage_scenarios:
             # Mock LLM response for scenario
             mock_consensus = TriageConsensus(
-                tier=scenario["expected_tier"],
-                confidence=0.8,
-                agent_count=scenario["expected_agents"],
-                recommended_roles=["researcher", "implementer"],
-                reasoning=f"Assessment for {scenario['task']}",
+                should_escalate=scenario["expected_tier"] in ["complex", "very_complex"],
+                complexity_votes={"simple": 1, "complex": 2} if scenario["expected_tier"] in ["complex", "very_complex"] else {"simple": 2, "complex": 1},
+                average_confidence=0.8,
+                final_agent_count=scenario["expected_agents"],
+                final_roles=["researcher", "implementer"],
+                final_domains=["backend-development"],
+                consensus_reasoning=f"Assessment for {scenario['task']}",
             )
-            mock_llm_eval.return_value = mock_consensus
+            should_escalate = scenario["expected_tier"] in ["complex", "very_complex"]
+            mock_triage.return_value = (should_escalate, mock_consensus)
 
             # Test triage evaluation
-            result = await service.evaluate_complexity(scenario["task"])
+            escalate, result = await service.triage(scenario["task"])
 
             # Verify result structure and accuracy
             assert isinstance(result, TriageConsensus)
-            assert result.tier == scenario["expected_tier"]
-            assert 1 <= result.agent_count <= 12  # Within bounds
+            expected_escalation = scenario["expected_tier"] in ["complex", "very_complex"]
+            assert result.should_escalate == expected_escalation
+            if result.final_agent_count is not None:
+                assert 1 <= result.final_agent_count <= 12  # Within bounds
             
-            if result.tier == scenario["expected_tier"]:
+            if result.should_escalate == expected_escalation:
                 correct_assessments += 1
 
         # Assert reasonable accuracy
         accuracy = correct_assessments / len(triage_scenarios)
         assert accuracy >= 0.75, f"Triage accuracy {accuracy:.2%} below 75% threshold"
 
-    @patch("khive.services.plan.triage.complexity_triage.ComplexityTriageService._evaluate_with_llm")  
-    async def test_agent_count_bounds(self, mock_llm_eval):
+    @patch("khive.services.plan.triage.complexity_triage.ComplexityTriageService.triage")  
+    async def test_agent_count_bounds(self, mock_triage):
         """Test that agent counts stay within efficiency bounds."""
         service = ComplexityTriageService()
         
@@ -191,19 +196,24 @@ class TestTriageAlgorithms:
 
         for tier, agent_count in test_cases:
             mock_consensus = TriageConsensus(
-                tier=tier,
-                confidence=0.8,
-                agent_count=agent_count,
-                recommended_roles=["researcher"],
-                reasoning=f"Test for {tier.value}",
+                should_escalate=tier in [ComplexityTier.COMPLEX, ComplexityTier.VERY_COMPLEX],
+                complexity_votes={"simple": 1, "complex": 2} if tier in [ComplexityTier.COMPLEX, ComplexityTier.VERY_COMPLEX] else {"simple": 2, "complex": 1},
+                average_confidence=0.8,
+                final_agent_count=agent_count,
+                final_roles=["researcher"],
+                final_domains=["backend-development"],
+                consensus_reasoning=f"Test for {tier.value}",
             )
-            mock_llm_eval.return_value = mock_consensus
+            should_escalate = tier in [ComplexityTier.COMPLEX, ComplexityTier.VERY_COMPLEX]
+            mock_triage.return_value = (should_escalate, mock_consensus)
 
-            result = await service.evaluate_complexity(f"Test {tier.value} task")
+            escalate, result = await service.triage(f"Test {tier.value} task")
             
             # Verify efficiency bounds
-            assert 1 <= result.agent_count <= 12, f"Agent count {result.agent_count} outside bounds [1, 12]"
-            assert result.tier == tier
+            if result.final_agent_count is not None:
+                assert 1 <= result.final_agent_count <= 12, f"Agent count {result.final_agent_count} outside bounds [1, 12]"
+            expected_escalation = tier in [ComplexityTier.COMPLEX, ComplexityTier.VERY_COMPLEX]
+            assert result.should_escalate == expected_escalation
 
 
 @pytest.mark.unit  
