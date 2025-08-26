@@ -44,8 +44,8 @@ from khive.utils import BaseConfig, die, error_msg, info_msg, log_msg, warn_msg
 from .base import BaseCLICommand, CLIResult, cli_command
 
 # Timeouts based on community recommendations
-DEFAULT_TIMEOUT = 30.0  # Increased from 10s
-INIT_TIMEOUT = 5.0  # Initial connection timeout
+DEFAULT_TIMEOUT = 120.0  # Increased for memory server
+INIT_TIMEOUT = 30.0  # Initial connection timeout - increased
 CLEANUP_TIMEOUT = 2.0  # Faster cleanup
 
 
@@ -766,20 +766,19 @@ class MCPCommand(BaseCLICommand):
             # Try to connect and get server info
             if not server_config.disabled:
                 try:
-                    async with asyncio.timeout(server_config.timeout):
-                        async with self._get_client(server_config) as client:
-                            tools = await client.list_tools()
-                            server_info["status"] = "connected"
-                            server_info["tools_count"] = len(tools)
-                            server_info["tools"] = [
-                                {"name": tool.name, "description": tool.description}
-                                for tool in tools
-                            ]
+                    async with self._get_client(server_config) as client:
+                        tools = await asyncio.wait_for(
+                            client.list_tools(), timeout=120.0
+                        )
+                        server_info["status"] = "connected"
+                        server_info["tools_count"] = len(tools)
+                        server_info["tools"] = [
+                            {"name": tool.name, "description": tool.description}
+                            for tool in tools
+                        ]
                 except asyncio.TimeoutError:
                     server_info["status"] = "timeout"
-                    server_info["error"] = (
-                        f"Connection timeout ({server_config.timeout}s)"
-                    )
+                    server_info["error"] = f"Connection timeout (120s)"
                 except Exception as e:
                     server_info["status"] = "error"
                     server_info["error"] = str(e)
@@ -826,70 +825,68 @@ class MCPCommand(BaseCLICommand):
 
         for attempt in range(max_retries):
             try:
-                async with asyncio.timeout(server_config.timeout):
-                    async with self._get_client(server_config) as client:
-                        # Test connection first
-                        try:
-                            # Some MCP servers need a moment to initialize
-                            await asyncio.sleep(0.1)
-                            tools = await client.list_tools()
-                        except Exception as tools_error:
-                            log_msg(
-                                f"Error listing tools on attempt {attempt + 1}: {tools_error}"
-                            )
-                            if attempt < max_retries - 1:
-                                await asyncio.sleep(
-                                    0.5 * (attempt + 1)
-                                )  # Exponential backoff
-                                continue
-                            raise
-
-                        tools_info = []
-                        for tool in tools:
-                            try:
-                                tool_info = {
-                                    "name": tool.name,
-                                    "description": tool.description,
-                                }
-
-                                # Add parameter info if available - handle different schema formats
-                                if hasattr(tool, "inputSchema") and tool.inputSchema:
-                                    schema = tool.inputSchema
-                                    if (
-                                        isinstance(schema, dict)
-                                        and "properties" in schema
-                                    ):
-                                        tool_info["parameters"] = list(
-                                            schema["properties"].keys()
-                                        )
-                                    elif hasattr(schema, "properties"):
-                                        tool_info["parameters"] = list(
-                                            schema.properties.keys()
-                                        )
-
-                                # Add any available input schema info
-                                if hasattr(tool, "inputSchema") and tool.inputSchema:
-                                    tool_info["has_schema"] = True
-
-                                tools_info.append(tool_info)
-                            except Exception as tool_error:
-                                log_msg(
-                                    f"Error processing tool {getattr(tool, 'name', 'unknown')}: {tool_error}"
-                                )
-                                # Add minimal info for problematic tools
-                                tools_info.append(
-                                    {
-                                        "name": getattr(tool, "name", "unknown"),
-                                        "description": f"Error: {tool_error}",
-                                        "error": True,
-                                    }
-                                )
-
-                        return CLIResult(
-                            status="success",
-                            message=f"Found {len(tools_info)} tools on server '{server_name}'",
-                            data={"server": server_name, "tools": tools_info},
+                async with self._get_client(server_config) as client:
+                    # Test connection first
+                    try:
+                        # Some MCP servers need a moment to initialize
+                        await asyncio.sleep(0.1)
+                        tools = await asyncio.wait_for(
+                            client.list_tools(), timeout=120.0
                         )
+                    except Exception as tools_error:
+                        log_msg(
+                            f"Error listing tools on attempt {attempt + 1}: {tools_error}"
+                        )
+                        if attempt < max_retries - 1:
+                            await asyncio.sleep(
+                                0.5 * (attempt + 1)
+                            )  # Exponential backoff
+                            continue
+                        raise
+
+                    tools_info = []
+                    for tool in tools:
+                        try:
+                            tool_info = {
+                                "name": tool.name,
+                                "description": tool.description,
+                            }
+
+                            # Add parameter info if available - handle different schema formats
+                            if hasattr(tool, "inputSchema") and tool.inputSchema:
+                                schema = tool.inputSchema
+                                if isinstance(schema, dict) and "properties" in schema:
+                                    tool_info["parameters"] = list(
+                                        schema["properties"].keys()
+                                    )
+                                elif hasattr(schema, "properties"):
+                                    tool_info["parameters"] = list(
+                                        schema.properties.keys()
+                                    )
+
+                            # Add any available input schema info
+                            if hasattr(tool, "inputSchema") and tool.inputSchema:
+                                tool_info["has_schema"] = True
+
+                            tools_info.append(tool_info)
+                        except Exception as tool_error:
+                            log_msg(
+                                f"Error processing tool {getattr(tool, 'name', 'unknown')}: {tool_error}"
+                            )
+                            # Add minimal info for problematic tools
+                            tools_info.append(
+                                {
+                                    "name": getattr(tool, "name", "unknown"),
+                                    "description": f"Error: {tool_error}",
+                                    "error": True,
+                                }
+                            )
+
+                    return CLIResult(
+                        status="success",
+                        message=f"Found {len(tools_info)} tools on server '{server_name}'",
+                        data={"server": server_name, "tools": tools_info},
+                    )
 
             except asyncio.TimeoutError as e:
                 last_error = e
@@ -978,72 +975,108 @@ class MCPCommand(BaseCLICommand):
 
         # Enhanced timeout for tool calls (they may take longer than connection)
         call_timeout = max(
-            server_config.timeout, 60.0
-        )  # At least 60s for tool execution
+            server_config.timeout, 120.0
+        )  # At least 120s for tool execution
 
         try:
-            async with asyncio.timeout(call_timeout):
-                async with self._get_client(server_config) as client:
-                    # Validate tool exists first
-                    try:
-                        tools = await client.list_tools()
-                        available_tools = [t.name for t in tools]
-                        if tool_name not in available_tools:
-                            return CLIResult(
-                                status="failure",
-                                message=f"Tool '{tool_name}' not found on server '{server_name}'",
-                                data={
-                                    "server": server_name,
-                                    "tool": tool_name,
-                                    "available_tools": available_tools,
-                                },
-                                exit_code=1,
-                            )
-                    except Exception as list_error:
-                        log_msg(
-                            f"Warning: Could not verify tool existence: {list_error}"
-                        )
-                        # Continue anyway - some servers may not support tool listing during execution
-
-                    # Call the tool with proper error handling
-                    try:
-                        log_msg(
-                            f"Calling tool '{tool_name}' on server '{server_name}' with args: {arguments}"
-                        )
-                        result = await client.call_tool(tool_name, arguments)
-                        log_msg("Tool call completed successfully")
-
-                        # Format result based on content type
-                        formatted_result = self._format_tool_result(result)
-
+            async with self._get_client(server_config) as client:
+                # Validate tool exists first
+                try:
+                    tools = await asyncio.wait_for(
+                        client.list_tools(), timeout=server_config.timeout
+                    )
+                    available_tools = [t.name for t in tools]
+                    if tool_name not in available_tools:
                         return CLIResult(
-                            status="success",
-                            message=f"Tool '{tool_name}' executed successfully",
+                            status="failure",
+                            message=f"Tool '{tool_name}' not found on server '{server_name}'",
                             data={
                                 "server": server_name,
                                 "tool": tool_name,
-                                "arguments": arguments,
-                                "result": formatted_result,
-                                "execution_time": f"< {call_timeout}s",
+                                "available_tools": available_tools,
                             },
+                            exit_code=1,
                         )
-                    except Exception as call_error:
-                        log_msg(f"Tool call failed: {call_error}")
-                        # Provide more specific error information
-                        error_info = {
+                except Exception as list_error:
+                    log_msg(f"Warning: Could not verify tool existence: {list_error}")
+                    # Continue anyway - some servers may not support tool listing during execution
+
+                # Call the tool with proper error handling
+                try:
+                    log_msg(
+                        f"Calling tool '{tool_name}' on server '{server_name}' with args: {arguments}"
+                    )
+                    result = await asyncio.wait_for(
+                        client.call_tool(tool_name, arguments), timeout=call_timeout
+                    )
+                    log_msg("Tool call completed successfully")
+
+                    # Extract the actual content like Claude Code does
+                    if hasattr(result, "content") and result.content:
+                        # If result has content attribute, use that
+                        if isinstance(result.content, list):
+                            formatted_result = []
+                            for item in result.content:
+                                if (
+                                    hasattr(item, "text")
+                                    and hasattr(item, "type")
+                                    and item.type == "text"
+                                ):
+                                    try:
+                                        import json
+
+                                        parsed = json.loads(item.text)
+                                        formatted_result.append(parsed)
+                                    except:
+                                        formatted_result.append(item.text)
+                                else:
+                                    formatted_result.append(item)
+                        else:
+                            formatted_result = result.content
+                    elif (
+                        hasattr(result, "text")
+                        and hasattr(result, "type")
+                        and result.type == "text"
+                    ):
+                        # Single text result
+                        try:
+                            import json
+
+                            formatted_result = json.loads(result.text)
+                        except:
+                            formatted_result = result.text
+                    else:
+                        # Fallback to old formatting
+                        formatted_result = self._format_tool_result(result)
+
+                    return CLIResult(
+                        status="success",
+                        message=f"Tool '{tool_name}' executed successfully",
+                        data={
                             "server": server_name,
                             "tool": tool_name,
                             "arguments": arguments,
-                            "error_type": type(call_error).__name__,
-                            "error_details": str(call_error),
-                        }
+                            "result": formatted_result,
+                            "execution_time": f"< {call_timeout}s",
+                        },
+                    )
+                except Exception as call_error:
+                    log_msg(f"Tool call failed: {call_error}")
+                    # Provide more specific error information
+                    error_info = {
+                        "server": server_name,
+                        "tool": tool_name,
+                        "arguments": arguments,
+                        "error_type": type(call_error).__name__,
+                        "error_details": str(call_error),
+                    }
 
-                        return CLIResult(
-                            status="failure",
-                            message=f"Tool execution failed: {call_error}",
-                            data=error_info,
-                            exit_code=1,
-                        )
+                    return CLIResult(
+                        status="failure",
+                        message=f"Tool execution failed: {call_error}",
+                        data=error_info,
+                        exit_code=1,
+                    )
 
         except asyncio.TimeoutError:
             return CLIResult(
@@ -1110,20 +1143,41 @@ class MCPCommand(BaseCLICommand):
         return arguments
 
     def _format_tool_result(self, result: Any) -> Any:
-        """Format tool result for display."""
-        # Handle different result types
+        """Format tool result for display to match Claude Code MCP behavior."""
+        import json
+
+        # Handle MCP result objects with text content (like Claude Code does)
+        try:
+            # Try to access .text attribute directly (for MCP response objects)
+            if hasattr(result, "text") and hasattr(result, "type"):
+                if result.type == "text":
+                    try:
+                        # Parse JSON from the text content
+                        parsed_json = json.loads(result.text)
+                        return parsed_json
+                    except json.JSONDecodeError:
+                        # Return as plain text if not valid JSON
+                        return result.text
+        except (AttributeError, TypeError):
+            pass
+
+        # Handle lists of MCP content format
         if isinstance(result, list):
-            # Check for MCP content format
             formatted = []
             for item in result:
                 if isinstance(item, dict) and item.get("type") == "text":
-                    formatted.append(item.get("text", ""))
+                    try:
+                        # Try to parse JSON from text content
+                        parsed_json = json.loads(item.get("text", ""))
+                        formatted.append(parsed_json)
+                    except json.JSONDecodeError:
+                        formatted.append(item.get("text", ""))
                 else:
                     formatted.append(item)
             return formatted
 
+        # Handle result objects with content attribute
         if hasattr(result, "content"):
-            # Handle result objects with content attribute
             return self._format_tool_result(result.content)
 
         # Return as-is
