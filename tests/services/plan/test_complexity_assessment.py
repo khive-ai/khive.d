@@ -201,6 +201,7 @@ class TestTriageAlgorithms:
     @patch(
         "khive.services.plan.triage.complexity_triage.ComplexityTriageService.triage"
     )
+    @pytest.mark.asyncio
     async def test_triage_classification_accuracy(self, mock_triage, triage_scenarios):
         """Test triage algorithm accuracy for representative scenarios."""
         service = ComplexityTriageService()
@@ -248,6 +249,7 @@ class TestTriageAlgorithms:
     @patch(
         "khive.services.plan.triage.complexity_triage.ComplexityTriageService.triage"
     )
+    @pytest.mark.asyncio
     async def test_agent_count_bounds(self, mock_triage):
         """Test that agent counts stay within efficiency bounds."""
         service = ComplexityTriageService()
