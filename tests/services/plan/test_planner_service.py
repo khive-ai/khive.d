@@ -38,6 +38,7 @@ class TestPlannerServiceCore:
         )
 
     @patch("khive.services.plan.planner_service.OrchestrationPlanner")
+    @pytest.mark.asyncio
     async def test_plan_method_basic_flow(
         self, mock_orchestration_planner_cls, sample_request
     ):
@@ -95,6 +96,7 @@ class TestComplexityAssessment:
             ("build distributed consensus algorithm", ComplexityTier.VERY_COMPLEX),
         ]
 
+    @pytest.mark.asyncio
     @patch("khive.services.plan.triage.complexity_triage.ComplexityTriageService")
     async def test_complexity_classification(
         self, mock_triage_cls, complexity_test_cases
@@ -143,6 +145,7 @@ class TestComplexityAssessment:
                 # Check that we got evaluations back
                 assert all(isinstance(eval_item, dict) for eval_item in result)
 
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "tier,expected_range",
         [
@@ -205,6 +208,7 @@ class TestPlannerIntegration:
 
     @patch("khive.services.plan.triage.complexity_triage.ComplexityTriageService")
     @patch("khive.services.plan.planner_service.OrchestrationPlanner")
+    @pytest.mark.asyncio
     async def test_end_to_end_planning_workflow(
         self, mock_orchestration_planner_cls, mock_triage_cls
     ):
@@ -265,6 +269,7 @@ class TestPlannerIntegration:
 
     @patch("khive.services.plan.triage.complexity_triage.ComplexityTriageService")
     @patch("khive.services.plan.planner_service.OrchestrationPlanner")
+    @pytest.mark.asyncio
     async def test_performance_within_limits(
         self, mock_orchestration_planner_cls, mock_triage_cls
     ):
