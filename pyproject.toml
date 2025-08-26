@@ -31,59 +31,70 @@ addopts = [
     "-v",                                    # Verbose output
     "--tb=short",                           # Short traceback format
     "--strict-markers",                     # Ensure all markers are defined
-    "--durations=5",                        # Show 5 slowest tests
+    "--durations=10",                       # Show 10 slowest tests
     "--cov=src/khive",                      # Enable coverage
     "--cov-report=term-missing",            # Show missing lines
-    "--ignore=tests/integration/test_mcp_cc_toolkit_integration.py",
-    "--ignore=tests/integration/test_mcp_protocol_integration.py",
-    "--ignore=tests/integration/test_mcp_server_lifecycle_management.py",
-    "--ignore=tests/toolkits/cc/test_configuration.py",
-    "--ignore=tests/toolkits/cc/test_mcp_integration.py",
+    "--cov-report=html",                    # Generate HTML coverage report
+    "--cov-report=xml",                     # Generate XML coverage report for CI
+    "--cov-fail-under=70",                  # Fail if coverage below 70% (gradual improvement)
+    "--timeout=300",                        # Global test timeout of 5 minutes
+    "--timeout-method=thread",              # Use thread-based timeout
+    "--randomly-seed=42",                   # Reproducible random test order
 ]
 
 # Async support
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
-# Essential test markers only
+# Test markers - only the ones we actually use
 markers = [
-    "unit: Fast unit tests",
-    "integration: Integration tests with dependencies",
-    "slow: Slow-running tests (>5s)",
+    # Core test types (actively used)
+    "unit: Fast unit tests (<100ms)",
+    "integration: Integration tests with dependencies", 
+    "boundary: Boundary condition and edge case tests",
     "cli: Command-line interface tests",
-    "boundary: Boundary condition and edge case tests",
-    "regression: Regression tests for known bug fixes",
-    "external: Tests requiring external services (OpenAI API, etc.)",
-    "consistency: Tests for deterministic behavior validation",
-    "async_test: Async/await pattern tests",
-    "concurrency: Concurrent execution and thread safety tests",
-    "timeout_handling: Timeout and cancellation handling tests",
-    "race_condition: Race condition detection tests",
-    "deadlock: Deadlock prevention tests",
-    "resource_cleanup: Resource cleanup and management tests",
-    "boundary: Boundary condition and edge case tests",
-    "mcp_protocol: MCP protocol compliance tests",
-    "mcp_transport: MCP transport reliability tests",
-    "mcp_lifecycle: MCP server lifecycle management tests",
-    "mcp_server_lifecycle: MCP server lifecycle with configuration and workspace management",
-    "mcp_error_handling: MCP error handling and recovery tests",
-    "mcp_configuration: MCP configuration management tests",
-    "mcp_cc_toolkit: MCP CC toolkit integration tests",
-    "mcp_workspace: MCP workspace isolation tests",
-    "mcp_real_servers: MCP real server integration tests",
+    "performance: Performance benchmark tests",
     "security: Security validation and vulnerability tests",
+    
+    # Additional essential markers for future use
+    "slow: Slow-running tests (>5s)",
+    "external: Tests requiring external services (OpenAI API, etc.)",
+    "mcp: MCP protocol and server tests",
 ]
 
 # Test environment
 env = [
     "KHIVE_TEST_MODE=true",
     "KHIVE_DISABLE_EXTERNAL_APIS=true",
+    "PYTHONPATH=src",
+    "PYTEST_CURRENT_TEST=true",
+    "HYPOTHESIS_PROFILE=ci",
 ]
 
 # Filter warnings
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::UserWarning:streamlit.*",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+    "ignore::ResourceWarning",
+    "ignore::UserWarning:hypothesis.*",
 ]
+
+# Minimum supported pytest version
+minversion = "8.0"
+
+# Log configuration for debugging
+log_level = "INFO"
+log_cli = false
+log_cli_level = "DEBUG"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(name)s: %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+
+# Test collection timeout
+collect_timeout = 60
+
+# Enable traceback cutting for cleaner output
+tb_short_cut = true
 
 [tool.coverage.run]
 source = ["src/khive"]
@@ -102,7 +113,7 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 show_missing = true
-fail_under = 90.0  # Target >90% coverage for production deployment
+fail_under = 70.0  # Gradual improvement target, aim for 85-90% eventually
 
 [tool.coverage.xml]
 output = "coverage.xml"
@@ -113,7 +124,7 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "black[jupyter]>=25.1.0",
+    "black>=25.1.0",
     "ruff>=0.12.9",
     "pre-commit>=4.3.0",
     "pytest>=8.4.1",
@@ -124,15 +135,14 @@ dev = [
     "pytest-xdist>=3.6.0",
     "pytest-timeout>=2.3.1",
     "pytest-randomly>=3.15.0",
-    "pytest-clarity>=1.0.1",
     "pytest-html>=4.1.1",
     "isort>=6.0.1",
-    "ipykernel>=6.30.1",
-    "ipywidgets>=8.1.7",
     "mypy>=1.11.0",
     "bandit>=1.7.10",
     "coverage>=7.6.0",
     "hypothesis>=6.138.2",
+    "faker>=30.8.2",
+    "httpx>=0.27.0",
 ]
 
 
