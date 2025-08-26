@@ -10,9 +10,16 @@ import pytest
 def mock_api_clients():
     """Mock external API clients."""
     mock_openai = AsyncMock()
-    mock_openai.chat.completions.create.return_value = MagicMock(
-        choices=[MagicMock(message=MagicMock(content="Mock response"))]
-    )
+    
+    # Create a mock response that contains "Mock response" when converted to string
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = MagicMock()
+    mock_response.choices[0].message.content = "Mock response"
+    mock_response.__str__ = lambda self: "Mock response"
+    mock_response.__repr__ = lambda self: "Mock response"
+    
+    mock_openai.chat.completions.create.return_value = mock_response
 
     return {
         "openai": mock_openai,

@@ -25,6 +25,7 @@ class PerformanceMetrics:
     latency_p99: float
     error_rate: float
     success_rate: float
+    operation_count: int
 
 
 @pytest.fixture
@@ -140,6 +141,7 @@ def performance_monitor():
                 latency_p99=latency_p99,
                 error_rate=error_rate,
                 success_rate=success_rate,
+                operation_count=self.operation_count,
             )
 
     return PerformanceMonitor()
