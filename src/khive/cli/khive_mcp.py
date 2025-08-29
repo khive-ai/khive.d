@@ -778,7 +778,7 @@ class MCPCommand(BaseCLICommand):
                         ]
                 except asyncio.TimeoutError:
                     server_info["status"] = "timeout"
-                    server_info["error"] = f"Connection timeout (120s)"
+                    server_info["error"] = "Connection timeout (120s)"
                 except Exception as e:
                     server_info["status"] = "error"
                     server_info["error"] = str(e)
