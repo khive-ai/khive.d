@@ -549,7 +549,7 @@ class CoordinationRegistry:
 
     def _setup_event_subscriptions(self):
         """Subscribe to HookEventBroadcaster for inter-agent communication."""
-        from khive.services.claude.hooks import HookEventBroadcaster
+        from khive.services.claude.hooks.hook_event import HookEventBroadcaster
 
         # Subscribe to hook events for coordination
         def handle_hook_event(event):
