@@ -1,7 +1,8 @@
 """
-Claude Code prompt submission hook for observability.
+Claude Code prompt submission hook for observability and coordination.
 
-Called when user submits prompts to Claude Code to monitor interaction patterns.
+Called when user submits prompts to Claude Code to monitor interaction patterns
+and provide coordination insights.
 """
 
 import json
@@ -10,6 +11,10 @@ from typing import Any
 
 import anyio
 
+from khive.services.claude.hooks.coordination import (
+    get_coordination_insights,
+    get_registry,
+)
 from khive.services.claude.hooks.hook_event import (
     HookEvent,
     HookEventContent,
@@ -71,12 +76,32 @@ def handle_prompt_submitted(
                 exc_info=True,
             )
 
-        return {
+        # Get coordination insights
+        coordination_insights = get_coordination_insights()
+        registry = get_registry()
+
+        # Check if this prompt might duplicate existing work
+        relevant_contexts = registry.get_relevant_context(prompt, limit=2)
+
+        result = {
             "prompt_length": prompt_length,
             "word_count": word_count,
             "estimated_complexity": estimated_complexity,
             "event_logged": True,
+            "active_agents": coordination_insights["active_agents"],
+            "active_tasks": coordination_insights["active_tasks"],
         }
+
+        # Add coordination suggestions if relevant
+        if relevant_contexts:
+            result["similar_work_exists"] = True
+            result["similar_contexts"] = len(relevant_contexts)
+
+        # Add insights if there are any
+        if coordination_insights["insights"]:
+            result["coordination_insights"] = coordination_insights["insights"]
+
+        return result
 
     except Exception as e:
         return {"error": str(e), "event_logged": False}
