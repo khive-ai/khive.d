@@ -5,10 +5,7 @@ import json
 import random
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Union
 from unittest.mock import AsyncMock, MagicMock
-
-import pytest
 
 
 @dataclass
@@ -35,7 +32,7 @@ class APIMetrics:
     total_tokens_used: int = 0
     total_cost_usd: float = 0.0
     average_latency_ms: float = 0.0
-    request_history: List[Dict] = field(default_factory=list)
+    request_history: list[dict] = field(default_factory=list)
 
 
 class MockAPIResponse:
@@ -47,7 +44,7 @@ class MockAPIResponse:
 
     def create_openai_completion_response(
         self, prompt: str, model: str = "gpt-4", response_content: str = None
-    ) -> Dict:
+    ) -> dict:
         """Create realistic OpenAI completion response."""
 
         # Simulate latency
@@ -103,7 +100,7 @@ class MockAPIResponse:
 
         return response
 
-    def create_planning_response(self, request_text: str) -> Dict:
+    def create_planning_response(self, request_text: str) -> dict:
         """Create realistic planning service response."""
 
         complexity_keywords = {
@@ -150,7 +147,7 @@ class MockAPIResponse:
         latency = self.config.base_latency_ms + random.uniform(-variance, variance)
         return max(int(latency), 100)  # Minimum 100ms
 
-    def _create_error_response(self) -> Dict:
+    def _create_error_response(self) -> dict:
         """Create realistic error response."""
         error_types = [
             {
@@ -180,7 +177,7 @@ class MockAPIResponse:
         self._update_metrics(False, 0, self._calculate_latency())
         return error_response
 
-    def _create_rate_limit_response(self) -> Dict:
+    def _create_rate_limit_response(self) -> dict:
         """Create rate limit response."""
         self.metrics.rate_limited_requests += 1
         return {
@@ -217,7 +214,7 @@ class MockAPIResponse:
         else:
             return "This is a mock response generated for testing purposes. The actual implementation would provide contextually relevant content."
 
-    def _get_suggested_roles(self, complexity: str) -> List[str]:
+    def _get_suggested_roles(self, complexity: str) -> list[str]:
         """Get role suggestions based on complexity."""
         base_roles = ["researcher", "implementer"]
 
@@ -228,7 +225,7 @@ class MockAPIResponse:
 
         return base_roles
 
-    def _get_suggested_domains(self, request_text: str) -> List[str]:
+    def _get_suggested_domains(self, request_text: str) -> list[str]:
         """Suggest domains based on request content."""
         domain_keywords = {
             "software-architecture": ["architecture", "design", "system"],

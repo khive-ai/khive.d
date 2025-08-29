@@ -1,12 +1,11 @@
 """Filesystem testing fixtures for file operations and workspace management."""
 
-import os
 import shutil
 import tempfile
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import mock_open, patch
 
 import pytest
 
@@ -67,7 +66,7 @@ cache/
 project:
   name: test-workspace
   version: 0.1.0
-  
+
 testing:
   enabled: true
   coverage_threshold: 85
@@ -319,7 +318,7 @@ build-backend = "hatchling.build"
 project:
   name: khive-workspace
   type: khive
-  
+
 orchestration:
   enabled: true
   max_agents: 8

@@ -1,6 +1,5 @@
 """Security testing fixtures for vulnerability testing and input validation."""
 
-import secrets
 from typing import Any
 
 import pytest
