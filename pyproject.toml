@@ -43,12 +43,12 @@ asyncio_default_fixture_loop_scope = "function"
 markers = [
     # Core test types (actively used)
     "unit: Fast unit tests (<100ms)",
-    "integration: Integration tests with dependencies", 
+    "integration: Integration tests with dependencies",
     "boundary: Boundary condition and edge case tests",
     "cli: Command-line interface tests",
     "performance: Performance benchmark tests",
     "security: Security validation and vulnerability tests",
-    
+
     # Additional essential markers for future use
     "slow: Slow-running tests (>5s)",
     "external: Tests requiring external services (OpenAI API, etc.)",

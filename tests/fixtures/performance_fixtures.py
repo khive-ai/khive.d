@@ -2,10 +2,8 @@
 
 import asyncio
 import time
-from collections.abc import Generator
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -31,7 +29,6 @@ class PerformanceMetrics:
 @pytest.fixture
 def performance_monitor():
     """Monitor performance metrics during test execution."""
-    import resource
     import threading
     from queue import Queue
 

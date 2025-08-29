@@ -1,13 +1,11 @@
 """Agent composition and orchestration test fixtures."""
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from khive.services.composition.models import AgentComposition, ComposerRequest
-from khive.services.orchestration.models import OrchestrationRequest
+from khive.services.composition.models import ComposerRequest
 
 
 @pytest.fixture

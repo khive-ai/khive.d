@@ -1,7 +1,8 @@
 """
-Claude Code post-agent-spawn hook for observability.
+Claude Code post-agent-spawn hook for observability and coordination.
 
-Called after Claude Code spawns Task agents to analyze task completion and results.
+Called after Claude Code spawns Task agents to analyze task completion, share results,
+and enable context inheritance for future agents.
 """
 
 import json
@@ -10,6 +11,7 @@ from typing import Any
 
 import anyio
 
+from khive.services.claude.hooks.coordination import coordinate_task_complete
 from khive.services.claude.hooks.hook_event import (
     HookEvent,
     HookEventContent,
@@ -18,10 +20,42 @@ from khive.services.claude.hooks.hook_event import (
 )
 
 
+def extract_artifacts_from_output(output: str) -> list[str]:
+    """Extract artifacts from agent output (file paths, function names, etc.)."""
+    artifacts = []
+
+    # Look for file paths
+    import re
+
+    file_patterns = [
+        r"(?:created|modified|wrote|saved)\s+(?:file\s+)?([/\w\-\.]+\.(?:py|md|json|yaml|yml|txt))",
+        r"File:\s*([/\w\-\.]+\.(?:py|md|json|yaml|yml|txt))",
+        r"`([/\w\-\.]+\.(?:py|md|json|yaml|yml|txt))`",
+    ]
+
+    for pattern in file_patterns:
+        matches = re.findall(pattern, output, re.IGNORECASE)
+        artifacts.extend(matches)
+
+    # Look for function/class definitions
+    code_patterns = [
+        r"def\s+(\w+)\s*\(",
+        r"class\s+(\w+)[\(:]",
+        r"function\s+(\w+)\s*\(",
+    ]
+
+    for pattern in code_patterns:
+        matches = re.findall(pattern, output)
+        artifacts.extend([f"function:{name}" for name in matches])
+
+    # Deduplicate and return
+    return list(set(artifacts))
+
+
 def handle_post_agent_spawn(
-    output: str, session_id: str | None = None
+    output: str, session_id: str | None = None, task_id: str | None = None
 ) -> dict[str, Any]:
-    """Handle post-agent-spawn hook event."""
+    """Handle post-agent-spawn hook event with result sharing."""
     try:
         # Basic output analysis
         output_length = len(output)
@@ -41,6 +75,20 @@ def handle_post_agent_spawn(
             marker in output for marker in ["```", "def ", "class ", "function"]
         )
 
+        # Extract artifacts from output (files created, functions defined, etc.)
+        artifacts = extract_artifacts_from_output(output)
+
+        # Share the context if task was successful
+        coordination_result = None
+        if success and task_id:
+            agent_id = f"agent_{session_id[:8] if session_id else 'unknown'}"
+            coordination_result = coordinate_task_complete(
+                task_id=task_id,
+                agent_id=agent_id,
+                output=output[:1000],  # Share first 1000 chars for context
+                artifacts=artifacts,
+            )
+
         event = HookEvent(
             content=HookEventContent(
                 event_type="post_agent_spawn",
@@ -55,6 +103,9 @@ def handle_post_agent_spawn(
                     "contains_deliverable": contains_deliverable,
                     "contains_code": contains_code,
                     "hook_type": "post_agent_spawn",
+                    "task_id": task_id,
+                    "context_shared": coordination_result is not None,
+                    "artifacts_count": len(artifacts),
                 },
             )
         )
@@ -67,12 +118,22 @@ def handle_post_agent_spawn(
                 exc_info=True,
             )
 
-        return {
+        result = {
             "output_length": output_length,
             "success": success,
             "contains_deliverable": contains_deliverable,
             "event_logged": True,
         }
+
+        # Add coordination results
+        if coordination_result:
+            result["context_shared"] = True
+            result["context_key"] = coordination_result.get("context_key")
+            result["artifacts_registered"] = coordination_result.get(
+                "artifacts_registered", 0
+            )
+
+        return result
 
     except Exception as e:
         return {"error": str(e), "event_logged": False}

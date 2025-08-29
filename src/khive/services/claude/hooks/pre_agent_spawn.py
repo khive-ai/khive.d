@@ -1,7 +1,8 @@
 """
-Claude Code pre-agent-spawn hook for observability.
+Claude Code pre-agent-spawn hook for observability and coordination.
 
-Called before Claude Code spawns Task agents to monitor task coordination patterns.
+Called before Claude Code spawns Task agents to monitor task coordination patterns
+and enable intelligent task deduplication and context sharing.
 """
 
 import json
@@ -10,6 +11,7 @@ from typing import Any
 
 import anyio
 
+from khive.services.claude.hooks.coordination import coordinate_task_start
 from khive.services.claude.hooks.hook_event import (
     HookEvent,
     HookEventContent,
@@ -21,7 +23,7 @@ from khive.services.claude.hooks.hook_event import (
 def handle_pre_agent_spawn(
     task_description: str, session_id: str | None = None
 ) -> dict[str, Any]:
-    """Handle pre-agent-spawn hook event."""
+    """Handle pre-agent-spawn hook event with coordination."""
     try:
         # Basic task analysis
         task_length = len(task_description)
@@ -41,6 +43,27 @@ def handle_pre_agent_spawn(
         )
         word_count = len(task_description.split())
 
+        # Coordinate with other agents
+        coordination = coordinate_task_start(
+            task_description,
+            agent_id=f"agent_{session_id[:8] if session_id else 'unknown'}",
+        )
+
+        # Prepare coordination insights
+        coordination_metadata = {
+            "task_id": coordination["task_id"],
+            "is_duplicate": coordination["is_duplicate"],
+            "relevant_contexts": len(coordination["relevant_contexts"]),
+            "should_proceed": coordination["should_proceed"],
+        }
+
+        # Add suggestions to response if any
+        suggestions_text = ""
+        if coordination["suggestions"]:
+            suggestions_text = "; ".join(
+                [s["message"] for s in coordination["suggestions"]]
+            )
+
         event = HookEvent(
             content=HookEventContent(
                 event_type="pre_agent_spawn",
@@ -53,6 +76,7 @@ def handle_pre_agent_spawn(
                     "has_complex_keywords": has_complex_keywords,
                     "estimated_complexity": estimated_complexity,
                     "hook_type": "pre_agent_spawn",
+                    "coordination": coordination_metadata,
                 },
             )
         )
@@ -65,12 +89,26 @@ def handle_pre_agent_spawn(
                 exc_info=True,
             )
 
-        return {
-            "proceed": True,
+        result = {
+            "proceed": coordination["should_proceed"],
             "task_length": task_length,
             "estimated_complexity": estimated_complexity,
             "event_logged": True,
+            "task_id": coordination["task_id"],
+            "context_available": len(coordination["relevant_contexts"]) > 0,
         }
+
+        # Add coordination message if relevant
+        if suggestions_text:
+            result["coordination_message"] = suggestions_text
+
+        # Include relevant context summaries
+        if coordination["relevant_contexts"]:
+            result["inherit_context"] = coordination["relevant_contexts"][
+                :2
+            ]  # Top 2 contexts
+
+        return result
 
     except Exception as e:
         return {
