@@ -16,7 +16,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-
 from khive.services.plan.khive_plan import run_planning
 from khive.services.plan.parts import PlannerRequest, PlannerResponse
 
@@ -261,15 +260,13 @@ class TestPlanCLIInterface:
         parser.add_argument("--json-format", action="store_true")
 
         # Test valid arguments
-        args = parser.parse_args(
-            [
-                "implement OAuth2",
-                "--context",
-                "with JWT",
-                "--time-budget",
-                "60",
-            ]
-        )
+        args = parser.parse_args([
+            "implement OAuth2",
+            "--context",
+            "with JWT",
+            "--time-budget",
+            "60",
+        ])
         assert args.task_description == "implement OAuth2"
         assert args.context == "with JWT"
         assert args.time_budget == 60.0

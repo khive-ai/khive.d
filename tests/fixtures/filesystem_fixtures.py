@@ -162,14 +162,12 @@ def file_operation_tracker():
 
         def track_open(self, filename, mode="r", **kwargs):
             """Track file open operations."""
-            self.operations.append(
-                {
-                    "operation": "open",
-                    "filename": filename,
-                    "mode": mode,
-                    "kwargs": kwargs,
-                }
-            )
+            self.operations.append({
+                "operation": "open",
+                "filename": filename,
+                "mode": mode,
+                "kwargs": kwargs,
+            })
             return mock_open()()
 
         def track_remove(self, path):
@@ -178,13 +176,11 @@ def file_operation_tracker():
 
         def track_mkdir(self, path, **kwargs):
             """Track directory creation."""
-            self.operations.append(
-                {
-                    "operation": "mkdir",
-                    "path": path,
-                    "kwargs": kwargs,
-                }
-            )
+            self.operations.append({
+                "operation": "mkdir",
+                "path": path,
+                "kwargs": kwargs,
+            })
 
         def get_operations(self, operation_type=None):
             """Get tracked operations."""
@@ -357,14 +353,12 @@ def file_content_generator():
             content = [f'"""Module: {name}"""', "", ""]
 
             for func in functions:
-                content.extend(
-                    [
-                        f"def {func}():",
-                        f'    """Function: {func}"""',
-                        "    pass",
-                        "",
-                    ]
-                )
+                content.extend([
+                    f"def {func}():",
+                    f'    """Function: {func}"""',
+                    "    pass",
+                    "",
+                ])
 
             return "\\n".join(content)
 
@@ -375,14 +369,12 @@ def file_content_generator():
             content = ['"""Test module"""', "", "import pytest", "", ""]
 
             for func in test_functions:
-                content.extend(
-                    [
-                        f"def {func}():",
-                        f'    """Test: {func}"""',
-                        "    assert True",
-                        "",
-                    ]
-                )
+                content.extend([
+                    f"def {func}():",
+                    f'    """Test: {func}"""',
+                    "    assert True",
+                    "",
+                ])
 
             return "\\n".join(content)
 

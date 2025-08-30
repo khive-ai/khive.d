@@ -18,7 +18,6 @@ import subprocess
 from unittest.mock import Mock, patch
 
 import pytest
-
 from khive.cli.khive_clean import (
     CleanConfig,
     _clean_single_branch,
