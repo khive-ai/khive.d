@@ -1,10 +1,9 @@
 import logging
 
-from lionagi import Builder
-
 from khive.core import TimePolicy
 from khive.services.orchestration.operations.factory import get_worker_session
 from khive.services.orchestration.parts import Issue, IssuePlan
+from lionagi import Builder
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("KhiveOperations")

@@ -9,8 +9,6 @@ from pathlib import Path
 from typing import Protocol
 
 import yaml
-from openai import OpenAI
-
 from khive.core import TimePolicy
 from khive.prompts.complexity_heuristics import assess_by_heuristics
 from khive.services.artifacts.handlers import (
@@ -20,6 +18,7 @@ from khive.services.artifacts.handlers import (
     TimeoutType,
 )
 from khive.utils import get_logger
+from openai import OpenAI
 
 from .cost_tracker import CostTracker
 from .models import OrchestrationEvaluation
@@ -338,34 +337,30 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         elif complexity == ComplexityTier.COMPLEX:
             # Complex: 5-12 agents, add duplicates for parallel work
             if len(selected_roles) < 5:
-                selected_roles.extend(
-                    [
-                        "researcher",
-                        "researcher",
-                        "implementer",
-                        "tester",
-                        "reviewer",
-                    ]
-                )
+                selected_roles.extend([
+                    "researcher",
+                    "researcher",
+                    "implementer",
+                    "tester",
+                    "reviewer",
+                ])
 
         elif complexity == ComplexityTier.VERY_COMPLEX:
             # Very complex: 8-20 agents, multiple of each role for parallel work
             if len(selected_roles) < 8:
                 # Add multiple agents of key roles
-                selected_roles.extend(
-                    [
-                        "researcher",
-                        "researcher",
-                        "researcher",
-                        "implementer",
-                        "implementer",
-                        "analyst",
-                        "analyst",
-                        "tester",
-                        "critic",
-                        "reviewer",
-                    ]
-                )
+                selected_roles.extend([
+                    "researcher",
+                    "researcher",
+                    "researcher",
+                    "implementer",
+                    "implementer",
+                    "analyst",
+                    "analyst",
+                    "tester",
+                    "critic",
+                    "reviewer",
+                ])
 
         # Ensure all roles are valid (but keep duplicates)
         final_roles = [r for r in selected_roles if r in self.available_roles]
@@ -540,16 +535,14 @@ class OrchestrationPlanner(ComplexityAssessor, RoleSelector):
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 agent_id = agent_tasks[i][0]
-                processed_results.append(
-                    {
-                        "agent_id": agent_id,
-                        "status": "error",
-                        "duration": None,
-                        "retry_count": 0,
-                        "error": str(result),
-                        "execution_time": None,
-                    }
-                )
+                processed_results.append({
+                    "agent_id": agent_id,
+                    "status": "error",
+                    "duration": None,
+                    "retry_count": 0,
+                    "error": str(result),
+                    "execution_time": None,
+                })
             else:
                 processed_results.append(result)
 
@@ -700,14 +693,12 @@ Be different - show YOUR unique perspective on which roles matter most."""
                 gate="thorough",  # Default gate for template
             )
 
-            configs.append(
-                {
-                    "name": agent_config.get("name", agent_name),
-                    "system_prompt": system_prompt,
-                    # "temperature": agent_config.get("temperature", 0.3),
-                    "description": agent_config.get("description", ""),
-                }
-            )
+            configs.append({
+                "name": agent_config.get("name", agent_name),
+                "system_prompt": system_prompt,
+                # "temperature": agent_config.get("temperature", 0.3),
+                "description": agent_config.get("description", ""),
+            })
 
         # Fallback to hardcoded if YAML not available
         if not configs:
@@ -1568,14 +1559,12 @@ class PlannerService:
                 ]
 
                 # Fallback: if no agents match phase requirements, distribute evenly
-                if not any(
-                    [
-                        discovery_agents,
-                        design_agents,
-                        implementation_agents,
-                        validation_agents,
-                    ]
-                ):
+                if not any([
+                    discovery_agents,
+                    design_agents,
+                    implementation_agents,
+                    validation_agents,
+                ]):
                     # Distribute all agents evenly across phases
                     total_agents = len(agent_recommendations)
                     agents_per_phase = max(1, total_agents // 4)
@@ -1589,45 +1578,43 @@ class PlannerService:
                     ]
                     validation_agents = agent_recommendations[agents_per_phase * 3 :]
 
-                phases.extend(
-                    [
-                        TaskPhase(
-                            name="discovery_phase",
-                            description="Research and analyze requirements",
-                            agents=discovery_agents,  # Use all matching agents, no limit
-                            quality_gate=QualityGate.THOROUGH,
-                            coordination_pattern=WorkflowPattern.PARALLEL,
+                phases.extend([
+                    TaskPhase(
+                        name="discovery_phase",
+                        description="Research and analyze requirements",
+                        agents=discovery_agents,  # Use all matching agents, no limit
+                        quality_gate=QualityGate.THOROUGH,
+                        coordination_pattern=WorkflowPattern.PARALLEL,
+                    ),
+                    TaskPhase(
+                        name="design_phase",
+                        description="Design architecture and approach",
+                        agents=design_agents,  # Use all matching agents, no limit
+                        dependencies=["discovery_phase"],
+                        quality_gate=QualityGate.THOROUGH,
+                        coordination_pattern=WorkflowPattern.SEQUENTIAL,
+                    ),
+                    TaskPhase(
+                        name="implementation_phase",
+                        description="Implement the solution",
+                        agents=implementation_agents,  # Use all matching agents, no limit
+                        dependencies=["design_phase"],
+                        quality_gate=QualityGate.THOROUGH,
+                        coordination_pattern=WorkflowPattern.PARALLEL,
+                    ),
+                    TaskPhase(
+                        name="validation_phase",
+                        description="Validate and test the solution",
+                        agents=validation_agents,  # Use all matching agents, no limit
+                        dependencies=["implementation_phase"],
+                        quality_gate=(
+                            QualityGate.CRITICAL
+                            if complexity_level == ComplexityLevel.VERY_COMPLEX
+                            else QualityGate.THOROUGH
                         ),
-                        TaskPhase(
-                            name="design_phase",
-                            description="Design architecture and approach",
-                            agents=design_agents,  # Use all matching agents, no limit
-                            dependencies=["discovery_phase"],
-                            quality_gate=QualityGate.THOROUGH,
-                            coordination_pattern=WorkflowPattern.SEQUENTIAL,
-                        ),
-                        TaskPhase(
-                            name="implementation_phase",
-                            description="Implement the solution",
-                            agents=implementation_agents,  # Use all matching agents, no limit
-                            dependencies=["design_phase"],
-                            quality_gate=QualityGate.THOROUGH,
-                            coordination_pattern=WorkflowPattern.PARALLEL,
-                        ),
-                        TaskPhase(
-                            name="validation_phase",
-                            description="Validate and test the solution",
-                            agents=validation_agents,  # Use all matching agents, no limit
-                            dependencies=["implementation_phase"],
-                            quality_gate=(
-                                QualityGate.CRITICAL
-                                if complexity_level == ComplexityLevel.VERY_COMPLEX
-                                else QualityGate.THOROUGH
-                            ),
-                            coordination_pattern=WorkflowPattern.PARALLEL,
-                        ),
-                    ]
-                )
+                        coordination_pattern=WorkflowPattern.PARALLEL,
+                    ),
+                ])
 
             # Extract spawn commands from consensus output
             spawn_commands = []

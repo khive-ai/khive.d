@@ -463,16 +463,14 @@ class TriageAnalyzer:
                     record = json.loads(line)
 
                     # Format for fine-tuning
-                    training_data.append(
-                        {
-                            "prompt": record["prompt"],
-                            "completion": {
-                                "complexity": record["final_complexity"],
-                                "agent_count": record.get("actual_agents_used"),
-                                "success": record.get("execution_success"),
-                            },
-                        }
-                    )
+                    training_data.append({
+                        "prompt": record["prompt"],
+                        "completion": {
+                            "complexity": record["final_complexity"],
+                            "agent_count": record.get("actual_agents_used"),
+                            "success": record.get("execution_success"),
+                        },
+                    })
 
         with open(output_file, "w") as f:
             json.dump(training_data, f, indent=2)

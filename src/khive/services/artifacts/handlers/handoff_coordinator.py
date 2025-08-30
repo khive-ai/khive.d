@@ -204,9 +204,9 @@ class HandoffCoordinator:
                 in_degree[agent_id] += 1
 
         # Find nodes with no incoming edges
-        queue = deque(
-            [agent_id for agent_id in self.execution_graph if in_degree[agent_id] == 0]
-        )
+        queue = deque([
+            agent_id for agent_id in self.execution_graph if in_degree[agent_id] == 0
+        ])
         processed = 0
 
         while queue:
