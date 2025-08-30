@@ -4,19 +4,17 @@ import json
 from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 import aiofiles
+from khive._types import BaseModel
 from lionagi.protocols.types import Node
 from lionagi.utils import Enum, create_path
 from pydantic import Field, field_validator, model_validator
 
-from khive._types import BaseModel
-
 if TYPE_CHECKING:
     from pathlib import Path  # type: ignore[import-untyped]
 
-from lionagi.fields import Instruct
-
 from khive.security.secure_models import SecureAgentRequestMixin
 from khive.services.composition.parts import AgentRole, ComposerRequest
+from lionagi.fields import Instruct
 
 DeliverableType = Literal[
     "RequirementsAnalysis",

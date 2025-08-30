@@ -5,10 +5,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-
 from khive.prompts import AgentRole
 from khive.security.secure_models import SecureComposerRequestMixin
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 __all__ = (
     "AgentCompositionRequest",
