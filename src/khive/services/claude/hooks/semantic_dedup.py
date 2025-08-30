@@ -5,10 +5,7 @@ Uses embedding-based similarity to detect semantically similar tasks
 even when phrasing differs.
 """
 
-import hashlib
-import json
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -19,8 +16,8 @@ class TaskEmbedding:
 
     task_id: str
     description: str
-    embedding: List[float]
-    metadata: Dict
+    embedding: list[float]
+    metadata: dict
 
 
 class SemanticDeduplicator:
@@ -34,7 +31,7 @@ class SemanticDeduplicator:
             similarity_threshold: Minimum similarity score to consider tasks duplicate (0-1)
         """
         self.similarity_threshold = similarity_threshold
-        self.task_embeddings: Dict[str, TaskEmbedding] = {}
+        self.task_embeddings: dict[str, TaskEmbedding] = {}
 
         # Simple keyword-based embeddings (no external dependencies)
         # In production, would use sentence-transformers
@@ -89,7 +86,7 @@ class SemanticDeduplicator:
             "query": 43,
         }
 
-    def _create_embedding(self, description: str) -> List[float]:
+    def _create_embedding(self, description: str) -> list[float]:
         """
         Create a simple embedding vector from task description.
 
@@ -138,7 +135,7 @@ class SemanticDeduplicator:
         return embedding
 
     def _cosine_similarity(
-        self, embedding1: List[float], embedding2: List[float]
+        self, embedding1: list[float], embedding2: list[float]
     ) -> float:
         """Calculate cosine similarity between two embeddings."""
         # Convert to numpy arrays for easier computation
@@ -156,7 +153,7 @@ class SemanticDeduplicator:
         similarity = dot_product / (norm1 * norm2)
         return float(similarity)
 
-    def find_similar_task(self, description: str) -> Optional[Tuple[str, float]]:
+    def find_similar_task(self, description: str) -> tuple[str, float] | None:
         """
         Find the most similar existing task.
 
@@ -186,7 +183,7 @@ class SemanticDeduplicator:
         return None
 
     def add_task(
-        self, task_id: str, description: str, metadata: Optional[Dict] = None
+        self, task_id: str, description: str, metadata: dict | None = None
     ) -> TaskEmbedding:
         """Add a task to the deduplication index."""
         embedding = self._create_embedding(description)
@@ -201,7 +198,7 @@ class SemanticDeduplicator:
         self.task_embeddings[task_id] = task_emb
         return task_emb
 
-    def check_duplicate(self, description: str) -> Dict[str, any]:
+    def check_duplicate(self, description: str) -> dict[str, any]:
         """
         Check if a task is semantically similar to existing tasks.
 
@@ -222,13 +219,15 @@ class SemanticDeduplicator:
                 "confidence": (
                     "high"
                     if similarity > 0.95
-                    else "medium" if similarity > 0.9 else "low"
+                    else "medium"
+                    if similarity > 0.9
+                    else "low"
                 ),
             }
 
         return {"is_duplicate": False, "similarity_score": 0.0}
 
-    def get_task_clusters(self, min_similarity: float = 0.7) -> List[List[str]]:
+    def get_task_clusters(self, min_similarity: float = 0.7) -> list[list[str]]:
         """
         Group tasks into clusters based on similarity.
 
@@ -276,7 +275,7 @@ class SemanticDeduplicator:
 
         return clusters
 
-    def suggest_merge_strategy(self, task_descriptions: List[str]) -> Dict[str, any]:
+    def suggest_merge_strategy(self, task_descriptions: list[str]) -> dict[str, any]:
         """
         Suggest how to merge or coordinate similar tasks.
 
@@ -308,15 +307,12 @@ class SemanticDeduplicator:
         for cluster in clusters:
             cluster_temps = [t for t in cluster if t.startswith("temp_")]
             if len(cluster_temps) > 1:
-                strategy["merge_groups"].append(
-                    {
-                        "tasks": [
-                            task_descriptions[int(t.split("_")[1])]
-                            for t in cluster_temps
-                        ],
-                        "suggested_merge": f"Combine into single task: {task_descriptions[int(cluster_temps[0].split('_')[1])]}",
-                    }
-                )
+                strategy["merge_groups"].append({
+                    "tasks": [
+                        task_descriptions[int(t.split("_")[1])] for t in cluster_temps
+                    ],
+                    "suggested_merge": f"Combine into single task: {task_descriptions[int(cluster_temps[0].split('_')[1])]}",
+                })
                 clustered_tasks.update(cluster_temps)
                 strategy["coordination_needed"] = True
 
@@ -341,7 +337,7 @@ def get_semantic_deduplicator() -> SemanticDeduplicator:
     return _semantic_dedup
 
 
-def check_semantic_duplicate(description: str) -> Dict[str, any]:
+def check_semantic_duplicate(description: str) -> dict[str, any]:
     """Quick function to check for semantic duplicates."""
     return _semantic_dedup.check_duplicate(description)
 

@@ -7,7 +7,7 @@ Provides intelligent task deduplication, context sharing, and agent coordination
 import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -17,12 +17,12 @@ class TaskInfo:
     task_id: str
     description: str
     task_hash: str
-    agents: List[str] = field(default_factory=list)
+    agents: list[str] = field(default_factory=list)
     status: str = "pending"  # pending, active, completed
     created_at: datetime = field(default_factory=datetime.now)
     context_key: str = ""
-    artifacts: List[str] = field(default_factory=list)
-    result: Optional[str] = None
+    artifacts: list[str] = field(default_factory=list)
+    result: str | None = None
 
 
 @dataclass
@@ -33,7 +33,7 @@ class SharedContext:
     task_id: str
     agent_id: str
     output: str
-    artifacts: List[str] = field(default_factory=list)
+    artifacts: list[str] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.now)
 
 
@@ -42,19 +42,19 @@ class CoordinationRegistry:
 
     def __init__(self):
         # Task tracking
-        self.active_tasks: Dict[str, TaskInfo] = {}
-        self.task_by_hash: Dict[str, str] = {}  # hash -> task_id mapping
+        self.active_tasks: dict[str, TaskInfo] = {}
+        self.task_by_hash: dict[str, str] = {}  # hash -> task_id mapping
 
         # Shared context
-        self.shared_contexts: Dict[str, SharedContext] = {}
+        self.shared_contexts: dict[str, SharedContext] = {}
 
         # Agent tracking
-        self.agent_tasks: Dict[str, str] = {}  # agent_id -> task_id
+        self.agent_tasks: dict[str, str] = {}  # agent_id -> task_id
         self.agent_count = 0
 
         # Inter-agent communication queue
-        self.message_queue: List[Dict[str, Any]] = []
-        self.agent_subscriptions: Dict[str, List[str]] = {}  # agent_id -> [event_types]
+        self.message_queue: list[dict[str, Any]] = []
+        self.agent_subscriptions: dict[str, list[str]] = {}  # agent_id -> [event_types]
 
         # Subscribe to HookEventBroadcaster for inter-agent awareness
         self._setup_event_subscriptions()
@@ -64,7 +64,7 @@ class CoordinationRegistry:
         self._max_context_age = timedelta(hours=2)
 
         # Performance metrics
-        self.task_metrics: Dict[str, Dict[str, Any]] = {}  # task_id -> metrics
+        self.task_metrics: dict[str, dict[str, Any]] = {}  # task_id -> metrics
 
         # Thinking patterns from old swarm system
         self.thinking_patterns = {
@@ -117,7 +117,7 @@ class CoordinationRegistry:
         }
 
         # Pattern effectiveness history (will be populated through learning)
-        self.pattern_effectiveness: Dict[str, Dict[str, float]] = {}
+        self.pattern_effectiveness: dict[str, dict[str, float]] = {}
 
     def hash_task(self, description: str) -> str:
         """Generate a hash for task deduplication."""
@@ -126,7 +126,7 @@ class CoordinationRegistry:
         # Create a short hash
         return hashlib.md5(normalized.encode()).hexdigest()[:8]
 
-    def check_duplicate_task(self, description: str) -> Optional[TaskInfo]:
+    def check_duplicate_task(self, description: str) -> TaskInfo | None:
         """Check if a similar task is already running using semantic similarity."""
         # First try exact hash match
         task_hash = self.hash_task(description)
@@ -159,9 +159,7 @@ class CoordinationRegistry:
 
         return None
 
-    def register_task(
-        self, description: str, agent_id: Optional[str] = None
-    ) -> TaskInfo:
+    def register_task(self, description: str, agent_id: str | None = None) -> TaskInfo:
         """Register a new task or join existing one."""
         # Check for duplicates
         existing = self.check_duplicate_task(description)
@@ -200,7 +198,7 @@ class CoordinationRegistry:
         task_id: str,
         agent_id: str,
         output: str,
-        artifacts: Optional[List[str]] = None,
+        artifacts: list[str] | None = None,
     ) -> SharedContext:
         """Share agent output as context for other agents."""
         task = self.active_tasks.get(task_id)
@@ -226,7 +224,7 @@ class CoordinationRegistry:
 
     def get_relevant_context(
         self, description: str, limit: int = 5
-    ) -> List[SharedContext]:
+    ) -> list[SharedContext]:
         """Get relevant context from completed tasks."""
         relevant = []
 
@@ -279,7 +277,7 @@ class CoordinationRegistry:
         for key in context_keys_to_remove:
             self.shared_contexts.pop(key)
 
-    def get_coordination_status(self) -> Dict[str, Any]:
+    def get_coordination_status(self) -> dict[str, Any]:
         """Get current coordination status and metrics."""
         active_tasks = [t for t in self.active_tasks.values() if t.status == "active"]
         completed_tasks = [
@@ -302,67 +300,57 @@ class CoordinationRegistry:
             ],
         }
 
-    def suggest_coordination(self, task_description: str) -> Dict[str, Any]:
+    def suggest_coordination(self, task_description: str) -> dict[str, Any]:
         """Suggest coordination strategies based on current state."""
         suggestions = []
 
         # Suggest thinking pattern based on task type
         thinking_pattern = self._suggest_thinking_pattern(task_description)
         if thinking_pattern:
-            suggestions.append(
-                {
-                    "type": "thinking_pattern",
-                    "message": f"Use {thinking_pattern['pattern']} thinking for this task",
-                    "action": "apply_pattern",
-                    "pattern": thinking_pattern,
-                }
-            )
+            suggestions.append({
+                "type": "thinking_pattern",
+                "message": f"Use {thinking_pattern['pattern']} thinking for this task",
+                "action": "apply_pattern",
+                "pattern": thinking_pattern,
+            })
 
         # Check for duplicate work
         duplicate = self.check_duplicate_task(task_description)
         if duplicate:
-            suggestions.append(
-                {
-                    "type": "duplicate_detected",
-                    "message": f"Similar task already running: {duplicate.task_id}",
-                    "action": "wait_or_merge",
-                }
-            )
+            suggestions.append({
+                "type": "duplicate_detected",
+                "message": f"Similar task already running: {duplicate.task_id}",
+                "action": "wait_or_merge",
+            })
 
         # Check agent load
         active_agents = self.get_active_agent_count()
         if active_agents > 5:
-            suggestions.append(
-                {
-                    "type": "high_load",
-                    "message": f"{active_agents} agents currently active",
-                    "action": "consider_queuing",
-                }
-            )
+            suggestions.append({
+                "type": "high_load",
+                "message": f"{active_agents} agents currently active",
+                "action": "consider_queuing",
+            })
 
         # Check for relevant context
         relevant_contexts = self.get_relevant_context(task_description, limit=3)
         if relevant_contexts:
-            suggestions.append(
-                {
-                    "type": "context_available",
-                    "message": f"Found {len(relevant_contexts)} relevant completed tasks",
-                    "action": "inherit_context",
-                    "contexts": [c.context_key for c in relevant_contexts],
-                }
-            )
+            suggestions.append({
+                "type": "context_available",
+                "message": f"Found {len(relevant_contexts)} relevant completed tasks",
+                "action": "inherit_context",
+                "contexts": [c.context_key for c in relevant_contexts],
+            })
 
         return {
             "suggestions": suggestions,
-            "should_proceed": len(
-                [s for s in suggestions if s["type"] == "duplicate_detected"]
-            )
+            "should_proceed": len([
+                s for s in suggestions if s["type"] == "duplicate_detected"
+            ])
             == 0,
         }
 
-    def _suggest_thinking_pattern(
-        self, task_description: str
-    ) -> Optional[Dict[str, Any]]:
+    def _suggest_thinking_pattern(self, task_description: str) -> dict[str, Any] | None:
         """Suggest thinking pattern based on task type (from old swarm system)."""
         task_lower = task_description.lower()
 
@@ -395,7 +383,7 @@ class CoordinationRegistry:
         }
         return descriptions.get(pattern, "Standard analytical thinking")
 
-    def suggest_agent_role(self, task_description: str) -> Optional[str]:
+    def suggest_agent_role(self, task_description: str) -> str | None:
         """Suggest best agent role for a task (from old swarm system)."""
         task_lower = task_description.lower()
 
@@ -411,17 +399,15 @@ class CoordinationRegistry:
 
         return None
 
-    def track_task_performance(self, task_id: str, metrics: Dict[str, Any]):
+    def track_task_performance(self, task_id: str, metrics: dict[str, Any]):
         """Track performance metrics for tasks (inspired by old swarm metrics)."""
         if task_id not in self.task_metrics:
             self.task_metrics[task_id] = {"start_time": datetime.now(), "updates": []}
 
-        self.task_metrics[task_id]["updates"].append(
-            {
-                "timestamp": datetime.now(),
-                "metrics": metrics,
-            }
-        )
+        self.task_metrics[task_id]["updates"].append({
+            "timestamp": datetime.now(),
+            "metrics": metrics,
+        })
 
         # Calculate duration if task is complete
         if metrics.get("status") == "completed":
@@ -430,7 +416,7 @@ class CoordinationRegistry:
             self.task_metrics[task_id]["duration_seconds"] = duration
             self.task_metrics[task_id]["completion_time"] = datetime.now()
 
-    def broadcast_event(self, event_type: str, agent_id: str, data: Dict[str, Any]):
+    def broadcast_event(self, event_type: str, agent_id: str, data: dict[str, Any]):
         """Broadcast an event to all interested agents (the magic of old swarm)."""
         event = {
             "type": event_type,
@@ -448,13 +434,13 @@ class CoordinationRegistry:
 
         return event
 
-    def subscribe_agent(self, agent_id: str, event_types: List[str]):
+    def subscribe_agent(self, agent_id: str, event_types: list[str]):
         """Subscribe an agent to specific event types."""
         self.agent_subscriptions[agent_id] = event_types
 
     def get_agent_messages(
-        self, agent_id: str, since_timestamp: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, agent_id: str, since_timestamp: str | None = None
+    ) -> list[dict[str, Any]]:
         """Get messages for a specific agent based on their subscriptions."""
         if agent_id not in self.agent_subscriptions:
             return []
@@ -504,7 +490,7 @@ class CoordinationRegistry:
 
         return related_agents
 
-    def get_coordination_messages(self, agent_id: str) -> Dict[str, Any]:
+    def get_coordination_messages(self, agent_id: str) -> dict[str, Any]:
         """Get coordination messages for an agent (for hook responses)."""
         messages = self.get_agent_messages(agent_id)
 
@@ -516,28 +502,22 @@ class CoordinationRegistry:
         for msg in messages:
             if msg["type"] == "file_edit":
                 if msg["data"].get("file_path"):
-                    file_conflicts.append(
-                        {
-                            "file": msg["data"]["file_path"],
-                            "agent": msg["from_agent"],
-                            "operation": msg["data"].get("operation", "unknown"),
-                        }
-                    )
+                    file_conflicts.append({
+                        "file": msg["data"]["file_path"],
+                        "agent": msg["from_agent"],
+                        "operation": msg["data"].get("operation", "unknown"),
+                    })
             elif msg["type"] == "task_complete":
-                related_completions.append(
-                    {
-                        "agent": msg["from_agent"],
-                        "task": msg["data"].get("task_id"),
-                        "output": msg["data"].get("summary", "")[:100],
-                    }
-                )
+                related_completions.append({
+                    "agent": msg["from_agent"],
+                    "task": msg["data"].get("task_id"),
+                    "output": msg["data"].get("summary", "")[:100],
+                })
             elif msg["type"] == "waiting_for_input":
-                waiting_for.append(
-                    {
-                        "agent": msg["from_agent"],
-                        "needs": msg["data"].get("requirement", "unknown"),
-                    }
-                )
+                waiting_for.append({
+                    "agent": msg["from_agent"],
+                    "needs": msg["data"].get("requirement", "unknown"),
+                })
 
         return {
             "message_count": len(messages),
@@ -582,7 +562,7 @@ class CoordinationRegistry:
 
     def suggest_coordination_pattern(
         self, task_description: str, agent_count: int = 0
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Suggest optimal coordination pattern based on task and context."""
         task_lower = task_description.lower()
 
@@ -639,7 +619,7 @@ class CoordinationRegistry:
         }
 
     def record_pattern_effectiveness(
-        self, task_description: str, pattern_used: str, metrics: Dict[str, Any]
+        self, task_description: str, pattern_used: str, metrics: dict[str, Any]
     ):
         """Record how well a pattern worked for a task type."""
         task_key = task_description.lower()[:50]  # Use first 50 chars as key
@@ -668,7 +648,7 @@ class CoordinationRegistry:
         else:
             self.pattern_effectiveness[task_key][pattern_used] = efficiency_score
 
-    def get_pattern_recommendations(self) -> List[Dict[str, Any]]:
+    def get_pattern_recommendations(self) -> list[dict[str, Any]]:
         """Get recommendations based on learned pattern effectiveness."""
         recommendations = []
 
@@ -678,18 +658,16 @@ class CoordinationRegistry:
                 worst_pattern = min(patterns.items(), key=lambda x: x[1])
 
                 if best_pattern[1] - worst_pattern[1] > 20:  # Significant difference
-                    recommendations.append(
-                        {
-                            "task_type": task_type,
-                            "recommendation": f"Use {best_pattern[0]} pattern (score: {best_pattern[1]:.1f})",
-                            "avoid": f"Avoid {worst_pattern[0]} pattern (score: {worst_pattern[1]:.1f})",
-                            "confidence": "high" if best_pattern[1] > 70 else "medium",
-                        }
-                    )
+                    recommendations.append({
+                        "task_type": task_type,
+                        "recommendation": f"Use {best_pattern[0]} pattern (score: {best_pattern[1]:.1f})",
+                        "avoid": f"Avoid {worst_pattern[0]} pattern (score: {worst_pattern[1]:.1f})",
+                        "confidence": "high" if best_pattern[1] > 70 else "medium",
+                    })
 
         return recommendations
 
-    def get_performance_insights(self) -> Dict[str, Any]:
+    def get_performance_insights(self) -> dict[str, Any]:
         """Get performance insights (inspired by old swarm monitoring)."""
         completed_tasks = [
             m for tid, m in self.task_metrics.items() if "duration_seconds" in m
@@ -723,8 +701,8 @@ def get_registry() -> CoordinationRegistry:
 
 # Helper functions for easy integration
 def coordinate_task_start(
-    description: str, agent_id: Optional[str] = None
-) -> Dict[str, Any]:
+    description: str, agent_id: str | None = None
+) -> dict[str, Any]:
     """Coordinate task start with deduplication and context."""
     registry = get_registry()
 
@@ -751,8 +729,8 @@ def coordinate_task_start(
 
 
 def coordinate_task_complete(
-    task_id: str, agent_id: str, output: str, artifacts: Optional[List[str]] = None
-) -> Dict[str, Any]:
+    task_id: str, agent_id: str, output: str, artifacts: list[str] | None = None
+) -> dict[str, Any]:
     """Coordinate task completion with result sharing."""
     registry = get_registry()
 
@@ -769,9 +747,37 @@ def coordinate_task_complete(
     }
 
 
-def get_coordination_insights() -> Dict[str, Any]:
+def get_coordination_insights(task_description: str = "") -> dict[str, Any]:
     """Get insights about current coordination state."""
     registry = get_registry()
+
+    # If task_description provided, get task-specific insights
+    if task_description:
+        # Check for duplicate/similar tasks
+        task_hash = hashlib.sha256(task_description.encode()).hexdigest()[:8]
+        is_duplicate = task_hash in registry.task_by_hash
+
+        # Get relevant context
+        context = registry.get_relevant_context(task_description)
+
+        # Get coordination suggestions
+        suggestions = registry.suggest_coordination_pattern(task_description)
+
+        return {
+            "task_description": task_description,
+            "is_duplicate": is_duplicate,
+            "similar_tasks": len([
+                t
+                for t in registry.active_tasks.values()
+                if task_description.lower() in t.description.lower()
+            ]),
+            "relevant_context": context,
+            "suggested_pattern": suggestions.get("pattern"),
+            "suggested_role": registry.suggest_agent_role(task_description),
+            "active_tasks": len(registry.active_tasks),
+        }
+
+    # Otherwise return general coordination status
     status = registry.get_coordination_status()
 
     # Add insights
