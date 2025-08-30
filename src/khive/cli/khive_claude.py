@@ -5,6 +5,7 @@ Command-line interface for managing hook monitoring, dashboard, and real-time se
 """
 
 import asyncio
+import os
 import subprocess
 import sys
 import time
@@ -110,6 +111,44 @@ def start(
         )
         sys.exit(1)
 
+    # Ensure daemon is running
+    from khive.daemon.client import get_daemon_client
+
+    daemon_client = get_daemon_client()
+
+    if not daemon_client.is_running():
+        click.echo("🚀 Starting khive daemon...")
+        try:
+            # Start daemon in background
+            daemon_env = os.environ.copy()
+            daemon_env["KHIVE_DAEMON_HOST"] = "127.0.0.1"
+            daemon_env["KHIVE_DAEMON_PORT"] = "11434"
+
+            daemon_process = subprocess.Popen(
+                [sys.executable, "-m", "khive.daemon.server"],
+                env=daemon_env,
+                start_new_session=True,  # Detach from terminal
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+            # Wait for daemon to start
+            time.sleep(3)
+
+            # Verify daemon started
+            if daemon_client.is_running():
+                click.echo("✅ Daemon started successfully")
+            else:
+                click.echo(
+                    "⚠️  Daemon may not have started properly, continuing anyway..."
+                )
+
+        except Exception as e:
+            click.echo(f"⚠️  Could not start daemon: {e}")
+            click.echo("   Continuing without daemon (some features may be limited)")
+    else:
+        click.echo("✅ Daemon is already running")
+
     from khive.utils import PROJECT_ROOT
 
     dot_claude = PROJECT_ROOT / ".claude"
@@ -131,36 +170,32 @@ def start(
         if not dashboard_only:
             # Start WebSocket server in background
             click.echo(f"🚀 Starting WebSocket server on {host}:{server_port}")
-            server_process = subprocess.Popen(
-                [
-                    sys.executable,
-                    "-m",
-                    "khive.cli.khive_claude",
-                    "server",
-                    "--host",
-                    host,
-                    "--port",
-                    str(server_port),
-                ]
-            )
+            server_process = subprocess.Popen([
+                sys.executable,
+                "-m",
+                "khive.cli.khive_claude",
+                "server",
+                "--host",
+                host,
+                "--port",
+                str(server_port),
+            ])
             processes.append(("WebSocket Server", server_process))
             time.sleep(2)  # Give server time to start
 
         if not server_only:
             # Start dashboard
             click.echo(f"🎛️  Starting dashboard on http://{host}:{dashboard_port}")
-            dashboard_process = subprocess.Popen(
-                [
-                    sys.executable,
-                    "-m",
-                    "khive.cli.khive_claude",
-                    "dashboard",
-                    "--host",
-                    host,
-                    "--port",
-                    str(dashboard_port),
-                ]
-            )
+            dashboard_process = subprocess.Popen([
+                sys.executable,
+                "-m",
+                "khive.cli.khive_claude",
+                "dashboard",
+                "--host",
+                host,
+                "--port",
+                str(dashboard_port),
+            ])
             processes.append(("Dashboard", dashboard_process))
 
         if processes:
