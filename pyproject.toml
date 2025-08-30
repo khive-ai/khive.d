@@ -6,16 +6,19 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "aiofiles>=22.1.0",
+    "fastapi>=0.116.1",
     "fastmcp>=2.11.0",
-    "lionagi[graph,postgres,rich,sqlite]>=0.15.9",
-    "mcp>=1.13.0",
+    "httpx>=0.28.1",
+    "lionagi[postgres, sqlite, graph]",
+    "mcp>=1.10.0",
     "nest-asyncio>=1.5.0",
     "openai>=1.100.0",
     "plotly>=6.0.0",
     "python-dotenv>=1.1.1",
     "pyyaml>=6.0",
-    "streamlit>=1.45.0",
+    "streamlit>=1.40.0",
     "tenacity>=8.5.0",
+    "uvicorn>=0.35.0",
     "websockets>=14.0",
 ]
 
@@ -141,6 +144,9 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/khive"]
+
+[tool.uv.sources]
+lionagi = { path = "../lionagi" }
 
 [project.scripts]                # PEP 621 console-scripts table
 khive         = "khive.cli.khive_cli:main"

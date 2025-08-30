@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
+from khive.utils import SQLITE_DSN, EventBroadcaster, get_logger
 from lionagi.libs.concurrency import shield
 from lionagi.protocols.types import Node
 from pydantic import field_validator
 from typing_extensions import TypedDict
-
-from khive.utils import SQLITE_DSN, EventBroadcaster, get_logger
 
 hook_event_logger = get_logger("ClaudeHooks", "🪝 [CLAUDE-HOOKS]")
 
@@ -54,6 +53,56 @@ class HookEvent(Node):
 
         return result
 
+    # NOTE: Database format conversion is now handled by lionagi Element.from_dict(mode="db")
+    # This automatically handles:
+    # - DateTime string to timestamp conversion
+    # - JSON field parsing (content, node_metadata, embedding)
+    # - node_metadata -> metadata field mapping
+    # - Null value normalization
+
+    @classmethod
+    async def _execute_raw_sql_query(
+        cls, sql: str, params: dict = None
+    ) -> list[HookEvent]:
+        """Execute raw SQL using lionagi's built-in adapter and convert results to HookEvent objects."""
+        try:
+            config = {
+                "dsn": SQLITE_DSN,
+                "table": cls._table_name,
+                "operation": "raw_sql",
+                "sql": sql,
+            }
+            if params:
+                config["params"] = params
+
+            # Get raw results from adapter
+            raw_results = await cls.adapt_from_async(
+                config,
+                obj_key="lionagi_async_pg",
+                many=True,
+            )
+
+            if not raw_results:
+                return []
+
+            # Convert raw dictionaries to HookEvent objects
+            hook_events = []
+            for raw_data in raw_results:
+                try:
+                    # Use lionagi's mode="db" for database format conversion
+                    event = cls.from_dict(raw_data, mode="db")
+                    hook_events.append(event)
+                except Exception as e:
+                    hook_event_logger.warning(
+                        f"Error converting event {raw_data.get('id', 'unknown')[:8]}...: {e}"
+                    )
+
+            return hook_events
+
+        except Exception as e:
+            hook_event_logger.error(f"Raw SQL query failed: {e}")
+            return []
+
     @classmethod
     async def get_all(cls, limit: int | None = None):
         """Get all hook events from database."""
@@ -71,102 +120,135 @@ class HookEvent(Node):
         )
 
     @classmethod
-    async def get_recent(cls, limit: int = 100) -> list[HookEvent]:
-        """Get recent hook events."""
-        params = {
-            "dsn": SQLITE_DSN,
-            "table": cls._table_name,
-            "order_by": "created_at DESC",
-        }
-        if limit:
-            params["limit"] = limit
+    async def get_recent(cls, limit: int | None = None) -> list[HookEvent]:
+        """Get recent hook events using lionagi's built-in adapter with mode='db'.
 
-        return await cls.adapt_from_async(
-            params,
-            obj_key="lionagi_async_pg",
-            many=True,
-        )
+        Default limits: 25k events or 30 days, whichever comes first.
+        """
+        import datetime as dt
+
+        # Default limits: 25k events or 30 days
+        default_event_limit = 25000
+        default_days_limit = 30
+
+        if limit is None:
+            # Apply default limits: events from last 30 days, max 25k
+            thirty_days_ago = dt.datetime.now(dt.timezone.utc) - dt.timedelta(
+                days=default_days_limit
+            )
+            thirty_days_ago_iso = thirty_days_ago.isoformat().replace("T", " ")
+
+            sql = f"""SELECT * FROM {cls._table_name}
+                     WHERE created_at >= :thirty_days_ago
+                     ORDER BY created_at DESC
+                     LIMIT {default_event_limit}"""
+            return await cls._execute_raw_sql_query(
+                sql, {"thirty_days_ago": thirty_days_ago_iso}
+            )
+        else:
+            # Use specified limit
+            sql = (
+                f"SELECT * FROM {cls._table_name} ORDER BY created_at DESC LIMIT :limit"
+            )
+            return await cls._execute_raw_sql_query(sql, {"limit": limit})
 
     @classmethod
     async def get_by_type(
         cls, event_type: str, limit: int | None = None
     ) -> list[HookEvent]:
-        """Get hook events by event type."""
-        params = {
-            "dsn": SQLITE_DSN,
-            "table": cls._table_name,
-            "where": f"content->>'event_type' = '{event_type}'",
-        }
-        if limit:
-            params["limit"] = limit
+        """Get hook events by event type using lionagi's built-in adapter with mode='db'.
 
-        return await cls.adapt_from_async(
-            params,
-            obj_key="lionagi_async_pg",
-            many=True,
-        )
+        Default limits: 25k events or 30 days, whichever comes first.
+        """
+        import datetime as dt
+
+        # Default limits: 25k events or 30 days
+        default_event_limit = 25000
+        default_days_limit = 30
+
+        if limit is None:
+            # Apply default limits: events from last 30 days, max 25k
+            thirty_days_ago = dt.datetime.now(dt.timezone.utc) - dt.timedelta(
+                days=default_days_limit
+            )
+            thirty_days_ago_iso = thirty_days_ago.isoformat().replace("T", " ")
+
+            sql = f"""SELECT * FROM {cls._table_name}
+                     WHERE json_extract(content, '$.event_type') = :event_type
+                     AND created_at >= :thirty_days_ago
+                     ORDER BY created_at DESC
+                     LIMIT {default_event_limit}"""
+            return await cls._execute_raw_sql_query(
+                sql, {"event_type": event_type, "thirty_days_ago": thirty_days_ago_iso}
+            )
+        else:
+            # Use specified limit
+            sql = f"SELECT * FROM {cls._table_name} WHERE json_extract(content, '$.event_type') = :event_type ORDER BY created_at DESC LIMIT :limit"
+            return await cls._execute_raw_sql_query(
+                sql, {"event_type": event_type, "limit": limit}
+            )
 
     @classmethod
     async def get_by_session(
         cls, session_id: str, limit: int | None = None
     ) -> list[HookEvent]:
-        """Get hook events by session ID."""
-        params = {
-            "dsn": SQLITE_DSN,
-            "table": cls._table_name,
-            "where": f"content->>'session_id' = '{session_id}'",
-        }
-        if limit:
-            params["limit"] = limit
+        """Get hook events by session ID using lionagi's built-in adapter with mode='db'.
 
-        return await cls.adapt_from_async(
-            params,
-            obj_key="lionagi_async_pg",
-            many=True,
-        )
+        Default limits: 25k events or 30 days, whichever comes first.
+        """
+        import datetime as dt
+
+        # Default limits: 25k events or 30 days
+        default_event_limit = 25000
+        default_days_limit = 30
+
+        if limit is None:
+            # Apply default limits: events from last 30 days, max 25k
+            thirty_days_ago = dt.datetime.now(dt.timezone.utc) - dt.timedelta(
+                days=default_days_limit
+            )
+            thirty_days_ago_iso = thirty_days_ago.isoformat().replace("T", " ")
+
+            sql = f"""SELECT * FROM {cls._table_name}
+                     WHERE json_extract(content, '$.session_id') = :session_id
+                     AND created_at >= :thirty_days_ago
+                     ORDER BY created_at DESC
+                     LIMIT {default_event_limit}"""
+            return await cls._execute_raw_sql_query(
+                sql, {"session_id": session_id, "thirty_days_ago": thirty_days_ago_iso}
+            )
+        else:
+            # Use specified limit
+            sql = f"SELECT * FROM {cls._table_name} WHERE json_extract(content, '$.session_id') = :session_id ORDER BY created_at DESC LIMIT :limit"
+            return await cls._execute_raw_sql_query(
+                sql, {"session_id": session_id, "limit": limit}
+            )
 
     @classmethod
     async def get_since(
         cls, timestamp: str, limit: int | None = None
     ) -> list[HookEvent]:
-        """Get hook events since a specific timestamp."""
-        params = {
-            "dsn": SQLITE_DSN,
-            "table": cls._table_name,
-            "where": f"created_at >= '{timestamp}'",
-            "order_by": "created_at DESC",
-        }
-        if limit:
-            params["limit"] = limit
+        """Get hook events since a timestamp using lionagi's built-in adapter with mode='db'.
 
-        return await cls.adapt_from_async(
-            params,
-            obj_key="lionagi_async_pg",
-            many=True,
-        )
+        Default limit: 25k events (no time limit since timestamp is user-specified).
+        """
+        # Default limit: 25k events (no time restriction since user provided timestamp)
+        default_event_limit = 25000
 
-
-def _initialize_adapter():
-    """Initialize the async adapter for SQLite database."""
-    if HookEvent._initialized:
-        return
-
-    from pydapter.exceptions import AdapterNotFoundError
-
-    try:
-        HookEvent._async_registry.get("lionagi_async_pg")
-    except AdapterNotFoundError:
-        print("🔄 Initializing database adapter for Claude hooks...")
-        from lionagi.adapters.async_postgres_adapter import LionAGIAsyncPostgresAdapter
-
-        HookEvent.register_async_adapter(LionAGIAsyncPostgresAdapter)
-
-    HookEvent._initialized = True
-    print("✅ Database adapter initialized successfully")
+        if limit is None:
+            # Apply default event limit only
+            sql = f"SELECT * FROM {cls._table_name} WHERE created_at >= :timestamp ORDER BY created_at DESC LIMIT {default_event_limit}"
+            return await cls._execute_raw_sql_query(sql, {"timestamp": timestamp})
+        else:
+            # Use specified limit
+            sql = f"SELECT * FROM {cls._table_name} WHERE created_at >= :timestamp ORDER BY created_at DESC LIMIT :limit"
+            return await cls._execute_raw_sql_query(
+                sql, {"timestamp": timestamp, "limit": limit}
+            )
 
 
-_initialize_adapter()
-HookEvent = HookEvent
+# NOTE: Adapter initialization is now handled automatically by lionagi Node class
+# The Node class registers LionAGIAsyncPostgresAdapter and sets mode="db" by default
 
 
 class HookEventBroadcaster(EventBroadcaster):
