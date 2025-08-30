@@ -13,18 +13,14 @@ history and improves pattern suggestions over time through:
 
 import json
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
-from unittest.mock import MagicMock, patch
+from typing import Any
 
 import numpy as np
 import pytest
-
 from khive.services.claude.hooks.adaptive_coordinator import (
     AdaptiveCoordinator,
-    ExecutionPattern,
-    get_adaptive_coordinator,
 )
 
 
@@ -41,7 +37,7 @@ class LearningValidationFramework:
             "convergence_metrics": {},
         }
 
-    def _generate_simulation_data(self) -> List[Dict[str, Any]]:
+    def _generate_simulation_data(self) -> list[dict[str, Any]]:
         """Generate realistic simulation data for 25+ executions across task types."""
         return [
             # Phase 1: Cold start - Initial executions with varied outcomes
@@ -317,7 +313,7 @@ class LearningValidationFramework:
 
     def run_learning_simulation(
         self, coordinator: AdaptiveCoordinator
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run complete learning simulation and collect metrics."""
         results = {
             "phases": [],
@@ -331,24 +327,20 @@ class LearningValidationFramework:
         for i in range(3):
             exec_data = self.execution_data[i]
             suggestion = coordinator.suggest_pattern(exec_data["task"])
-            cold_start_suggestions.append(
-                {
-                    "suggested": suggestion["pattern"],
-                    "actual_best": "pipeline",  # Based on our data, pipeline works best for refactoring
-                    "confidence": suggestion["confidence"],
-                    "reason": suggestion["reason"],
-                }
-            )
+            cold_start_suggestions.append({
+                "suggested": suggestion["pattern"],
+                "actual_best": "pipeline",  # Based on our data, pipeline works best for refactoring
+                "confidence": suggestion["confidence"],
+                "reason": suggestion["reason"],
+            })
 
-        results["phases"].append(
-            {
-                "phase": "cold_start",
-                "suggestions": cold_start_suggestions,
-                "avg_confidence": np.mean(
-                    [s["confidence"] for s in cold_start_suggestions]
-                ),
-            }
-        )
+        results["phases"].append({
+            "phase": "cold_start",
+            "suggestions": cold_start_suggestions,
+            "avg_confidence": np.mean([
+                s["confidence"] for s in cold_start_suggestions
+            ]),
+        })
 
         # Execute all simulations and track learning
         for i, exec_data in enumerate(self.execution_data):
@@ -394,14 +386,12 @@ class LearningValidationFramework:
                     pred_error = abs(
                         prediction["predicted_time"] - actual_metrics["execution_time"]
                     )
-                    results["prediction_accuracy"].append(
-                        {
-                            "predicted_time": prediction["predicted_time"],
-                            "actual_time": actual_metrics["execution_time"],
-                            "error": pred_error,
-                            "confidence": prediction["confidence"],
-                        }
-                    )
+                    results["prediction_accuracy"].append({
+                        "predicted_time": prediction["predicted_time"],
+                        "actual_time": actual_metrics["execution_time"],
+                        "error": pred_error,
+                        "confidence": prediction["confidence"],
+                    })
 
         return results
 
@@ -445,7 +435,7 @@ class LearningValidationFramework:
         avg_scores = {p: np.mean(scores) for p, scores in pattern_scores.items()}
         return max(avg_scores, key=avg_scores.get)
 
-    def analyze_learning_effectiveness(self, results: Dict[str, Any]) -> Dict[str, Any]:
+    def analyze_learning_effectiveness(self, results: dict[str, Any]) -> dict[str, Any]:
         """Analyze learning effectiveness and generate insights."""
         learning_data = results["learning_progression"]
 
@@ -458,15 +448,13 @@ class LearningValidationFramework:
         for i in range(len(learning_data) - window_size + 1):
             window = learning_data[i : i + window_size]
             accuracy = sum(1 for point in window if point["is_correct"]) / len(window)
-            accuracy_over_time.append(
-                {
-                    "execution_range": (
-                        window[0]["execution_count"],
-                        window[-1]["execution_count"],
-                    ),
-                    "accuracy": accuracy,
-                }
-            )
+            accuracy_over_time.append({
+                "execution_range": (
+                    window[0]["execution_count"],
+                    window[-1]["execution_count"],
+                ),
+                "accuracy": accuracy,
+            })
 
         # Calculate confidence calibration
         confidence_buckets = {"low": [], "medium": [], "high": []}
@@ -530,7 +518,7 @@ class LearningValidationFramework:
             },
         }
 
-    def _find_convergence_point(self, learning_data: List[Dict]) -> int:
+    def _find_convergence_point(self, learning_data: list[dict]) -> int:
         """Find when the system reaches stable high accuracy."""
         if len(learning_data) < 6:
             return -1
@@ -541,7 +529,7 @@ class LearningValidationFramework:
                 return learning_data[i]["execution_count"]
         return -1
 
-    def _calculate_learning_rate(self, learning_data: List[Dict]) -> float:
+    def _calculate_learning_rate(self, learning_data: list[dict]) -> float:
         """Calculate how quickly the system improves."""
         if len(learning_data) < 4:
             return 0.0
@@ -556,7 +544,7 @@ class LearningValidationFramework:
         # Return average improvement per step
         return np.mean(improvements)
 
-    def _calculate_stability(self, learning_data: List[Dict]) -> float:
+    def _calculate_stability(self, learning_data: list[dict]) -> float:
         """Calculate how stable the suggestions are over time."""
         if len(learning_data) < 4:
             return 0.0
@@ -649,30 +637,28 @@ class TestAdaptiveLearningValidation:
         # Add enough samples to reach confidence threshold (10+ samples for full confidence)
         refactoring_tasks = []
         for i in range(12):  # Ensure we have 10+ samples for confidence
-            refactoring_tasks.extend(
-                [
-                    {
-                        "task": "Refactor auth system",
-                        "pattern": "pipeline",
-                        "metrics": {
-                            "execution_time": 8 + (i % 3),
-                            "success_rate": 95,
-                            "conflict_rate": 1,
-                            "dedup_rate": 35,
-                        },
+            refactoring_tasks.extend([
+                {
+                    "task": "Refactor auth system",
+                    "pattern": "pipeline",
+                    "metrics": {
+                        "execution_time": 8 + (i % 3),
+                        "success_rate": 95,
+                        "conflict_rate": 1,
+                        "dedup_rate": 35,
                     },
-                    {
-                        "task": "Refactor auth system",
-                        "pattern": "fan_out",
-                        "metrics": {
-                            "execution_time": 15 + (i % 4),
-                            "success_rate": 75,
-                            "conflict_rate": 15,
-                            "dedup_rate": 10,
-                        },
+                },
+                {
+                    "task": "Refactor auth system",
+                    "pattern": "fan_out",
+                    "metrics": {
+                        "execution_time": 15 + (i % 4),
+                        "success_rate": 75,
+                        "conflict_rate": 15,
+                        "dedup_rate": 10,
                     },
-                ]
-            )
+                },
+            ])
 
         # Only use first 20 executions to avoid overwhelming
         refactoring_tasks = refactoring_tasks[:20]

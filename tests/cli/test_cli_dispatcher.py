@@ -12,7 +12,6 @@ import sys
 from unittest.mock import Mock, patch
 
 import pytest
-
 from khive.cli.khive_cli import (
     COMMAND_DESCRIPTIONS,
     COMMAND_MODULE_BASE_PATH,

@@ -16,7 +16,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
-
 from khive.services.plan.planner_service import OrchestrationPlanner
 from khive.services.plan.triage.complexity_triage import ComplexityTriageService
 
@@ -424,12 +423,10 @@ class TestMetrics:
 
     def record_execution_time(self, test_name: str, execution_time: float):
         """Record execution time for a test."""
-        self.metrics["execution_times"].append(
-            {
-                "test": test_name,
-                "time": execution_time,
-            }
-        )
+        self.metrics["execution_times"].append({
+            "test": test_name,
+            "time": execution_time,
+        })
 
     def record_memory_usage(self, test_name: str, memory_mb: float):
         """Record memory usage for a test."""
@@ -437,14 +434,12 @@ class TestMetrics:
 
     def record_assessment_accuracy(self, expected: str, actual: str, test_input: str):
         """Record assessment accuracy."""
-        self.metrics["assessment_accuracy"].append(
-            {
-                "expected": expected,
-                "actual": actual,
-                "input": test_input,
-                "correct": expected == actual,
-            }
-        )
+        self.metrics["assessment_accuracy"].append({
+            "expected": expected,
+            "actual": actual,
+            "input": test_input,
+            "correct": expected == actual,
+        })
 
     def get_accuracy_rate(self) -> float:
         """Calculate overall accuracy rate."""
@@ -475,9 +470,9 @@ class TestMetrics:
                 "max_usage": max(
                     [m["memory"] for m in self.metrics["memory_usage"]], default=0
                 ),
-                "average_usage": sum(
-                    [m["memory"] for m in self.metrics["memory_usage"]]
-                )
+                "average_usage": sum([
+                    m["memory"] for m in self.metrics["memory_usage"]
+                ])
                 / max(len(self.metrics["memory_usage"]), 1),
             },
             "performance_summary": {
