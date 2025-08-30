@@ -5,10 +5,9 @@ This module provides tools to measure the impact of the coordination system
 on agent performance, task efficiency, and collaboration quality.
 """
 
-import json
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Dict, List
+from datetime import datetime
+from typing import Any
 
 
 @dataclass
@@ -46,14 +45,14 @@ class CoordinationMetrics:
     parallel_execution_rate: float = 0.0
 
     # Thinking Pattern Metrics
-    patterns_suggested: Dict[str, int] = field(default_factory=dict)
-    patterns_followed: Dict[str, int] = field(default_factory=dict)
-    pattern_success_rate: Dict[str, float] = field(default_factory=dict)
+    patterns_suggested: dict[str, int] = field(default_factory=dict)
+    patterns_followed: dict[str, int] = field(default_factory=dict)
+    pattern_success_rate: dict[str, float] = field(default_factory=dict)
 
     # Agent Role Metrics
-    roles_suggested: Dict[str, int] = field(default_factory=dict)
-    roles_matched_task: Dict[str, int] = field(default_factory=dict)
-    role_effectiveness: Dict[str, float] = field(default_factory=dict)
+    roles_suggested: dict[str, int] = field(default_factory=dict)
+    roles_matched_task: dict[str, int] = field(default_factory=dict)
+    role_effectiveness: dict[str, float] = field(default_factory=dict)
 
     # Collaboration Quality Metrics
     agent_interaction_count: int = 0
@@ -73,10 +72,10 @@ class MetricsCollector:
 
     def __init__(self):
         self.metrics = CoordinationMetrics()
-        self.event_log: List[Dict[str, Any]] = []
+        self.event_log: list[dict[str, Any]] = []
         self.start_time = datetime.now()
 
-    def log_event(self, event_type: str, data: Dict[str, Any]):
+    def log_event(self, event_type: str, data: dict[str, Any]):
         """Log a coordination event for analysis."""
         event = {
             "timestamp": datetime.now().isoformat(),
@@ -122,7 +121,7 @@ class MetricsCollector:
                 current_avg * (total - 1) + completion_time
             ) / total
 
-    def calculate_effectiveness_score(self) -> Dict[str, Any]:
+    def calculate_effectiveness_score(self) -> dict[str, Any]:
         """Calculate overall coordination effectiveness score."""
 
         # Deduplication effectiveness (0-100)
@@ -195,7 +194,7 @@ class MetricsCollector:
             "weights": weights,
         }
 
-    def generate_report(self) -> Dict[str, Any]:
+    def generate_report(self) -> dict[str, Any]:
         """Generate comprehensive metrics report."""
         runtime = (datetime.now() - self.start_time).total_seconds()
         effectiveness = self.calculate_effectiveness_score()
@@ -245,7 +244,7 @@ class MetricsCollector:
             "recommendations": self._generate_recommendations(effectiveness),
         }
 
-    def _generate_recommendations(self, effectiveness: Dict[str, Any]) -> List[str]:
+    def _generate_recommendations(self, effectiveness: dict[str, Any]) -> list[str]:
         """Generate recommendations based on metrics."""
         recommendations = []
 

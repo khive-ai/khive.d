@@ -10,7 +10,6 @@ import sys
 from typing import Any
 
 import anyio
-
 from khive.services.claude.hooks.coordination import coordinate_task_start
 from khive.services.claude.hooks.hook_event import (
     HookEvent,
@@ -60,9 +59,9 @@ def handle_pre_agent_spawn(
         # Add suggestions to response if any
         suggestions_text = ""
         if coordination["suggestions"]:
-            suggestions_text = "; ".join(
-                [s["message"] for s in coordination["suggestions"]]
-            )
+            suggestions_text = "; ".join([
+                s["message"] for s in coordination["suggestions"]
+            ])
 
         event = HookEvent(
             content=HookEventContent(

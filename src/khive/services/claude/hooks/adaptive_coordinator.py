@@ -6,11 +6,10 @@ system to improve over time based on successful patterns.
 """
 
 import json
-import os
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 @dataclass
@@ -45,9 +44,9 @@ class AdaptiveCoordinator:
     def __init__(self, history_file: str = "coordination_history.json"):
         """Initialize adaptive coordinator with optional history file."""
         self.history_file = Path(history_file)
-        self.execution_history: List[ExecutionPattern] = []
-        self.pattern_scores: Dict[str, Dict[str, float]] = {}
-        self.task_type_patterns: Dict[str, List[str]] = {}
+        self.execution_history: list[ExecutionPattern] = []
+        self.pattern_scores: dict[str, dict[str, float]] = {}
+        self.task_type_patterns: dict[str, list[str]] = {}
         self.confidence_threshold = 0.7
 
         # Load historical data if exists
@@ -57,7 +56,7 @@ class AdaptiveCoordinator:
         """Load execution history from file."""
         if self.history_file.exists():
             try:
-                with open(self.history_file, "r") as f:
+                with open(self.history_file) as f:
                     data = json.load(f)
                     self.execution_history = [
                         ExecutionPattern(**pattern)
@@ -105,7 +104,7 @@ class AdaptiveCoordinator:
             self.pattern_scores[task_type][pattern] = sum(scores) / len(scores)
 
     def record_execution(
-        self, task_description: str, pattern_used: str, metrics: Dict[str, Any]
+        self, task_description: str, pattern_used: str, metrics: dict[str, Any]
     ):
         """Record a new execution pattern and learn from it."""
         # Extract task type from description
@@ -150,12 +149,12 @@ class AdaptiveCoordinator:
 
     def suggest_pattern(
         self, task_description: str, available_agents: int = 0
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Suggest the best coordination pattern based on learned history."""
         task_type = self._extract_task_type(task_description)
 
         # Check if we have history for this task type
-        if task_type in self.pattern_scores and self.pattern_scores[task_type]:
+        if self.pattern_scores.get(task_type):
             # Find best pattern from history
             best_pattern = max(
                 self.pattern_scores[task_type].items(), key=lambda x: x[1]
@@ -209,7 +208,7 @@ class AdaptiveCoordinator:
 
     def _heuristic_suggestion(
         self, task_description: str, available_agents: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Fallback heuristic-based pattern suggestion."""
         desc_lower = task_description.lower()
 
@@ -233,7 +232,7 @@ class AdaptiveCoordinator:
             "sample_size": 0,
         }
 
-    def get_insights(self) -> Dict[str, Any]:
+    def get_insights(self) -> dict[str, Any]:
         """Get learning insights and recommendations."""
         if not self.execution_history:
             return {"status": "no_history", "message": "No execution history available"}
@@ -280,13 +279,15 @@ class AdaptiveCoordinator:
             "confidence_level": (
                 "high"
                 if len(self.execution_history) > 100
-                else "medium" if len(self.execution_history) > 50 else "low"
+                else "medium"
+                if len(self.execution_history) > 50
+                else "low"
             ),
         }
 
     def predict_performance(
         self, task_description: str, pattern: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Predict performance for a given task and pattern combination."""
         task_type = self._extract_task_type(task_description)
 
@@ -335,16 +336,16 @@ def get_adaptive_coordinator() -> AdaptiveCoordinator:
     return _adaptive_coordinator
 
 
-def record_coordination_execution(task: str, pattern: str, metrics: Dict[str, Any]):
+def record_coordination_execution(task: str, pattern: str, metrics: dict[str, Any]):
     """Record an execution for learning."""
     _adaptive_coordinator.record_execution(task, pattern, metrics)
 
 
-def suggest_best_pattern(task: str, agents: int = 0) -> Dict[str, Any]:
+def suggest_best_pattern(task: str, agents: int = 0) -> dict[str, Any]:
     """Get the best pattern suggestion based on learning."""
     return _adaptive_coordinator.suggest_pattern(task, agents)
 
 
-def get_coordination_insights() -> Dict[str, Any]:
+def get_coordination_insights() -> dict[str, Any]:
     """Get insights from the adaptive coordinator."""
     return _adaptive_coordinator.get_insights()

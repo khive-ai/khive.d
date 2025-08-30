@@ -10,7 +10,6 @@ import sys
 from typing import Any
 
 import anyio
-
 from khive.services.claude.hooks.coordination import coordinate_task_complete
 from khive.services.claude.hooks.hook_event import (
     HookEvent,
