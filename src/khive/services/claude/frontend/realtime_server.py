@@ -4,7 +4,6 @@ import logging
 import signal
 
 import websockets
-
 from khive.core import TimePolicy
 from khive.services.claude.hooks import HookEvent, HookEventBroadcaster
 from khive.utils import get_logger

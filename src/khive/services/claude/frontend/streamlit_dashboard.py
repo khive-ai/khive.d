@@ -1,4 +1,5 @@
 import asyncio
+import datetime as dt
 import os
 import time
 from collections import Counter, defaultdict
@@ -8,9 +9,9 @@ from typing import Any
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-
 from khive import __version__
 from khive.core import TimePolicy
+from khive.daemon.client import get_daemon_client
 from khive.services.claude.hooks import HookEvent
 
 # Page config with enhanced styling
@@ -25,8 +26,8 @@ st.set_page_config(
 # Configuration defaults (can be overridden by environment variables)
 CONFIG = {
     "DEFAULT_REFRESH_RATE": int(os.environ.get("KHIVE_REFRESH_RATE", 5)),
-    "MAX_EVENTS_DISPLAY": int(os.environ.get("KHIVE_MAX_EVENTS", 500)),
-    "DEFAULT_TIME_RANGE": os.environ.get("KHIVE_DEFAULT_TIME_RANGE", "Today"),
+    "MAX_EVENTS_DISPLAY": int(os.environ.get("KHIVE_MAX_EVENTS", 1000)),
+    "DEFAULT_TIME_RANGE": os.environ.get("KHIVE_DEFAULT_TIME_RANGE", "All Time"),
     "ENABLE_WEBSOCKET": os.environ.get("KHIVE_ENABLE_WEBSOCKET", "true").lower()
     == "true",
     "WEBSOCKET_PORT": int(os.environ.get("KHIVE_WEBSOCKET_PORT", 8767)),
@@ -159,6 +160,10 @@ class ClaudeCodeObservabilityDashboard:
         self.cache_duration = 2  # seconds
         self.websocket_events = []
         self.websocket_connected = False
+        self.daemon_client = get_daemon_client()
+        self.daemon_status_cache = None
+        self.daemon_last_check = 0
+        self.daemon_cache_duration = 5  # seconds
 
         # Initialize real-time event collection
         if "realtime_events" not in st.session_state:
@@ -179,17 +184,21 @@ class ClaudeCodeObservabilityDashboard:
             return self.events_cache
 
         try:
-            # Get recent events from database
-            recent_events = await HookEvent.get_recent(
-                limit=CONFIG["MAX_EVENTS_DISPLAY"]
-            )
+            # Get recent events from database (no limit, filter based on criteria)
+            recent_events = await HookEvent.get_recent()
 
             events = []
             for event in recent_events:
+                # Convert naive datetime to timezone-aware UTC
+                created_dt = event.created_datetime
+                if created_dt.tzinfo is None:
+                    # Treat naive datetime as UTC
+                    created_dt = created_dt.replace(tzinfo=dt.timezone.utc)
+
                 event_dict = {
                     "id": str(event.id),
-                    "timestamp": event.created_datetime.isoformat(),
-                    "datetime": pd.to_datetime(event.created_datetime),
+                    "timestamp": created_dt.isoformat(),
+                    "datetime": pd.to_datetime(created_dt),
                     "event_type": event.content.get("event_type", "unknown"),
                     "tool_name": event.content.get("tool_name", "unknown"),
                     "command": event.content.get("command"),
@@ -253,6 +262,12 @@ class ClaudeCodeObservabilityDashboard:
             if session_id:
                 sessions[session_id] += 1
 
+            # Ensure timezone-aware comparison
+            if event_time.tzinfo is None:
+                event_time = event_time.replace(tzinfo=now.tzinfo)
+            elif now.tzinfo is None:
+                event_time = event_time.replace(tzinfo=None)
+
             if event_time >= last_hour:
                 recent_events_1h.append(event)
 
@@ -276,6 +291,250 @@ class ClaudeCodeObservabilityDashboard:
             "unique_sessions": len(sessions),
             "latest_events": events[-20:] if events else [],
         }
+
+    def get_daemon_status(self, force_refresh: bool = False) -> dict[str, Any]:
+        """Get daemon status with caching."""
+        current_time = time.time()
+
+        # Use cached data if recent and not forcing refresh
+        if (
+            not force_refresh
+            and self.daemon_status_cache
+            and current_time - self.daemon_last_check < self.daemon_cache_duration
+        ):
+            return self.daemon_status_cache
+
+        try:
+            daemon_running = self.daemon_client.is_running()
+
+            if daemon_running:
+                health = self.daemon_client.health()
+                session_status = self.daemon_client.session_status()
+
+                status = {
+                    "running": True,
+                    "health": health,
+                    "session": session_status,
+                    "status": "✅ Operational",
+                    "status_color": "green",
+                }
+            else:
+                status = {
+                    "running": False,
+                    "health": {"status": "daemon not running"},
+                    "session": {"status": "daemon not running"},
+                    "status": "❌ Not Running",
+                    "status_color": "red",
+                }
+
+        except Exception as e:
+            status = {
+                "running": False,
+                "health": {"status": "error", "error": str(e)},
+                "session": {"status": "error", "error": str(e)},
+                "status": "⚠️ Error",
+                "status_color": "orange",
+            }
+
+        self.daemon_status_cache = status
+        self.daemon_last_check = current_time
+        return status
+
+    def render_daemon_status(self, daemon_status: dict[str, Any]):
+        """Render daemon status section."""
+        st.markdown("### 🚀 Daemon Status")
+
+        # Create columns for daemon metrics
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-value" style="color: {daemon_status["status_color"]};">
+                        {daemon_status["status"]}
+                    </div>
+                    <div class="metric-label">Daemon</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with col2:
+            health_status = daemon_status.get("health", {}).get("status", "unknown")
+            health_color = "green" if health_status == "healthy" else "orange"
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-value" style="color: {health_color};">
+                        {health_status.title()}
+                    </div>
+                    <div class="metric-label">Health</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with col3:
+            session_status = daemon_status.get("session", {}).get("status", "unknown")
+            session_color = (
+                "green" if "active" in str(session_status).lower() else "gray"
+            )
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-value" style="color: {session_color};">
+                        {str(session_status).title()}
+                    </div>
+                    <div class="metric-label">Session</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with col4:
+            coordination_status = "Active" if daemon_status["running"] else "Inactive"
+            coord_color = "green" if daemon_status["running"] else "red"
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                    <div class="metric-value" style="color: {coord_color};">
+                        {coordination_status}
+                    </div>
+                    <div class="metric-label">Coordination</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        # Show detailed daemon information if running
+        if daemon_status["running"]:
+            with st.expander("🔧 Daemon Details", expanded=False):
+                health_data = daemon_status.get("health", {})
+                session_data = daemon_status.get("session", {})
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.markdown("**Health Information:**")
+                    if isinstance(health_data, dict):
+                        for key, value in health_data.items():
+                            st.text(f"{key}: {value}")
+                    else:
+                        st.text(str(health_data))
+
+                with col2:
+                    st.markdown("**Session Information:**")
+                    if isinstance(session_data, dict):
+                        for key, value in session_data.items():
+                            st.text(f"{key}: {value}")
+                    else:
+                        st.text(str(session_data))
+        else:
+            st.info("🔧 Start the daemon with: `khive daemon start`")
+
+        st.markdown("---")
+
+    def render_coordination_dashboard(self, daemon_status: dict[str, Any]):
+        """Render coordination-specific dashboard features."""
+        if not daemon_status["running"]:
+            return
+
+        st.markdown("### 🤝 Coordination Dashboard")
+
+        try:
+            # Get coordination insights
+            insights = self.daemon_client.get_insights("current_coordination_state")
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                active_tasks = insights.get("active_tasks", 0)
+                st.markdown(
+                    f"""
+                    <div class="metric-card">
+                        <div class="metric-value" style="color: blue;">
+                            {active_tasks}
+                        </div>
+                        <div class="metric-label">Active Tasks</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            with col2:
+                duplicate_prevention = insights.get("duplicates_prevented", 0)
+                st.markdown(
+                    f"""
+                    <div class="metric-card">
+                        <div class="metric-value" style="color: green;">
+                            {duplicate_prevention}
+                        </div>
+                        <div class="metric-label">Duplicates Prevented</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            with col3:
+                coordination_efficiency = insights.get("efficiency_score", "N/A")
+                efficiency_color = (
+                    "green"
+                    if isinstance(coordination_efficiency, (int, float))
+                    and coordination_efficiency > 0.8
+                    else "orange"
+                )
+                st.markdown(
+                    f"""
+                    <div class="metric-card">
+                        <div class="metric-value" style="color: {efficiency_color};">
+                            {coordination_efficiency if isinstance(coordination_efficiency, str) else f"{coordination_efficiency:.1%}"}
+                        </div>
+                        <div class="metric-label">Efficiency</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+            # Coordination timeline
+            if insights.get("recent_coordination_events"):
+                st.markdown("#### 📈 Recent Coordination Activity")
+                coord_events = insights["recent_coordination_events"]
+
+                # Create a simple timeline
+                timeline_data = []
+                for event in coord_events[-10:]:  # Last 10 events
+                    timeline_data.append({
+                        "time": event.get("timestamp", "unknown"),
+                        "event": event.get("event_type", "unknown"),
+                        "description": event.get("description", ""),
+                        "status": event.get("status", "unknown"),
+                    })
+
+                if timeline_data:
+                    df = pd.DataFrame(timeline_data)
+                    st.dataframe(df, use_container_width=True)
+
+            # Active coordination tasks
+            if insights.get("active_coordination_tasks"):
+                with st.expander("🔍 Active Coordination Tasks", expanded=False):
+                    tasks = insights["active_coordination_tasks"]
+
+                    for task in tasks:
+                        st.markdown(f"""
+                        **Task ID:** {task.get("task_id", "unknown")}
+                        **Description:** {task.get("description", "N/A")}
+                        **Agent:** {task.get("agent_id", "unknown")}
+                        **Started:** {task.get("start_time", "unknown")}
+                        **Status:** {task.get("status", "unknown")}
+
+                        ---
+                        """)
+
+        except Exception as e:
+            st.warning(f"⚠️ Could not load coordination insights: {e}")
+
+        st.markdown("---")
 
     def render_header(self):
         """Render enhanced dashboard header with better styling."""
@@ -415,12 +674,16 @@ class ClaudeCodeObservabilityDashboard:
         activity_level = (
             "High"
             if metrics["recent_events_5m"] > 10
-            else "Medium" if metrics["recent_events_5m"] > 3 else "Low"
+            else "Medium"
+            if metrics["recent_events_5m"] > 3
+            else "Low"
         )
         activity_color = (
             "#28a745"
             if activity_level == "High"
-            else "#ffc107" if activity_level == "Medium" else "#6c757d"
+            else "#ffc107"
+            if activity_level == "Medium"
+            else "#6c757d"
         )
 
         # Calculate event rate
@@ -509,7 +772,9 @@ class ClaudeCodeObservabilityDashboard:
             agent_color = (
                 "#dc3545"
                 if metrics["estimated_active_agents"] > 5
-                else "#28a745" if metrics["estimated_active_agents"] > 0 else "#6c757d"
+                else "#28a745"
+                if metrics["estimated_active_agents"] > 0
+                else "#6c757d"
             )
             st.markdown(
                 f"""
@@ -567,17 +832,15 @@ class ClaudeCodeObservabilityDashboard:
         }
 
         for hook_type, count in metrics["hook_types"].items():
-            hook_data.append(
-                {
-                    "Hook Type": hook_type.replace("_", " ").title(),
-                    "Count": count,
-                    "Percentage": round(
-                        (count / sum(metrics["hook_types"].values())) * 100, 1
-                    ),
-                    "Color": color_map.get(hook_type, "#6c757d"),
-                    "Original": hook_type,
-                }
-            )
+            hook_data.append({
+                "Hook Type": hook_type.replace("_", " ").title(),
+                "Count": count,
+                "Percentage": round(
+                    (count / sum(metrics["hook_types"].values())) * 100, 1
+                ),
+                "Color": color_map.get(hook_type, "#6c757d"),
+                "Original": hook_type,
+            })
 
         df = pd.DataFrame(hook_data)
         df = df.sort_values("Count", ascending=True)
@@ -618,6 +881,56 @@ class ClaudeCodeObservabilityDashboard:
 
         st.plotly_chart(fig, use_container_width=True)
 
+    def apply_timeline_filter(
+        self, events: list[dict[str, Any]], time_range: str
+    ) -> list[dict[str, Any]]:
+        """Apply timeline filtering to events based on selected time range."""
+        if not events:
+            return []
+
+        now = TimePolicy.now_local()
+        today = now.date()
+
+        def safe_get_date(dt):
+            """Safely extract date from datetime, handling timezone issues."""
+            try:
+                if hasattr(dt, "date"):
+                    return dt.date()
+                else:
+                    return dt
+            except Exception:
+                # If we can't get date, return today as fallback
+                return today
+
+        if time_range == "Today":
+            return [e for e in events if safe_get_date(e["datetime"]) == today]
+        elif time_range == "Last 7 Days":
+            start_date = today - timedelta(days=6)
+            end_date = today
+            return [
+                e
+                for e in events
+                if start_date <= safe_get_date(e["datetime"]) <= end_date
+            ]
+        elif time_range == "Last 30 Days":
+            start_date = today - timedelta(days=29)
+            end_date = today
+            return [
+                e
+                for e in events
+                if start_date <= safe_get_date(e["datetime"]) <= end_date
+            ]
+        elif time_range == "This Month":
+            start_date = today.replace(day=1)
+            end_date = today
+            return [
+                e
+                for e in events
+                if start_date <= safe_get_date(e["datetime"]) <= end_date
+            ]
+        else:  # All Time
+            return events  # Show all events for "All Time"
+
     def render_timeline_chart(
         self, events: list[dict[str, Any]], time_range: str = "Today"
     ):
@@ -639,45 +952,51 @@ class ClaudeCodeObservabilityDashboard:
         now = TimePolicy.now_local()
         today = now.date()
 
+        def safe_get_date(dt):
+            """Safely extract date from datetime, handling timezone issues."""
+            try:
+                if hasattr(dt, "date"):
+                    return dt.date()
+                else:
+                    return dt
+            except Exception:
+                # If we can't get date, return today as fallback
+                return today
+
+        # Events are already filtered by apply_timeline_filter()
+        filtered_events = events
+
         if time_range == "Today":
             start_date = today
             end_date = today
-            filtered_events = [e for e in events if e["datetime"].date() == today]
             group_by = "hour"
             title_format = "Today's Activity Timeline"
-
         elif time_range == "Last 7 Days":
             start_date = today - timedelta(days=6)
             end_date = today
-            filtered_events = [
-                e for e in events if start_date <= e["datetime"].date() <= end_date
-            ]
             group_by = "day"
             title_format = "Last 7 Days Activity"
-
         elif time_range == "Last 30 Days":
             start_date = today - timedelta(days=29)
             end_date = today
-            filtered_events = [
-                e for e in events if start_date <= e["datetime"].date() <= end_date
-            ]
             group_by = "day"
             title_format = "Last 30 Days Activity"
-
         elif time_range == "This Month":
             start_date = today.replace(day=1)
             end_date = today
-            filtered_events = [
-                e for e in events if start_date <= e["datetime"].date() <= end_date
-            ]
             group_by = "day"
             title_format = f"{now.strftime('%B')} Activity"
-
         else:  # All Time
             if events:
-                start_date = min(e["datetime"].date() for e in events)
-                end_date = today
-                filtered_events = events
+                try:
+                    event_dates = [safe_get_date(e["datetime"]) for e in events]
+                    start_date = min(event_dates)
+                    end_date = today
+                except Exception:
+                    # Fallback if date extraction fails
+                    start_date = today - timedelta(days=30)
+                    end_date = today
+
                 # Decide grouping based on date range
                 days_diff = (end_date - start_date).days
                 if days_diff <= 7:
@@ -690,10 +1009,6 @@ class ClaudeCodeObservabilityDashboard:
             else:
                 st.info("📅 No events recorded yet")
                 return
-
-        if not filtered_events:
-            st.info(f"📅 No events recorded for {time_range}")
-            return
 
         # Process data based on grouping
         if group_by == "hour" and time_range == "Today":
@@ -899,19 +1214,15 @@ class ClaudeCodeObservabilityDashboard:
         with col1:
             st.markdown(f"**📊 Showing {len(events)} events**")
         with col2:
-            display_limit = st.selectbox(
-                "Show", [10, 25, 50, 100], index=1, key="event_limit"
-            )
+            # Space for future controls if needed
+            pass
         with col3:
             show_details = st.checkbox(
                 "🔍 Show Details", value=False, help="Show expanded event information"
             )
 
-        # Get events to display
-        display_events = (
-            events[-display_limit:] if len(events) > display_limit else events
-        )
-        display_events.reverse()  # Show newest first
+        # Show all events that match filtering criteria (already in newest-first order from database)
+        display_events = events
 
         # Enhanced event cards display
         if show_details:
@@ -997,15 +1308,13 @@ class ClaudeCodeObservabilityDashboard:
                     session_id[:8] + "..." if len(session_id) > 8 else session_id
                 )
 
-                table_data.append(
-                    {
-                        "🕐 Time": event["datetime"].strftime("%H:%M:%S"),
-                        "🎯 Event": f"{event_icon} {event_type.replace('_', ' ').title()}",
-                        "🛠️ Tool": event.get("tool_name", "Unknown"),
-                        "👤 Session": session_display,
-                        "📄 Details": details,
-                    }
-                )
+                table_data.append({
+                    "🕐 Time": event["datetime"].strftime("%H:%M:%S"),
+                    "🎯 Event": f"{event_icon} {event_type.replace('_', ' ').title()}",
+                    "🛠️ Tool": event.get("tool_name", "Unknown"),
+                    "👤 Session": session_display,
+                    "📄 Details": details,
+                })
 
             df = pd.DataFrame(table_data)
 
@@ -1307,6 +1616,13 @@ class ClaudeCodeObservabilityDashboard:
         # Main content
         self.render_metrics(metrics)
 
+        # Daemon status monitoring
+        daemon_status = self.get_daemon_status()
+        self.render_daemon_status(daemon_status)
+
+        # Coordination dashboard (if daemon is running)
+        self.render_coordination_dashboard(daemon_status)
+
         # Cleaner filtering section
         st.markdown("### 🔍 Filters & Search")
 
@@ -1316,9 +1632,9 @@ class ClaudeCodeObservabilityDashboard:
 
             with filter_col1:
                 # Event type filter
-                all_event_types = sorted(
-                    {e.get("event_type", "unknown") for e in events}
-                )
+                all_event_types = sorted({
+                    e.get("event_type", "unknown") for e in events
+                })
                 selected_event_types = st.multiselect(
                     "📋 Event Types",
                     options=all_event_types,
@@ -1327,17 +1643,15 @@ class ClaudeCodeObservabilityDashboard:
                 )
 
                 # Session filter
-                all_sessions = list(
-                    {
-                        e.get("session_id", "unknown")
-                        for e in events
-                        if e.get("session_id")
-                    }
-                )
+                all_sessions = list({
+                    e.get("session_id", "unknown")
+                    for e in events
+                    if e.get("session_id")
+                })
                 selected_sessions = st.multiselect(
                     "👥 Sessions",
                     options=all_sessions[:10],  # Limit to top 10 sessions
-                    default=[],  # Default to none selected to reduce clutter
+                    default=all_sessions[:10],  # Default to all available sessions
                     help="Filter events by session ID",
                 )
 
@@ -1356,11 +1670,28 @@ class ClaudeCodeObservabilityDashboard:
                     min_time = min([e["datetime"] for e in events])
                     max_time = max([e["datetime"] for e in events])
 
+                    # Calculate hours between oldest and newest events
+                    import pytz
+                    from khive.core import TimePolicy
+
+                    # Get current time in UTC to match our event timestamps
+                    now_local = TimePolicy.now_local()
+                    now_utc = (
+                        now_local.astimezone(pytz.UTC)
+                        if now_local.tzinfo
+                        else pd.to_datetime(now_local, utc=True)
+                    )
+
+                    # Event timestamps are now timezone-aware, so this should work directly
+                    hours_back = max(
+                        24, int((now_utc - min_time).total_seconds() / 3600) + 1
+                    )
+
                     time_range = st.slider(
                         "⏰ Time Range (Hours Ago)",
                         min_value=0,
-                        max_value=24,
-                        value=(0, 2),
+                        max_value=hours_back,
+                        value=(0, hours_back),  # Default to show all events
                         help="Filter events by time range",
                     )
 
@@ -1399,12 +1730,44 @@ class ClaudeCodeObservabilityDashboard:
 
         # Apply time range filter
         if events and "time_range" in locals():
-            now = TimePolicy.now_local()
-            start_time = now - timedelta(hours=time_range[1])
-            end_time = now - timedelta(hours=time_range[0])
-            filtered_events = [
-                e for e in filtered_events if start_time <= e["datetime"] <= end_time
-            ]
+            try:
+                now = TimePolicy.now_local()
+                start_time = now - timedelta(hours=time_range[1])
+                end_time = now - timedelta(hours=time_range[0])
+                temp_filtered = []
+
+                for e in filtered_events:
+                    event_time = e["datetime"]
+                    try:
+                        # Convert both to timezone-naive for comparison
+                        if hasattr(event_time, "tz_localize"):
+                            # pandas Timestamp
+                            if event_time.tzinfo is not None:
+                                event_time_naive = event_time.tz_convert(None)
+                            else:
+                                event_time_naive = event_time
+                        else:
+                            # regular datetime
+                            event_time_naive = (
+                                event_time.replace(tzinfo=None)
+                                if event_time.tzinfo
+                                else event_time
+                            )
+
+                        now_naive = now.replace(tzinfo=None) if now.tzinfo else now
+                        start_time_naive = now_naive - timedelta(hours=time_range[1])
+                        end_time_naive = now_naive - timedelta(hours=time_range[0])
+
+                        if start_time_naive <= event_time_naive <= end_time_naive:
+                            temp_filtered.append(e)
+                    except Exception:
+                        # If comparison fails, include the event (fail-safe)
+                        temp_filtered.append(e)
+
+                filtered_events = temp_filtered
+            except Exception:
+                # If time range filtering fails entirely, keep all filtered events
+                pass
 
         if search_text:
             search_lower = search_text.lower()
@@ -1456,14 +1819,21 @@ class ClaudeCodeObservabilityDashboard:
             filtered_metrics = self.get_metrics(filtered_events)
             self.render_hook_types_chart(filtered_metrics)
 
+        # Apply timeline filtering consistently to both charts and events table
+        timeline_filtered_events = self.apply_timeline_filter(
+            filtered_events, time_range_option
+        )
+
         with col2:
-            self.render_timeline_chart(filtered_events, time_range=time_range_option)
+            self.render_timeline_chart(
+                timeline_filtered_events, time_range=time_range_option
+            )
 
         st.markdown("---")
 
-        # Recent events table with filtered data
+        # Recent events table with timeline-filtered data
         st.markdown("### 📋 Event History")
-        self.render_events_table(filtered_events)
+        self.render_events_table(timeline_filtered_events)
 
         # Footer
         st.markdown("---")
