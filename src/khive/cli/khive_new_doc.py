@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -205,6 +206,18 @@ class NewDocCommand(ConfigurableCLICommand):
             "--domain",
             help="Agent domain for deliverable (e.g., api-design, backend-development)",
         )
+        
+        # Convenience shortcuts for common workflows
+        parser.add_argument(
+            "--quick",
+            action="store_true",
+            help="Quick mode: auto-detect context and use smart defaults",
+        )
+        parser.add_argument(
+            "--agent-deliverable",
+            metavar="NAME",
+            help="Shortcut: create agent deliverable with auto-detected context",
+        )
 
     def _create_config(self, args: argparse.Namespace) -> NewDocConfig:
         """Create config from arguments and files."""
@@ -225,6 +238,134 @@ class NewDocCommand(ConfigurableCLICommand):
         config.ai_mode = loaded_config.get("ai_mode", config.ai_mode)
 
         return config
+
+    def _detect_session_context(self, config: NewDocConfig) -> str | None:
+        """Auto-detect session ID from current workspace context."""
+        # Check if we're in a workspace directory
+        current_path = Path.cwd()
+        workspace_base = config.project_root / ".khive" / "workspace"
+        
+        if workspace_base.exists() and current_path.is_relative_to(workspace_base):
+            # We're inside a workspace, extract session ID
+            try:
+                relative_path = current_path.relative_to(workspace_base)
+                session_id = str(relative_path).split('/')[0]
+                return session_id
+            except (IndexError, ValueError):
+                pass
+        
+        # Check for recent sessions
+        if workspace_base.exists():
+            sessions = [d for d in workspace_base.iterdir() if d.is_dir()]
+            if sessions:
+                # Return the most recently modified session
+                recent_session = max(sessions, key=lambda d: d.stat().st_mtime)
+                return recent_session.name
+        
+        return None
+
+    def _detect_agent_context(self, config: NewDocConfig) -> tuple[str | None, str | None]:
+        """Auto-detect agent role and domain from environment or recent usage."""
+        # Check environment variables (set by khive compose)
+        role = os.environ.get('KHIVE_AGENT_ROLE')
+        domain = os.environ.get('KHIVE_AGENT_DOMAIN')
+        
+        if role and domain:
+            return role, domain
+        
+        # Check for recent compose usage in current session
+        try:
+            # Look for .khive/workspace/*/compose_context.json files
+            workspace_base = config.project_root / ".khive" / "workspace"
+            if workspace_base.exists():
+                for session_dir in workspace_base.iterdir():
+                    if session_dir.is_dir():
+                        context_file = session_dir / "compose_context.json"
+                        if context_file.exists():
+                            try:
+                                with open(context_file) as f:
+                                    context = json.load(f)
+                                    return context.get('role'), context.get('domain')
+                            except (json.JSONDecodeError, KeyError):
+                                continue
+        except Exception:
+            pass
+        
+        return None, None
+
+    def _prompt_for_missing_info(self, missing_params: dict[str, str]) -> dict[str, str]:
+        """Interactively prompt for missing required information."""
+        results = {}
+        
+        # Check if we're in an interactive terminal
+        if not os.isatty(0):  # stdin is not a terminal
+            # Non-interactive mode - just provide helpful guidance
+            param_list = list(missing_params.keys())
+            param_descriptions = [missing_params[p] for p in param_list]
+            print(f"⚠️  Missing required parameters: {', '.join(param_list)}")
+            print(f"💡 In CLI, you can provide these as: khive new-doc <type> <identifier>")
+            return {}
+        
+        for param, description in missing_params.items():
+            try:
+                value = input(f"Enter {description}: ").strip()
+                if value:
+                    results[param] = value
+                else:
+                    print(f"Skipping {param} (empty input)")
+            except (KeyboardInterrupt, EOFError):
+                print("\nOperation cancelled by user")
+                return {}
+        
+        return results
+
+    def _get_helpful_suggestions(self, config: NewDocConfig) -> str:
+        """Generate helpful suggestions based on current context."""
+        suggestions = []
+        
+        # Check available templates
+        templates = self._discover_templates(config)
+        if templates:
+            common_types = [t.doc_type for t in templates[:3]]
+            suggestions.append(f"Available templates: {', '.join(common_types)}")
+        
+        # Check workspace context
+        session_id = self._detect_session_context(config)
+        if session_id:
+            suggestions.append(f"Detected session: {session_id}")
+        
+        # Check agent context
+        role, domain = self._detect_agent_context(config)
+        if role and domain:
+            suggestions.append(f"Detected agent: {role} ({domain})")
+        
+        return "\n".join(f"  • {s}" for s in suggestions) if suggestions else ""
+
+    def _show_usage_examples(self, config: NewDocConfig) -> str:
+        """Show helpful usage examples based on current context."""
+        examples = []
+        
+        # Detect context for smarter examples
+        session_id = self._detect_session_context(config)
+        role, domain = self._detect_agent_context(config)
+        
+        examples.append("📋 Common usage patterns:")
+        examples.append("")
+        
+        # Quick artifact creation
+        if session_id:
+            examples.append(f"  Create artifact:     khive new-doc --artifact analysis-notes")
+            examples.append(f"  Agent deliverable:   khive new-doc --agent-deliverable final-report")
+        else:
+            examples.append(f"  Create artifact:     khive new-doc --artifact analysis-notes -s session_id")
+            examples.append(f"  Agent deliverable:   khive new-doc --agent-deliverable final-report --quick")
+        
+        examples.append(f"  Official report:     khive new-doc --doc CRR -i 123")
+        examples.append(f"  Quick mode:          khive new-doc artifact my-notes --quick")
+        examples.append("")
+        examples.append("  List templates:      khive new-doc --list-templates")
+        
+        return "\n".join(examples)
 
     async def _execute(
         self, args: argparse.Namespace, config: NewDocConfig
@@ -250,20 +391,89 @@ class NewDocCommand(ConfigurableCLICommand):
                 key, value = var_spec.split("=", 1)
                 custom_vars[key.strip()] = value.strip()
 
+        # Apply quick mode defaults
+        if args.quick:
+            # Auto-detect and apply all available context
+            auto_role, auto_domain = self._detect_agent_context(config)
+            auto_session = self._detect_session_context(config)
+            
+            if auto_role:
+                custom_vars.setdefault("AGENT_ROLE", auto_role)
+            if auto_domain:
+                custom_vars.setdefault("AGENT_DOMAIN", auto_domain)
+            if auto_session:
+                custom_vars.setdefault("SESSION_ID", auto_session)
+            
+            log_msg("Quick mode: Using auto-detected context")
+
+        # Handle convenience shortcuts
+        if args.agent_deliverable:
+            # Auto-detect context for agent deliverable
+            auto_role, auto_domain = self._detect_agent_context(config)
+            auto_session = self._detect_session_context(config)
+            
+            # Add auto-detected values to custom_vars
+            if auto_role:
+                custom_vars.setdefault("AGENT_ROLE", auto_role)
+            if auto_domain:
+                custom_vars.setdefault("AGENT_DOMAIN", auto_domain)
+            if auto_session:
+                custom_vars.setdefault("SESSION_ID", auto_session)
+            
+            # Add command line args to variables
+            if args.role:
+                custom_vars["AGENT_ROLE"] = args.role
+            if args.domain:
+                custom_vars["AGENT_DOMAIN"] = args.domain
+            if args.phase:
+                custom_vars["PHASE"] = args.phase
+            
+            # Create agent deliverable document
+            return self._create_document(
+                "agent_deliverable",
+                args.agent_deliverable,
+                config,
+                args.dest,
+                custom_vars,
+                args.force,
+                args.template_dir,
+            )
+
         # Special handling for artifact documents (session-based)
         if args.artifact:
-            if not args.session_id:
-                return CLIResult(
-                    status="failure",
-                    message="-s/--session-id is required when using --artifact",
-                    exit_code=1,
-                )
+            session_id = args.session_id
+            
+            # Auto-detect session if not provided
+            if not session_id:
+                detected_session = self._detect_session_context(config)
+                if detected_session:
+                    session_id = detected_session
+                    log_msg(f"Auto-detected session: {session_id}")
+                else:
+                    # Interactive prompting for session ID
+                    print("🔍 No session ID provided. Let me help you:")
+                    suggestions = self._get_helpful_suggestions(config)
+                    if suggestions:
+                        print("Context information:")
+                        print(suggestions)
+                    
+                    missing_info = self._prompt_for_missing_info({
+                        "session_id": "session ID (or press Enter to create a new one)"
+                    })
+                    
+                    session_id = missing_info.get("session_id")
+                    if not session_id:
+                        # Generate a new session ID
+                        from datetime import datetime
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        session_id = f"{timestamp}_auto_session"
+                        log_msg(f"Created new session: {session_id}")
 
             artifact_name = args.artifact
             return await self._create_artifact_document(
                 "artifact",  # Always use "artifact" as the type
                 artifact_name,
-                args.session_id,
+                session_id,
                 config,
                 args.dest,
                 custom_vars,
@@ -274,16 +484,40 @@ class NewDocCommand(ConfigurableCLICommand):
 
         # Special handling for official deliverable documents (issue-based)
         if args.doc:
-            if not args.issue:
-                return CLIResult(
-                    status="failure",
-                    message="-i/--issue is required when using --doc (e.g., 'khive new-doc --doc CRR -i 123')",
-                    exit_code=1,
-                )
+            issue_number = args.issue
+            
+            if not issue_number:
+                # Interactive prompting for issue number
+                print(f"🔍 Creating {args.doc} report. Let me help you:")
+                suggestions = self._get_helpful_suggestions(config)
+                if suggestions:
+                    print("Context information:")
+                    print(suggestions)
+                
+                missing_info = self._prompt_for_missing_info({
+                    "issue": f"GitHub issue number for this {args.doc} report"
+                })
+                
+                issue_str = missing_info.get("issue")
+                if not issue_str:
+                    return CLIResult(
+                        status="failure",
+                        message="Issue number is required for official reports. Operation cancelled.",
+                        exit_code=1,
+                    )
+                
+                try:
+                    issue_number = int(issue_str)
+                except ValueError:
+                    return CLIResult(
+                        status="failure",
+                        message=f"Invalid issue number '{issue_str}'. Please enter a valid number.",
+                        exit_code=1,
+                    )
 
             return self._create_official_report(
                 args.doc,
-                args.issue,
+                issue_number,
                 config,
                 args.dest,  # dest_override
                 custom_vars,
@@ -296,16 +530,51 @@ class NewDocCommand(ConfigurableCLICommand):
         # The agent-deliverable template file should be available in templates directory
 
         # Regular template-based document creation
-        if not args.type_or_template or not args.identifier:
-            return CLIResult(
-                status="failure",
-                message="Both template/type and identifier required for regular document creation",
-                exit_code=1,
-            )
+        type_or_template = args.type_or_template
+        identifier = args.identifier
+        
+        # Interactive prompting for missing required information
+        if not type_or_template or not identifier:
+            print("🔍 Let me help you create a document:")
+            
+            # Show context and examples
+            suggestions = self._get_helpful_suggestions(config)
+            if suggestions:
+                print("Context information:")
+                print(suggestions)
+                print()
+            
+            print(self._show_usage_examples(config))
+            print()
+            
+            missing_params = {}
+            if not type_or_template:
+                missing_params["type"] = "template/document type (e.g., 'artifact', 'agent_deliverable')"
+            if not identifier:
+                missing_params["identifier"] = "document identifier (e.g., 'analysis-001', 'final-report')"
+            
+            missing_info = self._prompt_for_missing_info(missing_params)
+            
+            if not missing_info:
+                return CLIResult(
+                    status="failure",
+                    message="Document creation cancelled by user.",
+                    exit_code=1,
+                )
+            
+            type_or_template = missing_info.get("type") or type_or_template
+            identifier = missing_info.get("identifier") or identifier
+            
+            if not type_or_template or not identifier:
+                return CLIResult(
+                    status="failure",
+                    message="Both template type and identifier are required. Operation cancelled.",
+                    exit_code=1,
+                )
 
         return self._create_document(
-            args.type_or_template,
-            args.identifier,
+            type_or_template,
+            identifier,
             config,
             args.dest,
             custom_vars,
@@ -412,9 +681,23 @@ class NewDocCommand(ConfigurableCLICommand):
 
         if not template:
             available = sorted({t.doc_type for t in templates})
+            suggestions = []
+            
+            # Find similar templates
+            search_lower = type_or_template.lower()
+            similar = [t.doc_type for t in templates if search_lower in t.doc_type.lower()]
+            if similar:
+                suggestions.append(f"Did you mean: {', '.join(similar[:3])}")
+            
+            suggestions.append(f"Available templates: {', '.join(available[:5])}")
+            if len(available) > 5:
+                suggestions.append(f"... and {len(available) - 5} more (use --list-templates to see all)")
+            
+            suggestion_text = "\n".join(f"  💡 {s}" for s in suggestions)
+            
             return CLIResult(
                 status="failure",
-                message=f"Template '{type_or_template}' not found",
+                message=f"Template '{type_or_template}' not found.\n\n{suggestion_text}",
                 data={"available_types": available},
                 exit_code=1,
             )
@@ -432,13 +715,18 @@ class NewDocCommand(ConfigurableCLICommand):
 
         # Check existing file
         if output_path.exists() and not force:
+            relative_path = output_path.relative_to(config.project_root) if config.project_root in output_path.parents else output_path
             return CLIResult(
                 status="failure",
-                message=f"File exists: {output_path.name} (use --force to overwrite)",
+                message=f"Document already exists: {relative_path}\n\n  💡 Use --force to overwrite, or choose a different identifier",
                 exit_code=1,
             )
 
-        # Prepare variables
+        # Auto-detect agent context for agent-related templates
+        auto_role, auto_domain = self._detect_agent_context(config)
+        auto_session = self._detect_session_context(config)
+        
+        # Prepare variables with auto-detected context
         all_vars = {
             **config.default_vars,
             **custom_vars,
@@ -448,6 +736,40 @@ class NewDocCommand(ConfigurableCLICommand):
             "PROJECT_ROOT": str(config.project_root),
             "USER": self._get_user_info(),
         }
+        
+        # Add auto-detected agent context if available
+        if auto_role and "AGENT_ROLE" not in all_vars:
+            all_vars["AGENT_ROLE"] = auto_role
+            log_msg(f"Auto-detected agent role: {auto_role}")
+        
+        if auto_domain and "AGENT_DOMAIN" not in all_vars:
+            all_vars["AGENT_DOMAIN"] = auto_domain
+            log_msg(f"Auto-detected agent domain: {auto_domain}")
+        
+        if auto_session and "SESSION_ID" not in all_vars:
+            all_vars["SESSION_ID"] = auto_session
+            log_msg(f"Auto-detected session: {auto_session}")
+        
+        # For agent_deliverable templates, ensure required variables are available
+        if template.doc_type == "agent_deliverable":
+            missing_agent_vars = {}
+            if "AGENT_ROLE" not in all_vars:
+                missing_agent_vars["role"] = "agent role (e.g., researcher, architect, implementer)"
+            if "AGENT_DOMAIN" not in all_vars:
+                missing_agent_vars["domain"] = "agent domain (e.g., api-design, backend-development)"
+            if "PHASE" not in all_vars:
+                missing_agent_vars["phase"] = "phase name (e.g., discovery_phase, design_phase)"
+            
+            if missing_agent_vars:
+                print(f"🔍 Creating agent deliverable. Missing some context:")
+                agent_info = self._prompt_for_missing_info(missing_agent_vars)
+                
+                if agent_info.get("role"):
+                    all_vars["AGENT_ROLE"] = agent_info["role"]
+                if agent_info.get("domain"):
+                    all_vars["AGENT_DOMAIN"] = agent_info["domain"]
+                if agent_info.get("phase"):
+                    all_vars["PHASE"] = agent_info["phase"]
 
         # Render content
         content = self._render_template(template, all_vars)
@@ -774,7 +1096,7 @@ _Template content should be added here_
             if doc_exists and not force:
                 return CLIResult(
                     status="failure",
-                    message=f"Artifact exists: {doc_name}.md (use --force to overwrite)",
+                    message=f"Artifact already exists: {doc_name}.md\n\n  💡 Use --force to overwrite, or choose a different name",
                     exit_code=1,
                 )
 
@@ -911,7 +1233,7 @@ _Template content should be added here_
                 )
                 return CLIResult(
                     status="failure",
-                    message=f"Report exists: {relative_path} (use --force to overwrite)",
+                    message=f"Report already exists: {relative_path}\n\n  💡 Use --force to overwrite the existing report",
                     exit_code=1,
                 )
 
@@ -926,9 +1248,10 @@ _Template content should be added here_
                     break
 
             if not template:
+                available_templates = [t.doc_type for t in templates if t.doc_type.startswith(doc_type)]
                 return CLIResult(
                     status="failure",
-                    message=f"Template for {doc_type} not found",
+                    message=f"Template for {doc_type} report not found.\n\n  💡 Available report templates: {', '.join(available_templates) if available_templates else 'none'}\n  💡 Use --list-templates to see all available templates",
                     exit_code=1,
                 )
 
