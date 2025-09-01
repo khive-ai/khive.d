@@ -16,11 +16,11 @@ Usage:
 """
 
 from .client import KhiveDaemonClient, ensure_daemon_running, get_daemon_client
-from .server import DaemonServer
+from .server import KhiveDaemonServer
 
 __all__ = [
-    "DaemonServer",
-    "KhiveDaemonClient",
+    "KhiveDaemonServer",
+    "KhiveDaemonClient", 
     "get_daemon_client",
     "ensure_daemon_running",
 ]

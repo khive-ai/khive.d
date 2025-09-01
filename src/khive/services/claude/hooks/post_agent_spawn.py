@@ -10,7 +10,7 @@ import sys
 from typing import Any
 
 import anyio
-from khive.services.claude.hooks.coordination import coordinate_task_complete
+from khive.services.claude.hooks.coordination import share_result
 from khive.services.claude.hooks.hook_event import (
     HookEvent,
     HookEventContent,
@@ -79,14 +79,14 @@ def handle_post_agent_spawn(
 
         # Share the context if task was successful
         coordination_result = None
-        if success and task_id:
+        if success and output:
             agent_id = f"agent_{session_id[:8] if session_id else 'unknown'}"
-            coordination_result = coordinate_task_complete(
-                task_id=task_id,
+            # Share the result for other agents
+            artifact_id = share_result(
                 agent_id=agent_id,
-                output=output[:1000],  # Share first 1000 chars for context
-                artifacts=artifacts,
+                content=output[:1000],  # Share first 1000 chars for context
             )
+            coordination_result = {"artifact_id": artifact_id}
 
         event = HookEvent(
             content=HookEventContent(

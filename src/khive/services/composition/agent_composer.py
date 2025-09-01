@@ -361,6 +361,35 @@ class AgentComposer:
 
         if include_coordination:
             prompt_parts.append("\n--- COORDINATION PROTOCOL ---")
+            
+            # Add deliverable instructions if coordination_id is present
+            coordination_id = agent_spec.get("coordination_id")
+            phase = agent_spec.get("phase", "execution")
+            
+            if coordination_id:
+                # Extract agent ID (role_domain format)
+                agent_id = identity.get("id", "unknown_agent")
+                
+                prompt_parts.append(f"""
+📝 DELIVERABLE REQUIREMENTS:
+Your task includes creating a deliverable document to record your work.
+
+1. **CREATE YOUR DELIVERABLE**: After completing your main task, use:
+   ```bash
+   uv run khive new-doc deliverable --agent {agent_id} --coordination {coordination_id} --phase {phase}
+   ```
+
+2. **FILL THE TEMPLATE**: The command creates a template. Fill it with:
+   - Executive Summary (1-2 sentences)
+   - Key Findings (3-5 bullet points)
+   - Your detailed analysis/implementation
+   - Dependencies (what previous work you built on)
+   - Recommendations for next steps
+
+3. **REGISTRY SAFETY**: The registry.json is automatically updated - never edit it manually.
+
+⚠️ IMPORTANT: Creating a deliverable is MANDATORY for coordination tracking.
+""")
             prompt_parts.append(
                 "1. Respect other agents's findings and do not overwrite them"
             )

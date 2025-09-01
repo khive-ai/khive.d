@@ -20,7 +20,8 @@ outputs:
 authority: source_selection, information_scope_boundaries
 tools:
   - Read
-  - Search
+  - Grep
+  - Glob
   - WebSearch
   - Task
 handoff_to:

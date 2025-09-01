@@ -984,71 +984,14 @@ Be different - show YOUR unique perspective on which roles matter most."""
     def get_artifact_management_prompt(
         self, session_id: str, phase: str, agent_role: str, domain: str
     ) -> str:
-        """Generate artifact management section for Task agent prompts"""
-        session_dir = self.workspace_dir / session_id
-        artifact_path = self.generate_artifact_path(
-            session_id, phase, agent_role, domain
-        )
-        registry_path = session_dir / "artifact_registry.json"
-
-        # Determine expected artifacts based on phase
-        phase_dependencies = {
-            "phase1": [],
-            "discovery_phase": [],
-            "design_phase": ["discovery_phase"],
-            "implementation_phase": ["discovery_phase", "design_phase"],
-            "validation_phase": [
-                "discovery_phase",
-                "design_phase",
-                "implementation_phase",
-            ],
-            "refinement_phase": [
-                "discovery_phase",
-                "design_phase",
-                "implementation_phase",
-                "validation_phase",
-            ],
-            "execution_phase": [],  # Single phase execution
-        }
-
-        expected_phases = phase_dependencies.get(phase, [])
-        expected_artifacts_msg = ""
-
-        if expected_phases:
-            expected_artifacts_msg = f"""
-
-📚 EXPECTED ARTIFACTS FROM PREVIOUS PHASES:
-- {", ".join(expected_phases)} should be complete
-- Check registry for specific deliverables from these phases"""
-
+        """Generate minimal artifact notice for orchestration plan"""
+        # NOTE: Detailed deliverable instructions moved to khive compose
+        # where they belong (agents get full instructions when composed)
         return f"""
-🗂️ ARTIFACT MANAGEMENT (MANDATORY DELIVERABLE):
-1. **Session ID**: {session_id}
-2. **YOUR MANDATORY DELIVERABLE**: `{artifact_path}`
-3. **Registry**: Automatically managed when you use khive new-doc
-4. **Current Phase**: {phase}{expected_artifacts_msg}
-
-📋 DELIVERABLE CREATION PROTOCOL:
-1. **CREATE**: Use `uv run khive new-doc agent-deliverable {session_id} --phase {phase} --role {agent_role} --domain {domain}`
-   - This creates your deliverable template AND registers it safely
-   - No registry conflicts - handled atomically by new-doc
-2. **FILL**: Read the created template and complete all sections
-3. **REFERENCE**: Check `{registry_path}` for previous phase artifacts to build upon
-
-⚠️ REGISTRY SAFETY:
-- **NEVER manually edit** registry.json - let khive new-doc handle it
-- **RESPECT PEERS**: Never modify other agents' deliverables
-- **ATOMIC UPDATES**: khive new-doc ensures safe concurrent registry updates
-
-🔗 DELIVERABLE REQUIREMENTS:
-Your MD file MUST include:
-- **Summary**: Executive summary of your work
-- **Key Findings**: 3-5 bullet points of main discoveries
-- **Dependencies**: Which previous artifacts you built upon
-- **Details**: Your analysis, design, or implementation
-- **Next Steps**: Recommendations for subsequent phases
-
-⚠️ CRITICAL: Use `khive new-doc` to create your deliverable - it handles both file creation AND registry update!
+📝 Note: Agents will receive detailed deliverable instructions when composed.
+- Coordination ID: {session_id}
+- Phase: {phase}
+- Suggested roles: {agent_role} with {domain} domain
 """
 
     def generate_artifact_path(
@@ -1701,7 +1644,7 @@ PHASE-SPECIFIC INSTRUCTIONS:
 - Coordinate via: {coordination_pattern_str} pattern
 
 YOUR TASK:
-1. Run: `uv run khive compose {agent.role} -d {agent.domain} -c "{request.task_description}"`
+1. Run: `uv run khive compose {agent.role} -d {agent.domain} -c "{request.task_description}" --coordination-id {session_id}`
 2. Focus on {phase.name} deliverables
 3. Respect phase dependencies and coordination pattern
 4. Create your deliverable following phase requirements

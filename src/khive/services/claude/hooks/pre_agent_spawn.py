@@ -10,7 +10,7 @@ import sys
 from typing import Any
 
 import anyio
-from khive.services.claude.hooks.coordination import coordinate_task_start
+from khive.services.claude.hooks.coordination import check_duplicate_work
 from khive.services.claude.hooks.hook_event import (
     HookEvent,
     HookEventContent,
@@ -42,26 +42,24 @@ def handle_pre_agent_spawn(
         )
         word_count = len(task_description.split())
 
-        # Coordinate with other agents
-        coordination = coordinate_task_start(
-            task_description,
-            agent_id=f"agent_{session_id[:8] if session_id else 'unknown'}",
-        )
+        # Check for duplicate work
+        agent_id = f"agent_{session_id[:8] if session_id else 'unknown'}"
+        duplicate = check_duplicate_work(agent_id, task_description)
+        coordination = {
+            "duplicate_detected": duplicate is not None,
+            "existing_task": duplicate,
+        }
 
         # Prepare coordination insights
         coordination_metadata = {
-            "task_id": coordination["task_id"],
-            "is_duplicate": coordination["is_duplicate"],
-            "relevant_contexts": len(coordination["relevant_contexts"]),
-            "should_proceed": coordination["should_proceed"],
+            "duplicate_detected": coordination["duplicate_detected"],
+            "existing_task": coordination.get("existing_task"),
         }
 
-        # Add suggestions to response if any
+        # Add suggestions to response if duplicate detected
         suggestions_text = ""
-        if coordination["suggestions"]:
-            suggestions_text = "; ".join([
-                s["message"] for s in coordination["suggestions"]
-            ])
+        if coordination["duplicate_detected"]:
+            suggestions_text = f"Similar task already in progress: {coordination['existing_task']}"
 
         event = HookEvent(
             content=HookEventContent(

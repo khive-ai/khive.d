@@ -122,7 +122,7 @@ def start(
             # Start daemon in background
             daemon_env = os.environ.copy()
             daemon_env["KHIVE_DAEMON_HOST"] = "127.0.0.1"
-            daemon_env["KHIVE_DAEMON_PORT"] = "11434"
+            daemon_env["KHIVE_DAEMON_PORT"] = "11634"
 
             daemon_process = subprocess.Popen(
                 [sys.executable, "-m", "khive.daemon.server"],

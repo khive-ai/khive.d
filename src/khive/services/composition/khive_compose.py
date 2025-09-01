@@ -31,6 +31,7 @@ async def run_composition(
     role: str,
     domains: str | None,
     context: str | None,
+    coordination_id: str | None,
     json_output: bool,
     enhanced: bool = False,
     secure: bool = False,
@@ -44,10 +45,32 @@ async def run_composition(
             role=role,
             domains=domains,
             context=context,
+            coordination_id=coordination_id,
+            phase="execution",  # Default phase, could be made configurable
         )
 
         # Get composition
         response = await service.handle_request(request)
+        
+        # Register with coordination if coordination_id provided
+        if coordination_id and response.success:
+            # Auto-register this agent with the coordination system
+            from khive.daemon.client import get_daemon_client
+            try:
+                client = get_daemon_client()
+                if client.is_running():
+                    # Register agent work with coordination system
+                    coord_response = client._request("POST", "/api/coordinate/start", {
+                        "task_id": coordination_id,
+                        "description": context or f"{role} work",
+                        "agent_id": response.agent_id
+                    })
+                    if coord_response.get("status") == "duplicate":
+                        print(f"⚠️  Similar work already in progress: {coord_response.get('existing_task')}")
+                    else:
+                        print(f"✅ Registered with coordination: {coordination_id}")
+            except Exception as e:
+                print(f"⚠️  Could not register with coordination: {e}")
 
         # Output results
         if json_output:
@@ -173,6 +196,11 @@ def main():
     )
 
     parser.add_argument("--context", "-c", help="Task context for agent composition")
+    
+    parser.add_argument(
+        "--coordination-id", 
+        help="Coordination ID from khive plan for multi-agent work"
+    )
 
     parser.add_argument("--json", action="store_true", help="Output raw JSON response")
 
@@ -193,7 +221,9 @@ def main():
     # Run the composition
     asyncio.run(
         run_composition(
-            args.role, args.domains, args.context, args.json, args.enhanced, args.secure
+            args.role, args.domains, args.context, 
+            args.coordination_id,
+            args.json, args.enhanced, args.secure
         )
     )
 

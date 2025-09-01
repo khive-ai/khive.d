@@ -118,7 +118,7 @@ async def run_planning(
                 f"📊 Complexity: {getattr(response.complexity, 'value', response.complexity)}"
             )
             print(f"👥 Recommended Agents: {response.recommended_agents}")
-            print(f"🔗 Session ID: {response.session_id}")
+            print(f"🔗 Coordination ID: {response.session_id}")
             print(f"✨ Confidence: {response.confidence:.0%}")
 
             if response.phases:

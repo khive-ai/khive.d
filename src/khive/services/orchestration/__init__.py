@@ -16,8 +16,58 @@ from .parts import (
     OrchestrationPlan,
     RefinementConfig,
 )
+from .khive_orchestrate import (
+    get_orchestration_engine,
+    orchestrate_task,
+    orchestrate_issue,
+    list_active_sessions,
+    get_session_status,
+    stop_session,
+    OrchestrationEngine,
+    OrchestrationSession,
+)
+# Enhanced Intelligence Capabilities - Phase 3 Advanced Intelligence (COMMENTED OUT FOR CLEANUP)
+# from .intelligent_orchestration_engine import (
+#     IntelligentOrchestrationEngine,
+#     IntelligentRoutingDecision,
+#     PhaseTransitionIntelligence,
+#     RealTimeCoordinationState,
+#     IntelligenceLevel,
+#     get_intelligent_orchestration_engine,
+# )
+# from .intelligent_orchestrator_integration import (
+#     IntelligentLionOrchestrator,
+#     create_intelligent_orchestrator,
+#     enhance_existing_orchestrator,
+# )
+# Intelligence System Components (COMMENTED OUT FOR CLEANUP)
+# from .capability_assessor import (
+#     get_capability_assessor,
+#     assess_agent_for_role,
+#     get_role_recommendations,
+#     analyze_team_capabilities,
+#     CapabilityAssessor,
+#     CapabilityMetrics,
+#     RoleAssessment,
+#     CapabilityLevel,
+#     LearningTrend,
+# )
+# from .intelligent_router import (
+#     get_intelligent_router,
+#     route_task_intelligently,
+#     register_agent_for_routing,
+#     get_routing_system_status,
+#     IntelligentRouter,
+#     AgentState,
+#     TaskRequest,
+#     RoutingDecision,
+#     Priority,
+#     TaskComplexity,
+#     AgentCapability,
+# )
 
 __all__ = (
+    # Core orchestration components
     "AgentRequest",
     "BaseGate",
     "ComplexityAssessment",
@@ -34,4 +84,44 @@ __all__ = (
     "LionOrchestrator",
     "OrchestrationPlan",
     "RefinementConfig",
+    # Standard orchestration engine
+    "get_orchestration_engine",
+    "orchestrate_task", 
+    "orchestrate_issue",
+    "list_active_sessions",
+    "get_session_status",
+    "stop_session",
+    "OrchestrationEngine",
+    "OrchestrationSession",
+    # Enhanced Intelligence Capabilities - Phase 3 (COMMENTED OUT FOR CLEANUP)
+    # "IntelligentOrchestrationEngine",
+    # "IntelligentRoutingDecision", 
+    # "PhaseTransitionIntelligence",
+    # "RealTimeCoordinationState",
+    # "IntelligenceLevel",
+    # "get_intelligent_orchestration_engine",
+    # "IntelligentLionOrchestrator",
+    # "create_intelligent_orchestrator",
+    # "enhance_existing_orchestrator",
+    # Intelligence System Components (COMMENTED OUT FOR CLEANUP)
+    # "get_capability_assessor",
+    # "assess_agent_for_role",
+    # "get_role_recommendations", 
+    # "analyze_team_capabilities",
+    # "CapabilityAssessor",
+    # "CapabilityMetrics",
+    # "RoleAssessment",
+    # "CapabilityLevel",
+    # "LearningTrend",
+    # "get_intelligent_router",
+    # "route_task_intelligently",
+    # "register_agent_for_routing",
+    # "get_routing_system_status",
+    # "IntelligentRouter",
+    # "AgentState",
+    # "TaskRequest",
+    # "RoutingDecision",
+    # "Priority",
+    # "TaskComplexity",
+    # "AgentCapability",
 )

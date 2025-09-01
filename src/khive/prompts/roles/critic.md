@@ -19,6 +19,10 @@ outputs:
 authority: veto_release, critical_flaw_designation, security_risk_escalation
 tools:
   - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
   - Task
 handoff_to:
   - reviewer
