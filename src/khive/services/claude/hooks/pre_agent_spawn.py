@@ -10,7 +10,7 @@ import sys
 from typing import Any
 
 import anyio
-from khive.services.claude.hooks.coordination import coordinate_task_start
+from khive.services.claude.hooks.coordination import check_duplicate_work
 from khive.services.claude.hooks.hook_event import (
     HookEvent,
     HookEventContent,
@@ -42,26 +42,38 @@ def handle_pre_agent_spawn(
         )
         word_count = len(task_description.split())
 
-        # Coordinate with other agents
-        coordination = coordinate_task_start(
-            task_description,
-            agent_id=f"agent_{session_id[:8] if session_id else 'unknown'}",
-        )
+        # Get proper agent ID - usually this will be fallback since agent spawn is first hook called
+        try:
+            from khive.services.claude.hooks.coordination import get_registry
+            registry = get_registry()
+            agent_id = registry.get_agent_id_from_session(session_id) if session_id else None
+            if not agent_id:
+                agent_id = f"session_{session_id[:8] if session_id else 'unknown'}"
+        except Exception:
+            agent_id = f"session_{session_id[:8] if session_id else 'unknown'}"
+        
+        # Check for duplicate work
+        duplicate = check_duplicate_work(agent_id, task_description)
+        
+        # Build coordination dict with all required fields
+        coordination = {
+            "duplicate_detected": duplicate is not None,
+            "existing_task": duplicate,
+            "should_proceed": duplicate is None,  # Proceed if no duplicate
+            "task_id": f"task_{session_id[:8] if session_id else 'new'}",  # Generate task ID
+            "relevant_contexts": [],  # Empty for now, could be populated from daemon
+        }
 
         # Prepare coordination insights
         coordination_metadata = {
-            "task_id": coordination["task_id"],
-            "is_duplicate": coordination["is_duplicate"],
-            "relevant_contexts": len(coordination["relevant_contexts"]),
-            "should_proceed": coordination["should_proceed"],
+            "duplicate_detected": coordination["duplicate_detected"],
+            "existing_task": coordination.get("existing_task"),
         }
 
-        # Add suggestions to response if any
+        # Add suggestions to response if duplicate detected
         suggestions_text = ""
-        if coordination["suggestions"]:
-            suggestions_text = "; ".join([
-                s["message"] for s in coordination["suggestions"]
-            ])
+        if coordination["duplicate_detected"]:
+            suggestions_text = f"Similar task already in progress: {coordination['existing_task']}"
 
         event = HookEvent(
             content=HookEventContent(
@@ -137,8 +149,14 @@ def main():
         # Always output JSON for Claude Code
         print(json.dumps(result))
 
-        # Exit with 0 for proceed, 1 for block
-        sys.exit(0 if result.get("proceed", True) else 1)
+        # Exit with 0 for proceed, 2 for block (exit code 2 blocks tool execution)
+        if not result.get("proceed", True):
+            # Output reason to stderr for Claude to see
+            reason = result.get("coordination_message", "Duplicate task detected")
+            print(reason, file=sys.stderr)
+            sys.exit(2)  # EXIT CODE 2 TO BLOCK!
+        
+        sys.exit(0)
 
     except Exception as e:
         print(f"Error in pre-agent-spawn hook: {e}", file=sys.stderr)

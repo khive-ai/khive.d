@@ -1,119 +1,120 @@
-from typing import Literal
-
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-
-
-class RolePriority(BaseModel):
-    """Simple role priority model"""
-
-    model_config = ConfigDict(extra="forbid")
-
-    roles: list[str] = Field(
-        min_length=3,
-        max_length=10,
-        description="Priority-ordered list of recommended roles",
-    )
+"""
+Clean data models for multi-round consensus planning system.
+Based on ChatGPT's design - no legacy fields, no fallbacks.
+"""
+from __future__ import annotations
+from enum import Enum
+from typing import List, Optional
+from lionagi.models import HashableModel
+from pydantic import Field
 
 
-class OrchestrationEvaluation(BaseModel):
-    """Single flat evaluation model for GPT-5-nano"""
+class ComplexityLevel(str, Enum):
+    SIMPLE = "simple"
+    MEDIUM = "medium"
+    COMPLEX = "complex"
+    VERY_COMPLEX = "very_complex"
 
-    model_config = ConfigDict(extra="forbid")
 
-    # Core Assessment
-    complexity: Literal["simple", "medium", "complex", "very_complex"]
-    complexity_reason: str = Field(max_length=200)
+class QualityGate(str, Enum):
+    BASIC = "basic"
+    THOROUGH = "thorough"
+    CRITICAL = "critical"
 
-    total_agents: int = Field(ge=1, le=20)
-    agent_reason: str = Field(max_length=200)
 
-    rounds_needed: int = Field(ge=1, le=6)
+class CoordinationStrategy(str, Enum):
+    FAN_OUT_SYNTHESIZE = "fan_out_synthesize"
+    SEQUENTIAL_REFINEMENT = "sequential_refinement"
+    SWARM = "swarm"
+    MAP_REDUCE = "map_reduce"
+    CONSENSUS_VOTING = "consensus_voting"
+    AUTONOMOUS = "autonomous"
 
-    # Role Priority List
-    role_priorities: list[str] = Field(
-        max_length=10,
-        description="Priority-ordered list of recommended roles (most important first)",
-    )
 
-    # Domains (just lists)
-    primary_domains: list[str] = Field(max_length=3)
-    domain_reason: str = Field(max_length=200)
+class AgentRecommendation(HashableModel):
+    """Agent allocation recommendation."""
+    role: str
+    domain: str
+    priority: float = Field(ge=0.0, le=1.0)
+    reasoning: str
 
-    @field_validator("role_priorities", mode="before")
-    @classmethod
-    def validate_roles(cls, v):
-        """Validate and fix role names using string similarity."""
-        from khive.prompts import ALL_AGENT_ROLES
-        from khive.utils import get_logger
 
-        logger = get_logger("khive.services.plan")
+class TaskPhase(HashableModel):
+    """A single execution phase with clear coordination strategy."""
+    name: str
+    description: str
+    agents: List[AgentRecommendation]
+    dependencies: List[str] = Field(default_factory=list)
+    quality_gate: QualityGate
+    coordination_strategy: CoordinationStrategy
+    expected_artifacts: List[str] = Field(default_factory=list)
 
-        if not v:
-            return v
 
-        validated_roles = []
-        for role in v:
-            if role in ALL_AGENT_ROLES:
-                validated_roles.append(role)
-            else:
-                # Try to find the closest matching valid role
-                from lionagi.libs.validate.string_similarity import string_similarity
+class PlannerRequest(HashableModel):
+    """Clean request model - no legacy fields."""
+    task_description: str
+    context: Optional[str] = None
+    time_budget_seconds: float = Field(default=90.0, ge=10.0, le=300.0)
 
-                # Convert set to list for string_similarity
-                valid_roles_list = list(ALL_AGENT_ROLES)
 
-                best_match = string_similarity(
-                    role,
-                    valid_roles_list,
-                    threshold=0.5,  # Lower threshold to catch domain->role mappings
-                    case_sensitive=False,
-                    return_most_similar=True,
-                )
-
-                if best_match:
-                    logger.debug(f"Corrected role '{role}' to '{best_match}'")
-                    validated_roles.append(best_match)
-                else:
-                    logger.warning(f"Could not match role '{role}' to any valid role")
-                    # Skip if no good match found (don't add invalid roles)
-
-        return validated_roles
-
-    @field_validator("primary_domains", mode="before")
-    @classmethod
-    def validate_domains(cls, v):
-        """Validate domain names - canonicalize them."""
-        from khive.services.composition import AgentComposer
-        from khive.utils import KHIVE_CONFIG_DIR
-
-        if not v:
-            return v
-
-        # Initialize composer using the established config directory
-        composer = AgentComposer(KHIVE_CONFIG_DIR / "prompts")
-
-        validated_domains = []
-        for domain in v:
-            # Canonicalize the domain
-            canonical = composer.canonicalize_domain(domain)
-            validated_domains.append(canonical)
-
-        return validated_domains
-
-    # Workflow
-    workflow_pattern: Literal["parallel", "sequential", "hybrid"]
-    workflow_reason: str = Field(max_length=200)
-
-    # Quality
-    quality_level: Literal["basic", "thorough", "critical"]
-    quality_reason: str = Field(max_length=200)
-
-    # Decision Matrix
-    rules_applied: list[str] = Field(max_length=3)
-
-    # Summary
+class PlannerResponse(HashableModel):
+    """Clean response model - only essential fields."""
+    success: bool
+    summary: str
+    complexity: ComplexityLevel
+    recommended_agents: int
+    phases: List[TaskPhase]
+    session_id: Optional[str] = None
     confidence: float = Field(ge=0.0, le=1.0)
-    summary: str = Field(max_length=300)
+    error: Optional[str] = None
+    spawn_commands: List[str] = Field(default_factory=list)
 
 
-# Lion-Task Coordination Models (legacy coordination models removed)
+# Internal consensus models
+class DecompositionCandidate(HashableModel):
+    """Raw phase decomposition from generator."""
+    reasoning: str
+    phases: List[dict]  # Raw phase data before TaskPhase validation
+    estimated_complexity: ComplexityLevel
+    parallelizable_groups: List[List[str]] = Field(default_factory=list)
+
+
+class StrategyCandidate(HashableModel):
+    """Strategy assignment from strategist."""
+    reasoning: str
+    phases: List[TaskPhase]
+    coordination_rationale: str
+    estimated_agents: int
+
+
+class JudgeScore(HashableModel):
+    """Judge scoring of a candidate plan."""
+    feasibility: float = Field(ge=0.0, le=10.0)
+    risk: float = Field(ge=0.0, le=10.0)
+    coverage: float = Field(ge=0.0, le=10.0)
+    cost_efficiency: float = Field(ge=0.0, le=10.0)
+    coordination_clarity: float = Field(ge=0.0, le=10.0)
+    testability: float = Field(ge=0.0, le=10.0)
+    overall: float = Field(ge=0.0, le=10.0)
+    judge_id: str
+    reasoning: str
+
+
+class PairwiseComparison(HashableModel):
+    """Pairwise comparison result from judge."""
+    candidate_a_id: str
+    candidate_b_id: str
+    winner_id: str  # Which candidate won
+    judge_id: str
+    confidence: float = Field(ge=0.0, le=1.0)
+    reasoning: str
+
+
+class ConsensusResult(HashableModel):
+    """Result from consensus algorithm."""
+    winner_id: str
+    scores: dict[str, float]  # candidate_id -> consensus score
+    margin: float  # separation between top 2
+    algorithm_used: str
+    round_number: int
+    converged: bool

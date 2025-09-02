@@ -25,6 +25,8 @@ class ComposerRequest(SecureComposerRequestMixin, BaseModel):
     role: AgentRole = Field(..., description="Agent role (e.g., researcher, architect)")
     domains: str | None = Field(None, description="Comma-separated domain list")
     context: str | None = Field(None, description="Task context for agent composition")
+    coordination_id: str | None = Field(None, description="Coordination ID from khive plan")
+    phase: str | None = Field(None, description="Current phase (discovery, design, implementation, etc.)")
 
 
 class DomainExpertise(BaseModel):

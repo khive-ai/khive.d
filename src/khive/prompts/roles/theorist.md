@@ -21,7 +21,7 @@ authority: mathematical_validity, proof_correctness, theoretical_soundness
 tools:
   - Read
   - Write
-  - Task
+  - Edit
   - Task
 handoff_from:
   - analyst

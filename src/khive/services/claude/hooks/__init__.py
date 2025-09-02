@@ -1,9 +1,10 @@
 from .coordination import (
     CoordinationRegistry,
-    coordinate_task_complete,
-    coordinate_task_start,
-    get_coordination_insights,
     get_registry,
+    before_file_edit,
+    after_file_edit,
+    check_duplicate_work,
+    whats_happening,
 )
 from .hook_event import (
     HookEvent,
@@ -21,7 +22,8 @@ __all__ = [
     "shield",
     "CoordinationRegistry",
     "get_registry",
-    "coordinate_task_start",
-    "coordinate_task_complete",
-    "get_coordination_insights",
+    "before_file_edit",
+    "after_file_edit",
+    "check_duplicate_work",
+    "whats_happening",
 ]

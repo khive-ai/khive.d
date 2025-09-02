@@ -4,6 +4,7 @@ Handles session initialization and completion workflows
 """
 
 import json
+import logging
 import re
 import shutil
 import subprocess
@@ -36,6 +37,7 @@ class SessionInitializer:
         self.resume = resume
         self.continue_session = continue_session
         self.memory_depth = depth
+        self.logger = logging.getLogger(__name__)
         self.context = {
             "date": TimePolicy.now_utc().strftime("%Y-%m-%d %H:%M:%S"),
             "priorities": [],

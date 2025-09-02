@@ -24,6 +24,7 @@ COMMANDS: dict[str, str] = {
     "compose": "compose",
     "claude": "claude",
     "daemon": "daemon",
+    "coordinate": "coordinate",
 }
 
 # Expected name of the entry point function in each command module.
@@ -33,15 +34,20 @@ ENTRY_POINT_FUNCTION_NAME = "cli_entry"
 COMMAND_DESCRIPTIONS: dict[str, str] = {
     "new-doc": "Scaffolds new Markdown documents from templates.",
     "mcp": "Runs configuration-driven MCP servers.",
-    "commit": "Commits changes with conventional commit messages.",
-    "pr": "Creates pull requests with conventional commit messages.",
+    "commit": "Creates conventional commits with staging and push options.",
+    "pr": "Creates GitHub pull requests with conventional messages.",
     "clean": "Deletes local and remote Git branches.",
     "plan": "Generates orchestration plans for complex tasks.",
     "session": "Manages Khive sessions for task tracking and diary writing.",
-    "compose": "Simplified CLI for Khive Agent Composition Service.",
-    "daemon": "Manage the khive daemon service (start/stop/status).",
-    "flow": "Intelligent flow router for automated issue resolution.",
-    "ci": "Automated CI/CD execution for multi-language projects.",
+    "compose": "Composes specialized agent personas with roles and domains.",
+    "daemon": "Manages the khive daemon service (start/stop/status).",
+    "coordinate": "Agent coordination commands for explicit multi-agent protocols.",
+    "orchestrate": "Executes LLM agent orchestration workflows.",
+    "flow": "Routes intelligent flows for automated issue resolution.",
+    "ci": "Executes automated CI/CD pipelines for multi-language projects.",
+    "services": "Discovers and manages unified service registry.",
+    "workflow": "Coordinates plan → compose → session workflows.",
+    "control": "Advanced coordination control with real-time intelligence.",
 }
 
 

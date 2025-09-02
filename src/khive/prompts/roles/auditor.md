@@ -19,7 +19,8 @@ outputs:
 authority: block_release_on_noncompliance, systemic_risk_designation, compliance_status
 tools:
   - Read
-  - Search
+  - Grep
+  - Glob
   - Bash
   - Task
 handoff_to:

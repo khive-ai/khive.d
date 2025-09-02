@@ -32,12 +32,11 @@ LOG_FILE = Path.home() / ".khive" / "daemon.log"
 @click.group()
 def daemon():
     """Manage the khive daemon service."""
-    pass
 
 
 @daemon.command()
 @click.option("--foreground", "-f", is_flag=True, help="Run in foreground")
-@click.option("--port", "-p", type=int, default=11434, help="Port to listen on")
+@click.option("--port", "-p", type=int, default=11634, help="Port to listen on")
 @click.option("--host", "-h", default="127.0.0.1", help="Host to bind to")
 def start(foreground: bool, port: int, host: str):
     """Start the khive daemon."""
@@ -46,26 +45,28 @@ def start(foreground: bool, port: int, host: str):
         click.echo("✅ Khive daemon is already running")
         _show_status()
         return
-    
+
     # Ensure directories exist
     PID_FILE.parent.mkdir(exist_ok=True)
-    
+
     if foreground:
         # Run in foreground
         click.echo(f"Starting khive daemon in foreground on {host}:{port}...")
         os.environ["KHIVE_DAEMON_HOST"] = host
         os.environ["KHIVE_DAEMON_PORT"] = str(port)
-        
-        from khive.daemon.server import DaemonServer
-        DaemonServer.run()
+
+        from khive.daemon.server import run_daemon_server
+        import asyncio
+
+        asyncio.run(run_daemon_server(host, port))
     else:
         # Start in background
         click.echo(f"Starting khive daemon on {host}:{port}...")
-        
+
         env = os.environ.copy()
         env["KHIVE_DAEMON_HOST"] = host
         env["KHIVE_DAEMON_PORT"] = str(port)
-        
+
         # Start daemon process
         with open(LOG_FILE, "a") as log:
             process = subprocess.Popen(
@@ -75,14 +76,14 @@ def start(foreground: bool, port: int, host: str):
                 env=env,
                 start_new_session=True,  # Detach from terminal
             )
-        
+
         # Wait a moment for startup
         time.sleep(2)
-        
+
         # Check if started successfully
         client = get_daemon_client()
         client.base_url = f"http://{host}:{port}"
-        
+
         if client.is_running():
             click.echo("✅ Khive daemon started successfully")
             _show_status()
@@ -97,13 +98,13 @@ def stop():
     if not _is_daemon_running():
         click.echo("Khive daemon is not running")
         return
-    
+
     # Try graceful shutdown via API first
     client = get_daemon_client()
     if client.shutdown():
         click.echo("Shutting down daemon gracefully...")
         time.sleep(1)
-    
+
     # If still running, use PID file
     if PID_FILE.exists():
         try:
@@ -132,7 +133,7 @@ def logs(tail: int, follow: bool):
     if not LOG_FILE.exists():
         click.echo("No log file found")
         return
-    
+
     if follow:
         # Follow logs
         subprocess.run(["tail", "-f", str(LOG_FILE)])
@@ -145,17 +146,17 @@ def logs(tail: int, follow: bool):
 def restart():
     """Restart the daemon."""
     click.echo("Restarting khive daemon...")
-    
+
     # Stop if running
     if _is_daemon_running():
         client = get_daemon_client()
         client.shutdown()
         time.sleep(1)
-    
+
     # Clean up PID file
     if PID_FILE.exists():
         PID_FILE.unlink()
-    
+
     # Start again
     ctx = click.get_current_context()
     ctx.invoke(start)
@@ -167,18 +168,20 @@ def ps():
     if not _is_daemon_running():
         click.echo("Khive daemon is not running")
         return
-    
+
     if PID_FILE.exists():
         try:
             pid = int(PID_FILE.read_text())
             proc = psutil.Process(pid)
-            
+
             click.echo(f"PID: {pid}")
             click.echo(f"Status: {proc.status()}")
             click.echo(f"CPU: {proc.cpu_percent()}%")
             click.echo(f"Memory: {proc.memory_info().rss / 1024 / 1024:.1f} MB")
-            click.echo(f"Started: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(proc.create_time()))}")
-            
+            click.echo(
+                f"Started: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(proc.create_time()))}"
+            )
+
             # Get connections
             connections = proc.connections()
             if connections:
@@ -186,7 +189,7 @@ def ps():
                 for conn in connections:
                     if conn.status == "LISTEN":
                         click.echo(f"  {conn.laddr.ip}:{conn.laddr.port}")
-            
+
         except (psutil.NoSuchProcess, ValueError):
             click.echo("Daemon process not found")
 
@@ -200,25 +203,25 @@ def _is_daemon_running() -> bool:
 def _show_status():
     """Show daemon status."""
     client = get_daemon_client()
-    
+
     if not client.is_running():
         click.echo("❌ Khive daemon is not running")
         click.echo("Start it with: khive daemon start")
         return
-    
+
     # Get health info
     health = client.health()
-    
+
     click.echo("✅ Khive daemon is running")
     click.echo(f"  Version: {health.get('version', 'unknown')}")
     click.echo(f"  Uptime: {health.get('uptime', 'unknown')}")
-    
+
     stats = health.get("stats", {})
     if stats:
         click.echo(f"  Requests: {stats.get('requests', 0)}")
         click.echo(f"  Errors: {stats.get('errors', 0)}")
-    
-    click.echo(f"  API: http://127.0.0.1:11434/")
+
+    click.echo("  API: http://127.0.0.1:11634/")
 
 
 def cli_entry():

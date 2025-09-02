@@ -120,6 +120,11 @@ class ComposerService:
                 request.role,
                 request.domains.split(",")[0] if request.domains else "general",
             )
+            
+            # Add coordination info to agent spec if provided
+            if request.coordination_id:
+                agent_spec["coordination_id"] = request.coordination_id
+                agent_spec["phase"] = request.phase or "execution"
 
             # Generate system prompt
             system_prompt = composer.generate_prompt(
