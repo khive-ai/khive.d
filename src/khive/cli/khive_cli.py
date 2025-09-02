@@ -24,12 +24,7 @@ COMMANDS: dict[str, str] = {
     "compose": "compose",
     "claude": "claude",
     "daemon": "daemon",
-    "orchestrate": "orchestrate",
-    "flow": "flow",
-    "ci": "ci",
-    "services": "services",
-    "workflow": "workflow",
-    "control": "control",
+    "coordinate": "coordinate",
 }
 
 # Expected name of the entry point function in each command module.
@@ -46,6 +41,7 @@ COMMAND_DESCRIPTIONS: dict[str, str] = {
     "session": "Manages Khive sessions for task tracking and diary writing.",
     "compose": "Composes specialized agent personas with roles and domains.",
     "daemon": "Manages the khive daemon service (start/stop/status).",
+    "coordinate": "Agent coordination commands for explicit multi-agent protocols.",
     "orchestrate": "Executes LLM agent orchestration workflows.",
     "flow": "Routes intelligent flows for automated issue resolution.",
     "ci": "Executes automated CI/CD pipelines for multi-language projects.",

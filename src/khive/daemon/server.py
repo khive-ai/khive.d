@@ -22,7 +22,7 @@ from khive.services.claude.hooks.coordination import (
     check_duplicate_work,
     whats_happening,
 )
-from khive.services.plan.planner_service import PlannerService
+from khive.services.plan.service import ConsensusPlannerV3 as PlannerService
 from khive.services.session.session_service import SessionService
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.artifacts.factory import create_artifacts_service_from_env
@@ -40,7 +40,8 @@ class CoordinateRequest(BaseModel):
 class CoordinateCompleteRequest(BaseModel):
     task_id: str
     agent_id: str
-    result: str
+    output: str
+    artifacts: list[str] = []
 
 
 class InsightsRequest(BaseModel):
@@ -55,6 +56,11 @@ class FileOperationRequest(BaseModel):
 
 class FileUnregisterRequest(BaseModel):
     file_path: str
+    agent_id: str
+
+
+class SessionMappingRequest(BaseModel):
+    session_id: str
     agent_id: str
 
 
@@ -160,8 +166,8 @@ class KhiveDaemonServer:
                 if not self.coordination_registry:
                     raise HTTPException(status_code=503, detail="Coordination service unavailable")
 
-                result = self.coordination_registry.complete_task(
-                    request.task_id, request.agent_id, request.result
+                result = self.coordination_registry.complete_work(
+                    request.agent_id
                 )
                 return result
             except Exception as e:
@@ -240,6 +246,68 @@ class KhiveDaemonServer:
             except Exception as e:
                 self.stats["errors"] += 1
                 logger.error(f"Status retrieval failed: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.post("/api/coordinate/cleanup")
+        async def cleanup_stale_agents():
+            """Clean up stale agents from coordination registry."""
+            self.stats["requests"] += 1
+            try:
+                # Clean up agents older than 1 hour
+                import time
+                current_time = time.time()
+                stale_agents = []
+                
+                for agent_id, work in list(self.coordination_registry.active_agents.items()):
+                    if current_time - work.started_at > 3600:  # 1 hour
+                        stale_agents.append(agent_id)
+                
+                # Remove stale agents and their locks
+                for agent_id in stale_agents:
+                    work = self.coordination_registry.active_agents[agent_id]
+                    # Release any file locks
+                    for file_path in list(work.files_editing):
+                        if file_path in self.coordination_registry.file_locks:
+                            if self.coordination_registry.file_locks[file_path].agent_id == agent_id:
+                                del self.coordination_registry.file_locks[file_path]
+                    # Remove from active agents
+                    del self.coordination_registry.active_agents[agent_id]
+                
+                # Also clean up session mappings for removed agents
+                sessions_to_remove = []
+                for session_id, mapped_agent_id in list(self.coordination_registry.session_to_agent.items()):
+                    if mapped_agent_id in stale_agents:
+                        sessions_to_remove.append(session_id)
+                
+                for session_id in sessions_to_remove:
+                    del self.coordination_registry.session_to_agent[session_id]
+                
+                return {
+                    "status": "cleaned",
+                    "stale_agents_removed": len(stale_agents),
+                    "sessions_cleaned": len(sessions_to_remove),
+                    "agents_removed": stale_agents
+                }
+            except Exception as e:
+                self.stats["errors"] += 1
+                logger.error(f"Cleanup failed: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+
+        @self.app.post("/api/coordinate/register-session")
+        async def register_session_mapping(request: SessionMappingRequest):
+            """Register mapping between Claude session ID and agent ID."""
+            self.stats["requests"] += 1
+            try:
+                self.coordination_registry.register_session_mapping(
+                    request.session_id, request.agent_id
+                )
+                return {
+                    "status": "registered",
+                    "message": f"Session {request.session_id[:8]}... mapped to {request.agent_id}"
+                }
+            except Exception as e:
+                self.stats["errors"] += 1
+                logger.error(f"Session mapping failed: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
 
         # Planning service endpoints

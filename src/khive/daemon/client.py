@@ -35,7 +35,7 @@ class KhiveDaemonClient:
     def is_running(self) -> bool:
         """Check if daemon is running."""
         try:
-            response = self.client.get(f"{self.base_url}/")
+            response = self.client.get(f"{self.base_url}/health")
             return response.status_code == 200
         except (httpx.ConnectError, httpx.TimeoutException):
             return False
@@ -43,7 +43,7 @@ class KhiveDaemonClient:
     def health(self) -> dict[str, Any]:
         """Get daemon health status."""
         try:
-            response = self.client.get(f"{self.base_url}/")
+            response = self.client.get(f"{self.base_url}/health")
             response.raise_for_status()
             return response.json()
         except Exception as e:
@@ -69,12 +69,12 @@ class KhiveDaemonClient:
             logger.error(f"Failed to generate plan: {e}")
             raise
 
-    def coordinate_start(self, task_description: str, agent_id: str) -> dict[str, Any]:
+    def coordinate_start(self, task_id: str, task_description: str, agent_id: str) -> dict[str, Any]:
         """Register task start with coordination."""
         try:
             response = self.client.post(
                 f"{self.base_url}/api/coordinate/start",
-                json={"task_description": task_description, "agent_id": agent_id},
+                json={"task_id": task_id, "description": task_description, "agent_id": agent_id},
             )
             response.raise_for_status()
             return response.json()

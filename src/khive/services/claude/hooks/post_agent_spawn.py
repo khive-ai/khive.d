@@ -10,7 +10,7 @@ import sys
 from typing import Any
 
 import anyio
-from khive.services.claude.hooks.coordination import share_result
+from khive.services.claude.hooks.coordination import share_result, get_registry
 from khive.services.claude.hooks.hook_event import (
     HookEvent,
     HookEventContent,
@@ -77,16 +77,46 @@ def handle_post_agent_spawn(
         # Extract artifacts from output (files created, functions defined, etc.)
         artifacts = extract_artifacts_from_output(output)
 
-        # Share the context if task was successful
+        # Share the context if task was successful and cleanup agent
         coordination_result = None
         if success and output:
-            agent_id = f"agent_{session_id[:8] if session_id else 'unknown'}"
+            # Get proper agent ID from session mapping
+            registry = get_registry()
+            agent_id = registry.get_agent_id_from_session(session_id) if session_id else None
+            if not agent_id:
+                agent_id = f"session_{session_id[:8] if session_id else 'unknown'}"
             # Share the result for other agents
             artifact_id = share_result(
                 agent_id=agent_id,
                 content=output[:1000],  # Share first 1000 chars for context
             )
-            coordination_result = {"artifact_id": artifact_id}
+            
+            # Clean up completed agent from active registry
+            registry = get_registry()
+            if agent_id in registry.active_agents:
+                # Release any file locks held by this agent
+                agent_work = registry.active_agents[agent_id]
+                for file_path in agent_work.files_editing.copy():
+                    registry.release_file_lock(agent_id, file_path)
+                
+                # Remove agent from active registry
+                del registry.active_agents[agent_id]
+                
+            coordination_result = {"artifact_id": artifact_id, "agent_cleaned_up": True}
+        
+        # Also cleanup failed agents to prevent phantom entries
+        elif not success:
+            # Get proper agent ID from session mapping
+            registry = get_registry()
+            agent_id = registry.get_agent_id_from_session(session_id) if session_id else None
+            if not agent_id:
+                agent_id = f"session_{session_id[:8] if session_id else 'unknown'}"
+            if agent_id in registry.active_agents:
+                # Release locks and remove failed agent
+                agent_work = registry.active_agents[agent_id]
+                for file_path in agent_work.files_editing.copy():
+                    registry.release_file_lock(agent_id, file_path)
+                del registry.active_agents[agent_id]
 
         event = HookEvent(
             content=HookEventContent(

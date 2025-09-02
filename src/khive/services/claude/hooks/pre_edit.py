@@ -12,6 +12,7 @@ from typing import Any
 from pathlib import Path
 
 from khive.daemon.client import get_daemon_client
+from khive.services.claude.hooks.coordination import get_registry
 
 
 def handle_pre_edit(
@@ -19,8 +20,34 @@ def handle_pre_edit(
 ) -> dict[str, Any]:
     """Check if files can be edited - PREVENTS CONFLICTS."""
     
-    # Get agent ID from session or environment
-    agent_id = session_id[:8] if session_id else os.environ.get("CLAUDE_AGENT_ID", "agent_unknown")
+    # Get agent ID from session mapping in coordination registry
+    try:
+        registry = get_registry() 
+        agent_id = registry.get_agent_id_from_session(session_id) if session_id else None
+        
+        if not agent_id and session_id:
+            # Try to auto-map this session to an unmapped agent
+            # Find agents that don't have session mappings yet
+            unmapped_agents = []
+            for active_agent_id in registry.active_agents.keys():
+                # Check if this agent already has a session mapping
+                has_mapping = any(mapped_agent == active_agent_id 
+                                for mapped_agent in registry.session_to_agent.values())
+                if not has_mapping:
+                    unmapped_agents.append(active_agent_id)
+            
+            if unmapped_agents:
+                # Map to the most recently registered unmapped agent
+                agent_id = unmapped_agents[-1]  # Last registered
+                registry.register_session_mapping(session_id, agent_id)
+                print(f"🔗 Auto-mapped session {session_id[:8]}... to {agent_id}", file=sys.stderr)
+        
+        if not agent_id:
+            # Fallback to session-based ID if no mapping exists
+            agent_id = f"session_{session_id[:8]}" if session_id else os.environ.get("CLAUDE_AGENT_ID", "agent_unknown")
+    except Exception:
+        # Fallback if registry not available
+        agent_id = f"session_{session_id[:8]}" if session_id else os.environ.get("CLAUDE_AGENT_ID", "agent_unknown")
     
     # Check daemon for file locks
     try:
@@ -35,18 +62,26 @@ def handle_pre_edit(
         # Check each file for locks
         blocked_files = []
         for file_path in file_paths:
-            # Request file lock via daemon
-            response = client._request("POST", "/api/coordinate/file-register", {
-                "file_path": file_path,
-                "agent_id": agent_id
-            })
-            
-            if response.get("status") == "locked":
-                blocked_files.append({
-                    "file": file_path,
-                    "locked_by": response.get("locked_by"),
-                    "expires_in": response.get("expires_in_seconds", 0)
-                })
+            # Request file lock via daemon using proper client method
+            try:
+                response = client.client.post(
+                    f"{client.base_url}/api/coordinate/file-register",
+                    json={"file_path": file_path, "agent_id": agent_id}
+                )
+                
+                if response.status_code == 409:  # Conflict - file is locked
+                    error_detail = response.json().get("detail", {})
+                    blocked_files.append({
+                        "file": file_path,
+                        "locked_by": error_detail.get("locked_by", "unknown"),
+                        "expires_in": error_detail.get("expires_in_seconds", 0)
+                    })
+                elif response.status_code != 200:
+                    # Other error - log but don't block
+                    print(f"Warning: File lock check failed for {file_path}: {response.status_code}", file=sys.stderr)
+                    
+            except Exception as e:
+                print(f"Warning: Could not check file lock for {file_path}: {e}", file=sys.stderr)
         
         if blocked_files:
             # Some files are locked - block the edit
@@ -92,18 +127,34 @@ def main():
             file_paths = [tool_input["file_path"]]
         elif "file_paths" in tool_input:
             file_paths = tool_input["file_paths"]
+        elif "edits" in tool_input:  # MultiEdit tool
+            file_paths = [tool_input.get("file_path", "")]
 
         result = handle_pre_edit(file_paths, tool_name, session_id)
 
-        # Always output JSON for Claude Code
+        if not result.get("proceed", True):
+            # Block the edit - output reason to stderr and exit with code 2
+            reason = result.get("message", "File locked by another agent")
+            print(reason, file=sys.stderr)
+            
+            # Optional: structured JSON output for Claude
+            print(json.dumps({
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": reason,
+                    "blocked_files": result.get("blocked_files", [])
+                }
+            }))
+            sys.exit(2)  # EXIT CODE 2 TO BLOCK!
+        
+        # Proceed - output success and exit 0
         print(json.dumps(result))
-
-        # Exit with 0 for proceed, 1 for block
-        sys.exit(0 if result.get("proceed", True) else 1)
+        sys.exit(0)
 
     except Exception as e:
         print(f"Error in pre-edit hook: {e}", file=sys.stderr)
-        # Default to proceed on error
+        # Default to proceed on error (don't block on failures)
         print(json.dumps({"proceed": True, "error": str(e)}))
         sys.exit(0)
 

@@ -65,6 +65,9 @@ class CoordinationRegistry:
         self.file_locks: Dict[str, FileEdit] = {}
         self.artifacts: Dict[str, Artifact] = {}
         
+        # Session mapping - Claude session ID -> agent ID
+        self.session_to_agent: Dict[str, str] = {}
+        
         # Simple metrics
         self.conflicts_prevented = 0
         self.duplicates_avoided = 0
@@ -240,6 +243,19 @@ class CoordinationRegistry:
             "files_released": files_released,
             "duration_seconds": work.duration_seconds()
         }
+    
+    def register_session_mapping(self, session_id: str, agent_id: str):
+        """Map Claude session ID to agent ID."""
+        self.session_to_agent[session_id] = agent_id
+    
+    def get_agent_id_from_session(self, session_id: str) -> Optional[str]:
+        """Get agent ID from Claude session ID."""
+        return self.session_to_agent.get(session_id)
+    
+    def cleanup_session(self, session_id: str):
+        """Clean up session mapping when agent completes."""
+        if session_id in self.session_to_agent:
+            del self.session_to_agent[session_id]
 
 
 # Global registry instance

@@ -20,6 +20,7 @@ from khive.services.claude.hooks.hook_event import (
 # Try to import daemon client for auto-detection
 try:
     from khive.daemon.client import get_daemon_client
+    from khive.services.claude.hooks.coordination import get_registry
 
     DAEMON_AVAILABLE = True
 except ImportError:
@@ -62,19 +63,36 @@ def handle_post_edit(
         hook_event_logger.error(f"Failed to save event: {e}", exc_info=True)
         event_logged = False
 
-    # Try coordination via daemon (optional)
+    # Release file locks after successful edit
     coordination_result = {}
     if DAEMON_AVAILABLE:
         try:
             client = get_daemon_client()
             if client.is_running():
-                hook_data = {
-                    "file_paths": file_paths,
-                    "output": output,
-                    "tool_name": tool_name,
-                    "session_id": session_id,
-                }
-                coordination_result = client.process_hook("post_edit", hook_data)
+                # Get agent ID from session mapping in coordination registry
+                import os
+                try:
+                    registry = get_registry() 
+                    agent_id = registry.get_agent_id_from_session(session_id) if session_id else None
+                    if not agent_id:
+                        # Fallback to session-based ID if no mapping exists
+                        agent_id = f"session_{session_id[:8]}" if session_id else os.environ.get("CLAUDE_AGENT_ID", "agent_unknown")
+                except Exception:
+                    # Fallback if registry not available
+                    agent_id = f"session_{session_id[:8]}" if session_id else os.environ.get("CLAUDE_AGENT_ID", "agent_unknown")
+                
+                # Release file locks for all edited files
+                for file_path in file_paths:
+                    try:
+                        response = client.client.post(
+                            f"{client.base_url}/api/coordinate/file-unregister",
+                            json={"file_path": file_path, "agent_id": agent_id}
+                        )
+                        if response.status_code == 200:
+                            coordination_result[f"lock_released_{file_path}"] = True
+                    except Exception as e:
+                        hook_event_logger.debug(f"Failed to release lock for {file_path}: {e}")
+                        
         except Exception as e:
             hook_event_logger.debug(f"Daemon coordination failed: {e}")
 
@@ -106,7 +124,17 @@ def main():
         # Extract tool information from hook input
         tool_input = hook_input.get("tool_input", {})
         tool_name = hook_input.get("tool_name", "Edit")
-        tool_output = hook_input.get("tool_output", "")
+        
+        # Claude sends tool_response (object) for PostToolUse, fall back to tool_output for compatibility
+        tool_response = hook_input.get("tool_response", hook_input.get("tool_output", {}))
+        if isinstance(tool_response, dict):
+            # Extract success status and any error messages
+            tool_output = json.dumps(tool_response)
+            success = tool_response.get("success", True)
+        else:
+            # Legacy string output
+            tool_output = str(tool_response)
+            success = True
 
         # Extract file paths from tool input
         file_paths = []
@@ -114,6 +142,8 @@ def main():
             file_paths = [tool_input["file_path"]]
         elif "file_paths" in tool_input:
             file_paths = tool_input["file_paths"]
+        elif "edits" in tool_input:  # MultiEdit tool
+            file_paths = [tool_input.get("file_path", "")]
 
         result = handle_post_edit(file_paths, tool_output, tool_name, session_id)
 
