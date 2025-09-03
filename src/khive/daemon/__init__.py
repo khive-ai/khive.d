@@ -20,7 +20,7 @@ from .server import KhiveDaemonServer
 
 __all__ = [
     "KhiveDaemonServer",
-    "KhiveDaemonClient", 
+    "KhiveDaemonClient",
     "get_daemon_client",
     "ensure_daemon_running",
 ]

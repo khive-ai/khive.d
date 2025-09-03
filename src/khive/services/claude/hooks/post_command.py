@@ -10,6 +10,7 @@ import sys
 from typing import Any
 
 import anyio
+
 from khive.services.claude.hooks.hook_event import (
     HookEvent,
     HookEventContent,
@@ -116,16 +117,18 @@ def main():
 
         # Extract command output from hook input
         tool_input = hook_input.get("tool_input", {})
-        
+
         # Claude sends tool_response for PostToolUse, fall back to tool_output for compatibility
-        tool_response = hook_input.get("tool_response", hook_input.get("tool_output", ""))
+        tool_response = hook_input.get(
+            "tool_response", hook_input.get("tool_output", "")
+        )
         if isinstance(tool_response, dict):
             # If it's a dict, extract the output field or stringify it
             tool_output = tool_response.get("output", json.dumps(tool_response))
         else:
             # It's already a string
             tool_output = str(tool_response)
-        
+
         command = tool_input.get("command", "")
 
         result = handle_post_command(tool_output, command, session_id)

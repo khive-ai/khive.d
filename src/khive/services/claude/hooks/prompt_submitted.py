@@ -10,6 +10,7 @@ import sys
 from typing import Any
 
 import anyio
+
 from khive.services.claude.hooks.coordination import (
     get_coordination_insights,
     get_registry,
@@ -46,9 +47,7 @@ def handle_prompt_submitted(
         estimated_complexity = (
             "high"
             if prompt_length > 1000
-            else "medium"
-            if prompt_length > 200
-            else "low"
+            else "medium" if prompt_length > 200 else "low"
         )
 
         event = HookEvent(

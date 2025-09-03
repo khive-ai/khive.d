@@ -10,6 +10,7 @@ import sys
 from typing import Any
 
 import anyio
+
 from khive.services.claude.hooks.hook_event import (
     HookEvent,
     HookEventContent,
@@ -85,11 +86,13 @@ def handle_pre_command(command: str, session_id: str | None = None) -> dict[str,
 
     # Add coordination insights if available
     if coordination_result:
-        result.update({
-            k: v
-            for k, v in coordination_result.items()
-            if k not in ["proceed", "event_logged"]
-        })
+        result.update(
+            {
+                k: v
+                for k, v in coordination_result.items()
+                if k not in ["proceed", "event_logged"]
+            }
+        )
 
     return result
 

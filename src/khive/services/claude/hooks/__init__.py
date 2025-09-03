@@ -1,9 +1,9 @@
 from .coordination import (
     CoordinationRegistry,
-    get_registry,
-    before_file_edit,
     after_file_edit,
+    before_file_edit,
     check_duplicate_work,
+    get_registry,
     whats_happening,
 )
 from .hook_event import (

@@ -69,12 +69,18 @@ class KhiveDaemonClient:
             logger.error(f"Failed to generate plan: {e}")
             raise
 
-    def coordinate_start(self, task_id: str, task_description: str, agent_id: str) -> dict[str, Any]:
+    def coordinate_start(
+        self, task_id: str, task_description: str, agent_id: str
+    ) -> dict[str, Any]:
         """Register task start with coordination."""
         try:
             response = self.client.post(
                 f"{self.base_url}/api/coordinate/start",
-                json={"task_id": task_id, "description": task_description, "agent_id": agent_id},
+                json={
+                    "task_id": task_id,
+                    "description": task_description,
+                    "agent_id": agent_id,
+                },
             )
             response.raise_for_status()
             return response.json()
@@ -245,12 +251,12 @@ class KhiveDaemonClient:
             return {"proceed": True} if "pre_" in hook_type else {"success": True}
 
     def orchestrate_task(
-        self, 
-        task_description: str, 
+        self,
+        task_description: str,
         context: Optional[str] = None,
-        pattern: str = "fanout", 
-        max_agents: int = 8, 
-        visualize: bool = False
+        pattern: str = "fanout",
+        max_agents: int = 8,
+        visualize: bool = False,
     ) -> dict[str, Any]:
         """Execute orchestration for a task description."""
         try:
@@ -275,10 +281,7 @@ class KhiveDaemonClient:
             raise
 
     def orchestrate_issue(
-        self, 
-        issue_num: int, 
-        max_agents: int = 8, 
-        visualize: bool = False
+        self, issue_num: int, max_agents: int = 8, visualize: bool = False
     ) -> dict[str, Any]:
         """Execute orchestration for a GitHub issue."""
         try:
@@ -312,10 +315,14 @@ class KhiveDaemonClient:
             logger.error(f"Failed to list orchestration sessions: {e}")
             return []
 
-    def get_orchestration_session_status(self, session_id: str) -> Optional[dict[str, Any]]:
+    def get_orchestration_session_status(
+        self, session_id: str
+    ) -> Optional[dict[str, Any]]:
         """Get status of specific orchestration session."""
         try:
-            response = self.client.get(f"{self.base_url}/api/orchestrate/sessions/{session_id}")
+            response = self.client.get(
+                f"{self.base_url}/api/orchestrate/sessions/{session_id}"
+            )
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
@@ -332,7 +339,9 @@ class KhiveDaemonClient:
     def stop_orchestration_session(self, session_id: str) -> bool:
         """Stop a running orchestration session."""
         try:
-            response = self.client.post(f"{self.base_url}/api/orchestrate/sessions/{session_id}/stop")
+            response = self.client.post(
+                f"{self.base_url}/api/orchestrate/sessions/{session_id}/stop"
+            )
             response.raise_for_status()
             result = response.json()
             return result.get("success", False)
@@ -354,7 +363,9 @@ class KhiveDaemonClient:
             return {
                 "summary": {"overall_effectiveness": 0, "total_events": 0},
                 "detailed_metrics": {},
-                "recommendations": ["Daemon not running - start with 'khive daemon start'"],
+                "recommendations": [
+                    "Daemon not running - start with 'khive daemon start'"
+                ],
             }
         except Exception as e:
             logger.error(f"Failed to get metrics report: {e}")

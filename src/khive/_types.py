@@ -1,4 +1,5 @@
-from pydantic import BaseModel as _PydanticBaseModel, ConfigDict
+from pydantic import BaseModel as _PydanticBaseModel
+from pydantic import ConfigDict
 
 try:
     from lionagi.models import HashableModel as _LionHashableModel
