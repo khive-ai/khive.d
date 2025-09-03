@@ -59,7 +59,7 @@ class PlannerRequest(HashableModel):
 
     task_description: str
     context: str | None = None
-    time_budget_seconds: float = Field(default=90.0, ge=10.0, le=300.0)
+    time_budget_seconds: float = Field(default=60.0, ge=10.0, le=300.0)
 
 
 class PlannerResponse(HashableModel):
@@ -74,6 +74,9 @@ class PlannerResponse(HashableModel):
     confidence: float = Field(ge=0.0, le=1.0)
     error: str | None = None
     spawn_commands: list[str] = Field(default_factory=list)
+    # NEW (optional, for transparency & downstream budgeting)
+    pattern: str | None = None
+    complexity_score: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 # Internal consensus models

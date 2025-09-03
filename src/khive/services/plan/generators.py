@@ -101,7 +101,8 @@ class DecomposerEngine:
     DECOMPOSER_PROMPT = """You are an expert software development lifecycle (SDLC) planner and task decomposer.
 
 RULES:
-1. Break down the task into 3-7 distinct, actionable phases
+1. Break down the task into 1-5 distinct, actionable phases
+   - If the task is straightforward, prefer a single phase named "Direct Implementation"
 2. Each phase must have a clear, descriptive name (not generic like "Design")
 3. Phases must follow logical progression toward the objective
 4. Identify explicit dependencies between phases
@@ -119,8 +120,9 @@ Return a structured JSON response with:
 
 Focus on practical, implementable phases that build toward the final goal."""
 
-    def __init__(self, config: GenerationConfig):
+    def __init__(self, config: GenerationConfig, cost_tracker=None):
         self.config = config
+        self.cost_tracker = cost_tracker
         self.semaphore = asyncio.Semaphore(config.max_concurrency)
 
     async def generate_candidates(
@@ -183,6 +185,10 @@ Focus on practical, implementable phases that build toward the final goal."""
                     temperature=temperature,
                 )
 
+                # Track cost if tracker available
+                if self.cost_tracker:
+                    self.cost_tracker.add_lionagi_response(branch)
+
                 return result
 
             except Exception as e:
@@ -197,7 +203,9 @@ class StrategistEngine:
 
 Your job: Transform phase decompositions into concrete agent allocations with coordination strategies.
 
-CRITICAL REQUIREMENT: Each phase MUST have exactly 6 agents with diverse role+domain combinations.
+CRITICAL REQUIREMENT: Minimize agents per phase.
+Use at most {agents_per_phase_max} agents per phase (prefer 1 for simple tasks or Expert pattern).
+Only add agents when they reduce risk or simplify handoffs.
 
 AVAILABLE ROLES: researcher, analyst, architect, implementer, critic, auditor, tester, reviewer, innovator, strategist, commentator
 
@@ -220,7 +228,7 @@ PHASES TO ALLOCATE: {phases_json}
 TASK CONTEXT: {task_description}
 
 For each phase, specify:
-1. Agents: EXACTLY 6 role + domain combinations with priority (0.0-1.0) and reasoning
+1. Agents: role + domain combinations (≤ {agents_per_phase_max}) with priority (0.0-1.0) and reasoning
 2. coordination_strategy: How agents work together
 3. quality_gate: Level of validation required
 4. expected_artifacts: What this phase produces
@@ -232,8 +240,9 @@ AGENT ALLOCATION STRATEGY:
 
 Return structured JSON with reasoning and complete TaskPhase objects."""
 
-    def __init__(self, config: GenerationConfig):
+    def __init__(self, config: GenerationConfig, cost_tracker=None):
         self.config = config
+        self.cost_tracker = cost_tracker
         self.semaphore = asyncio.Semaphore(config.max_concurrency)
 
     async def generate_strategies(
@@ -241,6 +250,7 @@ Return structured JSON with reasoning and complete TaskPhase objects."""
         decompositions: list[DecompositionCandidate],
         request: PlannerRequest,
         target_count: int = 6,
+        agents_per_phase_max: int = 6,
     ) -> list[StrategyCandidate]:
         """Generate strategy candidates from decompositions."""
         tasks = []
@@ -251,21 +261,23 @@ Return structured JSON with reasoning and complete TaskPhase objects."""
         ]
 
         for i, decomposition in enumerate(decompositions[:target_count]):
-            if i < len(generators):
-                generator = generators[i % len(generators)]
-                for temp in generator.get("temps", [0.4])[
-                    :1
-                ]:  # Use one temp per decomposition
-                    task = asyncio.create_task(
-                        self._generate_single_strategy(
-                            provider=generator["provider"],
-                            model=generator["model"],
-                            temperature=temp,
-                            decomposition=decomposition,
-                            request=request,
-                        )
+            if not generators:
+                break
+            generator = generators[i % len(generators)]
+            for temp in generator.get("temps", [0.4])[
+                :1
+            ]:  # Use one temp per decomposition
+                task = asyncio.create_task(
+                    self._generate_single_strategy(
+                        provider=generator["provider"],
+                        model=generator["model"],
+                        temperature=temp,
+                        decomposition=decomposition,
+                        request=request,
+                        agents_per_phase_max=agents_per_phase_max,
                     )
-                    tasks.append(task)
+                )
+                tasks.append(task)
 
         # Execute with concurrency
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -284,6 +296,7 @@ Return structured JSON with reasoning and complete TaskPhase objects."""
         temperature: float,
         decomposition: DecompositionCandidate,
         request: PlannerRequest,
+        agents_per_phase_max: int = 6,
     ) -> StrategyCandidate | None:
         """Generate strategy for a decomposition."""
         async with self.semaphore:
@@ -293,6 +306,7 @@ Return structured JSON with reasoning and complete TaskPhase objects."""
                 instruction = self.STRATEGIST_PROMPT.format(
                     phases_json=json.dumps(decomposition.phases, indent=2),
                     task_description=request.task_description,
+                    agents_per_phase_max=agents_per_phase_max,
                 )
 
                 result = await branch.operate(
@@ -300,6 +314,15 @@ Return structured JSON with reasoning and complete TaskPhase objects."""
                     response_format=StrategyCandidate,
                     temperature=temperature,
                 )
+
+                # Track cost if tracker available
+                if self.cost_tracker:
+                    self.cost_tracker.add_lionagi_response(branch)
+
+                # Enforce ceiling defensively even if model ignores prompt
+                for ph in result.phases:
+                    if len(ph.agents) > agents_per_phase_max:
+                        ph.agents = ph.agents[:agents_per_phase_max]
 
                 return result
 
@@ -330,8 +353,9 @@ Fix any cycles, deduplicate redundant agents, ensure artifact handoffs work.
 
 Return a complete plan with phases as TaskPhase objects."""
 
-    def __init__(self, config: GenerationConfig):
+    def __init__(self, config: GenerationConfig, cost_tracker=None):
         self.config = config
+        self.cost_tracker = cost_tracker
         self.semaphore = asyncio.Semaphore(config.max_concurrency)
 
     async def refine_and_validate(
@@ -377,6 +401,10 @@ Return a complete plan with phases as TaskPhase objects."""
                     response_format=StrategyCandidate,
                     temperature=0.2,  # Low temperature for consistency
                 )
+
+                # Track cost if tracker available
+                if self.cost_tracker:
+                    self.cost_tracker.add_lionagi_response(branch)
 
                 # Apply hard validation
                 validated_result = self._apply_validation_gates(result)
