@@ -5,6 +5,7 @@ Implements ChatGPT's design: iterative generation → cross-evaluation → robus
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import time
@@ -24,13 +25,21 @@ for handler in logging.getLogger().handlers[:]:
 for handler in logging.getLogger("root").handlers[:]:
     logging.getLogger("root").removeHandler(handler)
 
-from .complexity import score_complexity, should_escalate_to_expert
+from .complexity import (
+    choose_pattern,
+    estimate_agent_count,
+    reconcile_level,
+    score_complexity,
+    score_to_level,
+    should_escalate_to_expert,
+)
 from .consensus import ConsensusMethod, MultiRoundConsensus
 from .cost_tracker import CostTracker
 from .generators import (
     DecomposerEngine,
     GenerationConfig,
     RefinerEngine,
+    SelfConsistencyEngine,
     StrategistEngine,
 )
 from .judges import JudgeEngine
@@ -57,12 +66,15 @@ class ConsensusPlannerV3:
         with open(config_path) as f:
             self.config = yaml.safe_load(f)
 
-        # Initialize engines
+        # Initialize tracking first
+        self.cost_tracker = CostTracker(config=self.config)
+
+        # Initialize engines with cost tracking
         gen_config = GenerationConfig(self.config)
-        self.decomposer = DecomposerEngine(gen_config)
-        self.strategist = StrategistEngine(gen_config)
-        self.refiner = RefinerEngine(gen_config)
-        self.judge_engine = JudgeEngine(self.config)
+        self.decomposer = DecomposerEngine(gen_config, cost_tracker=self.cost_tracker)
+        self.strategist = StrategistEngine(gen_config, cost_tracker=self.cost_tracker)
+        self.refiner = RefinerEngine(gen_config, cost_tracker=self.cost_tracker)
+        self.judge_engine = JudgeEngine(self.config, cost_tracker=self.cost_tracker)
 
         # Initialize consensus system
         consensus_method = ConsensusMethod(
@@ -71,9 +83,6 @@ class ConsensusPlannerV3:
             )
         )
         self.consensus = MultiRoundConsensus(consensus_method)
-
-        # Initialize tracking
-        self.cost_tracker = CostTracker()
 
         # Configuration shortcuts
         self.orchestration = self.config.get("orchestration", {})
@@ -103,7 +112,7 @@ class ConsensusPlannerV3:
 
         # Budget enforcement
         time_budget = min(
-            request.time_budget_seconds, self.budgets.get("time_seconds", 90.0)
+            request.time_budget_seconds, self.budgets.get("time_seconds", 60.0)
         )
         deadline = start_time + time_budget
 
@@ -114,75 +123,70 @@ class ConsensusPlannerV3:
             print(f"   Time Budget: {time_budget:.1f}s")
             print(f"   Max Rounds: {self.orchestration.get('max_rounds', 3)}")
 
-            # COMPLEXITY CHECK - Prevent over-orchestration
+            # Initialize complexity tracking (will be refined by LLM consensus)
             complexity_score = score_complexity(request.task_description)
-            print(f"   📊 Complexity Score: {complexity_score:.2f}")
+            print(f"   📊 Initial Complexity Score: {complexity_score:.2f}")
+            initial_level = score_to_level(complexity_score)
 
-            if should_escalate_to_expert(request.task_description):
+            # === EARLY EXPERT BYPASS (BEFORE ANY DECOMPOSITION) ===
+            # Check human guidance first - don't bypass if user wants complex/specific pattern
+            human_guidance = getattr(self, "_human_guidance", {})
+            should_bypass = (
+                should_escalate_to_expert(request.task_description)
+                and not human_guidance.get("force_complex", False)
+                and human_guidance.get("force_pattern") not in ["P∥", "P→", "P⊕"]
+                and not human_guidance.get("target_agents")
+            )  # Don't bypass if user set specific agent count
+
+            if should_bypass:
                 print(
-                    "   ⚡ Task is simple - delegating to single expert (no orchestration needed)"
+                    f"   ⚡ Early Expert Bypass: Task suitable for single expert (complexity: {complexity_score:.2f})"
                 )
-
-                # Create simple expert-level response
-                from .models import AgentRecommendation, TaskPhase
-
-                # Determine the most appropriate role for this task
-                task_lower = request.task_description.lower()
-                if any(
-                    word in task_lower
-                    for word in ["api", "endpoint", "server", "backend"]
-                ):
-                    role, domain = "implementer", "async-programming"
-                elif any(
-                    word in task_lower
-                    for word in ["ui", "frontend", "component", "style"]
-                ):
-                    role, domain = "implementer", "software-architecture"
-                elif any(word in task_lower for word in ["test", "testing"]):
-                    role, domain = "tester", "software-architecture"
-                elif any(word in task_lower for word in ["doc", "documentation"]):
-                    role, domain = "reviewer", "software-architecture"
-                else:
-                    role, domain = "implementer", "software-architecture"
+                from .models import (
+                    AgentRecommendation,
+                    CoordinationStrategy,
+                    QualityGate,
+                    TaskPhase,
+                )
 
                 expert_agent = AgentRecommendation(
-                    role=role,
-                    domain=domain,
+                    role="implementer",
+                    domain="software-architecture",
                     priority=1.0,
-                    reasoning=f"Single expert sufficient for simple task (complexity: {complexity_score:.2f})",
+                    reasoning="early-bypass: simple task detected",
                 )
-
                 expert_phase = TaskPhase(
                     name="Direct Implementation",
                     description=request.task_description,
                     agents=[expert_agent],
-                    quality_gate="basic",
-                    coordination_strategy="autonomous",
+                    quality_gate=QualityGate.BASIC,
+                    coordination_strategy=CoordinationStrategy.AUTONOMOUS,
                 )
-
-                # Generate simple spawn command
-                spawn_cmd = f'Task("{role}+{domain}: {request.task_description} --coordination-id {coordination_id}")'
-
+                spawn_cmd = f'Task("implementer+software-architecture: {request.task_description} --coordination-id {coordination_id}")'
                 total_time = time.time() - start_time
                 print(f"✅ Expert assignment completed in {total_time:.1f}s")
-                print(f"📍 Coordination ID: {coordination_id}")
-
                 return PlannerResponse(
                     success=True,
-                    summary=f"Expert Assignment - {role.title()} specializing in {domain}",
-                    complexity=ComplexityLevel.SIMPLE,
+                    summary="Expert Assignment - Implementer specializing in software-architecture",
+                    complexity=initial_level,
+                    complexity_score=complexity_score,
+                    pattern="Expert",
                     recommended_agents=1,
                     phases=[expert_phase],
                     coordination_id=coordination_id,
-                    confidence=0.95,  # High confidence for simple tasks
+                    confidence=0.90,
                     spawn_commands=[spawn_cmd],
                 )
 
-            # Multi-round orchestration loop (for complex tasks)
+            # Multi-round orchestration loop (let LLMs assess complexity)
             round_number = 0
             best_candidate = None
             best_margin = 0.0
             best_confidence = 0.0
+
+            # Initialize complexity variables for use throughout complex planning
+            level = initial_level  # Will be refined by decomposer votes
+            initial_pattern = "P∥"  # Default, will be set from complexity analysis
 
             max_rounds = self.orchestration.get("max_rounds", 3)
             convergence_threshold = self.orchestration.get(
@@ -195,14 +199,34 @@ class ConsensusPlannerV3:
                 and not self._is_over_budget()
             ):
                 round_start = time.time()
-                print(f"\n🔄 Round {round_number + 1}")
+                round_number += 1
+                elapsed = round_start - start_time
+                remaining = deadline - round_start
+                print(f"\n🔄 Round {round_number}")
+                print(f"   ⏰ Elapsed: {elapsed:.1f}s, Remaining: {remaining:.1f}s")
 
                 # Phase 1: Generate diverse candidates
+                phase1_start = time.time()
                 print("   📊 Generating decomposition candidates...")
-                decompositions = await self.decomposer.generate_candidates(
-                    request=request,
-                    target_count=self.orchestration.get("candidates_per_round", 8),
-                )
+
+                # Calculate remaining time and apply timeout
+                remaining_time = max(1.0, deadline - time.time())  # At least 1 second
+                try:
+                    decompositions = await asyncio.wait_for(
+                        self.decomposer.generate_candidates(
+                            request=request,
+                            target_count=self.orchestration.get(
+                                "candidates_per_round", 8
+                            ),
+                        ),
+                        timeout=min(remaining_time, 20.0),  # Max 20s per phase
+                    )
+                except asyncio.TimeoutError:
+                    print("   ⚠️  Decomposition timed out, using fallback")
+                    decompositions = []  # Will trigger early exit
+
+                phase1_time = time.time() - phase1_start
+                print(f"   ⏰ Phase 1 took: {phase1_time:.1f}s")
 
                 if not decompositions:
                     print("   ❌ No valid decompositions generated")
@@ -210,13 +234,99 @@ class ConsensusPlannerV3:
 
                 print(f"   ✅ Generated {len(decompositions)} decompositions")
 
+                # Stabilize decomposition structure via self-consistency (if multiple)
+                if len(decompositions) > 1:
+                    canonical = SelfConsistencyEngine.extract_consistent_structure(
+                        decompositions
+                    )
+                    # Keep canonical plus a couple variants to preserve diversity
+                    variants = [d for d in decompositions if d is not canonical][:2]
+                    decompositions = [canonical] + variants
+                    print(
+                        f"   🔧 Applied self-consistency: {len(decompositions)} refined decompositions"
+                    )
+
+                # Use decomposer votes to refine complexity level & choose initial pattern for budgeting
+                if round_number == 1:  # Only compute once in first round
+                    dec_levels = [d.estimated_complexity for d in decompositions]
+                    level = reconcile_level(complexity_score, dec_levels)
+
+                    # Safe flags from decompositions to seed initial pattern:
+                    has_deps = False
+                    multiphase = False
+
+                    for d in decompositions:
+                        if isinstance(d.phases, list):
+                            if any(
+                                len(p.get("dependencies", [])) > 0
+                                for p in d.phases
+                                if isinstance(p, dict)
+                            ):
+                                has_deps = True
+                            if len(d.phases) > 1:
+                                multiphase = True
+
+                    quality_critical = (
+                        "test" in request.task_description.lower()
+                        or "validate" in request.task_description.lower()
+                    )
+
+                    # Apply human guidance for pattern selection
+                    human_guidance = getattr(self, "_human_guidance", {})
+                    if human_guidance.get("force_pattern"):
+                        initial_pattern = human_guidance["force_pattern"]
+                    elif human_guidance.get("force_complex"):
+                        # Force complex orchestration patterns (avoid Expert)
+                        initial_pattern = "P∥" if not has_deps else "P→"
+                    else:
+                        initial_pattern = choose_pattern(
+                            complexity_score,
+                            has_dependencies=has_deps,
+                            quality_critical=quality_critical,
+                            reusable=False,
+                            multiphase=multiphase,
+                        )
+                    print(
+                        f"   🧪 Refined Complexity: {level.value} | Pattern: {initial_pattern}"
+                    )
+
+                    # Continue with multi-agent orchestration (Expert bypass handled earlier)
+
                 # Phase 2: Strategy allocation
+                phase2_start = time.time()
                 print("   🎯 Generating strategy candidates...")
-                strategy_candidates = await self.strategist.generate_strategies(
-                    decompositions=decompositions,
-                    request=request,
-                    target_count=len(decompositions),
-                )
+
+                # Set agent ceiling from pattern/level, respecting human guidance
+                human_guidance = getattr(self, "_human_guidance", {})
+                if human_guidance.get("force_complex"):
+                    ceiling = 4  # Allow more agents when forcing complex
+                elif initial_pattern == "Expert":
+                    ceiling = 1
+                elif level == ComplexityLevel.SIMPLE:
+                    ceiling = 2
+                else:
+                    ceiling = 4
+
+                # Calculate remaining time and apply timeout
+                remaining_time = max(1.0, deadline - time.time())
+                try:
+                    strategy_candidates = await asyncio.wait_for(
+                        self.strategist.generate_strategies(
+                            decompositions=decompositions,
+                            request=request,
+                            target_count=len(decompositions),
+                            agents_per_phase_max=ceiling,
+                        ),
+                        timeout=min(remaining_time, 20.0),  # Max 20s per phase
+                    )
+                except asyncio.TimeoutError:
+                    print(
+                        "   ⚠️  Strategy generation timed out, using first decomposition"
+                    )
+                    strategy_candidates = []  # Will trigger fallback
+
+                phase2_time = time.time() - phase2_start
+                print(f"   ⏰ Phase 2 took: {phase2_time:.1f}s")
 
                 if not strategy_candidates:
                     print("   ❌ No valid strategy candidates generated")
@@ -225,12 +335,28 @@ class ConsensusPlannerV3:
                 print(f"   ✅ Generated {len(strategy_candidates)} strategy candidates")
 
                 # Phase 3: Cross-judgment and consensus
+                phase3_start = time.time()
                 print("   ⚖️  Running cross-judgment...")
-                pairwise_comparisons = await self.judge_engine.pairwise_comparisons(
-                    candidates=strategy_candidates,
-                    task_description=request.task_description,
-                    max_pairs=self.orchestration.get("judge_pairs_per_round", 24),
-                )
+
+                # Calculate remaining time and apply timeout
+                remaining_time = max(1.0, deadline - time.time())
+                try:
+                    pairwise_comparisons = await asyncio.wait_for(
+                        self.judge_engine.pairwise_comparisons(
+                            candidates=strategy_candidates,
+                            task_description=request.task_description,
+                            max_pairs=self.orchestration.get(
+                                "judge_pairs_per_round", 24
+                            ),
+                        ),
+                        timeout=min(remaining_time, 15.0),  # Max 15s for judgments
+                    )
+                except asyncio.TimeoutError:
+                    print("   ⚠️  Pairwise comparisons timed out, using first candidate")
+                    pairwise_comparisons = []  # Will use first candidate as fallback
+
+                phase3_time = time.time() - phase3_start
+                print(f"   ⏰ Phase 3 took: {phase3_time:.1f}s")
 
                 if not pairwise_comparisons:
                     print("   ⚠️  No pairwise comparisons completed")
@@ -296,7 +422,6 @@ class ConsensusPlannerV3:
 
                 round_time = time.time() - round_start
                 print(f"   ⏱️  Round completed in {round_time:.1f}s")
-                round_number += 1
 
             # Phase 5: Final repair and validation
             if best_candidate is None:
@@ -316,9 +441,108 @@ class ConsensusPlannerV3:
             # Get top candidates for refinement
             top_candidates = [best_candidate]
 
-            final_plan = await self.refiner.refine_and_validate(
-                top_candidates=top_candidates, request=request
-            )
+            # Apply timeout to refinement as well
+            remaining_time = max(1.0, deadline - time.time())
+            try:
+                final_plan = await asyncio.wait_for(
+                    self.refiner.refine_and_validate(
+                        top_candidates=top_candidates, request=request
+                    ),
+                    timeout=min(remaining_time, 10.0),  # Max 10s for refinement
+                )
+            except asyncio.TimeoutError:
+                print("   ⚠️  Refinement timed out, using best candidate as-is")
+                final_plan = best_candidate  # Use best candidate without refinement
+
+            # GLOBAL AGENT CAP ENFORCEMENT - Keep it simple and predictable
+            # Ensure total agents stays within spec limits
+            def get_global_agent_limits(
+                pattern: str, level: ComplexityLevel
+            ) -> tuple[int, int]:
+                """Get min/max total agents based on pattern and complexity."""
+                if pattern == "Expert":
+                    return (1, 1)
+                elif level in (ComplexityLevel.SIMPLE, ComplexityLevel.MEDIUM):
+                    return (2, 4)
+                else:  # COMPLEX or VERY_COMPLEX
+                    return (5, 8)
+
+            min_agents, max_agents = get_global_agent_limits(initial_pattern, level)
+
+            # Apply human guidance for target agent count if provided
+            human_guidance = getattr(self, "_human_guidance", {})
+            if human_guidance.get("target_agents"):
+                max_agents = human_guidance["target_agents"]
+                print(f"   🎯 Human Override: Target agents set to {max_agents}")
+
+            total_agents = sum(len(phase.agents) for phase in final_plan.phases)
+
+            # If we exceed the max, trim lowest priority agents while keeping at least 1 per phase
+            if total_agents > max_agents:
+                from .models import AgentRecommendation
+
+                # Collect all agents with their phase index and priority
+                agent_priorities = []
+                for phase_idx, phase in enumerate(final_plan.phases):
+                    for agent_idx, agent in enumerate(phase.agents):
+                        agent_priorities.append(
+                            (
+                                agent.priority,
+                                phase_idx,
+                                agent_idx,
+                                agent,
+                            )
+                        )
+
+                # Sort by priority (highest first)
+                agent_priorities.sort(reverse=True, key=lambda x: x[0])
+
+                # Keep the top agents up to max_agents, ensuring at least 1 per phase
+                kept_agents = {}  # phase_idx -> list of agent indices to keep
+
+                # First, ensure each phase has at least one agent (the highest priority one)
+                for phase_idx, phase in enumerate(final_plan.phases):
+                    if phase.agents:
+                        # Find the highest priority agent in this phase
+                        best_agent_idx = max(
+                            range(len(phase.agents)),
+                            key=lambda i: phase.agents[i].priority,
+                        )
+                        kept_agents[phase_idx] = {best_agent_idx}
+
+                # Now add more agents up to the max limit
+                agents_added = sum(len(indices) for indices in kept_agents.values())
+                for priority, phase_idx, agent_idx, agent in agent_priorities:
+                    if agents_added >= max_agents:
+                        break
+                    if phase_idx not in kept_agents:
+                        kept_agents[phase_idx] = set()
+                    if agent_idx not in kept_agents[phase_idx]:
+                        kept_agents[phase_idx].add(agent_idx)
+                        agents_added += 1
+
+                # Apply the trimming
+                for phase_idx, phase in enumerate(final_plan.phases):
+                    if phase_idx in kept_agents:
+                        phase.agents = [
+                            agent
+                            for i, agent in enumerate(phase.agents)
+                            if i in kept_agents[phase_idx]
+                        ]
+                    elif not phase.agents:
+                        # Emergency: add a default agent if phase has none
+                        phase.agents = [
+                            AgentRecommendation(
+                                role="implementer",
+                                domain="software-architecture",
+                                priority=0.5,
+                                reasoning="Added to ensure phase has at least one agent",
+                            )
+                        ]
+
+                print(
+                    f"   📉 Trimmed agents from {total_agents} to {max_agents} (pattern: {initial_pattern})"
+                )
 
             # Generate summary
             total_time = time.time() - start_time
@@ -329,17 +553,32 @@ class ConsensusPlannerV3:
                 final_plan=final_plan,
             )
 
+            # Get cost summary
+            usage_summary = self.cost_tracker.get_usage_summary()
+
             print(f"✅ Planning completed in {total_time:.1f}s")
             print(
                 f"   Rounds: {round_number}, Agents: {len([a for p in final_plan.phases for a in p.agents])}"
             )
+            print(
+                f"   💰 Cost: ${usage_summary['total_cost']:.4f} ({usage_summary['request_count']} requests)"
+            )
+            print(
+                f"   🔢 Tokens: {usage_summary['total_input_tokens']:,}+{usage_summary['total_output_tokens']:,}"
+            )
             print(f"📍 Coordination ID: {coordination_id}")
+
+            # Compute robust recommended_agents
+            computed_agents = estimate_agent_count(complexity_score, initial_pattern)
+            recommended_agents = final_plan.estimated_agents or computed_agents
 
             return PlannerResponse(
                 success=True,
                 summary=summary,
-                complexity=ComplexityLevel.COMPLEX,  # Could infer from candidates
-                recommended_agents=final_plan.estimated_agents,
+                complexity=level,
+                complexity_score=complexity_score,
+                pattern=initial_pattern,
+                recommended_agents=recommended_agents,
                 phases=final_plan.phases,
                 coordination_id=coordination_id,
                 confidence=best_confidence,
@@ -375,40 +614,28 @@ class ConsensusPlannerV3:
             Dict containing plan data
         """
         try:
-            # Create PlannerRequest from task string
-            from .models import ComplexityLevel, PlannerRequest
-
-            request = PlannerRequest(
-                task_description=task,
-                max_agents=8,  # Default reasonable limit
-                complexity=ComplexityLevel.MODERATE,
-                time_budget_hours=2.0,
-                coordination_id="default",
-            )
-
-            # Get plan response
+            request = PlannerRequest(task_description=task)  # only allowed fields
             response = await self.plan(request)
-
-            # Convert to dict format expected by server
             return {
                 "success": response.success,
                 "summary": response.summary,
                 "complexity": (
-                    response.complexity.value if response.complexity else "moderate"
+                    response.complexity.value if response.complexity else None
                 ),
+                "complexity_score": response.complexity_score,
+                "pattern": response.pattern,
                 "recommended_agents": response.recommended_agents,
                 "phases": [
                     {
                         "name": phase.name,
                         "description": phase.description,
                         "agents": [
-                            {
-                                "role": agent.role,
-                                "domain": agent.domain,
-                                "agent_id": agent.agent_id,
-                            }
-                            for agent in phase.agents
+                            {"role": a.role, "domain": a.domain} for a in phase.agents
                         ],
+                        "dependencies": phase.dependencies,
+                        "quality_gate": phase.quality_gate,
+                        "coordination_strategy": phase.coordination_strategy,
+                        "expected_artifacts": phase.expected_artifacts,
                     }
                     for phase in response.phases
                 ],
@@ -417,7 +644,6 @@ class ConsensusPlannerV3:
                 "spawn_commands": response.spawn_commands or [],
                 "error": response.error,
             }
-
         except Exception as e:
             return {
                 "success": False,
@@ -453,113 +679,27 @@ class ConsensusPlannerV3:
         return "\n".join(summary_parts)
 
     def _generate_spawn_commands(self, final_plan, coordination_id: str) -> list[str]:
-        """Generate spawn commands with mandatory compose + coordination protocol + orchestrator validation."""
+        """Generate concise spawn commands - coordination protocol handled by khive compose."""
         commands = []
 
         for phase_idx, phase in enumerate(final_plan.phases):
-            # Add orchestrator validation checkpoint BEFORE each phase (except first)
+            # Add validation checkpoint before each phase (except first)
             if phase_idx > 0:
-                validation_prompt = f"""
-🚨 ORCHESTRATOR VALIDATION CHECKPOINT - PHASE {phase_idx}
+                commands.append(
+                    f"🚨 VALIDATION CHECKPOINT: Verify Phase {phase_idx} before proceeding to '{phase.name}'"
+                )
 
-**TRUST BUT VERIFY - MANDATORY VALIDATION**
+            # Generate concise agent commands for current phase
+            phase_agents = []
+            for agent in phase.agents:
+                # Concise spawn command - compose handles coordination protocol
+                cmd = f'Task("{agent.role}+{agent.domain}: {phase.name} | {phase.coordination_strategy} | {phase.quality_gate} | {coordination_id}")'
+                phase_agents.append(cmd)
 
-Before proceeding to "{phase.name}", you MUST validate the previous phase:
-
-1. **EMPIRICAL VERIFICATION**:
-   - Check actual files created/modified by agents
-   - Verify claimed functionality actually works
-   - Test integration points between existing systems
-   - Validate no over-engineering occurred
-
-2. **DELIVERABLE VALIDATION**:
-   - Read agent deliverables: `uv run khive coordinate status`
-   - Check workspace artifacts for actual vs claimed work
-   - Ensure agents built on existing systems, not created parallel ones
-   - Verify <100 lines for "integration" tasks
-
-3. **INTEGRATION TESTING**:
-   - Test connections between frontend and backend
-   - Verify existing systems still function
-   - Check that user workflows actually work end-to-end
-   - Confirm no breaking changes to existing functionality
-
-4. **PROCEED ONLY IF**:
-   - Agents delivered what they claimed
-   - Integration is working (not just "completed")
-   - No over-engineering detected
-   - Previous phase genuinely complete
-
-❌ **BLOCK PROGRESSION IF**:
-   - Agents lied about completion
-   - Over-engineering detected (quantum/evolutionary code)
-   - Integration not working
-   - Existing systems broken
-
-**VALIDATION COMPLETE?** Only spawn Phase {phase_idx + 1} agents after verification.
-"""
-                commands.append(validation_prompt.strip())
-
-            # Generate agent tasks for current phase
-            phase_commands = []
-            for agent_idx, agent in enumerate(phase.agents):
-                agent_id = f"{agent.role}-{phase_idx:02d}{agent_idx:02d}"
-
-                # Build command with MANDATORY composition + coordination
-                cmd_parts = [
-                    f'Task("{agent.role}+{agent.domain}: {phase.name}',
-                    "",
-                    "MANDATORY FIRST ACTION:",
-                    f'uv run khive compose {agent.role} -d {agent.domain} -c "{phase.name} - {phase.description[:100]}..." --coordination-id {coordination_id}',
-                    "",
-                    "MANDATORY COORDINATION PROTOCOL:",
-                    f'1. Pre-task: uv run khive coordinate pre-task --description "{phase.name}" --agent-id {agent_id} --coordination-id {coordination_id}',
-                    "2. Validate peer work: Check and test other agents' claimed deliverables BEFORE using them",
-                    f'3. Before editing files: uv run khive coordinate check --file "/path/to/file" --agent-id {agent_id}',
-                    f'4. After editing files: uv run khive coordinate post-edit --file "/path/to/file" --agent-id {agent_id}',
-                    f'5. Post-task: uv run khive coordinate post-task --agent-id {agent_id} --summary "Phase complete"',
-                    "",
-                    f"TASK DETAILS: {phase.description}",
-                    f"COORDINATION STRATEGY: {phase.coordination_strategy}",
-                    f"QUALITY GATE: {phase.quality_gate}",
-                    f"EXPECTED ARTIFACTS: {', '.join(phase.expected_artifacts)}",
-                    f'DEPENDENCIES: {", ".join(phase.dependencies) if phase.dependencies else "None"}")',
-                ]
-
-                phase_commands.append("\n".join(cmd_parts))
-
-            # Add all agents for this phase at once (for parallel execution)
-            if phase_commands:
-                commands.append("\n".join(phase_commands))
-
-        # Final validation checkpoint after all phases
-        final_validation = """
-🏁 FINAL ORCHESTRATOR VALIDATION CHECKPOINT
-
-**COMPLETE SYSTEM VALIDATION**
-
-Before declaring orchestration complete, verify:
-
-1. **END-TO-END FUNCTIONALITY**:
-   - Frontend forms actually spawn real agents
-   - Backend APIs connect to real coordination system
-   - Users can complete full workflows successfully
-   - All integration points working
-
-2. **NO OVER-ENGINEERING**:
-   - No quantum/evolutionary code remains
-   - Simple integration achieved
-   - Existing systems enhanced, not replaced
-
-3. **DELIVERABLE QUALITY**:
-   - All agent deliverables reviewed and validated
-   - Claims match actual implementation
-   - Integration documented and tested
-
-**SYSTEM READY FOR PRODUCTION?** Only complete orchestration if fully validated.
-"""
-
-        commands.append(final_validation.strip())
+            if phase_agents:
+                commands.append(f"Phase {phase_idx + 1}: {phase.name}")
+                commands.extend(phase_agents)
+                commands.append("")  # Blank line between phases
 
         return commands
 

@@ -5,6 +5,9 @@ Implements ChatGPT's mathematical approach to prevent over-engineering.
 
 import math
 import re
+from collections import Counter
+
+from .models import ComplexityLevel
 
 # Keywords that indicate simple tasks
 SIMPLE_KEYWORDS = {
@@ -56,6 +59,36 @@ def sigmoid(x: float) -> float:
         return 1.0 / (1.0 + math.exp(-x))
     except OverflowError:
         return 0.0 if x < 0 else 1.0
+
+
+def score_to_level(s: float) -> ComplexityLevel:
+    """Map complexity score to complexity level enum."""
+    if s < 0.3:
+        return ComplexityLevel.SIMPLE
+    if s < 0.5:
+        return ComplexityLevel.MEDIUM
+    if s < 0.8:
+        return ComplexityLevel.COMPLEX
+    return ComplexityLevel.VERY_COMPLEX
+
+
+def reconcile_level(
+    score: float, votes: list[ComplexityLevel] | None
+) -> ComplexityLevel:
+    """Reconcile score-based level with model votes using majority rule."""
+    lvl = score_to_level(score)
+    if not votes:
+        return lvl
+
+    # Majority vote with ordering resolution
+    order = [
+        ComplexityLevel.SIMPLE,
+        ComplexityLevel.MEDIUM,
+        ComplexityLevel.COMPLEX,
+        ComplexityLevel.VERY_COMPLEX,
+    ]
+    majority = Counter(votes).most_common(1)[0][0]
+    return majority if order.index(majority) >= order.index(lvl) else lvl
 
 
 def extract_task_features(task_description: str) -> tuple[int, int, int, int]:
@@ -127,17 +160,19 @@ def choose_pattern(
     Returns:
         Pattern name: Expert, P∥, P→, P⊕, Pⓕ, P⊗
     """
-    # Simple tasks - single expert
-    if complexity_score < 0.3:
+    # Simple tasks - single expert only if not multi-phase and no deps
+    if complexity_score < 0.3 and not (has_dependencies or multiphase):
         return "Expert"
+
+    # Multi-phase tasks should prefer sequential or hybrid
+    if multiphase and has_dependencies:
+        return "P→"  # Sequential
+    if multiphase:
+        return "P∥"  # Parallel small fan-out
 
     # Complex reusable workflows
     if reusable or complexity_score > 0.75:
         return "Pⓕ"  # LionAGI Flow
-
-    # Multi-phase hybrid
-    if multiphase:
-        return "P⊗"  # Hybrid
 
     # Sequential dependencies
     if has_dependencies:
@@ -194,4 +229,6 @@ __all__ = [
     "choose_pattern",
     "estimate_agent_count",
     "should_escalate_to_expert",
+    "score_to_level",
+    "reconcile_level",
 ]

@@ -11,6 +11,7 @@ import json
 import shutil
 import subprocess
 import sys
+import time
 from typing import Any
 
 from .models import PlannerRequest, PlannerResponse
@@ -92,13 +93,66 @@ def format_issue_context(issue_data: dict[str, Any]) -> str:
 async def run_planning(
     task_description: str,
     context: str | None = None,
-    time_budget: float = 90.0,
+    time_budget: float = 60.0,
     output_json: bool = False,
+    force_simple: bool = False,
+    force_complex: bool = False,
+    force_pattern: str | None = None,
+    target_agents: int | None = None,
 ) -> PlannerResponse:
-    """Execute multi-round consensus planning."""
+    """Execute multi-round consensus planning with optional human guidance."""
+
+    # Handle human guidance - force Expert pattern for --simple
+    if force_simple or force_pattern == "Expert":
+        from .models import (
+            AgentRecommendation,
+            ComplexityLevel,
+            CoordinationStrategy,
+            QualityGate,
+            TaskPhase,
+        )
+
+        print("🎯 Human Override: Forcing Expert pattern (single agent)")
+
+        # Create simple expert response directly
+        expert_agent = AgentRecommendation(
+            role="implementer",
+            domain="software-architecture",
+            priority=1.0,
+            reasoning="Human override: forced simple execution",
+        )
+        expert_phase = TaskPhase(
+            name="Direct Implementation",
+            description=task_description,
+            agents=[expert_agent],
+            quality_gate=QualityGate.BASIC,
+            coordination_strategy=CoordinationStrategy.AUTONOMOUS,
+        )
+
+        return PlannerResponse(
+            success=True,
+            summary="Human Override - Expert Assignment",
+            complexity=ComplexityLevel.SIMPLE,
+            complexity_score=0.1,
+            pattern="Expert",
+            recommended_agents=1,
+            phases=[expert_phase],
+            coordination_id=f"human_override_{int(time.time())}",
+            confidence=0.95,
+            spawn_commands=[
+                f'Task("implementer+software-architecture: {task_description}")'
+            ],
+        )
 
     # Create planner instance
     planner = ConsensusPlannerV3()
+
+    # Store human guidance in planner for use during planning
+    planner._human_guidance = {
+        "force_complex": force_complex,
+        "force_pattern": force_pattern,
+        "target_agents": target_agents,
+    }
 
     # Create request
     request = PlannerRequest(
@@ -121,7 +175,9 @@ def print_plan_summary(response: PlannerResponse, output_json: bool = False) -> 
         output = {
             "success": response.success,
             "summary": response.summary,
-            "complexity": response.complexity,
+            "complexity": (response.complexity.value if response.complexity else None),
+            "complexity_score": getattr(response, "complexity_score", None),
+            "pattern": getattr(response, "pattern", None),
             "recommended_agents": response.recommended_agents,
             "phases": [phase.model_dump() for phase in response.phases],
             "coordination_id": response.coordination_id,
@@ -140,6 +196,17 @@ def print_plan_summary(response: PlannerResponse, output_json: bool = False) -> 
             return
 
         print(response.summary)
+
+        # Add complexity and pattern line (token-lean but informative)
+        if response.complexity:
+            cs = getattr(response, "complexity_score", None)
+            pat = getattr(response, "pattern", None)
+            line = f"🧪 Complexity: {response.complexity.value}"
+            if cs is not None:
+                line += f" (score {cs:.2f})"
+            if pat:
+                line += f" | 🧭 Pattern: {pat}"
+            print(line)
 
         if response.spawn_commands:
             print("\n🚀 Agent Spawn Commands:")
@@ -176,12 +243,37 @@ Examples:
     parser.add_argument(
         "--time-budget",
         type=float,
-        default=90.0,
-        help="Time budget in seconds (default: 90.0)",
+        default=60.0,
+        help="Time budget in seconds (default: 60.0)",
     )
 
     parser.add_argument(
         "--json", action="store_true", help="Output results in JSON format"
+    )
+
+    # Human guidance flags for complexity override
+    complexity_group = parser.add_mutually_exclusive_group()
+    complexity_group.add_argument(
+        "--simple",
+        action="store_true",
+        help="Force Expert pattern (single agent, bypass orchestration)",
+    )
+    complexity_group.add_argument(
+        "--complex",
+        action="store_true",
+        help="Force complex orchestration (5-8 agents, full consensus)",
+    )
+    complexity_group.add_argument(
+        "--pattern",
+        choices=["Expert", "P∥", "P→", "P⊕"],
+        help="Force specific orchestration pattern",
+    )
+
+    parser.add_argument(
+        "--agents",
+        type=int,
+        metavar="N",
+        help="Target number of total agents (overrides pattern defaults)",
     )
 
     return parser
@@ -229,13 +321,17 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        # Run planning
+        # Run planning with human guidance
         response = asyncio.run(
             run_planning(
                 task_description=task_description,
                 context=context,
                 time_budget=args.time_budget,
                 output_json=args.json,
+                force_simple=args.simple,
+                force_complex=args.complex,
+                force_pattern=args.pattern,
+                target_agents=args.agents,
             )
         )
 

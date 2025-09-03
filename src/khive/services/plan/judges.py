@@ -65,8 +65,9 @@ Which plan is better? Respond with:
 
 Consider the trade-offs carefully and justify your decision."""
 
-    def __init__(self, config_dict: dict[str, Any]):
+    def __init__(self, config_dict: dict[str, Any], cost_tracker=None):
         self.judges_config = config_dict.get("judges", [])
+        self.cost_tracker = cost_tracker
         self.max_concurrency = config_dict.get("budgets", {}).get(
             "max_total_concurrency", 8
         )
@@ -181,6 +182,10 @@ Consider the trade-offs carefully and justify your decision."""
                     temperature=0.3,  # Low temperature for consistent scoring
                 )
 
+                # Track cost if tracker available
+                if self.cost_tracker:
+                    self.cost_tracker.add_lionagi_response(branch)
+
                 # Set judge ID
                 result.judge_id = judge_config["role"]
                 return result
@@ -232,6 +237,10 @@ Consider the trade-offs carefully and justify your decision."""
                     response_format=ComparisonResult,
                     temperature=0.3,
                 )
+
+                # Track cost if tracker available
+                if self.cost_tracker:
+                    self.cost_tracker.add_lionagi_response(branch)
 
                 # Convert to PairwiseComparison
                 winner_id = candidate_a_id if result.winner == "A" else candidate_b_id
