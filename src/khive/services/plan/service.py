@@ -283,10 +283,55 @@ class ConsensusPlannerV3:
         return "\n".join(summary_parts)
     
     def _generate_spawn_commands(self, final_plan, session_id: str) -> List[str]:
-        """Generate spawn commands with mandatory compose + coordination protocol."""
+        """Generate spawn commands with mandatory compose + coordination protocol + orchestrator validation."""
         commands = []
         
         for phase_idx, phase in enumerate(final_plan.phases):
+            # Add orchestrator validation checkpoint BEFORE each phase (except first)
+            if phase_idx > 0:
+                validation_prompt = f'''
+🚨 ORCHESTRATOR VALIDATION CHECKPOINT - PHASE {phase_idx}
+
+**TRUST BUT VERIFY - MANDATORY VALIDATION**
+
+Before proceeding to "{phase.name}", you MUST validate the previous phase:
+
+1. **EMPIRICAL VERIFICATION**:
+   - Check actual files created/modified by agents
+   - Verify claimed functionality actually works
+   - Test integration points between existing systems
+   - Validate no over-engineering occurred
+
+2. **DELIVERABLE VALIDATION**:
+   - Read agent deliverables: `uv run khive coordinate status`
+   - Check workspace artifacts for actual vs claimed work
+   - Ensure agents built on existing systems, not created parallel ones
+   - Verify <100 lines for "integration" tasks
+
+3. **INTEGRATION TESTING**:
+   - Test connections between frontend and backend
+   - Verify existing systems still function
+   - Check that user workflows actually work end-to-end
+   - Confirm no breaking changes to existing functionality
+
+4. **PROCEED ONLY IF**:
+   - Agents delivered what they claimed
+   - Integration is working (not just "completed")
+   - No over-engineering detected
+   - Previous phase genuinely complete
+
+❌ **BLOCK PROGRESSION IF**:
+   - Agents lied about completion
+   - Over-engineering detected (quantum/evolutionary code)
+   - Integration not working
+   - Existing systems broken
+
+**VALIDATION COMPLETE?** Only spawn Phase {phase_idx + 1} agents after verification.
+'''
+                commands.append(validation_prompt.strip())
+            
+            # Generate agent tasks for current phase
+            phase_commands = []
             for agent_idx, agent in enumerate(phase.agents):
                 agent_id = f"{agent.role}-{phase_idx:02d}{agent_idx:02d}"
                 
@@ -299,9 +344,10 @@ class ConsensusPlannerV3:
                     "",
                     "MANDATORY COORDINATION PROTOCOL:",
                     f'1. Pre-task: uv run khive coordinate pre-task --description "{phase.name}" --agent-id {agent_id} --coordination-id {session_id}',
-                    f'2. Before editing files: uv run khive coordinate check --file "/path/to/file" --agent-id {agent_id}',
-                    f'3. After editing files: uv run khive coordinate post-edit --file "/path/to/file" --agent-id {agent_id}',
-                    f'4. Post-task: uv run khive coordinate post-task --agent-id {agent_id} --summary "Phase complete"',
+                    f'2. Validate peer work: Check and test other agents\' claimed deliverables BEFORE using them',
+                    f'3. Before editing files: uv run khive coordinate check --file "/path/to/file" --agent-id {agent_id}',
+                    f'4. After editing files: uv run khive coordinate post-edit --file "/path/to/file" --agent-id {agent_id}',
+                    f'5. Post-task: uv run khive coordinate post-task --agent-id {agent_id} --summary "Phase complete"',
                     "",
                     f"TASK DETAILS: {phase.description}",
                     f"COORDINATION STRATEGY: {phase.coordination_strategy}",
@@ -310,7 +356,40 @@ class ConsensusPlannerV3:
                     f"DEPENDENCIES: {', '.join(phase.dependencies) if phase.dependencies else 'None'}\")"
                 ]
                 
-                commands.append('\n'.join(cmd_parts))
+                phase_commands.append('\n'.join(cmd_parts))
+            
+            # Add all agents for this phase at once (for parallel execution)
+            if phase_commands:
+                commands.append('\n'.join(phase_commands))
+        
+        # Final validation checkpoint after all phases
+        final_validation = '''
+🏁 FINAL ORCHESTRATOR VALIDATION CHECKPOINT
+
+**COMPLETE SYSTEM VALIDATION**
+
+Before declaring orchestration complete, verify:
+
+1. **END-TO-END FUNCTIONALITY**:
+   - Frontend forms actually spawn real agents
+   - Backend APIs connect to real coordination system  
+   - Users can complete full workflows successfully
+   - All integration points working
+
+2. **NO OVER-ENGINEERING**:
+   - No quantum/evolutionary code remains
+   - Simple integration achieved
+   - Existing systems enhanced, not replaced
+
+3. **DELIVERABLE QUALITY**:
+   - All agent deliverables reviewed and validated
+   - Claims match actual implementation
+   - Integration documented and tested
+
+**SYSTEM READY FOR PRODUCTION?** Only complete orchestration if fully validated.
+'''
+        
+        commands.append(final_validation.strip())
         
         return commands
 

@@ -32,6 +32,30 @@ Kp(*args): khive plan
 **Domains**: must be from one of the pre-defined in
 `libs/khive/src/khive/prompts/domains`
 
+## 🚨 ORCHESTRATION MANTRA: TRUST BUT VERIFY
+
+**Core Principle**: When it comes to LLM agents, TRUST BUT VERIFY, ALWAYS.
+
+### **Trust**: 
+- Allow agents to work autonomously within their expertise
+- Respect their role+domain specialization 
+- Give them freedom to solve problems creatively
+
+### **Verify**:
+- **NEVER** trust agent completion reports without empirical validation
+- **ALWAYS** check actual files/systems for claimed work
+- **MANDATORY** testing of integration points before phase progression
+- **REQUIRED** validation that existing systems still function
+
+### **Validation Protocol**:
+1. **Read agent deliverables** - Don't just trust "completed" status
+2. **Test functionality** - Verify claims with actual system testing  
+3. **Check integration** - Ensure systems actually connect and work
+4. **Validate no over-engineering** - Confirm simple solutions, not complex ones
+5. **Block progression** - Don't advance phases until verified
+
+**Remember**: Agents can hallucinate, lie, or misunderstand tasks. Your job as orchestrator is to validate their work empirically before trusting it for the next phase.
+
 ## Response Structure & Thinking Patterns
 
 ### Multi-Reasoning Format (Complex Issues)
@@ -119,6 +143,118 @@ FlowCreate: No (consumers only)
 
 _Note: MCP permissions will be configured per-agent in their respective
 configurations_
+
+## 🚨 CRITICAL: Manual Coordination Protocol for Task Agents
+
+**BACKGROUND**: Automated Claude Code hooks have been **REMOVED** due to performance issues and unreliability. All Task agents must now manually invoke coordination commands.
+
+### **MANDATORY for ALL Task Agents**
+
+Every Task agent MUST follow this explicit coordination protocol:
+
+#### **1. BEFORE Starting Any Work**
+```bash
+uv run khive coordinate pre-task --description "[your task description]" --agent-id [your_agent_id] --coordination-id [coordination_id]
+```
+
+#### **2. BEFORE Editing ANY File** 
+```bash
+uv run khive coordinate check --file "/path/to/file" --agent-id [your_agent_id]
+```
+- **Exit Code 2 = CONFLICT**: File is locked by another agent - choose different file or wait
+- **Exit Code 0 = SAFE**: You can proceed with editing
+
+#### **3. AFTER Editing ANY File**
+```bash
+uv run khive coordinate post-edit --file "/path/to/file" --agent-id [your_agent_id]
+```
+
+#### **4. AFTER Completing ALL Work**
+```bash
+uv run khive coordinate post-task --agent-id [your_agent_id] --summary "[brief summary of what you accomplished]"
+```
+
+#### **5. Check Status Anytime**
+```bash
+uv run khive coordinate status
+```
+
+### **Why This Protocol is MANDATORY**
+
+- **Prevents File Conflicts**: Multiple agents editing same file simultaneously
+- **Avoids Duplicate Work**: System detects and prevents similar tasks
+- **Enables Collaboration**: Agents can see each other's progress and artifacts
+- **Performance Tracking**: System tracks conflicts prevented and collaboration metrics
+
+### **Protocol Enforcement**
+
+- **Task agents who skip coordination will cause system failures**
+- **File conflicts will corrupt the codebase**
+- **Coordination metrics will be inaccurate**
+- **Follow the protocol exactly as shown - no exceptions**
+
+### **MANDATORY: Peer Validation Protocol**
+
+**All agents must validate other agents' work before using it:**
+
+#### **Step 2.5: BEFORE Using Any Agent's Work**
+```bash
+# Don't just read deliverables - VERIFY claims empirically:
+uv run khive coordinate status  # Read what they claim
+ls /path/to/claimed/files       # Check files actually exist  
+test /functionality/claimed     # Test claimed functionality works
+grep -r "over-engineering"      # Check for quantum/evolutionary code
+```
+
+#### **Validation Checklist:**
+- ✅ **Files exist**: Claimed files/directories actually created
+- ✅ **Functionality works**: Test integration points and APIs
+- ✅ **No over-engineering**: Verify simple solutions, no quantum/evolutionary code  
+- ✅ **Integration verified**: Systems actually connect and work together
+- ⚠️ **Report discrepancies**: Document in your deliverable if claims don't match reality
+
+#### **Critical Rule:**
+**NEVER assume other agents completed their work correctly. Verify everything before building on it.**
+
+## 🚨 CRITICAL: Anti-Over-Engineering Constraints
+
+**BACKGROUND**: Agents previously created thousands of lines of unnecessary "quantum/evolutionary" code when asked to integrate existing frontend with existing backend. This MUST NOT happen again.
+
+### **MANDATORY: EXISTING CODE FIRST**
+
+ALL Task agents MUST follow this sequence:
+
+#### **1. ANALYZE EXISTING ARCHITECTURE FIRST**
+```bash
+# BEFORE creating ANY new files, agents MUST:
+find . -name "*.py" | grep -E "(api|server|daemon)" | head -10  # Find existing backend
+find . -name "*.tsx" | head -10  # Find existing frontend  
+ls src/khive/daemon/  # Check what already exists
+```
+
+#### **2. INTEGRATION OVER CREATION**
+- **INTEGRATION TASKS**: Work with existing APIs, NEVER create new core modules
+- **"Cannot find" triggers investigation, NOT new development**  
+- **Frontend works with EXISTING backend structure**
+- **If existing code doesn't do what you need, MODIFY it, don't create parallel systems**
+
+#### **3. EXPLICIT PROHIBITIONS**
+- ❌ **NO quantum/evolutionary/performance optimization unless specifically requested**
+- ❌ **NO new API modules when api.py or server.py already exists**  
+- ❌ **NO new spawning/orchestration modules when coordination system exists**
+- ❌ **NO over-engineered "architecture" when simple integration needed**
+- ❌ **NO parallel systems - enhance existing ones**
+
+#### **4. VALIDATION REQUIREMENTS**
+- **All new files must be approved by Ocean or orchestrator**
+- **Integration tasks should modify <5 existing files, not create 20 new ones**
+- **If you create >100 lines of new code for "integration", you're doing it wrong**
+
+### **Enforcement**
+
+- **Agents who ignore existing code structure will have their work reverted**
+- **Over-engineering is grounds for immediate task failure**  
+- **Always ask: "Does this file already exist? Can I modify it instead?"**
 
 ## 🛠️ Technical Patterns
 
