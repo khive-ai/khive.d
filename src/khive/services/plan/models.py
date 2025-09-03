@@ -2,9 +2,11 @@
 Clean data models for multi-round consensus planning system.
 Based on ChatGPT's design - no legacy fields, no fallbacks.
 """
+
 from __future__ import annotations
+
 from enum import Enum
-from typing import List, Optional
+
 from lionagi.models import HashableModel
 from pydantic import Field
 
@@ -33,6 +35,7 @@ class CoordinationStrategy(str, Enum):
 
 class AgentRecommendation(HashableModel):
     """Agent allocation recommendation."""
+
     role: str
     domain: str
     priority: float = Field(ge=0.0, le=1.0)
@@ -41,54 +44,63 @@ class AgentRecommendation(HashableModel):
 
 class TaskPhase(HashableModel):
     """A single execution phase with clear coordination strategy."""
+
     name: str
     description: str
-    agents: List[AgentRecommendation]
-    dependencies: List[str] = Field(default_factory=list)
+    agents: list[AgentRecommendation]
+    dependencies: list[str] = Field(default_factory=list)
     quality_gate: QualityGate
     coordination_strategy: CoordinationStrategy
-    expected_artifacts: List[str] = Field(default_factory=list)
+    expected_artifacts: list[str] = Field(default_factory=list)
 
 
 class PlannerRequest(HashableModel):
     """Clean request model - no legacy fields."""
+
     task_description: str
-    context: Optional[str] = None
-    time_budget_seconds: float = Field(default=90.0, ge=10.0, le=300.0)
+    context: str | None = None
+    time_budget_seconds: float = Field(default=60.0, ge=10.0, le=300.0)
 
 
 class PlannerResponse(HashableModel):
     """Clean response model - only essential fields."""
+
     success: bool
     summary: str
     complexity: ComplexityLevel
     recommended_agents: int
-    phases: List[TaskPhase]
-    session_id: Optional[str] = None
+    phases: list[TaskPhase]
+    coordination_id: str | None = None
     confidence: float = Field(ge=0.0, le=1.0)
-    error: Optional[str] = None
-    spawn_commands: List[str] = Field(default_factory=list)
+    error: str | None = None
+    spawn_commands: list[str] = Field(default_factory=list)
+    # NEW (optional, for transparency & downstream budgeting)
+    pattern: str | None = None
+    complexity_score: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 # Internal consensus models
 class DecompositionCandidate(HashableModel):
     """Raw phase decomposition from generator."""
+
     reasoning: str
-    phases: List[dict]  # Raw phase data before TaskPhase validation
+    phases: list[dict]  # Raw phase data before TaskPhase validation
     estimated_complexity: ComplexityLevel
-    parallelizable_groups: List[List[str]] = Field(default_factory=list)
+    parallelizable_groups: list[list[str]] = Field(default_factory=list)
 
 
 class StrategyCandidate(HashableModel):
     """Strategy assignment from strategist."""
+
     reasoning: str
-    phases: List[TaskPhase]
+    phases: list[TaskPhase]
     coordination_rationale: str
     estimated_agents: int
 
 
 class JudgeScore(HashableModel):
     """Judge scoring of a candidate plan."""
+
     feasibility: float = Field(ge=0.0, le=10.0)
     risk: float = Field(ge=0.0, le=10.0)
     coverage: float = Field(ge=0.0, le=10.0)
@@ -102,6 +114,7 @@ class JudgeScore(HashableModel):
 
 class PairwiseComparison(HashableModel):
     """Pairwise comparison result from judge."""
+
     candidate_a_id: str
     candidate_b_id: str
     winner_id: str  # Which candidate won
@@ -112,6 +125,7 @@ class PairwiseComparison(HashableModel):
 
 class ConsensusResult(HashableModel):
     """Result from consensus algorithm."""
+
     winner_id: str
     scores: dict[str, float]  # candidate_id -> consensus score
     margin: float  # separation between top 2

@@ -51,11 +51,12 @@ async def run_composition(
 
         # Get composition
         response = await service.handle_request(request)
-        
+
         # Register with coordination if coordination_id provided
         if coordination_id and response.success:
             # Auto-register this agent with the coordination system
             from khive.daemon.client import get_daemon_client
+
             try:
                 client = get_daemon_client()
                 if client.is_running():
@@ -63,10 +64,12 @@ async def run_composition(
                     coord_response = client.coordinate_start(
                         task_id=coordination_id,
                         task_description=context or f"{role} work",
-                        agent_id=response.agent_id
+                        agent_id=response.agent_id,
                     )
                     if coord_response.get("status") == "duplicate":
-                        print(f"⚠️  Similar work already in progress: {coord_response.get('existing_task')}")
+                        print(
+                            f"⚠️  Similar work already in progress: {coord_response.get('existing_task')}"
+                        )
                     else:
                         print(f"✅ Registered with coordination: {coordination_id}")
             except Exception as e:
@@ -79,7 +82,7 @@ async def run_composition(
             if coordination_id:
                 result["session_registration"] = {
                     "agent_id": response.agent_id,
-                    "instruction": f"Call 'curl -X POST http://127.0.0.1:11634/api/coordinate/register-session -H \"Content-Type: application/json\" -d '{{\"session_id\": \"$CLAUDE_SESSION_ID\", \"agent_id\": \"{response.agent_id}\"}}'' to register your session."
+                    "instruction": f'Call \'curl -X POST http://127.0.0.1:11634/api/coordinate/register-session -H "Content-Type: application/json" -d \'{{"session_id": "$CLAUDE_SESSION_ID", "agent_id": "{response.agent_id}"}}\'\' to register your session.',
                 }
             print(json.dumps(result, indent=2))
         elif response.success:
@@ -126,34 +129,54 @@ async def run_composition(
             lines = response.system_prompt.split("\n")
             for line in lines:
                 print(line)
-            
+
             # Add coordination instructions if coordination_id provided
             if coordination_id:
-                print("\n" + "="*60)
+                print("\n" + "=" * 60)
                 print("🤝 MANDATORY COORDINATION PROTOCOL")
-                print("="*60)
+                print("=" * 60)
                 print(f"Agent ID: {response.agent_id}")
                 print(f"Coordination ID: {coordination_id}")
                 print("\n🚨 CRITICAL: You MUST follow this coordination protocol:")
                 print("\n1️⃣  BEFORE Starting Work:")
-                print(f"   uv run khive coordinate pre-task --description \"[your task]\" --agent-id {response.agent_id} --coordination-id {coordination_id}")
+                print(
+                    f'   uv run khive coordinate pre-task --description "[your task]" --agent-id {response.agent_id} --coordination-id {coordination_id}'
+                )
                 print("\n2️⃣  BEFORE Editing ANY File:")
-                print(f"   uv run khive coordinate check --file \"/path/to/file\" --agent-id {response.agent_id}")
-                print("   ⚠️  If CONFLICT detected (exit code 2), choose different file or wait!")
+                print(
+                    f'   uv run khive coordinate check --file "/path/to/file" --agent-id {response.agent_id}'
+                )
+                print(
+                    "   ⚠️  If CONFLICT detected (exit code 2), choose different file or wait!"
+                )
                 print("\n3️⃣  AFTER Editing ANY File:")
-                print(f"   uv run khive coordinate post-edit --file \"/path/to/file\" --agent-id {response.agent_id}")
+                print(
+                    f'   uv run khive coordinate post-edit --file "/path/to/file" --agent-id {response.agent_id}'
+                )
                 print("\n4️⃣  AFTER Completing Work:")
-                print(f"   uv run khive coordinate post-task --agent-id {response.agent_id} --summary \"[what you accomplished]\"")
+                print(
+                    f'   uv run khive coordinate post-task --agent-id {response.agent_id} --summary "[what you accomplished]"'
+                )
                 print("\n📊 Check Status Anytime:")
                 print("   uv run khive coordinate status")
                 print("\n⚡ WORKFLOW EXAMPLE:")
-                print(f"   uv run khive coordinate pre-task --description \"Research auth patterns\" --agent-id {response.agent_id}")
-                print(f"   uv run khive coordinate check --file \"/src/auth.py\" --agent-id {response.agent_id}")
+                print(
+                    f'   uv run khive coordinate pre-task --description "Research auth patterns" --agent-id {response.agent_id}'
+                )
+                print(
+                    f'   uv run khive coordinate check --file "/src/auth.py" --agent-id {response.agent_id}'
+                )
                 print("   # Edit the file only if no conflict")
-                print(f"   uv run khive coordinate post-edit --file \"/src/auth.py\" --agent-id {response.agent_id}")
-                print(f"   uv run khive coordinate post-task --agent-id {response.agent_id} --summary \"Auth research completed\"")
-                print("\n🎯 Remember: This prevents conflicts and enables collaboration!")
-                print("="*60)
+                print(
+                    f'   uv run khive coordinate post-edit --file "/src/auth.py" --agent-id {response.agent_id}'
+                )
+                print(
+                    f'   uv run khive coordinate post-task --agent-id {response.agent_id} --summary "Auth research completed"'
+                )
+                print(
+                    "\n🎯 Remember: This prevents conflicts and enables collaboration!"
+                )
+                print("=" * 60)
 
             # **NEW: Show essential communication info for enhanced/secure mode**
             if (
@@ -231,10 +254,9 @@ def main():
     )
 
     parser.add_argument("--context", "-c", help="Task context for agent composition")
-    
+
     parser.add_argument(
-        "--coordination-id", 
-        help="Coordination ID from khive plan for multi-agent work"
+        "--coordination-id", help="Coordination ID from khive plan for multi-agent work"
     )
 
     parser.add_argument("--json", action="store_true", help="Output raw JSON response")
@@ -256,9 +278,13 @@ def main():
     # Run the composition
     asyncio.run(
         run_composition(
-            args.role, args.domains, args.context, 
+            args.role,
+            args.domains,
+            args.context,
             args.coordination_id,
-            args.json, args.enhanced, args.secure
+            args.json,
+            args.enhanced,
+            args.secure,
         )
     )
 

@@ -180,17 +180,19 @@ def validate_enhanced_security(
         "sanitized_length": len(sanitized),
         "field_name": field_name,
         "pattern_matches": len([t for t in threats_detected if "pattern_" not in t]),
-        "advanced_detections": len([
-            t
-            for t in threats_detected
-            if t
-            in [
-                "obfuscated_payload",
-                "pattern_bombing",
-                "encoding_obfuscation",
-                "length_attack",
+        "advanced_detections": len(
+            [
+                t
+                for t in threats_detected
+                if t
+                in [
+                    "obfuscated_payload",
+                    "pattern_bombing",
+                    "encoding_obfuscation",
+                    "length_attack",
+                ]
             ]
-        ]),
+        ),
     }
 
     if threats_detected and strict_mode:

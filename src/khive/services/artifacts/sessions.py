@@ -91,36 +91,40 @@ class SessionManager:
     async def _save_session_metadata(self, session: Session) -> None:
         """
         Atomically persist session metadata to filesystem.
-        
+
         Args:
             session: Session object to persist
-            
+
         Raises:
             StorageError: If metadata persistence fails
         """
         metadata_path = self._get_metadata_path(session.id)
         temp_path = metadata_path.with_suffix(".tmp")
-        
+
         try:
             # Prepare metadata dictionary
             metadata = {
                 "id": session.id,
                 "workspace_path": str(session.workspace_path),
-                "created_at": session.created_at.isoformat() if isinstance(session.created_at, datetime) else session.created_at,
+                "created_at": (
+                    session.created_at.isoformat()
+                    if isinstance(session.created_at, datetime)
+                    else session.created_at
+                ),
                 "status": session.status.value,
                 "last_updated": datetime.now(timezone.utc).isoformat(),
-                "version": 1
+                "version": 1,
             }
-            
+
             # Atomic write: write to temp file first, then rename
             async with aiofiles.open(temp_path, "w", encoding="utf-8") as f:
                 await f.write(json.dumps(metadata, indent=2, ensure_ascii=False))
                 await f.flush()
-            
+
             # Atomic rename operation
             temp_path.rename(metadata_path)
             logger.debug(f"Session metadata saved for {session.id}")
-            
+
         except Exception as e:
             # Clean up temp file if it exists
             if temp_path.exists():
@@ -131,41 +135,43 @@ class SessionManager:
     async def _load_session_metadata(self, session_id: str) -> dict[str, Any] | None:
         """
         Load session metadata from filesystem.
-        
+
         Args:
             session_id: Session identifier
-            
+
         Returns:
             Metadata dictionary or None if not found
-            
+
         Raises:
             StorageError: If metadata loading fails
         """
         metadata_path = self._get_metadata_path(session_id)
-        
+
         if not metadata_path.exists():
             return None
-            
+
         try:
             async with aiofiles.open(metadata_path, "r", encoding="utf-8") as f:
                 content = await f.read()
                 metadata = json.loads(content)
                 logger.debug(f"Session metadata loaded for {session_id}")
                 return metadata
-                
+
         except Exception as e:
             logger.error(f"Failed to load session metadata for {session_id}: {e}")
             raise StorageError(f"Failed to load session metadata: {e}") from e
-            
-    async def _update_session_status(self, session_id: str, new_status: SessionStatus, **additional_fields) -> None:
+
+    async def _update_session_status(
+        self, session_id: str, new_status: SessionStatus, **additional_fields
+    ) -> None:
         """
         Atomically update session status and additional fields.
-        
+
         Args:
             session_id: Session identifier
             new_status: New session status
             **additional_fields: Additional metadata fields to update
-            
+
         Raises:
             SessionNotFound: If session metadata doesn't exist
             StorageError: If update fails
@@ -173,28 +179,28 @@ class SessionManager:
         metadata = await self._load_session_metadata(session_id)
         if not metadata:
             raise SessionNotFound(f"Session metadata not found for {session_id}")
-        
+
         # Update fields
         metadata["status"] = new_status.value
         metadata["last_updated"] = datetime.now(timezone.utc).isoformat()
         metadata["version"] = metadata.get("version", 1) + 1
-        
+
         # Add any additional fields
         for key, value in additional_fields.items():
             metadata[key] = value
-            
+
         # Atomic update using temp file
         metadata_path = self._get_metadata_path(session_id)
         temp_path = metadata_path.with_suffix(".tmp")
-        
+
         try:
             async with aiofiles.open(temp_path, "w", encoding="utf-8") as f:
                 await f.write(json.dumps(metadata, indent=2, ensure_ascii=False))
                 await f.flush()
-            
+
             temp_path.rename(metadata_path)
             logger.info(f"Session {session_id} status updated to {new_status.value}")
-            
+
         except Exception as e:
             if temp_path.exists():
                 temp_path.unlink(missing_ok=True)
@@ -266,19 +272,25 @@ class SessionManager:
 
         # Load session metadata from filesystem
         metadata = await self._load_session_metadata(session_id)
-        
+
         if metadata:
             # Parse datetime from ISO format
             try:
-                created_at = datetime.fromisoformat(metadata["created_at"].replace('Z', '+00:00'))
+                created_at = datetime.fromisoformat(
+                    metadata["created_at"].replace("Z", "+00:00")
+                )
             except (ValueError, KeyError):
-                created_at = datetime.fromtimestamp(session_path.stat().st_ctime, tz=timezone.utc)
-            
+                created_at = datetime.fromtimestamp(
+                    session_path.stat().st_ctime, tz=timezone.utc
+                )
+
             return Session(
                 id=session_id,
                 workspace_path=session_path,
                 created_at=created_at,
-                status=SessionStatus(metadata.get("status", SessionStatus.ACTIVE.value)),
+                status=SessionStatus(
+                    metadata.get("status", SessionStatus.ACTIVE.value)
+                ),
             )
         else:
             # Fallback: create session object from filesystem info
@@ -286,17 +298,19 @@ class SessionManager:
             session = Session(
                 id=session_id,
                 workspace_path=session_path,
-                created_at=datetime.fromtimestamp(session_path.stat().st_ctime, tz=timezone.utc),
+                created_at=datetime.fromtimestamp(
+                    session_path.stat().st_ctime, tz=timezone.utc
+                ),
                 status=SessionStatus.ACTIVE,
             )
-            
+
             # Persist metadata for future use
             try:
                 await self._save_session_metadata(session)
                 logger.info(f"Migrated session {session_id} to metadata persistence")
             except Exception as e:
                 logger.warning(f"Failed to migrate session {session_id} metadata: {e}")
-            
+
             return session
 
     async def validate_session(self, session_id: str) -> None:
@@ -391,7 +405,11 @@ class SessionManager:
         try:
             sessions = []
             for path in self._root.iterdir():
-                if path.is_dir() and self.SESSION_ID_PATTERN.match(path.name) and path.name != ".metadata":
+                if (
+                    path.is_dir()
+                    and self.SESSION_ID_PATTERN.match(path.name)
+                    and path.name != ".metadata"
+                ):
                     sessions.append(path.name)
             return sorted(sessions)
         except OSError as e:
@@ -408,9 +426,9 @@ class SessionManager:
         # Validate session exists and update status to archived
         await self.get_session(session_id)  # Validates existence
         await self._update_session_status(
-            session_id, 
+            session_id,
             SessionStatus.ARCHIVED,
-            archived_at=datetime.now(timezone.utc).isoformat()
+            archived_at=datetime.now(timezone.utc).isoformat(),
         )
         logger.info(f"Session {session_id} archived")
 
@@ -437,63 +455,71 @@ class SessionManager:
 
             # Delete workspace directory
             shutil.rmtree(session.workspace_path)
-            
+
             # Delete metadata file
             metadata_path = self._get_metadata_path(session_id)
             if metadata_path.exists():
                 metadata_path.unlink()
-            
+
             logger.info(f"Deleted session {session_id} and its metadata")
-            
+
         except OSError as e:
             raise StorageError(f"Failed to delete session {session_id}: {e}") from e
 
     async def recover_sessions(self) -> dict[str, str]:
         """
         Recover session state after process restart.
-        
+
         Returns:
             Dictionary mapping session IDs to their recovery status
         """
         recovery_status = {}
-        
+
         try:
             # Get all workspace directories
             workspace_sessions = set()
             for path in self._root.iterdir():
-                if path.is_dir() and self.SESSION_ID_PATTERN.match(path.name) and path.name != ".metadata":
+                if (
+                    path.is_dir()
+                    and self.SESSION_ID_PATTERN.match(path.name)
+                    and path.name != ".metadata"
+                ):
                     workspace_sessions.add(path.name)
-            
+
             # Get all metadata files
             metadata_sessions = set()
             if self._metadata_root.exists():
                 for path in self._metadata_root.iterdir():
                     if path.suffix == ".json" and path.stem:
                         metadata_sessions.add(path.stem)
-            
+
             # Process sessions with both workspace and metadata
             for session_id in workspace_sessions & metadata_sessions:
                 try:
                     session = await self.get_session(session_id)
                     recovery_status[session_id] = f"recovered: {session.status.value}"
                 except Exception as e:
-                    recovery_status[session_id] = f"error: {str(e)}"
-            
+                    recovery_status[session_id] = f"error: {e!s}"
+
             # Process orphaned workspaces (workspace but no metadata)
             for session_id in workspace_sessions - metadata_sessions:
                 try:
-                    session = await self.get_session(session_id)  # This will create metadata
+                    session = await self.get_session(
+                        session_id
+                    )  # This will create metadata
                     recovery_status[session_id] = "migrated: workspace to metadata"
                 except Exception as e:
-                    recovery_status[session_id] = f"migration_error: {str(e)}"
-            
+                    recovery_status[session_id] = f"migration_error: {e!s}"
+
             # Process orphaned metadata (metadata but no workspace)
             for session_id in metadata_sessions - workspace_sessions:
                 recovery_status[session_id] = "orphaned: metadata without workspace"
-            
-            logger.info(f"Session recovery completed: {len(recovery_status)} sessions processed")
+
+            logger.info(
+                f"Session recovery completed: {len(recovery_status)} sessions processed"
+            )
             return recovery_status
-            
+
         except Exception as e:
             logger.error(f"Session recovery failed: {e}")
             return {"error": str(e)}
@@ -501,7 +527,7 @@ class SessionManager:
     async def get_session_stats(self) -> dict[str, Any]:
         """
         Get statistics about all sessions.
-        
+
         Returns:
             Dictionary with session statistics
         """
@@ -511,9 +537,9 @@ class SessionManager:
                 "total_sessions": len(sessions),
                 "active_sessions": 0,
                 "archived_sessions": 0,
-                "session_details": []
+                "session_details": [],
             }
-            
+
             for session_id in sessions:
                 try:
                     session = await self.get_session(session_id)
@@ -521,17 +547,23 @@ class SessionManager:
                         stats["active_sessions"] += 1
                     else:
                         stats["archived_sessions"] += 1
-                        
-                    stats["session_details"].append({
-                        "id": session_id,
-                        "status": session.status.value,
-                        "created_at": session.created_at.isoformat() if isinstance(session.created_at, datetime) else str(session.created_at)
-                    })
+
+                    stats["session_details"].append(
+                        {
+                            "id": session_id,
+                            "status": session.status.value,
+                            "created_at": (
+                                session.created_at.isoformat()
+                                if isinstance(session.created_at, datetime)
+                                else str(session.created_at)
+                            ),
+                        }
+                    )
                 except Exception as e:
                     logger.warning(f"Failed to get stats for session {session_id}: {e}")
-            
+
             return stats
-            
+
         except Exception as e:
             logger.error(f"Failed to get session statistics: {e}")
             return {"error": str(e)}

@@ -12,6 +12,7 @@ Maintains essential coverage while removing algorithmic over-engineering.
 from unittest.mock import patch
 
 import pytest
+
 from khive.services.plan.planner_service import ComplexityTier
 from khive.services.plan.triage.complexity_triage import (
     ComplexityTriageService,

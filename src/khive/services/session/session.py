@@ -82,10 +82,12 @@ class SessionInitializer:
 
             # Check for task-related labels
             if any(label in labels for label in ["todo", "task", "enhancement", "bug"]):
-                tasks.append({
-                    "description": f"Issue #{issue['number']}: {issue['title']}",
-                    "priority": priority,
-                })
+                tasks.append(
+                    {
+                        "description": f"Issue #{issue['number']}: {issue['title']}",
+                        "priority": priority,
+                    }
+                )
 
         return tasks
 
@@ -255,9 +257,9 @@ class SessionInitializer:
         # Modified files count
         success, modified = self.run_command(["git", "status", "--porcelain"])
         if success:
-            status["modified_files"] = len([
-                l for l in modified.split("\n") if l.strip()
-            ])
+            status["modified_files"] = len(
+                [l for l in modified.split("\n") if l.strip()]
+            )
         else:
             status["modified_files"] = 0
 
@@ -269,17 +271,19 @@ class SessionInitializer:
 
     def get_open_issues(self, limit: int = 5) -> list[dict]:
         """Get open GitHub issues"""
-        success, output = self.run_command([
-            "gh",
-            "issue",
-            "list",
-            "--state",
-            "open",
-            "--limit",
-            str(limit),
-            "--json",
-            "number,title,labels",
-        ])
+        success, output = self.run_command(
+            [
+                "gh",
+                "issue",
+                "list",
+                "--state",
+                "open",
+                "--limit",
+                str(limit),
+                "--json",
+                "number,title,labels",
+            ]
+        )
 
         if success and output:
             try:

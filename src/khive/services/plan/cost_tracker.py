@@ -4,69 +4,69 @@ Cost tracking for planning operations.
 Tracks API costs, token usage, and budget constraints.
 """
 
-from typing import Optional
-
 
 class CostTracker:
     """Track API costs and usage for planning operations."""
 
-    def __init__(self):
+    def __init__(self, config: dict | None = None):
         self.total_cost = 0.0
         self.request_count = 0
         self.total_input_tokens = 0
         self.total_output_tokens = 0
         self.total_cached_tokens = 0
-        
+        self.config = config or {}
+
         # Default budgets
-        self.token_budget = 100000  # Increased for lionagi multi-eval
-        self.latency_budget = 60  # seconds
-        self.cost_budget = 0.01  # USD per plan (increased for parallel evals)
+        budgets = self.config.get("budgets", {})
+        self.token_budget = (
+            budgets.get("tokens_per_candidate", 100000) * 10
+        )  # Scale for full planning
+        self.latency_budget = budgets.get("time_seconds", 60)
+        self.cost_budget = budgets.get("cost_usd", 0.01)
+
+    def _get_pricing(self, model_name: str | None) -> dict:
+        """Get pricing info from config for a given model."""
+        if not model_name or not self.config:
+            # Default Gemini Flash pricing
+            return {"input_per_1m": 0.10, "output_per_1m": 0.40, "cached_per_1m": 0.025}
+
+        # Search in all config sections for matching model
+        for section in ["generators", "judges"]:
+            for item in self.config.get(section, []):
+                if item.get("model") == model_name:
+                    return item.get(
+                        "pricing",
+                        {
+                            "input_per_1m": 0.10,
+                            "output_per_1m": 0.40,
+                            "cached_per_1m": 0.025,
+                        },
+                    )
+
+        # Fallback - default Gemini Flash pricing
+        return {"input_per_1m": 0.10, "output_per_1m": 0.40, "cached_per_1m": 0.025}
 
     def add_request(
-        self, 
-        input_tokens: int, 
-        output_tokens: int, 
+        self,
+        input_tokens: int,
+        output_tokens: int,
         cached_tokens: int = 0,
-        model_name: Optional[str] = None
+        model_name: str | None = None,
     ) -> float:
-        """
-        Add a request and calculate cost.
-        
-        Supports different pricing models:
-        - OpenAI GPT-4o pricing
-        - Nvidia NIM pricing (if available)
-        - Generic fallback pricing
-        """
+        """Add a request and calculate cost using config-based pricing."""
         # Update token counts
         self.total_input_tokens += input_tokens
         self.total_output_tokens += output_tokens
         self.total_cached_tokens += cached_tokens
-        
-        # Calculate cost based on model
-        if model_name and "gemini" in model_name.lower():
-            # Google Gemini Flash pricing via OpenRouter
-            regular_input_tokens = input_tokens - cached_tokens
-            input_cost = (regular_input_tokens / 1_000_000) * 0.10
-            cached_cost = (cached_tokens / 1_000_000) * 0.025  # Assume 25% of input cost
-            output_cost = (output_tokens / 1_000_000) * 0.40
-        elif model_name and "nvidia" in model_name.lower():
-            # Nvidia NIM pricing (placeholder - adjust based on actual pricing)
-            regular_input_tokens = input_tokens - cached_tokens
-            input_cost = (regular_input_tokens / 1_000_000) * 0.05  # Lower cost
-            cached_cost = (cached_tokens / 1_000_000) * 0.01
-            output_cost = (output_tokens / 1_000_000) * 0.20
-        elif model_name and "gpt-4o" in model_name.lower():
-            # GPT-4o pricing
-            regular_input_tokens = input_tokens - cached_tokens
-            input_cost = (regular_input_tokens / 1_000_000) * 2.50
-            cached_cost = (cached_tokens / 1_000_000) * 1.25
-            output_cost = (output_tokens / 1_000_000) * 10.00
-        else:
-            # Generic pricing fallback (matches Gemini Flash)
-            regular_input_tokens = input_tokens - cached_tokens
-            input_cost = (regular_input_tokens / 1_000_000) * 0.10
-            cached_cost = (cached_tokens / 1_000_000) * 0.025
-            output_cost = (output_tokens / 1_000_000) * 0.40
+
+        # Get pricing from config
+        pricing = self._get_pricing(model_name)
+
+        # Calculate cost
+        regular_input_tokens = input_tokens - cached_tokens
+        input_cost = (regular_input_tokens / 1_000_000) * pricing["input_per_1m"]
+        cached_cost = (cached_tokens / 1_000_000) * pricing["cached_per_1m"]
+        output_cost = (output_tokens / 1_000_000) * pricing["output_per_1m"]
 
         cost = input_cost + cached_cost + output_cost
 
@@ -102,7 +102,7 @@ class CostTracker:
     def is_over_budget(self) -> bool:
         """Check if current total cost exceeds budget."""
         return self.total_cost > self.cost_budget
-    
+
     def is_over_token_budget(self) -> bool:
         """Check if total tokens exceed budget."""
         total_tokens = self.total_input_tokens + self.total_output_tokens
@@ -112,8 +112,10 @@ class CostTracker:
         """Calculate max tokens per evaluator to stay within budget."""
         if evaluator_count <= 0:
             return self.token_budget
-        return max(500, self.token_budget // evaluator_count)  # Min 500 tokens per evaluator
-    
+        return max(
+            500, self.token_budget // evaluator_count
+        )  # Min 500 tokens per evaluator
+
     def get_usage_summary(self) -> dict:
         """Get a summary of usage and costs."""
         return {
@@ -127,7 +129,43 @@ class CostTracker:
             "over_budget": self.is_over_budget(),
             "over_token_budget": self.is_over_token_budget(),
         }
-    
+
+    def add_lionagi_response(self, branch) -> float:
+        """
+        Extract usage data from LionAGI branch and add to cost tracking.
+
+        Args:
+            branch: LionAGI branch after branch.operate() call
+
+        Returns:
+            Cost of this request in USD
+        """
+        try:
+            # Get model response from LionAGI
+            model_response = branch.msgs.last_response.model_response
+            usage = model_response.get("usage", {})
+            model = model_response.get("model", "unknown")
+
+            # Extract token counts
+            input_tokens = usage.get("prompt_tokens", 0)
+            output_tokens = usage.get("completion_tokens", 0)
+            cached_tokens = usage.get("prompt_tokens_details", {}).get(
+                "cached_tokens", 0
+            )
+
+            # Add to cost tracking with real data
+            return self.add_request(
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cached_tokens=cached_tokens,
+                model_name=model,
+            )
+
+        except Exception as e:
+            print(f"Warning: Could not extract usage from LionAGI response: {e}")
+            # Fallback to estimate for budget tracking
+            return self.add_request(500, 200, model_name="gemini-flash-estimate")
+
     def reset(self):
         """Reset all counters."""
         self.total_cost = 0.0

@@ -219,9 +219,7 @@ class SemanticDeduplicator:
                 "confidence": (
                     "high"
                     if similarity > 0.95
-                    else "medium"
-                    if similarity > 0.9
-                    else "low"
+                    else "medium" if similarity > 0.9 else "low"
                 ),
             }
 
@@ -307,12 +305,15 @@ class SemanticDeduplicator:
         for cluster in clusters:
             cluster_temps = [t for t in cluster if t.startswith("temp_")]
             if len(cluster_temps) > 1:
-                strategy["merge_groups"].append({
-                    "tasks": [
-                        task_descriptions[int(t.split("_")[1])] for t in cluster_temps
-                    ],
-                    "suggested_merge": f"Combine into single task: {task_descriptions[int(cluster_temps[0].split('_')[1])]}",
-                })
+                strategy["merge_groups"].append(
+                    {
+                        "tasks": [
+                            task_descriptions[int(t.split("_")[1])]
+                            for t in cluster_temps
+                        ],
+                        "suggested_merge": f"Combine into single task: {task_descriptions[int(cluster_temps[0].split('_')[1])]}",
+                    }
+                )
                 clustered_tasks.update(cluster_temps)
                 strategy["coordination_needed"] = True
 

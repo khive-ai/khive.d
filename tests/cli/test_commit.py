@@ -21,6 +21,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
+
 from khive.cli.khive_commit import (
     CommitConfig,
     _main_commit_flow,

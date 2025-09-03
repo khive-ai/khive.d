@@ -4,7 +4,6 @@ This module provides centralized fixture management for all testing domains:
 - Async testing fixtures
 - CLI command testing fixtures
 - Security testing fixtures
-- Performance and load testing fixtures
 - File system fixtures
 - Mock service and API fixtures
 """
@@ -13,7 +12,6 @@ from .async_fixtures import *  # noqa: F403
 from .cli_fixtures import *  # noqa: F403
 from .filesystem_fixtures import *  # noqa: F403
 from .mock_fixtures import *  # noqa: F403
-from .performance_fixtures import *  # noqa: F403
 from .security_fixtures import *  # noqa: F403
 from .service_fixtures import *  # noqa: F403
 
@@ -34,11 +32,6 @@ __all__ = [
     "mock_api_clients",
     "mock_external_services",
     "mock_http_responses",
-    # Performance fixtures
-    "performance_monitor",
-    "benchmark_config",
-    "load_test_scenarios",
-    "memory_profiler",
     # Security fixtures
     "security_test_config",
     "security_scanner",

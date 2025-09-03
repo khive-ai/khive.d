@@ -145,6 +145,31 @@ class SessionService:
         request.action = "end"
         return await self.handle_request(request)
 
+    async def list_sessions(self) -> list[str]:
+        """
+        List all available sessions.
+
+        Integrates with artifacts service to provide session listing.
+
+        Returns:
+            List of session IDs
+        """
+        try:
+            from khive.services.artifacts.factory import (
+                create_artifacts_service_from_env,
+            )
+
+            # Get artifacts service for session listing
+            artifacts_service = create_artifacts_service_from_env()
+            sessions = await artifacts_service.list_sessions()
+
+            return sessions
+
+        except Exception as e:
+            logger.error(f"Error listing sessions: {e}", exc_info=True)
+            # Return empty list instead of failing
+            return []
+
     async def close(self) -> None:
         """Clean up resources."""
         try:

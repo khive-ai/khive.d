@@ -1,8 +1,9 @@
 import logging
 
+from lionagi import ln as ln
+
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import Issue, IssuePlan
-from lionagi import ln as ln
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("KhiveOperations")

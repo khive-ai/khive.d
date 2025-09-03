@@ -1,16 +1,24 @@
-# FAST BUT PROPER MULTI-AGENT planning configuration 
+# FAST BUT PROPER MULTI-AGENT planning configuration
 # Single model for speed, but diverse enough for 6-8 agent coordination
 generators:
   - provider: "openrouter"
-    model: "google/gemini-2.0-flash-001"  # FAST MODEL
-    temps: [0.2, 0.5, 0.8]  # 3 temps for phase diversity
+    model: "google/gemini-2.0-flash-001" # FAST MODEL
+    temps: [0.2, 0.5, 0.8] # 3 temps for phase diversity
     role: "decomposer"
     max_concurrency: 6
+    pricing:
+      input_per_1m: 0.10 # $0.10/M input tokens
+      output_per_1m: 0.40 # $0.40/M output tokens
+      cached_per_1m: 0.025 # 25% of input cost for cached
   - provider: "openrouter"
-    model: "google/gemini-2.0-flash-001"  
-    temps: [0.3, 0.7]  # 2 temps for agent strategy
+    model: "google/gemini-2.0-flash-001"
+    temps: [0.3, 0.7] # 2 temps for agent strategy
     role: "strategist"
     max_concurrency: 4
+    pricing:
+      input_per_1m: 0.10
+      output_per_1m: 0.40
+      cached_per_1m: 0.025
 
 # Sufficient judges for proper consensus
 judges:
@@ -18,29 +26,41 @@ judges:
     model: "google/gemini-2.0-flash-001"
     role: "architect_judge"
     reliability_prior: 0.85
+    pricing:
+      input_per_1m: 0.10
+      output_per_1m: 0.40
+      cached_per_1m: 0.025
   - provider: "openrouter"
     model: "google/gemini-2.0-flash-001"
-    role: "quality_judge" 
+    role: "quality_judge"
     reliability_prior: 0.85
+    pricing:
+      input_per_1m: 0.10
+      output_per_1m: 0.40
+      cached_per_1m: 0.025
   - provider: "openrouter"
     model: "google/gemini-2.0-flash-001"
-    role: "coordination_judge" 
+    role: "coordination_judge"
     reliability_prior: 0.85
+    pricing:
+      input_per_1m: 0.10
+      output_per_1m: 0.40
+      cached_per_1m: 0.025
 
 # FAST orchestration but proper agent coordination
 orchestration:
-  max_rounds: 1  # Single round for speed
-  candidates_per_round: 5  # Enough candidates for good plans
-  judge_pairs_per_round: 6  # Quick but sufficient judging
+  max_rounds: 1 # Single round for speed
+  candidates_per_round: 5 # Enough candidates for good plans
+  judge_pairs_per_round: 6 # Quick but sufficient judging
   convergence_threshold: 0.15
   consensus_method: "bradley_terry_luce"
 
 # SPEED budgets
 budgets:
-  time_seconds: 20  # Slightly more time for larger teams
-  cost_usd: 0.01    # Higher budget for 6 agents/phase
+  time_seconds: 60 # Sufficient time to prevent API waste
+  cost_usd: 0.01 # Higher budget for 6 agents/phase
   max_total_concurrency: 8
-  tokens_per_candidate: 4000  # More tokens for 6 agents per phase
+  tokens_per_candidate: 4000 # More tokens for 6 agents per phase
   tokens_per_judgment: 2000
 
 # Quality gates and validation
@@ -52,7 +72,7 @@ validation:
   agent_deduplication: true
   artifact_validation: true
 
-# Self-consistency settings  
+# Self-consistency settings
 self_consistency:
   samples_per_candidate: 3
   majority_threshold: 0.6
@@ -62,5 +82,5 @@ self_consistency:
 judge_calibration:
   dawid_skene_enabled: true
   min_judgments_for_update: 5
-  reliability_decay: 0.95  # Gradual decay of old reliability scores
-  calibration_frequency: 10  # Update every N judgments
+  reliability_decay: 0.95 # Gradual decay of old reliability scores
+  calibration_frequency: 10 # Update every N judgments

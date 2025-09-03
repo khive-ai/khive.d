@@ -1,3 +1,13 @@
+from .khive_orchestrate import (
+    OrchestrationEngine,
+    OrchestrationSession,
+    get_orchestration_engine,
+    get_session_status,
+    list_active_sessions,
+    orchestrate_issue,
+    orchestrate_task,
+    stop_session,
+)
 from .orchestrator import LionOrchestrator
 from .parts import (
     AgentRequest,
@@ -16,16 +26,7 @@ from .parts import (
     OrchestrationPlan,
     RefinementConfig,
 )
-from .khive_orchestrate import (
-    get_orchestration_engine,
-    orchestrate_task,
-    orchestrate_issue,
-    list_active_sessions,
-    get_session_status,
-    stop_session,
-    OrchestrationEngine,
-    OrchestrationSession,
-)
+
 # Enhanced Intelligence Capabilities - Phase 3 Advanced Intelligence (COMMENTED OUT FOR CLEANUP)
 # from .intelligent_orchestration_engine import (
 #     IntelligentOrchestrationEngine,
@@ -86,7 +87,7 @@ __all__ = (
     "RefinementConfig",
     # Standard orchestration engine
     "get_orchestration_engine",
-    "orchestrate_task", 
+    "orchestrate_task",
     "orchestrate_issue",
     "list_active_sessions",
     "get_session_status",
@@ -95,7 +96,7 @@ __all__ = (
     "OrchestrationSession",
     # Enhanced Intelligence Capabilities - Phase 3 (COMMENTED OUT FOR CLEANUP)
     # "IntelligentOrchestrationEngine",
-    # "IntelligentRoutingDecision", 
+    # "IntelligentRoutingDecision",
     # "PhaseTransitionIntelligence",
     # "RealTimeCoordinationState",
     # "IntelligenceLevel",
@@ -106,7 +107,7 @@ __all__ = (
     # Intelligence System Components (COMMENTED OUT FOR CLEANUP)
     # "get_capability_assessor",
     # "assess_agent_for_role",
-    # "get_role_recommendations", 
+    # "get_role_recommendations",
     # "analyze_team_capabilities",
     # "CapabilityAssessor",
     # "CapabilityMetrics",

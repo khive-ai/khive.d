@@ -1,5 +1,7 @@
 import logging
 
+from lionagi.libs.concurrency import get_cancelled_exc_class
+
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     FanoutPatterns,
@@ -13,7 +15,6 @@ from khive.services.orchestration.prompts import (
     REDO_ORCHESTRATOR_INSTRUCTION,
     SYNTHESIS_INSTRUCTION,
 )
-from lionagi.libs.concurrency import get_cancelled_exc_class
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("KhiveOperations")

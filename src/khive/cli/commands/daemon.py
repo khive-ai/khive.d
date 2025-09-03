@@ -55,8 +55,9 @@ def start(foreground: bool, port: int, host: str):
         os.environ["KHIVE_DAEMON_HOST"] = host
         os.environ["KHIVE_DAEMON_PORT"] = str(port)
 
-        from khive.daemon.server import run_daemon_server
         import asyncio
+
+        from khive.daemon.server import run_daemon_server
 
         asyncio.run(run_daemon_server(host, port))
     else:
