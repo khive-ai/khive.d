@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard API Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      .test-result {
+        margin: 10px 0;
+        padding: 10px;
+        border-left: 4px solid #ddd;
+      }
+      .success {
+        border-color: #4caf50;
+        background-color: #f1f8e9;
+      }
+      .error {
+        border-color: #f44336;
+        background-color: #ffebee;
+      }
+      .warning {
+        border-color: #ff9800;
+        background-color: #fff3e0;
+      }
+      pre {
+        background: #f5f5f5;
+        padding: 10px;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🧪 Dashboard API Test Results</h1>
+    <p>Testing API endpoints that the frontend dashboard is trying to access</p>
+
+    <div id="results"></div>
+
+    <script>
+      const API_BASE = "http://localhost:11634";
+      const results = document.getElementById("results");
+
+      function addResult(endpoint, status, message, data = null) {
+        const div = document.createElement("div");
+        div.className = `test-result ${status}`;
+        div.innerHTML = `
+                <h3>${endpoint}</h3>
+                <p><strong>Status:</strong> ${status.toUpperCase()}</p>
+                <p><strong>Message:</strong> ${message}</p>
+                ${
+          data ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : ""
+        }
+            `;
+        results.appendChild(div);
+      }
+
+      async function testEndpoint(endpoint, expectedStatus = 200) {
+        try {
+          const response = await fetch(`${API_BASE}${endpoint}`);
+          const data = await response.json().catch(() => null);
+
+          if (response.status === expectedStatus) {
+            addResult(
+              endpoint,
+              "success",
+              `✅ Working (${response.status})`,
+              data,
+            );
+          } else {
+            addResult(
+              endpoint,
+              "error",
+              `❌ Status ${response.status} (expected ${expectedStatus})`,
+              data,
+            );
+          }
+        } catch (error) {
+          addResult(
+            endpoint,
+            "error",
+            `❌ Network Error: ${error.message}`,
+          );
+        }
+      }
+
+      async function runTests() {
+        addResult(
+          "Test Suite",
+          "warning",
+          "🔄 Running dashboard API tests...",
+        );
+
+        // Working endpoints
+        await testEndpoint("/health");
+        await testEndpoint("/api/config/roles");
+        await testEndpoint("/api/config/domains");
+        await testEndpoint("/api/coordinate/status");
+
+        // Broken endpoints (expected failures)
+        await testEndpoint("/api/sessions", 500);
+        await testEndpoint("/api/coordination/metrics", 404);
+        await testEndpoint("/api/coordination/file-locks", 404);
+        await testEndpoint("/api/events", 404);
+        await testEndpoint("/api/plans", 404);
+        await testEndpoint(
+          "/api/observability/system-performance",
+          404,
+        );
+        await testEndpoint("/api/observability/agent-analytics", 404);
+
+        addResult("Test Suite", "success", "✅ Test suite complete");
+      }
+
+      // Run tests when page loads
+      runTests();
+    </script>
+  </body>
+</html>

@@ -10,6 +10,7 @@ import sys
 from typing import Any
 
 import anyio
+
 from khive.services.claude.hooks.coordination import check_duplicate_work
 from khive.services.claude.hooks.hook_event import (
     HookEvent,
@@ -45,16 +46,19 @@ def handle_pre_agent_spawn(
         # Get proper agent ID - usually this will be fallback since agent spawn is first hook called
         try:
             from khive.services.claude.hooks.coordination import get_registry
+
             registry = get_registry()
-            agent_id = registry.get_agent_id_from_session(session_id) if session_id else None
+            agent_id = (
+                registry.get_agent_id_from_session(session_id) if session_id else None
+            )
             if not agent_id:
                 agent_id = f"session_{session_id[:8] if session_id else 'unknown'}"
         except Exception:
             agent_id = f"session_{session_id[:8] if session_id else 'unknown'}"
-        
+
         # Check for duplicate work
         duplicate = check_duplicate_work(agent_id, task_description)
-        
+
         # Build coordination dict with all required fields
         coordination = {
             "duplicate_detected": duplicate is not None,
@@ -73,7 +77,9 @@ def handle_pre_agent_spawn(
         # Add suggestions to response if duplicate detected
         suggestions_text = ""
         if coordination["duplicate_detected"]:
-            suggestions_text = f"Similar task already in progress: {coordination['existing_task']}"
+            suggestions_text = (
+                f"Similar task already in progress: {coordination['existing_task']}"
+            )
 
         event = HookEvent(
             content=HookEventContent(
@@ -155,7 +161,7 @@ def main():
             reason = result.get("coordination_message", "Duplicate task detected")
             print(reason, file=sys.stderr)
             sys.exit(2)  # EXIT CODE 2 TO BLOCK!
-        
+
         sys.exit(0)
 
     except Exception as e:

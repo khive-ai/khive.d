@@ -1,5 +1,7 @@
 import logging
 
+from lionagi.fields import Instruct
+
 from khive.services.orchestration.orchestrator import LionOrchestrator
 from khive.services.orchestration.parts import (
     BaseGate,
@@ -11,7 +13,6 @@ from khive.services.orchestration.parts import (
     IssueResult,
 )
 from khive.services.orchestration.prompts import CRITIC_REVIEW_INSTRUCTION
-from lionagi.fields import Instruct
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("KhiveOperations")

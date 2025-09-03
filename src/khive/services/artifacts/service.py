@@ -154,13 +154,15 @@ class ArtifactsService:
 
         # Determine document type for registry (map DocumentType to template types)
         registry_doc_type = doc_type.value
-        if doc_type == DocumentType.DELIVERABLE and doc_name.startswith((
-            "CRR_",
-            "TDS_",
-            "RR_",
-            "IP_",
-            "TI_",
-        )):
+        if doc_type == DocumentType.DELIVERABLE and doc_name.startswith(
+            (
+                "CRR_",
+                "TDS_",
+                "RR_",
+                "IP_",
+                "TI_",
+            )
+        ):
             registry_doc_type = doc_name.split("_")[0]  # Extract CRR, TDS, etc.
         elif doc_type == DocumentType.SCRATCHPAD:
             registry_doc_type = "artifact"

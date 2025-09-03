@@ -47,12 +47,14 @@ def mock_external_services():
 
         def log_call(self, service: str, method: str, args: tuple, kwargs: dict):
             """Log service calls for verification."""
-            self.call_logs.append({
-                "service": service,
-                "method": method,
-                "args": args,
-                "kwargs": kwargs,
-            })
+            self.call_logs.append(
+                {
+                    "service": service,
+                    "method": method,
+                    "args": args,
+                    "kwargs": kwargs,
+                }
+            )
 
     return MockServiceManager()
 

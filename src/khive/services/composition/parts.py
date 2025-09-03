@@ -5,9 +5,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 from khive.prompts import AgentRole
 from khive.security.secure_models import SecureComposerRequestMixin
-from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 __all__ = (
     "AgentCompositionRequest",
@@ -25,8 +26,20 @@ class ComposerRequest(SecureComposerRequestMixin, BaseModel):
     role: AgentRole = Field(..., description="Agent role (e.g., researcher, architect)")
     domains: str | None = Field(None, description="Comma-separated domain list")
     context: str | None = Field(None, description="Task context for agent composition")
-    coordination_id: str | None = Field(None, description="Coordination ID from khive plan")
-    phase: str | None = Field(None, description="Current phase (discovery, design, implementation, etc.)")
+    coordination_id: str | None = Field(
+        None, description="Coordination ID from khive plan"
+    )
+    phase: str | None = Field(
+        None, description="Current phase (discovery, design, implementation, etc.)"
+    )
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def normalize_role(cls, v):
+        """Normalize role to lowercase for case-insensitive input."""
+        if isinstance(v, str):
+            return v.strip().lower()
+        return v
 
 
 class DomainExpertise(BaseModel):

@@ -10,6 +10,7 @@ import sys
 from typing import Any
 
 import anyio
+
 from khive.services.claude.hooks.hook_event import (
     HookEvent,
     HookEventContent,
@@ -71,28 +72,43 @@ def handle_post_edit(
             if client.is_running():
                 # Get agent ID from session mapping in coordination registry
                 import os
+
                 try:
-                    registry = get_registry() 
-                    agent_id = registry.get_agent_id_from_session(session_id) if session_id else None
+                    registry = get_registry()
+                    agent_id = (
+                        registry.get_agent_id_from_session(session_id)
+                        if session_id
+                        else None
+                    )
                     if not agent_id:
                         # Fallback to session-based ID if no mapping exists
-                        agent_id = f"session_{session_id[:8]}" if session_id else os.environ.get("CLAUDE_AGENT_ID", "agent_unknown")
+                        agent_id = (
+                            f"session_{session_id[:8]}"
+                            if session_id
+                            else os.environ.get("CLAUDE_AGENT_ID", "agent_unknown")
+                        )
                 except Exception:
                     # Fallback if registry not available
-                    agent_id = f"session_{session_id[:8]}" if session_id else os.environ.get("CLAUDE_AGENT_ID", "agent_unknown")
-                
+                    agent_id = (
+                        f"session_{session_id[:8]}"
+                        if session_id
+                        else os.environ.get("CLAUDE_AGENT_ID", "agent_unknown")
+                    )
+
                 # Release file locks for all edited files
                 for file_path in file_paths:
                     try:
                         response = client.client.post(
                             f"{client.base_url}/api/coordinate/file-unregister",
-                            json={"file_path": file_path, "agent_id": agent_id}
+                            json={"file_path": file_path, "agent_id": agent_id},
                         )
                         if response.status_code == 200:
                             coordination_result[f"lock_released_{file_path}"] = True
                     except Exception as e:
-                        hook_event_logger.debug(f"Failed to release lock for {file_path}: {e}")
-                        
+                        hook_event_logger.debug(
+                            f"Failed to release lock for {file_path}: {e}"
+                        )
+
         except Exception as e:
             hook_event_logger.debug(f"Daemon coordination failed: {e}")
 
@@ -124,9 +140,11 @@ def main():
         # Extract tool information from hook input
         tool_input = hook_input.get("tool_input", {})
         tool_name = hook_input.get("tool_name", "Edit")
-        
+
         # Claude sends tool_response (object) for PostToolUse, fall back to tool_output for compatibility
-        tool_response = hook_input.get("tool_response", hook_input.get("tool_output", {}))
+        tool_response = hook_input.get(
+            "tool_response", hook_input.get("tool_output", {})
+        )
         if isinstance(tool_response, dict):
             # Extract success status and any error messages
             tool_output = json.dumps(tool_response)

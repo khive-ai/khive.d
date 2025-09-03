@@ -10,7 +10,8 @@ import sys
 from typing import Any
 
 import anyio
-from khive.services.claude.hooks.coordination import share_result, get_registry
+
+from khive.services.claude.hooks.coordination import get_registry, share_result
 from khive.services.claude.hooks.hook_event import (
     HookEvent,
     HookEventContent,
@@ -82,7 +83,9 @@ def handle_post_agent_spawn(
         if success and output:
             # Get proper agent ID from session mapping
             registry = get_registry()
-            agent_id = registry.get_agent_id_from_session(session_id) if session_id else None
+            agent_id = (
+                registry.get_agent_id_from_session(session_id) if session_id else None
+            )
             if not agent_id:
                 agent_id = f"session_{session_id[:8] if session_id else 'unknown'}"
             # Share the result for other agents
@@ -90,7 +93,7 @@ def handle_post_agent_spawn(
                 agent_id=agent_id,
                 content=output[:1000],  # Share first 1000 chars for context
             )
-            
+
             # Clean up completed agent from active registry
             registry = get_registry()
             if agent_id in registry.active_agents:
@@ -98,17 +101,19 @@ def handle_post_agent_spawn(
                 agent_work = registry.active_agents[agent_id]
                 for file_path in agent_work.files_editing.copy():
                     registry.release_file_lock(agent_id, file_path)
-                
+
                 # Remove agent from active registry
                 del registry.active_agents[agent_id]
-                
+
             coordination_result = {"artifact_id": artifact_id, "agent_cleaned_up": True}
-        
+
         # Also cleanup failed agents to prevent phantom entries
         elif not success:
             # Get proper agent ID from session mapping
             registry = get_registry()
-            agent_id = registry.get_agent_id_from_session(session_id) if session_id else None
+            agent_id = (
+                registry.get_agent_id_from_session(session_id) if session_id else None
+            )
             if not agent_id:
                 agent_id = f"session_{session_id[:8] if session_id else 'unknown'}"
             if agent_id in registry.active_agents:

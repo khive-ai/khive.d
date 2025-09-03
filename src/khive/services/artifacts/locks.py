@@ -5,12 +5,11 @@ Provides asyncio-based locking for coordinating document updates.
 Based on Gemini Deep Think V2 architecture.
 """
 
+import asyncio
 import logging
 from collections import defaultdict
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-
-import lionagi.ln as ln
 
 from .exceptions import ConcurrencyError
 
@@ -35,8 +34,8 @@ class LockManager:
         Args:
             default_timeout: Default timeout in seconds for lock acquisition
         """
-        # Stores the lionagi Lock instance for a given key
-        self._locks: dict[str, ln.Lock] = defaultdict(ln.Lock)
+        # Stores the asyncio Lock instance for a given key
+        self._locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._timeout = default_timeout
 
         # Track lock usage for potential cleanup (production optimization)
@@ -72,13 +71,13 @@ class LockManager:
         logger.debug(f"Attempting to acquire lock for resource: {resource_key}")
 
         try:
-            # Use lionagi's fail_after for structured timeout control
-            with ln.fail_after(effective_timeout):
+            # Use asyncio.wait_for for timeout control
+            async with asyncio.timeout(effective_timeout):
                 async with lock:
                     logger.debug(f"Lock acquired for resource: {resource_key}")
                     yield
 
-        except TimeoutError:
+        except (asyncio.TimeoutError, TimeoutError):
             logger.warning(
                 f"Lock acquisition timeout ({effective_timeout}s) for resource: {resource_key}"
             )
@@ -104,7 +103,7 @@ class LockManager:
             "total_locks": len(self._locks),
             "lock_usage": dict(self._lock_usage),
             "currently_locked": {
-                key: lock._acquired for key, lock in self._locks.items()
+                key: lock.locked() for key, lock in self._locks.items()
             },
         }
 
@@ -125,7 +124,7 @@ class LockManager:
         keys_to_remove = []
 
         for key, lock in self._locks.items():
-            if not lock._acquired and self._lock_usage[key] <= 1:
+            if not lock.locked() and self._lock_usage[key] <= 1:
                 keys_to_remove.append(key)
 
         # Keep only the most frequently used locks
@@ -138,7 +137,7 @@ class LockManager:
 
         # Clean up the selected locks
         for key in keys_to_remove:
-            if key in self._locks and not self._locks[key]._acquired:
+            if key in self._locks and not self._locks[key].locked():
                 del self._locks[key]
                 del self._lock_usage[key]
 
