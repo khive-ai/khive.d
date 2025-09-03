@@ -3,17 +3,20 @@
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js 18.x or 20.x
 - npm 9.x or later
 - Git
 
 ### Installation
+
 ```bash
 cd frontend
 npm install
 ```
 
 ### Development Server
+
 ```bash
 npm run dev
 ```
@@ -84,18 +87,21 @@ frontend/
 ### 2. Code Quality Standards
 
 #### TypeScript
+
 - Use strict mode (already configured)
 - Define explicit return types for functions
 - Use proper generics for reusable components
 - Avoid `any` types
 
 #### React Best Practices
+
 - Use functional components with hooks
 - Implement proper error boundaries
 - Use React.memo for performance optimization when needed
 - Follow the single responsibility principle
 
 #### Styling
+
 - Use Material-UI for primary components
 - Use Tailwind CSS for utility styling
 - Follow the design system patterns
@@ -104,17 +110,20 @@ frontend/
 ### 3. State Management
 
 #### Server State (API Data)
+
 - Use TanStack React Query for all server interactions
 - Follow the established query key patterns
 - Implement optimistic updates where appropriate
 - Handle loading and error states consistently
 
 #### Client State
+
 - Use React useState/useReducer for local component state
 - Use custom hooks for shared logic
 - Leverage Context API for deeply nested prop drilling scenarios
 
 #### Form State
+
 - Use React Hook Form for all forms
 - Implement proper validation with TypeScript
 - Handle async validation for API calls
@@ -122,18 +131,19 @@ frontend/
 ### 4. API Integration
 
 #### Making API Calls
+
 ```typescript
-import { useSessionsQuery } from '@/api';
+import { useSessionsQuery } from "@/api";
 
 function SessionsList() {
   const { data: sessions, isLoading, error } = useSessionsQuery();
-  
+
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorMessage error={error} />;
-  
+
   return (
     <div>
-      {sessions?.map(session => (
+      {sessions?.map((session) => (
         <SessionCard key={session.id} session={session} />
       ))}
     </div>
@@ -142,6 +152,7 @@ function SessionsList() {
 ```
 
 #### Error Handling
+
 - Use the centralized error handling from the API client
 - Display user-friendly error messages
 - Implement retry mechanisms where appropriate
@@ -150,27 +161,30 @@ function SessionsList() {
 ### 5. Testing Strategy
 
 #### Unit Tests
+
 ```bash
 npm run test          # Watch mode
 npm run test:ci       # CI mode with coverage
 ```
 
 #### E2E Tests
+
 ```bash
 npm run test:e2e      # Run E2E tests
 npm run test:e2e:ui   # Run with UI
 ```
 
 #### Test Structure
-```typescript
-import { render, screen } from '@testing-library/react';
-import { SessionMonitor } from '../session-monitor';
 
-describe('SessionMonitor', () => {
-  it('displays session information correctly', () => {
+```typescript
+import { render, screen } from "@testing-library/react";
+import { SessionMonitor } from "../session-monitor";
+
+describe("SessionMonitor", () => {
+  it("displays session information correctly", () => {
     const session = mockSession();
     render(<SessionMonitor session={session} />);
-    
+
     expect(screen.getByText(session.objective)).toBeInTheDocument();
   });
 });
@@ -224,23 +238,25 @@ NEXT_PUBLIC_ENABLE_ANALYTICS=false
 ## Component Development Patterns
 
 ### UI Components
+
 Create reusable, accessible UI components:
 
 ```typescript
 // src/components/ui/button.tsx
 export interface ButtonProps {
-  variant?: 'default' | 'destructive' | 'outline';
-  size?: 'sm' | 'default' | 'lg';
+  variant?: "default" | "destructive" | "outline";
+  size?: "sm" | "default" | "lg";
   loading?: boolean;
   children: React.ReactNode;
 }
 
-export const Button = ({ variant = 'default', ...props }) => {
+export const Button = ({ variant = "default", ...props }) => {
   // Implementation
 };
 ```
 
 ### Feature Components
+
 Build domain-specific components:
 
 ```typescript
@@ -258,18 +274,21 @@ export const SessionMonitor = ({ session, onAction }) => {
 ## Performance Guidelines
 
 ### Bundle Optimization
+
 - Use dynamic imports for large components
 - Implement code splitting at route level
 - Optimize images with Next.js Image component
 - Use React.lazy for heavy components
 
 ### Runtime Performance
+
 - Implement proper memoization with React.memo
 - Use useMemo and useCallback judiciously
 - Avoid unnecessary re-renders
 - Profile with React DevTools
 
 ### Network Performance
+
 - Implement efficient caching strategies
 - Use React Query's background updates
 - Implement proper loading states

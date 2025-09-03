@@ -1,10 +1,10 @@
-import type { NextConfig } from 'next';
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Performance optimizations inspired by rust-performance principles
   compiler: {
     // Remove console logs in production (zero-cost abstraction)
-    removeConsole: process.env.NODE_ENV === 'production',
+    removeConsole: process.env.NODE_ENV === "production",
   },
 
   // Experimental features for better performance
@@ -12,9 +12,9 @@ const nextConfig: NextConfig = {
     // Use Turbopack for faster builds
     turbo: {
       rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
+        "*.svg": {
+          loaders: ["@svgr/webpack"],
+          as: "*.js",
         },
       },
     },
@@ -26,7 +26,7 @@ const nextConfig: NextConfig = {
 
   // Image optimization
   images: {
-    formats: ['image/webp', 'image/avif'],
+    formats: ["image/webp", "image/avif"],
     minimumCacheTTL: 31536000, // 1 year cache
   },
 
@@ -38,22 +38,22 @@ const nextConfig: NextConfig = {
       config.optimization = {
         ...config.optimization,
         splitChunks: {
-          chunks: 'all',
+          chunks: "all",
           cacheGroups: {
             vendor: {
               test: /[\\/]node_modules[\\/]/,
-              name: 'vendors',
-              chunks: 'all',
+              name: "vendors",
+              chunks: "all",
             },
             mui: {
               test: /[\\/]node_modules[\\/]@mui[\\/]/,
-              name: 'mui',
-              chunks: 'all',
+              name: "mui",
+              chunks: "all",
             },
             common: {
-              name: 'common',
+              name: "common",
               minChunks: 2,
-              chunks: 'all',
+              chunks: "all",
               enforce: true,
             },
           },
@@ -73,23 +73,23 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: "/:path*",
         headers: [
           {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on',
+            key: "X-DNS-Prefetch-Control",
+            value: "on",
           },
           {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload',
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
           },
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
+            key: "X-Content-Type-Options",
+            value: "nosniff",
           },
           {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
+            key: "Referrer-Policy",
+            value: "origin-when-cross-origin",
           },
         ],
       },
@@ -100,32 +100,32 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: '/home',
-        destination: '/',
+        source: "/home",
+        destination: "/",
         permanent: true,
       },
       {
-        source: '/dashboard',
-        destination: '/dashboard/sessions',
+        source: "/dashboard",
+        destination: "/dashboard/sessions",
         permanent: false,
       },
     ];
   },
-  
+
   // ESLint configuration for build
   eslint: {
-    dirs: ['src', 'app', 'components', 'lib'],
+    dirs: ["src", "app", "components", "lib"],
     ignoreDuringBuilds: false,
   },
-  
+
   // TypeScript configuration for build
   typescript: {
     ignoreBuildErrors: false,
   },
-  
+
   // Output configuration for deployment
-  output: 'standalone',
-  
+  output: "standalone",
+
   // Disable x-powered-by header
   poweredByHeader: false,
 };

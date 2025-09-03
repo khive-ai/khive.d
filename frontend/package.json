@@ -30,6 +30,7 @@
     "@tanstack/react-table": "^8.21.3",
     "@types/socket.io-client": "^1.4.36",
     "clsx": "^2.1.1",
+    "critters": "^0.0.23",
     "next": "15.5.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",

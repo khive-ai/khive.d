@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+import "@testing-library/jest-dom";
 
 // Mock IntersectionObserver
 global.IntersectionObserver = class IntersectionObserver {
@@ -29,7 +29,7 @@ global.ResizeObserver = class ResizeObserver {
 };
 
 // Mock matchMedia
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: jest.fn().mockImplementation((query) => ({
     matches: false,
@@ -44,7 +44,7 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock next/navigation
-jest.mock('next/navigation', () => ({
+jest.mock("next/navigation", () => ({
   useRouter: () => ({
     push: jest.fn(),
     replace: jest.fn(),
@@ -53,7 +53,7 @@ jest.mock('next/navigation', () => ({
     refresh: jest.fn(),
     prefetch: jest.fn(),
   }),
-  usePathname: () => '/',
+  usePathname: () => "/",
   useSearchParams: () => new URLSearchParams(),
 }));
 

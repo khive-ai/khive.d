@@ -3,26 +3,26 @@
  * Displays individual agent information and current status
  */
 
-import React from 'react';
+import React from "react";
 import {
-  Box,
-  Typography,
   Avatar,
+  Box,
   Chip,
   IconButton,
-  Tooltip,
   LinearProgress,
-} from '@mui/material';
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import {
-  Person as PersonIcon,
-  Stop as StopIcon,
-  Refresh as RefreshIcon,
   Info as InfoIcon,
+  Person as PersonIcon,
   PlayArrow as PlayIcon,
-} from '@mui/icons-material';
-import { Card, CardHeader, CardContent, StatusBadge } from '@/ui';
-import { Agent } from '@/types';
-import { formatDuration, capitalize, camelToTitle } from '@/utils';
+  Refresh as RefreshIcon,
+  Stop as StopIcon,
+} from "@mui/icons-material";
+import { Card, CardContent, CardHeader, StatusBadge } from "@/ui";
+import { Agent } from "@/types";
+import { camelCaseToReadable, capitalize, formatDuration } from "@/lib/utils";
 
 export interface AgentStatusProps {
   agent: Agent;
@@ -42,23 +42,29 @@ export const AgentStatus: React.FC<AgentStatusProps> = ({
   const getAvatarColor = (role: string) => {
     // Generate consistent colors based on role
     const colors = [
-      '#1976d2', '#dc004e', '#2e7d32', '#ed6c02', 
-      '#9c27b0', '#00acc1', '#f57c00', '#5d4037'
+      "#1976d2",
+      "#dc004e",
+      "#2e7d32",
+      "#ed6c02",
+      "#9c27b0",
+      "#00acc1",
+      "#f57c00",
+      "#5d4037",
     ];
     const index = role.charCodeAt(0) % colors.length;
     return colors[index];
   };
 
-  const getStatusIcon = (status: Agent['status']) => {
+  const getStatusIcon = (status: Agent["status"]) => {
     switch (status) {
-      case 'active':
-        return '🟢';
-      case 'idle':
-        return '🟡';
-      case 'error':
-        return '🔴';
+      case "active":
+        return "🟢";
+      case "idle":
+        return "🟡";
+      case "error":
+        return "🔴";
       default:
-        return '⚪';
+        return "⚪";
     }
   };
 
@@ -72,18 +78,18 @@ export const AgentStatus: React.FC<AgentStatusProps> = ({
   const actions = (
     <Box display="flex" alignItems="center" gap={1}>
       <Tooltip title="View Details">
-        <IconButton 
-          size="small" 
+        <IconButton
+          size="small"
           onClick={() => onViewDetails?.(agent.id)}
         >
           <InfoIcon />
         </IconButton>
       </Tooltip>
-      
-      {agent.status === 'active' && (
+
+      {agent.status === "active" && (
         <Tooltip title="Stop Agent">
-          <IconButton 
-            size="small" 
+          <IconButton
+            size="small"
             onClick={() => onStop?.(agent.id)}
             color="error"
           >
@@ -91,11 +97,11 @@ export const AgentStatus: React.FC<AgentStatusProps> = ({
           </IconButton>
         </Tooltip>
       )}
-      
-      {(agent.status === 'idle' || agent.status === 'error') && (
+
+      {(agent.status === "idle" || agent.status === "error") && (
         <Tooltip title="Restart Agent">
-          <IconButton 
-            size="small" 
+          <IconButton
+            size="small"
             onClick={() => onRestart?.(agent.id)}
             color="primary"
           >
@@ -103,7 +109,7 @@ export const AgentStatus: React.FC<AgentStatusProps> = ({
           </IconButton>
         </Tooltip>
       )}
-      
+
       <Tooltip title="Refresh">
         <IconButton size="small">
           <RefreshIcon />
@@ -117,20 +123,20 @@ export const AgentStatus: React.FC<AgentStatusProps> = ({
       <CardHeader
         title={
           <Box display="flex" alignItems="center" gap={2}>
-            <Avatar 
-              sx={{ 
-                width: 32, 
-                height: 32, 
+            <Avatar
+              sx={{
+                width: 32,
+                height: 32,
                 bgcolor: getAvatarColor(agent.role),
-                fontSize: '0.875rem',
-                fontWeight: 600
+                fontSize: "0.875rem",
+                fontWeight: 600,
               }}
             >
               {agent.role.charAt(0).toUpperCase()}
             </Avatar>
             <Box>
               <Typography variant="subtitle1" fontWeight={600}>
-                {camelToTitle(agent.role)}
+                {camelCaseToReadable(agent.role)}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {agent.domain}
@@ -146,22 +152,31 @@ export const AgentStatus: React.FC<AgentStatusProps> = ({
         }
         action={actions}
       />
-      
+
       <CardContent>
         <Box display="flex" flexDirection="column" gap={2}>
           {/* Current Task */}
           {agent.currentTask && (
             <Box>
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                gutterBottom
+              >
                 Current Task
               </Typography>
               <Typography variant="body2" mb={1}>
                 {agent.currentTask}
               </Typography>
-              
-              {agent.status === 'active' && (
+
+              {agent.status === "active" && (
                 <Box>
-                  <Box display="flex" justifyContent="between" alignItems="center" mb={0.5}>
+                  <Box
+                    display="flex"
+                    justifyContent="between"
+                    alignItems="center"
+                    mb={0.5}
+                  >
                     <Typography variant="caption" color="text.secondary">
                       Progress
                     </Typography>
@@ -169,8 +184,8 @@ export const AgentStatus: React.FC<AgentStatusProps> = ({
                       {getTaskProgress().toFixed(0)}%
                     </Typography>
                   </Box>
-                  <LinearProgress 
-                    variant="determinate" 
+                  <LinearProgress
+                    variant="determinate"
                     value={getTaskProgress()}
                     sx={{ height: 6, borderRadius: 3 }}
                   />
@@ -178,7 +193,7 @@ export const AgentStatus: React.FC<AgentStatusProps> = ({
               )}
             </Box>
           )}
-          
+
           {/* Agent Metrics */}
           <Box display="flex" flexWrap="wrap" gap={1} alignItems="center">
             {agent.duration && (
@@ -188,30 +203,32 @@ export const AgentStatus: React.FC<AgentStatusProps> = ({
                 variant="outlined"
               />
             )}
-            
+
             <Chip
               label={`Session: ${agent.sessionId.slice(-6)}`}
               size="small"
               variant="outlined"
             />
-            
+
             <Box display="flex" alignItems="center" gap={0.5}>
-              <Typography variant="caption">{getStatusIcon(agent.status)}</Typography>
+              <Typography variant="caption">
+                {getStatusIcon(agent.status)}
+              </Typography>
               <Typography variant="caption" color="text.secondary">
                 {capitalize(agent.status)}
               </Typography>
             </Box>
           </Box>
-          
+
           {/* Error State */}
-          {agent.status === 'error' && (
-            <Box 
-              sx={{ 
-                backgroundColor: 'error.light', 
-                p: 1.5, 
+          {agent.status === "error" && (
+            <Box
+              sx={{
+                backgroundColor: "error.light",
+                p: 1.5,
                 borderRadius: 1,
-                border: '1px solid',
-                borderColor: 'error.main'
+                border: "1px solid",
+                borderColor: "error.main",
               }}
             >
               <Typography variant="body2" color="error.dark">
@@ -219,16 +236,16 @@ export const AgentStatus: React.FC<AgentStatusProps> = ({
               </Typography>
             </Box>
           )}
-          
+
           {/* Idle State */}
-          {agent.status === 'idle' && !agent.currentTask && (
-            <Box 
-              sx={{ 
-                backgroundColor: 'warning.light', 
-                p: 1.5, 
+          {agent.status === "idle" && !agent.currentTask && (
+            <Box
+              sx={{
+                backgroundColor: "warning.light",
+                p: 1.5,
                 borderRadius: 1,
-                border: '1px solid',
-                borderColor: 'warning.main'
+                border: "1px solid",
+                borderColor: "warning.main",
               }}
             >
               <Typography variant="body2" color="warning.dark">

@@ -1,6 +1,8 @@
 # Khive Frontend
 
-A high-performance Next.js application built with TypeScript, optimized for scalability and developer experience. This project implements rust-performance inspired optimization principles and comprehensive monitoring.
+A high-performance Next.js application built with TypeScript, optimized for
+scalability and developer experience. This project implements rust-performance
+inspired optimization principles and comprehensive monitoring.
 
 ## 🚀 Features
 
@@ -70,18 +72,21 @@ Open [http://localhost:3000](http://localhost:3000) to see the application.
 ## 📝 Available Scripts
 
 ### Development
+
 - `npm run dev` - Start development server with Turbopack
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run type-check` - Run TypeScript type checking
 
 ### Code Quality
+
 - `npm run lint` - Run ESLint
 - `npm run lint:fix` - Fix ESLint issues automatically
 - `npm run format` - Format code with Prettier
 - `npm run format:check` - Check code formatting
 
 ### Testing
+
 - `npm run test` - Run unit tests
 - `npm run test:watch` - Run tests in watch mode
 - `npm run test:coverage` - Run tests with coverage report
@@ -90,6 +95,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the application.
 - `npm run test:e2e:ui` - Run E2E tests with UI mode
 
 ### Performance
+
 - `npm run analyze` - Analyze bundle size
 
 ## 🏗️ Architecture
@@ -113,6 +119,7 @@ The project implements several rust-performance inspired optimizations:
 ## 🧪 Testing
 
 ### Unit Testing
+
 Uses Jest with React Testing Library for comprehensive component testing:
 
 ```bash
@@ -120,6 +127,7 @@ npm run test
 ```
 
 ### E2E Testing
+
 Playwright for end-to-end testing across multiple browsers:
 
 ```bash
@@ -127,16 +135,19 @@ npm run test:e2e
 ```
 
 ### Performance Testing
+
 Lighthouse CI for automated performance monitoring in CI/CD.
 
 ## 🐳 Docker
 
 ### Development
+
 ```bash
 docker-compose up frontend-dev --profile dev
 ```
 
 ### Production
+
 ```bash
 docker-compose up frontend
 ```
@@ -187,7 +198,8 @@ The application automatically tracks:
 
 ### Development Monitor
 
-In development mode, a real-time performance monitor appears in the bottom-right corner showing current metrics and budget violations.
+In development mode, a real-time performance monitor appears in the bottom-right
+corner showing current metrics and budget violations.
 
 ### Performance Budget
 
@@ -195,10 +207,10 @@ Default performance budgets are configured with rust-performance principles:
 
 ```typescript
 const performanceBudget = {
-  fcp: 1500,  // 1.5s
-  lcp: 2500,  // 2.5s
-  cls: 0.1,   // 0.1
-  fid: 100,   // 100ms
+  fcp: 1500, // 1.5s
+  lcp: 2500, // 2.5s
+  cls: 0.1, // 0.1
+  fid: 100, // 100ms
 };
 ```
 

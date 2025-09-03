@@ -2,91 +2,93 @@
  * Input component with various styles and validation states
  */
 
-import * as React from 'react';
-import { TextField, TextFieldProps, InputAdornment } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import { cn } from '@/utils';
+import * as React from "react";
+import { InputAdornment, TextField, TextFieldProps } from "@mui/material";
+import { styled } from "@mui/material/styles";
+import { cn } from "@/lib/utils";
 
-export interface InputProps extends Omit<TextFieldProps, 'variant' | 'size'> {
-  variant?: 'default' | 'filled' | 'ghost';
-  size?: 'sm' | 'default' | 'lg';
+export interface InputProps extends Omit<TextFieldProps, "variant" | "size"> {
+  variant?: "default" | "filled" | "ghost";
+  size?: "sm" | "default" | "lg";
   startIcon?: React.ReactNode;
   endIcon?: React.ReactNode;
 }
 
-const StyledTextField = styled(TextField)<InputProps>(({ theme, variant, size }) => ({
-  '& .MuiInputBase-root': {
+const StyledTextField = styled(TextField)<InputProps>((
+  { theme, variant, size },
+) => ({
+  "& .MuiInputBase-root": {
     borderRadius: theme.spacing(1),
-    transition: 'all 0.2s ease-in-out',
-    
+    transition: "all 0.2s ease-in-out",
+
     // Size styles
-    ...(size === 'sm' && {
+    ...(size === "sm" && {
       height: 36,
-      fontSize: '0.875rem',
+      fontSize: "0.875rem",
     }),
-    
-    ...(size === 'default' && {
+
+    ...(size === "default" && {
       height: 44,
-      fontSize: '1rem',
+      fontSize: "1rem",
     }),
-    
-    ...(size === 'lg' && {
+
+    ...(size === "lg" && {
       height: 52,
-      fontSize: '1.125rem',
+      fontSize: "1.125rem",
     }),
   },
-  
-  '& .MuiInputBase-input': {
+
+  "& .MuiInputBase-input": {
     padding: theme.spacing(1, 1.5),
   },
-  
+
   // Variant styles
-  ...(variant === 'default' && {
-    '& .MuiOutlinedInput-root': {
+  ...(variant === "default" && {
+    "& .MuiOutlinedInput-root": {
       backgroundColor: theme.palette.background.paper,
-      '& fieldset': {
+      "& fieldset": {
         borderColor: theme.palette.divider,
       },
-      '&:hover fieldset': {
+      "&:hover fieldset": {
         borderColor: theme.palette.primary.main,
       },
-      '&.Mui-focused fieldset': {
+      "&.Mui-focused fieldset": {
         borderColor: theme.palette.primary.main,
         borderWidth: 2,
       },
     },
   }),
-  
-  ...(variant === 'filled' && {
-    '& .MuiFilledInput-root': {
+
+  ...(variant === "filled" && {
+    "& .MuiFilledInput-root": {
       backgroundColor: theme.palette.grey[50],
       border: `1px solid ${theme.palette.divider}`,
       borderRadius: theme.spacing(1),
-      '&:hover': {
+      "&:hover": {
         backgroundColor: theme.palette.grey[100],
         borderColor: theme.palette.primary.main,
       },
-      '&.Mui-focused': {
+      "&.Mui-focused": {
         backgroundColor: theme.palette.background.paper,
         borderColor: theme.palette.primary.main,
         borderWidth: 2,
       },
-      '&:before, &:after': {
-        display: 'none',
+      "&:before, &:after": {
+        display: "none",
       },
     },
   }),
-  
-  ...(variant === 'ghost' && {
-    '& .MuiOutlinedInput-root': {
-      backgroundColor: 'transparent',
-      '& fieldset': {
-        border: 'none',
+
+  ...(variant === "ghost" && {
+    "& .MuiOutlinedInput-root": {
+      backgroundColor: "transparent",
+      "& fieldset": {
+        border: "none",
       },
-      '&:hover': {
+      "&:hover": {
         backgroundColor: theme.palette.action.hover,
       },
-      '&.Mui-focused': {
+      "&.Mui-focused": {
         backgroundColor: theme.palette.background.paper,
         boxShadow: `0 0 0 2px ${theme.palette.primary.main}`,
       },
@@ -95,13 +97,13 @@ const StyledTextField = styled(TextField)<InputProps>(({ theme, variant, size })
 }));
 
 export const Input = React.forwardRef<HTMLDivElement, InputProps>(
-  ({ 
-    className, 
-    variant = 'default', 
-    size = 'default',
+  ({
+    className,
+    variant = "default",
+    size = "default",
     startIcon,
     endIcon,
-    ...props 
+    ...props
   }, ref) => {
     const InputProps = {
       ...(startIcon && {
@@ -124,13 +126,13 @@ export const Input = React.forwardRef<HTMLDivElement, InputProps>(
       <StyledTextField
         ref={ref}
         className={cn(className)}
-        variant={variant === 'filled' ? 'filled' : 'outlined'}
+        variant={variant === "filled" ? "filled" : "outlined"}
         size={size}
         InputProps={InputProps}
         {...props}
       />
     );
-  }
+  },
 );
 
-Input.displayName = 'Input';
+Input.displayName = "Input";

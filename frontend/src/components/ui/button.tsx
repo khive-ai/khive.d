@@ -3,95 +3,107 @@
  * Built with Material-UI but enhanced with our design system
  */
 
-import * as React from 'react';
-import { Button as MuiButton, ButtonProps as MuiButtonProps, CircularProgress } from '@mui/material';
-import { styled } from '@mui/material/styles';
-import { cn } from '@/utils';
+import * as React from "react";
+import {
+  Button as MuiButton,
+  ButtonProps as MuiButtonProps,
+  CircularProgress,
+} from "@mui/material";
+import { styled } from "@mui/material/styles";
+import { cn } from "@/lib/utils";
 
-export interface ButtonProps extends Omit<MuiButtonProps, 'variant' | 'size'> {
-  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
-  size?: 'default' | 'sm' | 'lg' | 'icon';
+export interface ButtonProps extends Omit<MuiButtonProps, "variant" | "size"> {
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
+  size?: "default" | "sm" | "lg" | "icon";
   loading?: boolean;
   asChild?: boolean;
 }
 
-const StyledButton = styled(MuiButton)<ButtonProps>(({ theme, variant, size }) => ({
-  textTransform: 'none',
+const StyledButton = styled(MuiButton)<ButtonProps>((
+  { theme, variant, size },
+) => ({
+  textTransform: "none",
   fontWeight: 500,
   borderRadius: theme.spacing(1),
-  transition: 'all 0.2s ease-in-out',
-  
+  transition: "all 0.2s ease-in-out",
+
   // Variant styles
-  ...(variant === 'default' && {
+  ...(variant === "default" && {
     backgroundColor: theme.palette.primary.main,
     color: theme.palette.primary.contrastText,
-    '&:hover': {
+    "&:hover": {
       backgroundColor: theme.palette.primary.dark,
     },
   }),
-  
-  ...(variant === 'destructive' && {
+
+  ...(variant === "destructive" && {
     backgroundColor: theme.palette.error.main,
     color: theme.palette.error.contrastText,
-    '&:hover': {
+    "&:hover": {
       backgroundColor: theme.palette.error.dark,
     },
   }),
-  
-  ...(variant === 'outline' && {
-    backgroundColor: 'transparent',
+
+  ...(variant === "outline" && {
+    backgroundColor: "transparent",
     color: theme.palette.text.primary,
     border: `1px solid ${theme.palette.divider}`,
-    '&:hover': {
+    "&:hover": {
       backgroundColor: theme.palette.action.hover,
     },
   }),
-  
-  ...(variant === 'secondary' && {
+
+  ...(variant === "secondary" && {
     backgroundColor: theme.palette.grey[100],
     color: theme.palette.text.primary,
-    '&:hover': {
+    "&:hover": {
       backgroundColor: theme.palette.grey[200],
     },
   }),
-  
-  ...(variant === 'ghost' && {
-    backgroundColor: 'transparent',
+
+  ...(variant === "ghost" && {
+    backgroundColor: "transparent",
     color: theme.palette.text.primary,
-    '&:hover': {
+    "&:hover": {
       backgroundColor: theme.palette.action.hover,
     },
   }),
-  
-  ...(variant === 'link' && {
-    backgroundColor: 'transparent',
+
+  ...(variant === "link" && {
+    backgroundColor: "transparent",
     color: theme.palette.primary.main,
-    textDecoration: 'underline',
-    '&:hover': {
-      textDecoration: 'none',
+    textDecoration: "underline",
+    "&:hover": {
+      textDecoration: "none",
     },
   }),
-  
+
   // Size styles
-  ...(size === 'sm' && {
+  ...(size === "sm" && {
     height: 32,
     padding: theme.spacing(0, 2),
-    fontSize: '0.875rem',
+    fontSize: "0.875rem",
   }),
-  
-  ...(size === 'default' && {
+
+  ...(size === "default" && {
     height: 40,
     padding: theme.spacing(0, 3),
-    fontSize: '1rem',
+    fontSize: "1rem",
   }),
-  
-  ...(size === 'lg' && {
+
+  ...(size === "lg" && {
     height: 48,
     padding: theme.spacing(0, 4),
-    fontSize: '1.125rem',
+    fontSize: "1.125rem",
   }),
-  
-  ...(size === 'icon' && {
+
+  ...(size === "icon" && {
     height: 40,
     width: 40,
     padding: 0,
@@ -100,14 +112,14 @@ const StyledButton = styled(MuiButton)<ButtonProps>(({ theme, variant, size }) =
 }));
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ 
-    className, 
-    variant = 'default', 
-    size = 'default', 
+  ({
+    className,
+    variant = "default",
+    size = "default",
     loading = false,
     disabled,
     children,
-    ...props 
+    ...props
   }, ref) => {
     return (
       <StyledButton
@@ -119,15 +131,15 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {loading && (
-          <CircularProgress 
-            size={size === 'sm' ? 16 : size === 'lg' ? 24 : 20} 
+          <CircularProgress
+            size={size === "sm" ? 16 : size === "lg" ? 24 : 20}
             sx={{ mr: 1 }}
           />
         )}
         {children}
       </StyledButton>
     );
-  }
+  },
 );
 
-Button.displayName = 'Button';
+Button.displayName = "Button";

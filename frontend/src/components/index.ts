@@ -4,10 +4,10 @@
  */
 
 // UI Components
-export * from './ui';
+export * from "./ui";
 
-// Feature Components  
-export * from './feature';
+// Feature Components
+export * from "./feature";
 
 // Layout Components (to be added)
 // export * from './layout';

@@ -2,7 +2,9 @@
 
 ## Project Overview
 
-This Next.js application serves as the web interface for the Khive intelligent orchestration system, providing real-time monitoring, control, and visualization of agent coordination and task execution.
+This Next.js application serves as the web interface for the Khive intelligent
+orchestration system, providing real-time monitoring, control, and visualization
+of agent coordination and task execution.
 
 ## Current Technology Stack
 

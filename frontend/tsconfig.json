@@ -42,6 +42,7 @@
       "@/lib/*": ["./src/lib/*"],
       "@/api/*": ["./src/lib/api/*"],
       "@/hooks/*": ["./src/lib/hooks/*"],
+      "@/utils": ["./src/lib/utils"],
       "@/utils/*": ["./src/lib/utils/*"],
       "@/types/*": ["./src/lib/types/*"],
       "@/constants/*": ["./src/lib/constants/*"],
@@ -60,5 +61,16 @@
     "src/**/*.ts",
     "src/**/*.tsx"
   ],
-  "exclude": ["node_modules", ".next", "out", "build", "dist"]
+  "exclude": [
+    "node_modules",
+    ".next",
+    "out",
+    "build",
+    "dist",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/__tests__/**",
+    "jest.config.js",
+    "jest.setup.js"
+  ]
 }
