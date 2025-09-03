@@ -120,7 +120,7 @@ class NewDocCommand(ConfigurableCLICommand):
                 templates.append(template_file.stem)
 
         if templates:
-            message = f"Available templates:\n" + "\n".join(
+            message = "Available templates:\n" + "\n".join(
                 f"  - {t}" for t in sorted(templates)
             )
         else:

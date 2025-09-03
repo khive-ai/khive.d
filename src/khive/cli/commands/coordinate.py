@@ -10,7 +10,6 @@ Commands:
 """
 
 import sys
-from typing import Optional
 
 import click
 
@@ -26,14 +25,13 @@ from ..khive_coordinate import (
 @click.group()
 def cli_entry():
     """Agent coordination commands for explicit multi-agent protocols."""
-    pass
 
 
 @cli_entry.command("pre-task")
 @click.option("--description", required=True, help="Task description")
 @click.option("--agent-id", required=True, help="Agent identifier")
 @click.option("--coordination-id", help="Coordination session ID")
-def cmd_pre_task(description: str, agent_id: str, coordination_id: Optional[str]):
+def cmd_pre_task(description: str, agent_id: str, coordination_id: str | None):
     """Initialize task coordination - BEFORE starting work."""
     result = pre_task(agent_id, description, coordination_id)
 
@@ -85,7 +83,7 @@ def cmd_post_edit(file_path: str, agent_id: str, operation: str):
 @cli_entry.command("post-task")
 @click.option("--agent-id", required=True, help="Agent identifier")
 @click.option("--summary", help="Task completion summary")
-def cmd_post_task(agent_id: str, summary: Optional[str]):
+def cmd_post_task(agent_id: str, summary: str | None):
     """Complete task coordination - AFTER finishing work."""
     result = post_task(agent_id, summary or "")
 

@@ -3,13 +3,10 @@ Additional API Routes for Khive Daemon Server
 Implements missing endpoints identified during backend-frontend integration.
 """
 
-import asyncio
-import json
 import logging
 import time
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
@@ -25,7 +22,7 @@ class EventModel(BaseModel):
     timestamp: str
     type: str
     source: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
     level: str = "info"
 
 
@@ -34,7 +31,7 @@ class CreateEventRequest(BaseModel):
 
     type: str
     source: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
     level: str = "info"
 
 
@@ -42,8 +39,8 @@ class CreateSessionRequest(BaseModel):
     """Request model for creating new sessions."""
 
     name: str
-    description: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    description: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 class SystemPerformanceMetrics(BaseModel):
@@ -53,7 +50,7 @@ class SystemPerformanceMetrics(BaseModel):
     cpu_usage: float
     memory_usage: float
     disk_usage: float
-    network_io: Dict[str, int]
+    network_io: dict[str, int]
     active_processes: int
     uptime_seconds: float
 
@@ -67,7 +64,7 @@ class AgentAnalytics(BaseModel):
     completed_tasks: int
     failed_tasks: int
     average_task_duration: float
-    agent_performance: List[Dict[str, Any]]
+    agent_performance: list[dict[str, Any]]
 
 
 def create_additional_routes() -> APIRouter:
@@ -76,14 +73,14 @@ def create_additional_routes() -> APIRouter:
     router = APIRouter()
 
     # In-memory storage for demo purposes (production would use proper persistence)
-    events_storage: List[EventModel] = []
-    plans_storage: List[Dict[str, Any]] = []
+    events_storage: list[EventModel] = []
+    plans_storage: list[dict[str, Any]] = []
 
-    @router.get("/api/events", response_model=List[EventModel])
+    @router.get("/api/events", response_model=list[EventModel])
     async def list_events(
         limit: int = Query(default=50, le=1000),
-        event_type: Optional[str] = Query(default=None),
-        level: Optional[str] = Query(default=None),
+        event_type: str | None = Query(default=None),
+        level: str | None = Query(default=None),
     ):
         """List system events with optional filtering."""
         try:
@@ -133,7 +130,7 @@ def create_additional_routes() -> APIRouter:
     @router.get("/api/plans")
     async def list_plans(
         limit: int = Query(default=50, le=1000),
-        status: Optional[str] = Query(default=None),
+        status: str | None = Query(default=None),
     ):
         """List execution plans with optional filtering."""
         try:
@@ -268,7 +265,7 @@ def register_routes_with_server(app, server_instance):
     @app.get("/api/plans")
     async def list_plans_with_service(
         limit: int = Query(default=50, le=1000),
-        status: Optional[str] = Query(default=None),
+        status: str | None = Query(default=None),
     ):
         """List execution plans using the server's planner service."""
         try:

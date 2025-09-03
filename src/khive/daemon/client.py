@@ -6,7 +6,7 @@ Handles communication with the khive daemon for stateful operations.
 
 import os
 import time
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -253,7 +253,7 @@ class KhiveDaemonClient:
     def orchestrate_task(
         self,
         task_description: str,
-        context: Optional[str] = None,
+        context: str | None = None,
         pattern: str = "fanout",
         max_agents: int = 8,
         visualize: bool = False,
@@ -317,7 +317,7 @@ class KhiveDaemonClient:
 
     def get_orchestration_session_status(
         self, session_id: str
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get status of specific orchestration session."""
         try:
             response = self.client.get(

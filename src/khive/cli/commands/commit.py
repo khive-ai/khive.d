@@ -5,7 +5,6 @@ Modern service-based implementation with backward compatibility.
 """
 
 import sys
-from pathlib import Path
 
 import click
 

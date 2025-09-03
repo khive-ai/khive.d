@@ -11,8 +11,6 @@ from collections import defaultdict
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-import lionagi.ln as ln
-
 from .exceptions import ConcurrencyError
 
 logger = logging.getLogger(__name__)

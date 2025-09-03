@@ -8,22 +8,18 @@ No fake or misleading functionality - only working features.
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from khive.services.artifacts.factory import create_artifacts_service_from_env
 from khive.services.artifacts.service import ArtifactsService
 from khive.services.claude.hooks.coordination import (
     CoordinationRegistry,
-    after_file_edit,
-    before_file_edit,
     check_duplicate_work,
     get_registry,
-    whats_happening,
 )
 from khive.services.composition.agent_composer import AgentComposer
 from khive.services.plan.service import ConsensusPlannerV3 as PlannerService
@@ -88,7 +84,7 @@ class HookEvent(BaseModel):
         "post_agent_spawn",
     ]
     timestamp: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
     filePath: str | None = None
     command: str | None = None
 
@@ -99,8 +95,8 @@ class MetricDataPoint(BaseModel):
 
 
 class SystemPerformanceMetrics(BaseModel):
-    cpu: Dict[str, Union[float, List[MetricDataPoint]]]
-    memory: Dict[str, Union[float, List[MetricDataPoint]]]
+    cpu: dict[str, float | list[MetricDataPoint]]
+    memory: dict[str, float | list[MetricDataPoint]]
     timestamp: str
 
 
@@ -129,27 +125,27 @@ class AgentAnalytics(BaseModel):
     totalTasks: int
     completedTasks: int
     failedTasks: int
-    performanceByRole: List[RolePerformanceMetrics]
-    performanceByDomain: List[DomainPerformanceMetrics]
-    recentActivity: List[AgentActivityPoint]
+    performanceByRole: list[RolePerformanceMetrics]
+    performanceByDomain: list[DomainPerformanceMetrics]
+    recentActivity: list[AgentActivityPoint]
 
 
 class PlanNode(BaseModel):
     id: str
     phase: str
     status: Literal["pending", "running", "completed", "failed"]
-    agents: List[str]
-    tasks: List[str]
+    agents: list[str]
+    tasks: list[str]
     coordinationStrategy: Literal["FAN_OUT_SYNTHESIZE", "PIPELINE", "PARALLEL"]
-    expectedArtifacts: List[str]
-    dependencies: List[str]
+    expectedArtifacts: list[str]
+    dependencies: list[str]
 
 
 class Plan(BaseModel):
     id: str
     sessionId: str
-    nodes: List[PlanNode]
-    edges: List[Dict[str, str]]
+    nodes: list[PlanNode]
+    edges: list[dict[str, str]]
 
 
 class KhiveDaemonServer:
@@ -545,7 +541,7 @@ class KhiveDaemonServer:
 
         # Planning service endpoints
         @self.app.post("/api/plan")
-        async def create_plan(request: Dict[str, Any]):
+        async def create_plan(request: dict[str, Any]):
             """Create execution plan."""
             self.stats["requests"] += 1
             try:
@@ -710,7 +706,7 @@ class KhiveDaemonServer:
                 raise HTTPException(status_code=500, detail=str(e))
 
         # Missing endpoints implementation
-        @self.app.get("/api/events", response_model=List[HookEvent])
+        @self.app.get("/api/events", response_model=list[HookEvent])
         async def get_events():
             """Get hook events for frontend dashboard."""
             self.stats["requests"] += 1
@@ -742,7 +738,7 @@ class KhiveDaemonServer:
                 logger.error(f"Events retrieval failed: {e}")
                 raise HTTPException(status_code=500, detail=str(e))
 
-        @self.app.get("/api/plans", response_model=List[Plan])
+        @self.app.get("/api/plans", response_model=list[Plan])
         async def get_plans():
             """Get execution plans for frontend dashboard."""
             self.stats["requests"] += 1
@@ -792,8 +788,6 @@ class KhiveDaemonServer:
             """Get system performance metrics for observability dashboard."""
             self.stats["requests"] += 1
             try:
-                import time
-
                 import psutil
 
                 # Get current system metrics

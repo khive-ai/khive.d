@@ -5,7 +5,6 @@ Implements ChatGPT's mathematical approach to prevent over-engineering.
 
 import math
 import re
-from typing import List, Tuple
 
 # Keywords that indicate simple tasks
 SIMPLE_KEYWORDS = {
@@ -59,7 +58,7 @@ def sigmoid(x: float) -> float:
         return 0.0 if x < 0 else 1.0
 
 
-def extract_task_features(task_description: str) -> Tuple[int, int, int, int]:
+def extract_task_features(task_description: str) -> tuple[int, int, int, int]:
     """
     Extract features from task description.
 

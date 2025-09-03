@@ -6,7 +6,6 @@ Based on ChatGPT's design - no legacy fields, no fallbacks.
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional
 
 from lionagi.models import HashableModel
 from pydantic import Field
@@ -48,18 +47,18 @@ class TaskPhase(HashableModel):
 
     name: str
     description: str
-    agents: List[AgentRecommendation]
-    dependencies: List[str] = Field(default_factory=list)
+    agents: list[AgentRecommendation]
+    dependencies: list[str] = Field(default_factory=list)
     quality_gate: QualityGate
     coordination_strategy: CoordinationStrategy
-    expected_artifacts: List[str] = Field(default_factory=list)
+    expected_artifacts: list[str] = Field(default_factory=list)
 
 
 class PlannerRequest(HashableModel):
     """Clean request model - no legacy fields."""
 
     task_description: str
-    context: Optional[str] = None
+    context: str | None = None
     time_budget_seconds: float = Field(default=90.0, ge=10.0, le=300.0)
 
 
@@ -70,11 +69,11 @@ class PlannerResponse(HashableModel):
     summary: str
     complexity: ComplexityLevel
     recommended_agents: int
-    phases: List[TaskPhase]
-    coordination_id: Optional[str] = None
+    phases: list[TaskPhase]
+    coordination_id: str | None = None
     confidence: float = Field(ge=0.0, le=1.0)
-    error: Optional[str] = None
-    spawn_commands: List[str] = Field(default_factory=list)
+    error: str | None = None
+    spawn_commands: list[str] = Field(default_factory=list)
 
 
 # Internal consensus models
@@ -82,16 +81,16 @@ class DecompositionCandidate(HashableModel):
     """Raw phase decomposition from generator."""
 
     reasoning: str
-    phases: List[dict]  # Raw phase data before TaskPhase validation
+    phases: list[dict]  # Raw phase data before TaskPhase validation
     estimated_complexity: ComplexityLevel
-    parallelizable_groups: List[List[str]] = Field(default_factory=list)
+    parallelizable_groups: list[list[str]] = Field(default_factory=list)
 
 
 class StrategyCandidate(HashableModel):
     """Strategy assignment from strategist."""
 
     reasoning: str
-    phases: List[TaskPhase]
+    phases: list[TaskPhase]
     coordination_rationale: str
     estimated_agents: int
 

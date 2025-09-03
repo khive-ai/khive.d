@@ -10,13 +10,11 @@ Key problems this solves:
 Clean, honest coordination - only features that actually work.
 """
 
-import json
 import re
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 from pathlib import Path, PurePath
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any
 
 # Stopwords for duplicate detection
 STOP = {
@@ -36,13 +34,13 @@ STOP = {
 }
 
 
-def _sig(t: str) -> Set[str]:
+def _sig(t: str) -> set[str]:
     """Extract signature tokens from task description."""
     toks = re.findall(r"[a-z0-9]+", t.lower())
     return {w for w in toks if w not in STOP and len(w) > 2}
 
 
-def _jaccard(a: Set[str], b: Set[str]) -> float:
+def _jaccard(a: set[str], b: set[str]) -> float:
     """Calculate Jaccard similarity between two token sets."""
     u = len(a | b)
     return 0.0 if u == 0 else len(a & b) / u
@@ -54,7 +52,7 @@ class AgentWork:
 
     agent_id: str
     task: str
-    files_editing: List[str] = field(default_factory=list)
+    files_editing: list[str] = field(default_factory=list)
     started_at: float = field(default_factory=time.time)
     status: str = "active"  # active, completed, failed
 
@@ -82,7 +80,7 @@ class Artifact:
     artifact_id: str
     created_by: str
     content: str
-    file_path: Optional[str] = None
+    file_path: str | None = None
     created_at: float = field(default_factory=time.time)
 
 
@@ -94,7 +92,7 @@ def _norm(path: str) -> str:
         return str(PurePath(path))
 
 
-def _key(path: str) -> Union[Tuple[int, int], str]:
+def _key(path: str) -> tuple[int, int] | str:
     """Get file key based on device+inode or normalized path."""
     p = Path(path)
     try:
@@ -112,14 +110,12 @@ class CoordinationRegistry:
 
     def __init__(self):
         # Core tracking
-        self.active_agents: Dict[str, AgentWork] = {}
-        self.file_locks: Dict[Union[Tuple[int, int], str], FileEdit] = (
-            {}
-        )  # inode-based keys
-        self.artifacts: Dict[str, Artifact] = {}
+        self.active_agents: dict[str, AgentWork] = {}
+        self.file_locks: dict[tuple[int, int] | str, FileEdit] = {}  # inode-based keys
+        self.artifacts: dict[str, Artifact] = {}
 
         # Session mapping - Claude session ID -> agent ID
-        self.session_to_agent: Dict[str, str] = {}
+        self.session_to_agent: dict[str, str] = {}
 
         # Simple metrics
         self.conflicts_prevented = 0
@@ -127,8 +123,8 @@ class CoordinationRegistry:
         self.artifacts_shared = 0
 
     def register_agent_work(
-        self, agent_id: str, task: str, files: List[str] = None
-    ) -> Dict[str, Any]:
+        self, agent_id: str, task: str, files: list[str] = None
+    ) -> dict[str, Any]:
         """
         Register what an agent is working on.
         This provides VISIBILITY to other agents.
@@ -157,7 +153,7 @@ class CoordinationRegistry:
             "agent_id": agent_id,
         }
 
-    def request_file_lock(self, agent_id: str, file_path: str) -> Dict[str, Any]:
+    def request_file_lock(self, agent_id: str, file_path: str) -> dict[str, Any]:
         """
         Request exclusive lock on a file.
         This PREVENTS file edit conflicts - the #1 problem for multi-agent work.
@@ -199,7 +195,7 @@ class CoordinationRegistry:
             "expires_in_seconds": 300,
         }
 
-    def release_file_lock(self, agent_id: str, file_path: str) -> Dict[str, Any]:
+    def release_file_lock(self, agent_id: str, file_path: str) -> dict[str, Any]:
         """Release file lock when done editing."""
         k = _key(file_path)
         if k in self.file_locks:
@@ -215,7 +211,7 @@ class CoordinationRegistry:
 
         return {"status": "not_found", "message": "No lock found"}
 
-    def renew_file_lock(self, agent_id: str, file_path: str) -> Dict[str, Any]:
+    def renew_file_lock(self, agent_id: str, file_path: str) -> dict[str, Any]:
         """Renew file lock to extend TTL without releasing."""
         k = _key(file_path)
         if k in self.file_locks:
@@ -229,7 +225,7 @@ class CoordinationRegistry:
         return {"status": "not_owner", "message": "Cannot renew - not lock owner"}
 
     def share_artifact(
-        self, agent_id: str, content: str, file_path: Optional[str] = None
+        self, agent_id: str, content: str, file_path: str | None = None
     ) -> str:
         """
         Share an artifact for other agents to use.
@@ -247,11 +243,11 @@ class CoordinationRegistry:
         self.artifacts_shared += 1
         return artifact_id
 
-    def get_artifact(self, artifact_id: str) -> Optional[Artifact]:
+    def get_artifact(self, artifact_id: str) -> Artifact | None:
         """Retrieve a shared artifact."""
         return self.artifacts.get(artifact_id)
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """
         Get current coordination status.
         This is what agents need to see to coordinate effectively.
@@ -292,7 +288,7 @@ class CoordinationRegistry:
             },
         }
 
-    def complete_work(self, agent_id: str) -> Dict[str, Any]:
+    def complete_work(self, agent_id: str) -> dict[str, Any]:
         """Mark agent's work as complete and release all locks."""
         if agent_id not in self.active_agents:
             return {"status": "not_found", "message": "Agent not found"}
@@ -324,7 +320,7 @@ class CoordinationRegistry:
         """Map Claude session ID to agent ID."""
         self.session_to_agent[session_id] = agent_id
 
-    def get_agent_id_from_session(self, session_id: str) -> Optional[str]:
+    def get_agent_id_from_session(self, session_id: str) -> str | None:
         """Get agent ID from Claude session ID."""
         return self.session_to_agent.get(session_id)
 
@@ -335,7 +331,7 @@ class CoordinationRegistry:
 
 
 # Global registry instance
-_registry: Optional[CoordinationRegistry] = None
+_registry: CoordinationRegistry | None = None
 
 
 def get_registry() -> CoordinationRegistry:
@@ -363,7 +359,7 @@ def after_file_edit(agent_id: str, file_path: str):
     registry.release_file_lock(agent_id, file_path)
 
 
-def check_duplicate_work(agent_id: str, task: str) -> Optional[str]:
+def check_duplicate_work(agent_id: str, task: str) -> str | None:
     """Check if another agent is already doing this task."""
     registry = get_registry()
     result = registry.register_agent_work(agent_id, task)
@@ -372,20 +368,20 @@ def check_duplicate_work(agent_id: str, task: str) -> Optional[str]:
     return None
 
 
-def share_result(agent_id: str, content: str, file_path: Optional[str] = None) -> str:
+def share_result(agent_id: str, content: str, file_path: str | None = None) -> str:
     """Share a result/artifact for other agents."""
     registry = get_registry()
     return registry.share_artifact(agent_id, content, file_path)
 
 
-def get_shared_result(artifact_id: str) -> Optional[str]:
+def get_shared_result(artifact_id: str) -> str | None:
     """Get a shared result/artifact from another agent."""
     registry = get_registry()
     artifact = registry.get_artifact(artifact_id)
     return artifact.content if artifact else None
 
 
-def whats_happening() -> Dict[str, Any]:
+def whats_happening() -> dict[str, Any]:
     """See what all agents are working on - provides visibility."""
     registry = get_registry()
     return registry.get_status()

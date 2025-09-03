@@ -8,14 +8,12 @@ from __future__ import annotations
 import asyncio
 import json
 from collections import Counter
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from lionagi import Branch, iModel
 
 from .models import (
     AgentRecommendation,
-    ComplexityLevel,
     CoordinationStrategy,
     DecompositionCandidate,
     PlannerRequest,
@@ -28,7 +26,7 @@ from .models import (
 class GenerationConfig:
     """Configuration for candidate generation."""
 
-    def __init__(self, config_dict: Dict[str, Any]):
+    def __init__(self, config_dict: dict[str, Any]):
         self.generators = config_dict.get("generators", [])
         self.self_consistency = config_dict.get("self_consistency", {})
         self.validation = config_dict.get("validation", {})
@@ -42,8 +40,8 @@ class SelfConsistencyEngine:
 
     @staticmethod
     def extract_consistent_structure(
-        candidates: List[DecompositionCandidate], threshold: float = 0.6
-    ) -> Optional[DecompositionCandidate]:
+        candidates: list[DecompositionCandidate], threshold: float = 0.6
+    ) -> DecompositionCandidate | None:
         """
         Apply self-consistency to retain majority structure across rationales.
         Reference: https://arxiv.org/abs/2203.11171
@@ -127,7 +125,7 @@ Focus on practical, implementable phases that build toward the final goal."""
 
     async def generate_candidates(
         self, request: PlannerRequest, target_count: int = 8
-    ) -> List[DecompositionCandidate]:
+    ) -> list[DecompositionCandidate]:
         """Generate diverse decomposition candidates."""
         tasks = []
 
@@ -165,7 +163,7 @@ Focus on practical, implementable phases that build toward the final goal."""
 
     async def _generate_single_candidate(
         self, provider: str, model: str, temperature: float, request: PlannerRequest
-    ) -> Optional[DecompositionCandidate]:
+    ) -> DecompositionCandidate | None:
         """Generate a single decomposition candidate."""
         async with self.semaphore:
             try:
@@ -207,7 +205,7 @@ AVAILABLE DOMAINS: memory-systems, distributed-systems, agentic-systems, event-s
 
 COORDINATION STRATEGIES:
 - fan_out_synthesize: Multiple agents work independently, then synthesize
-- sequential_refinement: Agents pass work in pipeline fashion  
+- sequential_refinement: Agents pass work in pipeline fashion
 - swarm: Multiple similar agents coordinate dynamically
 - map_reduce: Divide work, process in parallel, combine results
 - consensus_voting: Multiple agents vote on decisions
@@ -240,10 +238,10 @@ Return structured JSON with reasoning and complete TaskPhase objects."""
 
     async def generate_strategies(
         self,
-        decompositions: List[DecompositionCandidate],
+        decompositions: list[DecompositionCandidate],
         request: PlannerRequest,
         target_count: int = 6,
-    ) -> List[StrategyCandidate]:
+    ) -> list[StrategyCandidate]:
         """Generate strategy candidates from decompositions."""
         tasks = []
 
@@ -286,7 +284,7 @@ Return structured JSON with reasoning and complete TaskPhase objects."""
         temperature: float,
         decomposition: DecompositionCandidate,
         request: PlannerRequest,
-    ) -> Optional[StrategyCandidate]:
+    ) -> StrategyCandidate | None:
         """Generate strategy for a decomposition."""
         async with self.semaphore:
             try:
@@ -337,7 +335,7 @@ Return a complete plan with phases as TaskPhase objects."""
         self.semaphore = asyncio.Semaphore(config.max_concurrency)
 
     async def refine_and_validate(
-        self, top_candidates: List[StrategyCandidate], request: PlannerRequest
+        self, top_candidates: list[StrategyCandidate], request: PlannerRequest
     ) -> StrategyCandidate:
         """Refine top candidates into final validated plan."""
         async with self.semaphore:

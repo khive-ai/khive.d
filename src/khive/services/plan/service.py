@@ -5,13 +5,12 @@ Implements ChatGPT's design: iterative generation → cross-evaluation → robus
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import yaml
 
@@ -25,12 +24,7 @@ for handler in logging.getLogger().handlers[:]:
 for handler in logging.getLogger("root").handlers[:]:
     logging.getLogger("root").removeHandler(handler)
 
-from .complexity import (
-    choose_pattern,
-    estimate_agent_count,
-    score_complexity,
-    should_escalate_to_expert,
-)
+from .complexity import score_complexity, should_escalate_to_expert
 from .consensus import ConsensusMethod, MultiRoundConsensus
 from .cost_tracker import CostTracker
 from .generators import (
@@ -55,12 +49,12 @@ class ConsensusPlannerV3:
     5. Repair/Synthesis: Refine top candidates into final plan
     """
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         """Initialize with configuration."""
         if config_path is None:
             config_path = Path(__file__).parent / "models.yaml"
 
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             self.config = yaml.safe_load(f)
 
         # Initialize engines
@@ -358,7 +352,7 @@ class ConsensusPlannerV3:
             print(f"❌ Planning failed: {e}")
             return PlannerResponse(
                 success=False,
-                summary=f"Planning failed: {str(e)}",
+                summary=f"Planning failed: {e!s}",
                 complexity=ComplexityLevel.SIMPLE,
                 recommended_agents=0,
                 phases=[],
@@ -367,7 +361,7 @@ class ConsensusPlannerV3:
                 error=str(e),
             )
 
-    async def create_plan(self, task: str) -> Dict[str, Any]:
+    async def create_plan(self, task: str) -> dict[str, Any]:
         """
         Create execution plan from task description.
 
@@ -427,7 +421,7 @@ class ConsensusPlannerV3:
         except Exception as e:
             return {
                 "success": False,
-                "summary": f"Plan creation failed: {str(e)}",
+                "summary": f"Plan creation failed: {e!s}",
                 "error": str(e),
             }
 
@@ -458,7 +452,7 @@ class ConsensusPlannerV3:
 
         return "\n".join(summary_parts)
 
-    def _generate_spawn_commands(self, final_plan, coordination_id: str) -> List[str]:
+    def _generate_spawn_commands(self, final_plan, coordination_id: str) -> list[str]:
         """Generate spawn commands with mandatory compose + coordination protocol + orchestrator validation."""
         commands = []
 
@@ -520,7 +514,7 @@ Before proceeding to "{phase.name}", you MUST validate the previous phase:
                     "",
                     "MANDATORY COORDINATION PROTOCOL:",
                     f'1. Pre-task: uv run khive coordinate pre-task --description "{phase.name}" --agent-id {agent_id} --coordination-id {coordination_id}',
-                    f"2. Validate peer work: Check and test other agents' claimed deliverables BEFORE using them",
+                    "2. Validate peer work: Check and test other agents' claimed deliverables BEFORE using them",
                     f'3. Before editing files: uv run khive coordinate check --file "/path/to/file" --agent-id {agent_id}',
                     f'4. After editing files: uv run khive coordinate post-edit --file "/path/to/file" --agent-id {agent_id}',
                     f'5. Post-task: uv run khive coordinate post-task --agent-id {agent_id} --summary "Phase complete"',
@@ -548,7 +542,7 @@ Before declaring orchestration complete, verify:
 
 1. **END-TO-END FUNCTIONALITY**:
    - Frontend forms actually spawn real agents
-   - Backend APIs connect to real coordination system  
+   - Backend APIs connect to real coordination system
    - Users can complete full workflows successfully
    - All integration points working
 
@@ -571,6 +565,6 @@ Before declaring orchestration complete, verify:
 
 
 # Factory function for easy instantiation
-def create_planner(config_path: Optional[Path] = None) -> ConsensusPlannerV3:
+def create_planner(config_path: Path | None = None) -> ConsensusPlannerV3:
     """Create a consensus planner instance."""
     return ConsensusPlannerV3(config_path)

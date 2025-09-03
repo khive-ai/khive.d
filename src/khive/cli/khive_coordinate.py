@@ -16,19 +16,16 @@ Examples:
 """
 
 import argparse
-import asyncio
 import json
-import os
 import sys
 import time
-from typing import Optional
 
 from khive.cli.context import get_agent_id, get_coordination_id
 from khive.daemon.client import get_daemon_client
 
 
 def pre_task(
-    agent_id: str, description: str, coordination_id: Optional[str] = None
+    agent_id: str, description: str, coordination_id: str | None = None
 ) -> dict:
     """Initialize task coordination - BEFORE starting work."""
     try:
@@ -186,7 +183,7 @@ def post_task(agent_id: str, summary: str = "") -> dict:
         return {"success": False, "error": str(e)}
 
 
-def get_status(coordination_id: Optional[str] = None) -> dict:
+def get_status(coordination_id: str | None = None) -> dict:
     """Get current coordination status."""
     try:
         client = get_daemon_client()
@@ -226,16 +223,16 @@ def main():
 Examples:
     # Before starting work
     uv run khive coordinate pre-task --description "Implement auth" --agent-id researcher_security
-    
+
     # Check for conflicts before editing
     uv run khive coordinate check-conflicts --file "/path/to/file.py" --agent-id researcher_security
-    
+
     # After editing files
     uv run khive coordinate post-edit --file "/path/to/file.py" --agent-id researcher_security
-    
+
     # After completing work
     uv run khive coordinate post-task --agent-id researcher_security --summary "Auth implementation completed"
-    
+
     # Check coordination status
     uv run khive coordinate status
         """,

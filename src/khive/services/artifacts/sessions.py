@@ -499,7 +499,7 @@ class SessionManager:
                     session = await self.get_session(session_id)
                     recovery_status[session_id] = f"recovered: {session.status.value}"
                 except Exception as e:
-                    recovery_status[session_id] = f"error: {str(e)}"
+                    recovery_status[session_id] = f"error: {e!s}"
 
             # Process orphaned workspaces (workspace but no metadata)
             for session_id in workspace_sessions - metadata_sessions:
@@ -509,7 +509,7 @@ class SessionManager:
                     )  # This will create metadata
                     recovery_status[session_id] = "migrated: workspace to metadata"
                 except Exception as e:
-                    recovery_status[session_id] = f"migration_error: {str(e)}"
+                    recovery_status[session_id] = f"migration_error: {e!s}"
 
             # Process orphaned metadata (metadata but no workspace)
             for session_id in metadata_sessions - workspace_sessions:

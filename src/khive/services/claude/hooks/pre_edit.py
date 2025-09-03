@@ -8,7 +8,6 @@ from editing the same file simultaneously.
 import json
 import os
 import sys
-from pathlib import Path
 from typing import Any
 
 from khive.daemon.client import get_daemon_client

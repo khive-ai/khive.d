@@ -24,8 +24,7 @@ import asyncio
 import json
 import sys
 import time
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from khive.daemon.client import KhiveDaemonClient, get_daemon_client
 from khive.services.orchestration.orchestrator import LionOrchestrator
@@ -42,7 +41,7 @@ from khive.utils import get_logger
 logger = get_logger("khive.orchestration", "🎭 [ORCHESTRATOR]")
 
 # Global orchestration registry for distributed coordination
-_active_orchestrations: Dict[str, "OrchestrationSession"] = {}
+_active_orchestrations: dict[str, OrchestrationSession] = {}
 
 
 class OrchestrationSession:
@@ -60,21 +59,21 @@ class OrchestrationSession:
         self,
         session_id: str,
         flow_name: str,
-        daemon_client: Optional[KhiveDaemonClient] = None,
+        daemon_client: KhiveDaemonClient | None = None,
     ):
         self.session_id = session_id
         self.flow_name = flow_name
         self.daemon_client = daemon_client or get_daemon_client()
-        self.orchestrator: Optional[LionOrchestrator] = None
+        self.orchestrator: LionOrchestrator | None = None
         self.start_time = time.time()
         self.status = "initializing"
-        self.results: Dict[str, Any] = {}
+        self.results: dict[str, Any] = {}
 
     async def initialize(
         self,
-        model: Optional[str] = None,
-        system: Optional[str] = None,
-        resume_from: Optional[str] = None,
+        model: str | None = None,
+        system: str | None = None,
+        resume_from: str | None = None,
     ):
         """Initialize orchestration session with optional resume capability."""
         try:
@@ -163,7 +162,7 @@ class OrchestrationSession:
         refinement_config: RefinementConfig,
         max_agents: int = 8,
         visualize: bool = False,
-        project_phase: Optional[str] = None,
+        project_phase: str | None = None,
         is_critical_path: bool = False,
         is_experimental: bool = False,
     ):
@@ -239,16 +238,16 @@ class OrchestrationEngine:
     - Session management and recovery
     """
 
-    def __init__(self, daemon_client: Optional[KhiveDaemonClient] = None):
+    def __init__(self, daemon_client: KhiveDaemonClient | None = None):
         self.daemon_client = daemon_client or get_daemon_client()
 
     async def orchestrate_from_plan(
         self,
         plan: IssuePlan,
-        session_id: Optional[str] = None,
-        resume_from: Optional[str] = None,
+        session_id: str | None = None,
+        resume_from: str | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute orchestration workflow from a structured plan.
 
@@ -348,7 +347,7 @@ class OrchestrationEngine:
 
 
 # Global engine instance
-_global_engine: Optional[OrchestrationEngine] = None
+_global_engine: OrchestrationEngine | None = None
 
 
 def get_orchestration_engine() -> OrchestrationEngine:
@@ -364,12 +363,12 @@ def get_orchestration_engine() -> OrchestrationEngine:
 
 async def orchestrate_task(
     task_description: str,
-    context: Optional[str] = None,
+    context: str | None = None,
     pattern: str = "fanout",
     max_agents: int = 8,
     visualize: bool = False,
     **kwargs,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Orchestrate a task from description.
 
@@ -399,7 +398,7 @@ async def orchestrate_task(
     )
 
 
-async def orchestrate_issue(issue_num: Union[str, int], **kwargs) -> Dict[str, Any]:
+async def orchestrate_issue(issue_num: str | int, **kwargs) -> dict[str, Any]:
     """
     Orchestrate execution of a GitHub issue.
 
@@ -420,8 +419,8 @@ async def orchestrate_issue(issue_num: Union[str, int], **kwargs) -> Dict[str, A
 
 
 def _create_fallback_plan(
-    task_description: str, context: Optional[str], pattern: str
-) -> Dict[str, Any]:
+    task_description: str, context: str | None, pattern: str
+) -> dict[str, Any]:
     """Create a simple fallback plan when daemon is unavailable."""
     return {
         "orchestration_plan": {
@@ -439,7 +438,7 @@ def _create_fallback_plan(
 
 
 def _convert_to_issue_plan(
-    plan_data: Dict[str, Any], task_description: str
+    plan_data: dict[str, Any], task_description: str
 ) -> IssuePlan:
     """Convert daemon plan response to IssuePlan object."""
     plan_info = plan_data.get("orchestration_plan", {})
@@ -467,7 +466,7 @@ def _convert_to_issue_plan(
 # Session Management Functions
 
 
-async def list_active_sessions() -> List[Dict[str, Any]]:
+async def list_active_sessions() -> list[dict[str, Any]]:
     """List all active orchestration sessions."""
     sessions = []
     for session_id, session in _active_orchestrations.items():
@@ -483,7 +482,7 @@ async def list_active_sessions() -> List[Dict[str, Any]]:
     return sessions
 
 
-async def get_session_status(session_id: str) -> Optional[Dict[str, Any]]:
+async def get_session_status(session_id: str) -> dict[str, Any] | None:
     """Get status of a specific orchestration session."""
     if session_id not in _active_orchestrations:
         return None

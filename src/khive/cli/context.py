@@ -8,13 +8,12 @@ we use workspace context files to pass agent_id and coordination_id.
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
 
 CONTEXT_FILE = ".khive_context.json"
 
 
 def write_context(
-    agent_id: str, coordination_id: str, workspace_dir: Optional[str] = None
+    agent_id: str, coordination_id: str, workspace_dir: str | None = None
 ) -> None:
     """Write agent context to workspace file."""
     workspace = Path(workspace_dir) if workspace_dir else Path.cwd()
@@ -29,7 +28,7 @@ def write_context(
     context_file.write_text(json.dumps(context, indent=2))
 
 
-def load_context() -> Optional[Dict[str, str]]:
+def load_context() -> dict[str, str] | None:
     """Load agent context from current workspace."""
     context_file = Path.cwd() / CONTEXT_FILE
 
@@ -48,7 +47,7 @@ def load_context() -> Optional[Dict[str, str]]:
         return None
 
 
-def get_agent_id() -> Optional[str]:
+def get_agent_id() -> str | None:
     """Get agent ID from workspace context file only."""
     context = load_context()
     if context and context.get("agent_id"):
@@ -57,7 +56,7 @@ def get_agent_id() -> Optional[str]:
     return None  # NO env var fallback - only workspace context
 
 
-def get_coordination_id() -> Optional[str]:
+def get_coordination_id() -> str | None:
     """Get coordination ID from workspace context file only."""
     context = load_context()
     if context and context.get("coordination_id"):

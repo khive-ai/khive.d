@@ -5,11 +5,9 @@ Implements BTL, RankCentrality, and Schulze methods as described by ChatGPT.
 
 from __future__ import annotations
 
-import math
-from collections import Counter, defaultdict
+from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -24,7 +22,7 @@ class ConsensusMethod(str, Enum):
 class Pairwise:
     """Pairwise comparison data structure."""
 
-    wins: Dict[Tuple[int, int], int]  # (i,j) -> count where i beats j
+    wins: dict[tuple[int, int], int]  # (i,j) -> count where i beats j
     n: int  # number of candidates
 
 
@@ -106,7 +104,7 @@ class ConsensusAlgorithms:
         return v / v.sum()
 
     @staticmethod
-    def schulze_method(pairwise: Pairwise) -> List[int]:
+    def schulze_method(pairwise: Pairwise) -> list[int]:
         """
         Schulze method for Condorcet completion when you have ranked ballots.
 
@@ -192,7 +190,7 @@ class JudgeReliability:
             ]
         )
 
-    def update_reliability(self, judgments: List[Tuple[int, int, int]]) -> None:
+    def update_reliability(self, judgments: list[tuple[int, int, int]]) -> None:
         """
         Update judge reliability using EM algorithm.
 
@@ -249,9 +247,9 @@ class MultiRoundConsensus:
 
     def rank_candidates(
         self,
-        comparisons: List[Tuple[int, int, int]],  # (winner_id, loser_id, judge_id)
-        candidate_ids: List[str],
-    ) -> Tuple[List[str], Dict[str, float], float]:
+        comparisons: list[tuple[int, int, int]],  # (winner_id, loser_id, judge_id)
+        candidate_ids: list[str],
+    ) -> tuple[list[str], dict[str, float], float]:
         """
         Rank candidates using selected consensus method.
 

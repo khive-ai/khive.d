@@ -9,7 +9,7 @@ import asyncio
 import json
 import random
 from itertools import combinations
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from lionagi import Branch, iModel
 from lionagi.models import HashableModel
@@ -25,7 +25,7 @@ class JudgeEngine:
 Evaluate this software development plan on the following criteria (score 0-10 each):
 
 1. FEASIBILITY: Can this plan realistically be executed?
-2. RISK: How well does it manage potential risks and blockers?  
+2. RISK: How well does it manage potential risks and blockers?
 3. COVERAGE: Does it comprehensively address the task requirements?
 4. COST_EFFICIENCY: Is the resource allocation reasonable and efficient?
 5. COORDINATION_CLARITY: Are agent roles and handoffs clear?
@@ -46,7 +46,7 @@ Compare these two software development plans and determine which is better overa
 PLAN A:
 {plan_a_json}
 
-PLAN B: 
+PLAN B:
 {plan_b_json}
 
 ORIGINAL TASK: {task_description}
@@ -65,7 +65,7 @@ Which plan is better? Respond with:
 
 Consider the trade-offs carefully and justify your decision."""
 
-    def __init__(self, config_dict: Dict[str, Any]):
+    def __init__(self, config_dict: dict[str, Any]):
         self.judges_config = config_dict.get("judges", [])
         self.max_concurrency = config_dict.get("budgets", {}).get(
             "max_total_concurrency", 8
@@ -73,8 +73,8 @@ Consider the trade-offs carefully and justify your decision."""
         self.semaphore = asyncio.Semaphore(self.max_concurrency)
 
     async def score_candidates(
-        self, candidates: List[StrategyCandidate], task_description: str
-    ) -> List[List[JudgeScore]]:
+        self, candidates: list[StrategyCandidate], task_description: str
+    ) -> list[list[JudgeScore]]:
         """Score all candidates with all judges (rubric-based)."""
         tasks = []
 
@@ -109,10 +109,10 @@ Consider the trade-offs carefully and justify your decision."""
 
     async def pairwise_comparisons(
         self,
-        candidates: List[StrategyCandidate],
+        candidates: list[StrategyCandidate],
         task_description: str,
         max_pairs: int = 24,
-    ) -> List[PairwiseComparison]:
+    ) -> list[PairwiseComparison]:
         """Generate pairwise comparisons between candidates."""
         # Sample uncertain pairs (all combinations if small, random subset if large)
         all_pairs = list(combinations(range(len(candidates)), 2))
@@ -152,10 +152,10 @@ Consider the trade-offs carefully and justify your decision."""
     async def _score_single_candidate(
         self,
         candidate: StrategyCandidate,
-        judge_config: Dict[str, Any],
+        judge_config: dict[str, Any],
         task_description: str,
         candidate_id: str,
-    ) -> Optional[JudgeScore]:
+    ) -> JudgeScore | None:
         """Score a single candidate with one judge."""
         async with self.semaphore:
             try:
@@ -195,9 +195,9 @@ Consider the trade-offs carefully and justify your decision."""
         candidate_b: StrategyCandidate,
         candidate_a_id: str,
         candidate_b_id: str,
-        judge_config: Dict[str, Any],
+        judge_config: dict[str, Any],
         task_description: str,
-    ) -> Optional[PairwiseComparison]:
+    ) -> PairwiseComparison | None:
         """Compare two candidates pairwise."""
         async with self.semaphore:
             try:
@@ -252,7 +252,7 @@ Consider the trade-offs carefully and justify your decision."""
 
 def sample_uncertain_pairs(
     n_candidates: int, max_pairs: int = 24
-) -> List[Tuple[int, int]]:
+) -> list[tuple[int, int]]:
     """
     Sample pairs for pairwise comparison, prioritizing uncertain pairs.
 

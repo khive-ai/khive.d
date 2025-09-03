@@ -4,8 +4,6 @@ Cost tracking for planning operations.
 Tracks API costs, token usage, and budget constraints.
 """
 
-from typing import Optional
-
 
 class CostTracker:
     """Track API costs and usage for planning operations."""
@@ -27,7 +25,7 @@ class CostTracker:
         input_tokens: int,
         output_tokens: int,
         cached_tokens: int = 0,
-        model_name: Optional[str] = None,
+        model_name: str | None = None,
     ) -> float:
         """
         Add a request and calculate cost.

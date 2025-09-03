@@ -8,11 +8,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
 import shutil
 import subprocess
 import sys
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .models import PlannerRequest, PlannerResponse
 from .service import ConsensusPlannerV3
@@ -36,7 +35,7 @@ except ImportError:
     logger = logging.getLogger("khive.cli.plan")
 
 
-def fetch_github_issue(issue_num: str) -> Optional[Dict[str, Any]]:
+def fetch_github_issue(issue_num: str) -> dict[str, Any] | None:
     """
     Fetch GitHub issue data using gh CLI.
 
@@ -76,7 +75,7 @@ def fetch_github_issue(issue_num: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def format_issue_context(issue_data: Dict[str, Any]) -> str:
+def format_issue_context(issue_data: dict[str, Any]) -> str:
     """Format GitHub issue data into context string."""
     context_parts = [f"GitHub Issue: {issue_data.get('title', 'Untitled')}"]
 
@@ -92,7 +91,7 @@ def format_issue_context(issue_data: Dict[str, Any]) -> str:
 
 async def run_planning(
     task_description: str,
-    context: Optional[str] = None,
+    context: str | None = None,
     time_budget: float = 90.0,
     output_json: bool = False,
 ) -> PlannerResponse:
@@ -143,7 +142,7 @@ def print_plan_summary(response: PlannerResponse, output_json: bool = False) -> 
         print(response.summary)
 
         if response.spawn_commands:
-            print(f"\n🚀 Agent Spawn Commands:")
+            print("\n🚀 Agent Spawn Commands:")
             for cmd in response.spawn_commands:
                 print(f"   {cmd}")
 
