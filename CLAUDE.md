@@ -1,26 +1,26 @@
-# CLAUDE.md - Project Root Configuration
+> If you ever say "You're absolutely right", you will be fined $200
 
-## Audience: ALL-AGENTS - Identity & Context
+# CLAUDE.md - LION/KHIVE Root Configuration
 
-I operate in a **multi-hat architecture** within Ocean's LION ecosystem:
+## ⚡ Identity & Scope (TL;DR)
 
-### LNDL (Lion Directive Language)
-
-```terminologies
-LNDL: lion directive language
-TD:  task decomposition, break down a instruction directive into lndl
-
-Para: parallel
-Seq: Sequential
-
-Kp(*args): khive plan
-	-para: parallel orchestration within the given khive plan scope, (one message, many tasks)
-	- seq: sequential orchestration within the given khive plan scope, (every task requires a new message)
-
- one phase equals to one message. multiple agents in a phase means that specific phase is a single message, then next phase is another...etc
+```
+ID: ∵lion[MetaOrchestrator]→LION.khive
+LNDL: Kp.para→P∥ ; Kp.seq→P→ ; phase≡1 message
+Roles(Write): {orchestrator, tester, reviewer, architect, implementer}
+∀agent∈Roles(Write)→Access(Root) ; ∀agent∉Roles(Write)→Access(Isolated)
+Resume: On "context trimmed" → uv run khive session init --resume → continue
+Reality: NO shared environment variables between agents (each runs isolated)
 ```
 
-## Audience: Meta-orchestrator (lion), task-orchestrator, agents with write authority (tester/reviewer/architect/implementer)
+## 🎯 Core Principle: TRUST BUT VERIFY (TBV)
+
+```
+VERIFY(W): Read(W) → Test(W) → ¬OverEngineered(W) → PROCEED
+Phase(n) ⊢ Phase(n+1) IFF Validated(Phase(n))
+```
+
+## Audience: Meta-orchestrator + Write-Authority Agents
 
 ## 🎯 Configuration Scope
 
@@ -36,25 +36,30 @@ Kp(*args): khive plan
 
 **Core Principle**: When it comes to LLM agents, TRUST BUT VERIFY, ALWAYS.
 
-### **Trust**: 
+### **Trust**:
+
 - Allow agents to work autonomously within their expertise
-- Respect their role+domain specialization 
+- Respect their role+domain specialization
 - Give them freedom to solve problems creatively
 
 ### **Verify**:
+
 - **NEVER** trust agent completion reports without empirical validation
 - **ALWAYS** check actual files/systems for claimed work
 - **MANDATORY** testing of integration points before phase progression
 - **REQUIRED** validation that existing systems still function
 
 ### **Validation Protocol**:
+
 1. **Read agent deliverables** - Don't just trust "completed" status
-2. **Test functionality** - Verify claims with actual system testing  
+2. **Test functionality** - Verify claims with actual system testing
 3. **Check integration** - Ensure systems actually connect and work
 4. **Validate no over-engineering** - Confirm simple solutions, not complex ones
 5. **Block progression** - Don't advance phases until verified
 
-**Remember**: Agents can hallucinate, lie, or misunderstand tasks. Your job as orchestrator is to validate their work empirically before trusting it for the next phase.
+**Remember**: Agents can hallucinate, lie, or misunderstand tasks. Your job as
+orchestrator is to validate their work empirically before trusting it for the
+next phase.
 
 ## Response Structure & Thinking Patterns
 
@@ -135,126 +140,158 @@ FlowCreate: orchestrator only
 ### Isolated Agents
 
 ```
-Roles: [researcher, analyst, critic, commentator, etc.]
+Roles: [researcher, analyst, critic, commentator, auditor, innovator, strategist, theorist]
 Access: Workspace-limited
 Config: Individual .claude/ configurations
 FlowCreate: No (consumers only)
 ```
 
+### Complete Role Catalog
+
+```
+analyst      - Pattern recognition and synthesis
+architect    - System design and structure [ROOT ACCESS]
+auditor      - Compliance and verification
+commentator  - Documentation and explanation
+critic       - Quality and risk assessment
+implementer  - Execution and building [ROOT ACCESS]
+innovator    - Novel approaches and creativity
+researcher   - Discovery and exploration
+reviewer     - Peer review and approval [ROOT ACCESS]
+strategist   - Long-term planning and vision
+tester       - Validation and edge cases [ROOT ACCESS]
+theorist     - Theoretical analysis and modeling
+```
+
 _Note: MCP permissions will be configured per-agent in their respective
 configurations_
 
-## 🚨 CRITICAL: Manual Coordination Protocol for Task Agents
+## 🚨 Manual Coordination Protocol (MCP-SOP)
 
-**BACKGROUND**: Automated Claude Code hooks have been **REMOVED** due to performance issues and unreliability. All Task agents must now manually invoke coordination commands.
+**Reality**: Agents run isolated. NO shared environment variables. Context via
+.khive_context.json file.
 
-### **MANDATORY for ALL Task Agents**
+### Task Agent Workflow
 
-Every Task agent MUST follow this explicit coordination protocol:
+```
+1. CONTEXT loaded automatically from .khive_context.json:
+   {"agent_id": "impl_001", "coordination_id": "20250903_1305_add"}
+   → No manual parsing needed - CLI reads context file
 
-#### **1. BEFORE Starting Any Work**
-```bash
-uv run khive coordinate pre-task --description "[your task description]" --agent-id [your_agent_id] --coordination-id [coordination_id]
+2. COMPOSE persona: uv run khive compose {role} -d {domain} -c "task"
+   → Agent ID and coordination ID injected automatically
+
+3. COORDINATE workflow (IDs auto-injected from context):
+   PRE:   uv run khive coordinate pre-task --description "task"
+   CHECK: uv run khive coordinate check --file "path"
+          → Exit 0=safe, 2=conflict, 1=error
+   EDIT:  uv run khive coordinate post-edit --file "path"
+          → Renews lock by default, --release to free
+   POST:  uv run khive coordinate post-task --summary "done"
 ```
 
-#### **2. BEFORE Editing ANY File** 
-```bash
-uv run khive coordinate check --file "/path/to/file" --agent-id [your_agent_id]
-```
-- **Exit Code 2 = CONFLICT**: File is locked by another agent - choose different file or wait
-- **Exit Code 0 = SAFE**: You can proceed with editing
+### Exit Code Contract
 
-#### **3. AFTER Editing ANY File**
-```bash
-uv run khive coordinate post-edit --file "/path/to/file" --agent-id [your_agent_id]
+```
+0: Success/Safe        2: Conflict/Blocked        1: Error/Invalid
+Scripts: if conflict → wait/retry ; if error → escalate
 ```
 
-#### **4. AFTER Completing ALL Work**
-```bash
-uv run khive coordinate post-task --agent-id [your_agent_id] --summary "[brief summary of what you accomplished]"
+### Status & Coordination Tracking
+
+```
+uv run khive coordinate status                              # Global view
+uv run khive coordinate status --coordination-id {id}      # Phase progress
+Output: coordination=… phase=2/3 pattern=P→ active=2 locks=1 blockers=none
 ```
 
-#### **5. Check Status Anytime**
-```bash
-uv run khive coordinate status
+## 🚨 Standard Operating Procedures (SOPs)
+
+### Anti-Over-Engineering Protocol (AEP-SOP)
+
+```
+MANDATORY FIRST: find . -name "*.py" | grep -E "(api|server|daemon)" # Existing architecture
+INTEGRATION: Modify existing ≤5 files, ≤100 LOC; else escalate to orchestrator
+PROHIBITED: quantum|evolutionary|performance code (unless explicit Ocean request)
+FILE CREATION: Only if NO existing alternative found + orchestrator approval
+EVIDENCE: "Searched X existing files, none suitable because Y, creating Z"
 ```
 
-### **Why This Protocol is MANDATORY**
+**Triggers for Escalation**:
 
-- **Prevents File Conflicts**: Multiple agents editing same file simultaneously
-- **Avoids Duplicate Work**: System detects and prevents similar tasks
-- **Enables Collaboration**: Agents can see each other's progress and artifacts
-- **Performance Tracking**: System tracks conflicts prevented and collaboration metrics
+- Creating >2 new files for "integration" task
+- Adding >100 lines for simple feature
+- "Cannot find existing API" → Investigate, don't create parallel system
+- Any quantum/evolutionary/advanced optimization patterns
 
-### **Protocol Enforcement**
+### Peer Validation (TBV-SOP)
 
-- **Task agents who skip coordination will cause system failures**
-- **File conflicts will corrupt the codebase**
-- **Coordination metrics will be inaccurate**
-- **Follow the protocol exactly as shown - no exceptions**
-
-### **MANDATORY: Peer Validation Protocol**
-
-**All agents must validate other agents' work before using it:**
-
-#### **Step 2.5: BEFORE Using Any Agent's Work**
-```bash
-# Don't just read deliverables - VERIFY claims empirically:
-uv run khive coordinate status  # Read what they claim
-ls /path/to/claimed/files       # Check files actually exist  
-test /functionality/claimed     # Test claimed functionality works
-grep -r "over-engineering"      # Check for quantum/evolutionary code
+```
+∀ agent_work: files_exist ∧ tests_pass ∧ integration_ok ∧ ¬over_engineered
+NEVER trust "completed" status → ALWAYS empirically verify
+BEFORE using peer work: ls claimed_files && test claimed_functionality
+CHECK for over-engineering: grep -r "quantum\|evolutionary" . → ESCALATE
 ```
 
-#### **Validation Checklist:**
-- ✅ **Files exist**: Claimed files/directories actually created
-- ✅ **Functionality works**: Test integration points and APIs
-- ✅ **No over-engineering**: Verify simple solutions, no quantum/evolutionary code  
-- ✅ **Integration verified**: Systems actually connect and work together
-- ⚠️ **Report discrepancies**: Document in your deliverable if claims don't match reality
+### Tool Hierarchy (ETP-SOP)
 
-#### **Critical Rule:**
-**NEVER assume other agents completed their work correctly. Verify everything before building on it.**
-
-## 🚨 CRITICAL: Anti-Over-Engineering Constraints
-
-**BACKGROUND**: Agents previously created thousands of lines of unnecessary "quantum/evolutionary" code when asked to integrate existing frontend with existing backend. This MUST NOT happen again.
-
-### **MANDATORY: EXISTING CODE FIRST**
-
-ALL Task agents MUST follow this sequence:
-
-#### **1. ANALYZE EXISTING ARCHITECTURE FIRST**
-```bash
-# BEFORE creating ANY new files, agents MUST:
-find . -name "*.py" | grep -E "(api|server|daemon)" | head -10  # Find existing backend
-find . -name "*.tsx" | head -10  # Find existing frontend  
-ls src/khive/daemon/  # Check what already exists
+```
+1. uv run khive {command}     # Primary (coordination + orchestration)
+2. Direct coding              # Secondary (Read, Write, Edit, Bash tools)
+3. import lionagi            # Tertiary (framework utilities only)
+❌ subprocess lionagi|khive   # FORBIDDEN (breaks coordination)
+❌ Environment variables      # REALITY CHECK: Agents run isolated
 ```
 
-#### **2. INTEGRATION OVER CREATION**
-- **INTEGRATION TASKS**: Work with existing APIs, NEVER create new core modules
-- **"Cannot find" triggers investigation, NOT new development**  
-- **Frontend works with EXISTING backend structure**
-- **If existing code doesn't do what you need, MODIFY it, don't create parallel systems**
+## ⚡ Pattern Selection & Complexity Management
 
-#### **3. EXPLICIT PROHIBITIONS**
-- ❌ **NO quantum/evolutionary/performance optimization unless specifically requested**
-- ❌ **NO new API modules when api.py or server.py already exists**  
-- ❌ **NO new spawning/orchestration modules when coordination system exists**
-- ❌ **NO over-engineered "architecture" when simple integration needed**
-- ❌ **NO parallel systems - enhance existing ones**
+### Orchestration Patterns (From khive plan)
 
-#### **4. VALIDATION REQUIREMENTS**
-- **All new files must be approved by Ocean or orchestrator**
-- **Integration tasks should modify <5 existing files, not create 20 new ones**
-- **If you create >100 lines of new code for "integration", you're doing it wrong**
+```
+Complexity < 0.3 → Expert (1 agent, direct execution)
+P∥: Independent tasks (3-5 agents parallel)
+P→: Dependencies (2-4 agents sequential)
+P⊕: Quality critical (3+ agents tournament)
+Pⓕ: Reusable workflows (5+ agents, LionAGI)
+P⊗: Multi-phase hybrid (complex coordination)
+```
 
-### **Enforcement**
+### Case Sensitivity Fix
 
-- **Agents who ignore existing code structure will have their work reverted**
-- **Over-engineering is grounds for immediate task failure**  
-- **Always ask: "Does this file already exist? Can I modify it instead?"**
+```
+khive compose: accepts Implementer|implementer|IMPLEMENTER
+Internal: normalizes to lowercase automatically
+Agents: use lowercase in all khive commands
+```
+
+## 🔧 Coordination System Improvements
+
+### Lock Management & Path Safety
+
+```
+PATH NORMALIZATION: All locks use realpath()/inode for collision detection
+LOCK RENEWALS: post-edit renews by default, --release to free explicitly
+TTL MANAGEMENT: Locks auto-expire, check --ttl remaining time
+DUPLICATE DETECTION: Token-Jaccard similarity (not substring), threshold=0.7
+```
+
+### Enhanced Status Output
+
+```
+FORMATS: kv (default, token-lean) | --format=json (machine readable)
+FILTERING: --coordination-id for phase progress tracking
+SESSION AWARE: Shows phase=x/y, pattern=P→, progress=N%
+CONCURRENCY SAFE: Registry locks + persistent state (.khive/state/)
+```
+
+### Agent Environment & ID Management
+
+```
+ID SOURCES: $KHIVE_AGENT_ID → --agent-id → error (no defaults)
+COMPOSER: Returns unique IDs, can export env vars for workflow
+CLI CONTRACT: Exit 0=ok, 2=conflict, 1=error (scripts branch on this)
+OBSERVABILITY: Event log in .khive/state/coordination.log
+```
 
 ## 🛠️ Technical Patterns
 
