@@ -193,11 +193,13 @@ class MockAPIResponse:
         """Generate contextually appropriate response content."""
 
         if "json" in prompt.lower():
-            return json.dumps({
-                "complexity": random.choice(["simple", "moderate", "complex"]),
-                "confidence": round(random.uniform(0.7, 0.95), 2),
-                "reasoning": "Generated mock response for testing purposes",
-            })
+            return json.dumps(
+                {
+                    "complexity": random.choice(["simple", "moderate", "complex"]),
+                    "confidence": round(random.uniform(0.7, 0.95), 2),
+                    "reasoning": "Generated mock response for testing purposes",
+                }
+            )
 
         # Default text response based on prompt keywords
         if any(
@@ -271,14 +273,16 @@ class MockAPIResponse:
         ) / self.metrics.total_requests
 
         # Store request in history
-        self.metrics.request_history.append({
-            "timestamp": time.time(),
-            "success": success,
-            "tokens": tokens,
-            "latency_ms": latency_ms,
-            "prompt_length": len(prompt),
-            "response_length": len(response),
-        })
+        self.metrics.request_history.append(
+            {
+                "timestamp": time.time(),
+                "success": success,
+                "tokens": tokens,
+                "latency_ms": latency_ms,
+                "prompt_length": len(prompt),
+                "response_length": len(response),
+            }
+        )
 
     def _calculate_cost(self, tokens: int) -> float:
         """Calculate cost based on token usage."""

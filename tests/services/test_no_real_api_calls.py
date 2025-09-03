@@ -1,6 +1,7 @@
 """Verification test to ensure no real API calls are made during testing."""
 
 import pytest
+
 from khive.services.plan.planner_service import PlannerService
 from khive.services.plan.triage.complexity_triage import ComplexityTriageService
 
