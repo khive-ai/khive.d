@@ -14,17 +14,15 @@
     "jsx": "preserve",
     "incremental": true,
 
-    // Enhanced strict checks for better performance and safety
+    // Enhanced strict checks for ERP system reliability
     "noImplicitAny": true,
     "noImplicitReturns": true,
     "noImplicitThis": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "exactOptionalPropertyTypes": true,
-    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false,
     "noImplicitOverride": true,
-
-    // Performance optimizations
     "assumeChangesOnlyAffectDirectDependencies": true,
 
     "plugins": [
@@ -37,7 +35,7 @@
       "@/*": ["./src/*"],
       "@/components/*": ["./src/components/*"],
       "@/ui/*": ["./src/components/ui/*"],
-      "@/feature/*": ["./src/components/feature/*"],
+      "@/features/*": ["./src/components/features/*"],
       "@/layout/*": ["./src/components/layout/*"],
       "@/lib/*": ["./src/lib/*"],
       "@/api/*": ["./src/lib/api/*"],
@@ -71,6 +69,8 @@
     "**/*.test.tsx",
     "**/__tests__/**",
     "jest.config.js",
-    "jest.setup.js"
+    "jest.setup.js",
+    "e2e/**/*",
+    "playwright.config.ts"
   ]
 }

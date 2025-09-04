@@ -1,0 +1,1 @@
+// Global teardown for Jest tests\n// Runs once after all test suites complete\n\nmodule.exports = async () => {\n  // Clean up test resources\n  console.log('🧹 Cleaning up test environment...');\n  \n  // Any global test cleanup can go here\n  // For example: stopping test servers, cleaning up test data, etc.\n};

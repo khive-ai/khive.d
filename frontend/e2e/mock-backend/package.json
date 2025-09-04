@@ -1,0 +1,21 @@
+{
+  "name": "khive-mock-backend",
+  "version": "1.0.0",
+  "description": "Mock KHIVE Backend Server for E2E WebSocket Testing",
+  "main": "khive-mock-server.ts",
+  "scripts": {
+    "start": "tsx khive-mock-server.ts",
+    "dev": "tsx watch khive-mock-server.ts"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.1",
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "tsx": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/node": "^20"
+  }
+}

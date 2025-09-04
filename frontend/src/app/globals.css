@@ -1,26 +1,181 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* KHIVE Command Center Global Styles */
+/* Terminal-inspired design for Ocean's CLI-first preferences */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --khive-bg-primary: #0a0a0a;
+  --khive-bg-secondary: #1a1a1a;
+  --khive-bg-tertiary: #2a2a2a;
+  --khive-text-primary: #ffffff;
+  --khive-text-secondary: #a0a0a0;
+  --khive-accent-primary: #00d4aa;
+  --khive-accent-secondary: #0099cc;
+  --khive-warning: #ffb84d;
+  --khive-error: #ff6b6b;
+  --khive-success: #51cf66;
+  
+  /* Terminal font stack */
+  --khive-font-mono: 'SFMono-Regular', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Base styles */
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  height: 100%;
+  font-family: var(--khive-font-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--khive-bg-primary);
+  color: var(--khive-text-primary);
+  line-height: 1.6;
+}
+
+/* Terminal-style scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--khive-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--khive-bg-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #404040;
+}
+
+/* Selection styling */
+::selection {
+  background: var(--khive-accent-primary);
+  color: var(--khive-bg-primary);
+}
+
+/* Focus styles for accessibility */
+*:focus {
+  outline: 2px solid var(--khive-accent-primary);
+  outline-offset: 2px;
+}
+
+/* Terminal-style text */
+.terminal-text {
+  font-family: var(--khive-font-mono);
+  font-variant-ligatures: none;
+  text-rendering: optimizeSpeed;
+}
+
+/* Command Center specific styles */
+.command-center {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Activity stream animations */
+.activity-enter {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.activity-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms, transform 200ms;
+}
+
+.activity-exit {
+  opacity: 1;
+}
+
+.activity-exit-active {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 200ms, transform 200ms;
+}
+
+/* Status indicators */
+.status-healthy {
+  color: var(--khive-success);
+}
+
+.status-degraded {
+  color: var(--khive-warning);
+}
+
+.status-unhealthy {
+  color: var(--khive-error);
+}
+
+.status-disconnected {
+  color: var(--khive-text-secondary);
+}
+
+/* Pulsing animation for live indicators */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Command palette enhancements */
+.command-palette {
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--khive-bg-tertiary);
+}
+
+/* Real-time data emphasis */
+.live-data {
+  border-left: 3px solid var(--khive-accent-primary);
+  background: linear-gradient(90deg, rgba(0, 212, 170, 0.05) 0%, transparent 100%);
+}
+
+/* Performance mode (reduced animations) */
+.performance-mode * {
+  animation-duration: 0s !important;
+  transition-duration: 0s !important;
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  :root {
+    --khive-text-primary: #ffffff;
+    --khive-text-secondary: #cccccc;
+    --khive-bg-primary: #000000;
+    --khive-bg-secondary: #111111;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

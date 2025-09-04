@@ -1,8 +1,0 @@
-node_modules
-.next
-out
-dist
-coverage
-*.min.js
-package-lock.json
-yarn.lock
