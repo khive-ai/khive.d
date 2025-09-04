@@ -89,6 +89,32 @@ class ArtifactsService:
         """
         return await self._sessions.list_sessions()
 
+    async def list_artifacts(self) -> list[str]:
+        """
+        Lists all artifacts across all sessions.
+
+        Returns:
+            List of artifact file paths
+        """
+        try:
+            artifacts = []
+            sessions = await self.list_sessions()
+            
+            # For each session, get all artifacts
+            for session_id in sessions:
+                try:
+                    registry = await self.get_artifact_registry(session_id)
+                    for artifact in registry.artifacts:
+                        artifacts.append(f"{session_id}:{artifact.file_path}")
+                except Exception:
+                    # Skip sessions with registry issues
+                    continue
+            
+            return artifacts
+        except Exception:
+            # Return empty list instead of failing
+            return []
+
     # --- Document Operations ---
 
     async def create_document(

@@ -445,7 +445,7 @@ class KhiveDaemonServer:
                     agents_info.append(
                         {
                             "agent_id": agent_id,
-                            "description": work.description,
+                            "description": work.task,
                             "started_at": work.started_at,
                             "files_editing": list(work.files_editing),
                             "status": "active",

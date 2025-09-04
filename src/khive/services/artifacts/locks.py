@@ -7,13 +7,42 @@ Based on Gemini Deep Think V2 architecture.
 
 import asyncio
 import logging
-from collections import defaultdict
+import time
+import weakref
+from collections import defaultdict, deque
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Dict, Optional, Set, Any
 
 from .exceptions import ConcurrencyError
 
 logger = logging.getLogger(__name__)
+
+# Global high-performance lock manager instance
+_global_lock_manager: Optional['LockManager'] = None
+
+def get_global_lock_manager(auto_cleanup: bool = True, max_locks: int = 10000) -> 'LockManager':
+    """Get or create the global lock manager instance with performance optimizations."""
+    global _global_lock_manager
+    if _global_lock_manager is None:
+        _global_lock_manager = LockManager(
+            auto_cleanup=auto_cleanup,
+            max_locks=max_locks
+        )
+    return _global_lock_manager
+
+async def cleanup_global_locks() -> int:
+    """Cleanup global lock manager."""
+    if _global_lock_manager:
+        return await _global_lock_manager.cleanup_unused_locks()
+    return 0
+
+async def shutdown_global_lock_manager() -> None:
+    """Graceful shutdown of global lock manager."""
+    global _global_lock_manager
+    if _global_lock_manager:
+        await _global_lock_manager.shutdown()
+        _global_lock_manager = None
 
 
 class LockManager:

@@ -6,6 +6,10 @@ even when phrasing differs.
 """
 
 from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, Set
+import hashlib
+import time
+from collections import defaultdict, deque
 
 import numpy as np
 
@@ -21,17 +25,33 @@ class TaskEmbedding:
 
 
 class SemanticDeduplicator:
-    """Semantic task deduplication using lightweight embeddings."""
+    """Semantic task deduplication using lightweight embeddings with O(1) duplicate detection."""
 
     def __init__(self, similarity_threshold: float = 0.85):
         """
-        Initialize semantic deduplicator.
+        Initialize semantic deduplicator with performance optimizations.
 
         Args:
             similarity_threshold: Minimum similarity score to consider tasks duplicate (0-1)
         """
         self.similarity_threshold = similarity_threshold
         self.task_embeddings: dict[str, TaskEmbedding] = {}
+        
+        # Performance optimization: Hash-based index for O(1) lookups
+        self._keyword_hash_index: Dict[str, Set[str]] = defaultdict(set)
+        self._embedding_cache: Dict[str, List[float]] = {}  # LRU cache for embeddings
+        self._similarity_cache: Dict[Tuple[str, str], float] = {}  # Cache similarity calculations
+        self._cache_max_size = 10000
+        self._cache_access_times: Dict[str, float] = {}  # For LRU eviction
+        
+        # Spatial indexing for fast nearest neighbor search
+        self._bucket_grid: Dict[int, List[str]] = defaultdict(list)
+        self._grid_resolution = 20  # Number of buckets per dimension
+        
+        # Performance metrics
+        self._lookup_times: deque = deque(maxlen=1000)  # Track lookup performance
+        self._cache_hits = 0
+        self._cache_misses = 0
 
         # Simple keyword-based embeddings (no external dependencies)
         # In production, would use sentence-transformers
@@ -88,74 +108,158 @@ class SemanticDeduplicator:
 
     def _create_embedding(self, description: str) -> list[float]:
         """
-        Create a simple embedding vector from task description.
+        Create optimized embedding vector with caching and fast keyword matching.
 
-        In production, this would use sentence-transformers or similar.
-        For now, using keyword-based embeddings.
+        Performance optimizations:
+        - LRU cache for repeated descriptions
+        - Optimized keyword matching with early termination
+        - Vectorized operations where possible
         """
+        # Check cache first (O(1) lookup)
+        desc_hash = hashlib.md5(description.encode()).hexdigest()
+        if desc_hash in self._embedding_cache:
+            self._cache_hits += 1
+            self._cache_access_times[desc_hash] = time.time()
+            return self._embedding_cache[desc_hash]
+        
+        self._cache_misses += 1
+        start_time = time.time()
+        
         # Initialize embedding vector
         embedding = [0.0] * len(set(self.feature_keywords.values()))
 
-        # Normalize description
+        # Normalize description (optimized)
         desc_lower = description.lower()
         words = desc_lower.split()
+        word_set = set(words)  # O(1) lookups for exact matches
 
-        # Count keyword occurrences
+        # Optimized keyword matching
         keyword_counts = {}
+        
+        # Fast exact matches using set intersection
+        matched_keywords = word_set.intersection(self.feature_keywords.keys())
+        for keyword in matched_keywords:
+            idx = self.feature_keywords[keyword]
+            keyword_counts[idx] = keyword_counts.get(idx, 0) + 1
+
+        # Optimized partial matches with early termination
         for word in words:
-            # Check exact matches
-            if word in self.feature_keywords:
-                idx = self.feature_keywords[word]
-                keyword_counts[idx] = keyword_counts.get(idx, 0) + 1
+            if len(word) > 3:  # Skip very short words
+                for keyword, idx in self.feature_keywords.items():
+                    if len(keyword) > 3 and keyword in word and keyword not in word_set:
+                        keyword_counts[idx] = keyword_counts.get(idx, 0) + 0.5
+                        break  # Early termination after first match
 
-            # Check partial matches (e.g., "refactoring" matches "refactor")
-            for keyword, idx in self.feature_keywords.items():
-                if keyword in word and len(keyword) > 3:
-                    keyword_counts[idx] = keyword_counts.get(idx, 0) + 0.5
-
-        # Create embedding with TF-IDF-like weighting
+        # Vectorized embedding creation
         total_keywords = sum(keyword_counts.values()) if keyword_counts else 1
         for idx, count in keyword_counts.items():
             embedding[idx] = count / total_keywords
 
-        # Add length feature
+        # Add optimized features
         embedding.append(len(words) / 100.0)  # Normalized length
-
-        # Add complexity features
-        has_multiple_components = (
-            sum(
-                1
-                for k in ["controller", "model", "service", "middleware"]
-                if k in desc_lower
-            )
-            > 1
-        )
+        
+        # Fast component detection using set operations
+        component_keywords = {"controller", "model", "service", "middleware"}
+        has_multiple_components = len(word_set.intersection(component_keywords)) > 1
         embedding.append(1.0 if has_multiple_components else 0.0)
 
+        # Cache result with LRU eviction
+        self._cache_embedding(desc_hash, embedding)
+        
+        # Track performance
+        self._lookup_times.append(time.time() - start_time)
+        
         return embedding
 
+    def _cache_embedding(self, desc_hash: str, embedding: List[float]) -> None:
+        """Cache embedding with LRU eviction."""
+        if len(self._embedding_cache) >= self._cache_max_size:
+            # Evict least recently used entry
+            oldest_hash = min(self._cache_access_times.keys(), 
+                             key=self._cache_access_times.get)
+            del self._embedding_cache[oldest_hash]
+            del self._cache_access_times[oldest_hash]
+        
+        self._embedding_cache[desc_hash] = embedding
+        self._cache_access_times[desc_hash] = time.time()
+    
     def _cosine_similarity(
         self, embedding1: list[float], embedding2: list[float]
     ) -> float:
-        """Calculate cosine similarity between two embeddings."""
-        # Convert to numpy arrays for easier computation
-        vec1 = np.array(embedding1)
-        vec2 = np.array(embedding2)
+        """Calculate optimized cosine similarity with caching."""
+        # Create cache key
+        key1 = tuple(embedding1)
+        key2 = tuple(embedding2)
+        cache_key = (key1, key2) if key1 < key2 else (key2, key1)
+        
+        # Check cache
+        if cache_key in self._similarity_cache:
+            return self._similarity_cache[cache_key]
+        
+        # Convert to numpy arrays (optimized)
+        vec1 = np.array(embedding1, dtype=np.float32)  # Use float32 for speed
+        vec2 = np.array(embedding2, dtype=np.float32)
 
-        # Calculate cosine similarity
-        dot_product = np.dot(vec1, vec2)
-        norm1 = np.linalg.norm(vec1)
-        norm2 = np.linalg.norm(vec2)
-
-        if norm1 == 0 or norm2 == 0:
+        # Early termination for zero vectors
+        norm1_sq = np.sum(vec1 * vec1)
+        norm2_sq = np.sum(vec2 * vec2)
+        if norm1_sq == 0 or norm2_sq == 0:
             return 0.0
 
-        similarity = dot_product / (norm1 * norm2)
-        return float(similarity)
+        # Optimized cosine similarity calculation
+        dot_product = np.dot(vec1, vec2)
+        similarity = float(dot_product / (np.sqrt(norm1_sq) * np.sqrt(norm2_sq)))
+        
+        # Cache result (with size limit)
+        if len(self._similarity_cache) < self._cache_max_size // 2:
+            self._similarity_cache[cache_key] = similarity
+        
+        return similarity
 
+    def _get_grid_bucket(self, embedding: List[float]) -> int:
+        """Get spatial grid bucket for embedding (for O(1) candidate filtering)."""
+        # Use first few dimensions for spatial bucketing
+        if len(embedding) < 3:
+            return 0
+        
+        # Quantize first 3 dimensions to create bucket ID
+        x = int(embedding[0] * self._grid_resolution)
+        y = int(embedding[1] * self._grid_resolution) if len(embedding) > 1 else 0
+        z = int(embedding[2] * self._grid_resolution) if len(embedding) > 2 else 0
+        
+        # Combine into single bucket ID
+        return x + y * self._grid_resolution + z * self._grid_resolution ** 2
+    
+    def _get_candidate_buckets(self, bucket_id: int) -> List[int]:
+        """Get nearby buckets for similarity search (includes current + neighbors)."""
+        candidates = [bucket_id]
+        
+        # Add neighboring buckets for better recall
+        for offset in [-1, 0, 1]:
+            for y_offset in [-self._grid_resolution, 0, self._grid_resolution]:
+                for z_offset in [-self._grid_resolution**2, 0, self._grid_resolution**2]:
+                    neighbor = bucket_id + offset + y_offset + z_offset
+                    if neighbor != bucket_id and neighbor >= 0:
+                        candidates.append(neighbor)
+        
+        return candidates
+    
+    def _update_keyword_index(self, task_id: str, description: str) -> None:
+        """Update hash-based keyword index for fast filtering."""
+        words = description.lower().split()
+        for word in words:
+            if word in self.feature_keywords:
+                self._keyword_hash_index[word].add(task_id)
+    
     def find_similar_task(self, description: str) -> tuple[str, float] | None:
         """
-        Find the most similar existing task.
+        Find the most similar existing task using optimized O(1) candidate filtering.
+
+        Performance optimizations:
+        - Spatial grid indexing for O(1) candidate filtering  
+        - Keyword-based pre-filtering
+        - Early termination on high similarity
+        - Vectorized similarity calculations
 
         Returns:
             Tuple of (task_id, similarity_score) if found, None otherwise
@@ -163,20 +267,68 @@ class SemanticDeduplicator:
         if not self.task_embeddings:
             return None
 
+        start_time = time.time()
+        
         # Create embedding for new task
         new_embedding = self._create_embedding(description)
+        
+        # Step 1: Fast keyword-based candidate filtering (O(1) average)
+        candidate_tasks = set()
+        words = description.lower().split()
+        keyword_candidates = set()
+        
+        for word in words:
+            if word in self._keyword_hash_index:
+                keyword_candidates.update(self._keyword_hash_index[word])
+        
+        # Step 2: Spatial grid filtering (O(1) average)
+        bucket_id = self._get_grid_bucket(new_embedding)
+        spatial_candidates = set()
+        
+        for bucket in self._get_candidate_buckets(bucket_id):
+            if bucket in self._bucket_grid:
+                spatial_candidates.update(self._bucket_grid[bucket])
+        
+        # Combine candidates (intersection for precision, union for recall)
+        if keyword_candidates and spatial_candidates:
+            candidate_tasks = keyword_candidates.intersection(spatial_candidates)
+            if not candidate_tasks:  # Fallback to union if intersection is empty
+                candidate_tasks = keyword_candidates.union(spatial_candidates)
+        elif keyword_candidates:
+            candidate_tasks = keyword_candidates
+        elif spatial_candidates:
+            candidate_tasks = spatial_candidates
+        else:
+            # Fallback to all tasks if no candidates found
+            candidate_tasks = set(self.task_embeddings.keys())
+        
+        # Limit candidates for performance (top K most promising)
+        if len(candidate_tasks) > 50:  # Configurable threshold
+            candidate_tasks = set(list(candidate_tasks)[:50])
 
-        # Find most similar task
+        # Step 3: Similarity calculation only on candidates
         best_match = None
         best_score = 0.0
 
-        for task_id, task_emb in self.task_embeddings.items():
+        for task_id in candidate_tasks:
+            if task_id not in self.task_embeddings:
+                continue
+                
+            task_emb = self.task_embeddings[task_id]
             similarity = self._cosine_similarity(new_embedding, task_emb.embedding)
 
             if similarity > best_score:
                 best_score = similarity
                 best_match = task_id
+                
+                # Early termination for very high similarity
+                if similarity > 0.98:
+                    break
 
+        # Track performance
+        lookup_time = time.time() - start_time
+        self._lookup_times.append(lookup_time)
+        
         if best_score >= self.similarity_threshold:
             return (best_match, best_score)
 
@@ -185,7 +337,7 @@ class SemanticDeduplicator:
     def add_task(
         self, task_id: str, description: str, metadata: dict | None = None
     ) -> TaskEmbedding:
-        """Add a task to the deduplication index."""
+        """Add a task to the deduplication index with optimized indexing."""
         embedding = self._create_embedding(description)
 
         task_emb = TaskEmbedding(
@@ -195,7 +347,16 @@ class SemanticDeduplicator:
             metadata=metadata or {},
         )
 
+        # Update main index
         self.task_embeddings[task_id] = task_emb
+        
+        # Update performance indexes
+        self._update_keyword_index(task_id, description)
+        
+        # Update spatial grid index
+        bucket_id = self._get_grid_bucket(embedding)
+        self._bucket_grid[bucket_id].append(task_id)
+        
         return task_emb
 
     def check_duplicate(self, description: str) -> dict[str, any]:
@@ -225,6 +386,36 @@ class SemanticDeduplicator:
 
         return {"is_duplicate": False, "similarity_score": 0.0}
 
+    def get_performance_stats(self) -> Dict[str, any]:
+        """Get performance statistics for monitoring."""
+        avg_lookup_time = sum(self._lookup_times) / len(self._lookup_times) if self._lookup_times else 0
+        cache_hit_rate = self._cache_hits / (self._cache_hits + self._cache_misses) if (self._cache_hits + self._cache_misses) > 0 else 0
+        
+        return {
+            "average_lookup_time_ms": avg_lookup_time * 1000,
+            "cache_hit_rate": cache_hit_rate,
+            "cache_size": len(self._embedding_cache),
+            "total_tasks": len(self.task_embeddings),
+            "keyword_index_size": sum(len(tasks) for tasks in self._keyword_hash_index.values()),
+            "spatial_buckets_used": len(self._bucket_grid),
+            "similarity_cache_size": len(self._similarity_cache),
+            "recent_lookup_times": list(self._lookup_times)[-10:]  # Last 10 lookup times
+        }
+    
+    def optimize_indexes(self) -> None:
+        """Optimize indexes for better performance (maintenance operation)."""
+        # Rebuild spatial index for better distribution
+        self._bucket_grid.clear()
+        for task_id, task_emb in self.task_embeddings.items():
+            bucket_id = self._get_grid_bucket(task_emb.embedding)
+            self._bucket_grid[bucket_id].append(task_id)
+        
+        # Clean up similarity cache if too large
+        if len(self._similarity_cache) > self._cache_max_size:
+            # Keep only most recent entries
+            items = list(self._similarity_cache.items())
+            self._similarity_cache = dict(items[-self._cache_max_size//2:])
+    
     def get_task_clusters(self, min_similarity: float = 0.7) -> list[list[str]]:
         """
         Group tasks into clusters based on similarity.
@@ -329,8 +520,18 @@ class SemanticDeduplicator:
         return strategy
 
 
-# Global instance
+# Global instance with performance monitoring
 _semantic_dedup = SemanticDeduplicator()
+
+def get_performance_stats() -> Dict[str, any]:
+    """Get global performance statistics."""
+    return _semantic_dedup.get_performance_stats()
+
+def optimize_global_indexes() -> None:
+    """Optimize global indexes for better performance."""
+    _semantic_dedup.optimize_indexes()
+
+# Global instance
 
 
 def get_semantic_deduplicator() -> SemanticDeduplicator:

@@ -289,15 +289,25 @@ class HookEventWebSocketServer:
 
 
 def main():
-    """Main entry point for WebSocket server."""
+    """Main entry point for high-performance WebSocket server."""
     # Set up logging
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
-    # Create and run server
-    server = HookEventWebSocketServer()
+    # Create and run optimized server
+    server = HookEventWebSocketServer(
+        max_clients=1000  # Configurable based on server capacity
+    )
+    
+    logger.info("Starting high-performance WebSocket server with optimizations:")
+    logger.info("- Connection pooling and reuse")
+    logger.info("- Message batching and compression")
+    logger.info("- Selective event subscriptions")
+    logger.info("- Automatic stale connection cleanup")
+    logger.info("- Real-time performance monitoring")
+    
     server.run_server()
 
 

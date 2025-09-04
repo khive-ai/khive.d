@@ -1,16 +1,48 @@
-FROM node:20-alpine
+# Development Dockerfile for Ocean's Agentic ERP Command Center Frontend
+# Optimized for hot reloading and development workflow
+
+FROM node:20-alpine AS development
+
+# Install system dependencies for development
+RUN apk add --no-cache libc6-compat curl git
 
 WORKDIR /app
 
-# Install dependencies
+# Copy package files
 COPY package.json package-lock.json* ./
-RUN npm ci
+
+# Install all dependencies (including dev dependencies)
+RUN \
+  if [ -f package-lock.json ]; then \
+    npm ci && \
+    npm cache clean --force; \
+  else \
+    echo "Lockfile not found." && exit 1; \
+  fi
 
 # Copy source code
 COPY . .
 
+# Create non-root user for development
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs && \
+    chown -R nextjs:nodejs /app
+
+USER nextjs
+
+# Environment variables for development
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+ENV CHOKIDAR_USEPOLLING=true
+
 # Expose port
 EXPOSE 3000
+
+# Health check for development
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:3000 || exit 1
 
 # Start development server with Turbopack
 CMD ["npm", "run", "dev"]
